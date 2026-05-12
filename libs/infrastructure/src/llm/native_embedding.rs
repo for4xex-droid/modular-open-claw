@@ -140,6 +140,49 @@ impl NativeEmbeddingProvider {
         }
         Ok(guard)
     }
+
+    #[cfg(feature = "native-inference")]
+    pub async fn calculate_entropy(&self, text: &str) -> Result<f64, AiomeError> {
+        let mut guard = self.get_or_init_model().await?;
+        let inner = guard.as_mut().ok_or_else(|| AiomeError::Infrastructure {
+            reason: "ModelInner is uninitialized".to_string(),
+        })?;
+
+        let tokens =
+            inner
+                .tokenizer
+                .encode(text, true)
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Tokenization error: {}", e),
+                })?;
+        let ids = tokens.get_ids();
+
+        if ids.is_empty() {
+            return Ok(0.0);
+        }
+
+        let mut counts = std::collections::HashMap::new();
+        for &id in ids {
+            *counts.entry(id).or_insert(0) += 1;
+        }
+
+        let total = ids.len() as f64;
+        let mut entropy = 0.0;
+        for &count in counts.values() {
+            let p = (count as f64) / total;
+            entropy -= p * p.log2();
+        }
+
+        // Normalize entropy by max possible entropy for this length (log2(N))
+        let max_entropy = total.log2();
+        let normalized = if max_entropy > 0.0 {
+            entropy / max_entropy
+        } else {
+            0.0
+        };
+
+        Ok(normalized)
+    }
 }
 
 #[async_trait]

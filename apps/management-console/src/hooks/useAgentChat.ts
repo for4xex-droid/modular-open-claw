@@ -16,6 +16,7 @@ import { API_BASE } from '../config';
 import { ChatMessage } from '../types';
 import { authenticatedFetch } from '../lib/auth';
 import { useSystemVitality } from './useSystemVitality';
+import { useTtsSse } from './useTtsSse';
 
 export interface KarmaData {
     is_ood: boolean;
@@ -56,6 +57,10 @@ export const useAgentChat = (): UseAgentChatReturn => {
     const autoTtsRef = useRef(autoTts);
     autoTtsRef.current = autoTts;
     
+    const { speak } = useTtsSse();
+    const speakRef = useRef(speak);
+    useEffect(() => { speakRef.current = speak; }, [speak]);
+
     // P3: Intent-First Suggestion Integration
     const { lastEvent } = useSystemVitality();
 
@@ -76,7 +81,8 @@ export const useAgentChat = (): UseAgentChatReturn => {
                 }
             }
         }
-    }, [lastEvent]); // playTts is not in deps to avoid issues, we use ref inside playTts if needed, but it's useCallback. Let's omit playTts from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- playTts is stable (useCallback with [])
+    }, [lastEvent]);
 
     const [channelId] = useState(() => {
         const stored = sessionStorage.getItem('aiome_console_channel_id');
@@ -127,19 +133,46 @@ export const useAgentChat = (): UseAgentChatReturn => {
     }, []);
 
     const playTts = useCallback(async (text: string) => {
-        if (!text) return;
+        if (!text.trim()) return;
         try {
-            const response = await authenticatedFetch(`${API_BASE}/api/v1/voice/synthesize`, {
-                method: 'POST',
-                body: JSON.stringify({ text })
-            });
-            if (!response.ok) throw new Error("TTS failed");
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const audio = new Audio(url);
-            await audio.play();
+            // 1. Try SSE Streaming first
+            await speakRef.current(text);
         } catch (e) {
-            console.error("TTS Playback failed:", e);
+            console.warn("SSE TTS failed, falling back to static blob fetch...", e);
+            try {
+                // 2. Fallback to blob fetch
+                const response = await authenticatedFetch(`${API_BASE}/api/v1/voice/synthesize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                if (!response.ok) throw new Error("Fallback TTS failed");
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+
+                audio.addEventListener('ended', () => {
+                    URL.revokeObjectURL(url);
+                    window.dispatchEvent(new CustomEvent('aiome_vitality_event', {
+                        detail: { type: 'tts_completed', data: {} }
+                    }));
+                });
+
+                audio.addEventListener('error', () => {
+                    URL.revokeObjectURL(url);
+                });
+
+                audio.play().then(() => {
+                    window.dispatchEvent(new CustomEvent('aiome_vitality_event', {
+                        detail: { type: 'tts_started', data: {} }
+                    }));
+                }).catch(err => {
+                    console.error("TTS Fallback Playback failed:", err);
+                    URL.revokeObjectURL(url);
+                });
+            } catch (fallbackError) {
+                console.error("TTS Fallback Fetch failed:", fallbackError);
+            }
         }
     }, []);
 

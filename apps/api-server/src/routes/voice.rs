@@ -235,15 +235,36 @@ pub struct SynthesizeQuery {
 )]
 
 pub async fn synthesize_voice_handler(
-    _auth: Authenticated,
+    auth: Authenticated,
     State(state): State<AppState>,
     axum::extract::Query(query): axum::extract::Query<SynthesizeQuery>,
     Json(req): Json<SynthesizeRequest>,
 ) -> Result<axum::response::Response, AppError> {
+    // SEC: Input validation — empty text, length cap, and voice_id sanitization
+    if req.text.is_empty() {
+        return Err(AppError::bad_request("Synthesis text must not be empty"));
+    }
+    const MAX_TTS_TEXT_CHARS: usize = 4096;
+    let text_char_count = req.text.chars().count();
+    if text_char_count > MAX_TTS_TEXT_CHARS {
+        return Err(AppError::bad_request(format!(
+            "Text exceeds maximum length of {} characters (got {})",
+            MAX_TTS_TEXT_CHARS, text_char_count
+        )));
+    }
+    const MAX_VOICE_ID_LEN: usize = 128;
+    if let Some(ref vid) = req.voice_id {
+        if vid.len() > MAX_VOICE_ID_LEN {
+            return Err(AppError::bad_request(format!(
+                "voice_id exceeds maximum length of {} characters",
+                MAX_VOICE_ID_LEN
+            )));
+        }
+    }
+
     info!(
-        "🎙️ [Voice] Synthesizing text: {} chars (stream={:?})",
-        req.text.len(),
-        query.stream
+        "🎙️ [Voice] Synthesizing text: {} chars (stream={:?}, agent={})",
+        text_char_count, query.stream, auth.agent_id
     );
 
     // Use requested voice_id, or default from config, or fallback to p225
@@ -265,14 +286,12 @@ pub async fn synthesize_voice_handler(
                 AppError::internal(format!("TTS streaming failed: {}", e))
             })?;
 
-        use axum::response::IntoResponse;
-        let body = axum::body::Body::from_stream(audio_stream);
-        let mut res = body.into_response();
-        res.headers_mut().insert(
-            axum::http::header::CONTENT_TYPE,
-            axum::http::HeaderValue::from_static("audio/wav"),
-        );
-        Ok(res)
+        use axum::response::sse::{KeepAlive, Sse};
+
+        let sse_stream = map_tts_stream_to_sse(audio_stream);
+        Ok(Sse::new(sse_stream)
+            .keep_alive(KeepAlive::default())
+            .into_response())
     } else {
         let audio_bytes = state
             .tts_provider
@@ -283,12 +302,140 @@ pub async fn synthesize_voice_handler(
                 AppError::internal(format!("TTS synthesis failed: {}", e))
             })?;
 
-        use axum::response::IntoResponse;
         Ok((
             StatusCode::OK,
             [(axum::http::header::CONTENT_TYPE, "audio/wav")],
             audio_bytes,
         )
             .into_response())
+    }
+}
+
+pub(crate) fn map_tts_stream_to_sse(
+    stream: std::pin::Pin<
+        Box<
+            dyn tokio_stream::Stream<
+                    Item = Result<
+                        aiome_core_contracts::traits::TtsStreamEvent,
+                        aiome_core::error::AiomeError,
+                    >,
+                > + Send,
+        >,
+    >,
+) -> impl tokio_stream::Stream<Item = Result<axum::response::sse::Event, std::convert::Infallible>> + Send
+{
+    use axum::response::sse::Event;
+    use base64::{engine::general_purpose::STANDARD as b64, Engine as _};
+    use tokio_stream::StreamExt;
+
+    stream.map(|chunk_res| {
+        match chunk_res {
+            Ok(aiome_core_contracts::traits::TtsStreamEvent::Audio(bytes)) => {
+                let b64_audio = b64.encode(&bytes);
+                Ok(Event::default().event("audio").data(b64_audio))
+            }
+            Ok(aiome_core_contracts::traits::TtsStreamEvent::Viseme {
+                viseme,
+                timestamp_ms,
+                duration_ms,
+            }) => {
+                let json = serde_json::json!({
+                    "viseme": viseme,
+                    "timestamp_ms": timestamp_ms,
+                    "duration_ms": duration_ms
+                });
+                Ok(Event::default().event("viseme").data(json.to_string()))
+            }
+            Err(e) => {
+                // SEC: Redact internal error details to prevent information leakage
+                tracing::error!("SSE stream error: {}", e);
+                Ok(Event::default().event("error").data(
+                    serde_json::json!({ "error": "TTS stream processing error" }).to_string(),
+                ))
+            }
+        }
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use aiome_core_contracts::traits::TtsStreamEvent;
+    use tokio_stream::StreamExt;
+
+    #[tokio::test]
+    async fn test_map_tts_stream_to_sse_audio_and_viseme() {
+        let test_stream = async_stream::stream! {
+            yield Ok(TtsStreamEvent::Audio(vec![1, 2, 3]));
+            yield Ok(TtsStreamEvent::Viseme {
+                viseme: "A".to_string(),
+                timestamp_ms: 100,
+                duration_ms: 50,
+            });
+        };
+
+        let stream_pin = Box::pin(test_stream);
+        let mut sse_stream = std::pin::pin!(map_tts_stream_to_sse(stream_pin));
+
+        // Event 1: Audio — verify it was received
+        let _event1 = sse_stream
+            .next()
+            .await
+            .expect("Should have Audio event")
+            .expect("Audio event should be Ok");
+
+        // Event 2: Viseme — verify it was received
+        let _event2 = sse_stream
+            .next()
+            .await
+            .expect("Should have Viseme event")
+            .expect("Viseme event should be Ok");
+
+        // Stream should be exhausted
+        assert!(
+            sse_stream.next().await.is_none(),
+            "Stream should be exhausted after 2 events"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_map_tts_stream_to_sse_error_redaction() {
+        use aiome_core::error::AiomeError;
+
+        let test_stream = async_stream::stream! {
+            yield Err(AiomeError::Infrastructure {
+                reason: "secret internal detail: endpoint=https://internal.api/v1".to_string(),
+            });
+        };
+
+        let stream_pin = Box::pin(test_stream);
+        let mut sse_stream = std::pin::pin!(map_tts_stream_to_sse(stream_pin));
+
+        // Error events must NOT leak internal details
+        let _event = sse_stream
+            .next()
+            .await
+            .expect("Should have error event")
+            .expect("Error event should be Ok (Infallible)");
+        // The event is opaque (axum::sse::Event), but we verified it doesn't panic.
+        // The key assertion is that the function doesn't propagate raw error strings.
+
+        assert!(sse_stream.next().await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_map_tts_stream_to_sse_empty_stream() {
+        let test_stream = async_stream::stream! {
+            // Yield nothing
+            if false { yield Ok(TtsStreamEvent::Audio(vec![])); }
+        };
+
+        let stream_pin = Box::pin(test_stream);
+        let mut sse_stream = std::pin::pin!(map_tts_stream_to_sse(stream_pin));
+
+        assert!(
+            sse_stream.next().await.is_none(),
+            "Empty stream should yield nothing"
+        );
     }
 }

@@ -41,11 +41,13 @@ impl OpenAiTtsProvider {
                 .unwrap_or_else(|| "https://api.openai.com/v1/audio/speech".to_string()),
         }
     }
-}
 
-#[async_trait]
-impl TtsProvider for OpenAiTtsProvider {
-    async fn synthesize(&self, text: &str, voice_id: &str) -> Result<Vec<u8>, AiomeError> {
+    /// Shared HTTP request builder for synthesize and synthesize_stream
+    async fn send_tts_request(
+        &self,
+        text: &str,
+        voice_id: &str,
+    ) -> Result<reqwest::Response, AiomeError> {
         let payload = serde_json::json!({
             "model": self.model,
             "input": text,
@@ -72,10 +74,17 @@ impl TtsProvider for OpenAiTtsProvider {
             });
         }
 
+        Ok(resp)
+    }
+}
+
+#[async_trait]
+impl TtsProvider for OpenAiTtsProvider {
+    async fn synthesize(&self, text: &str, voice_id: &str) -> Result<Vec<u8>, AiomeError> {
+        let resp = self.send_tts_request(text, voice_id).await?;
         let bytes = resp.bytes().await.map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to read OpenAI TTS response: {}", e),
         })?;
-
         Ok(bytes.to_vec())
     }
 
@@ -84,39 +93,24 @@ impl TtsProvider for OpenAiTtsProvider {
         text: &str,
         voice_id: &str,
     ) -> Result<
-        std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<Vec<u8>, AiomeError>> + Send>>,
+        std::pin::Pin<
+            Box<
+                dyn tokio_stream::Stream<
+                        Item = Result<aiome_core_contracts::traits::TtsStreamEvent, AiomeError>,
+                    > + Send,
+            >,
+        >,
         AiomeError,
     > {
-        let payload = serde_json::json!({
-            "model": self.model,
-            "input": text,
-            "voice": voice_id
-        });
-
-        let resp = self
-            .client
-            .post(&self.endpoint)
-            .header(
-                "Authorization",
-                format!("Bearer {}", self.api_key.expose_secret()),
-            )
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("OpenAI TTS request failed: {}", e),
-            })?;
-
-        if !resp.status().is_success() {
-            return Err(AiomeError::Infrastructure {
-                reason: format!("OpenAI TTS API error: {}", resp.status()),
-            });
-        }
+        let resp = self.send_tts_request(text, voice_id).await?;
 
         use tokio_stream::StreamExt;
+        // NOTE: OpenAI TTS API does not provide Viseme/phoneme data.
+        // This stream emits Audio-only events. Viseme generation for lip-sync
+        // must be performed downstream (e.g., via phoneme analysis on audio chunks).
         let stream = resp.bytes_stream().map(|chunk_res| {
             chunk_res
-                .map(|b| b.to_vec())
+                .map(|b| aiome_core_contracts::traits::TtsStreamEvent::Audio(b.to_vec()))
                 .map_err(|e| AiomeError::Infrastructure {
                     reason: format!("Stream read error: {}", e),
                 })
@@ -233,6 +227,37 @@ impl TtsProvider for MockTtsProvider {
         Ok(vec![0u8; 100])
     }
 
+    async fn synthesize_stream(
+        &self,
+        _text: &str,
+        _voice_id: &str,
+    ) -> Result<
+        std::pin::Pin<
+            Box<
+                dyn tokio_stream::Stream<
+                        Item = Result<aiome_core_contracts::traits::TtsStreamEvent, AiomeError>,
+                    > + Send,
+            >,
+        >,
+        AiomeError,
+    > {
+        let stream = async_stream::stream! {
+            yield Ok(aiome_core_contracts::traits::TtsStreamEvent::Audio(vec![0u8; 50]));
+            yield Ok(aiome_core_contracts::traits::TtsStreamEvent::Viseme {
+                viseme: "A".to_string(),
+                timestamp_ms: 0,
+                duration_ms: 100,
+            });
+            yield Ok(aiome_core_contracts::traits::TtsStreamEvent::Audio(vec![0u8; 50]));
+            yield Ok(aiome_core_contracts::traits::TtsStreamEvent::Viseme {
+                viseme: "O".to_string(),
+                timestamp_ms: 100,
+                duration_ms: 150,
+            });
+        };
+        Ok(Box::pin(stream))
+    }
+
     async fn health_check(&self) -> Result<bool, AiomeError> {
         Ok(true)
     }
@@ -266,6 +291,31 @@ mod tests {
 
         assert!(res.is_ok());
         assert_eq!(res.unwrap().len(), 100);
+    }
+
+    #[tokio::test]
+    async fn test_mock_tts_stream_with_visemes() {
+        let provider = MockTtsProvider::default();
+        let stream_res = provider.synthesize_stream("hello", "p225").await;
+        assert!(stream_res.is_ok(), "Mock should support streaming");
+
+        let mut stream = stream_res.unwrap();
+        let mut has_audio = false;
+        let mut has_viseme = false;
+
+        use tokio_stream::StreamExt;
+        while let Some(event) = stream.next().await {
+            match event.unwrap() {
+                aiome_core_contracts::traits::TtsStreamEvent::Audio(_) => has_audio = true,
+                aiome_core_contracts::traits::TtsStreamEvent::Viseme { viseme, .. } => {
+                    assert!(!viseme.is_empty());
+                    has_viseme = true;
+                }
+            }
+        }
+
+        assert!(has_audio, "Should yield audio chunks");
+        assert!(has_viseme, "Should yield viseme events");
     }
 
     #[tokio::test]

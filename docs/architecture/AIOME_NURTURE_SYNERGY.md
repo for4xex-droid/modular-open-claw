@@ -718,6 +718,12 @@ classDiagram
         +deep_complete(prompt, config) Result~RlmResponse~
     }
 
+    class TtsProvider {
+        <<trait / aiome-core-contracts>>
+        +synthesize(text, voice_id) Result~Vec<u8>~
+        +synthesize_stream(text, voice_id) Result~Stream~Item=TtsStreamEvent~~
+    }
+
     class StripeCommerceEngine {
         CommerceEngine を実装
         +OXPスコア依存の証明書生成

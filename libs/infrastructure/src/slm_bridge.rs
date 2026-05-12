@@ -291,10 +291,11 @@ impl SlmBridge {
 
     /// ネイティブ推論バックエンドを生成する (Phase 2)
     #[cfg(feature = "native-inference")]
-    pub fn new_native(config: aiome_core_contracts::llm::NativeModelConfig) -> Self {
-        Self::with_backend(Box::new(crate::native_backend::NativeSlmBackend::new(
-            config,
-        )))
+    pub fn new_native(
+        config: aiome_core_contracts::llm::NativeModelConfig,
+    ) -> Result<Self, AiomeError> {
+        let backend = crate::native_backend::NativeSlmBackend::new(config)?;
+        Ok(Self::with_backend(Box::new(backend)))
     }
 
     /// 入力文字列を検証する

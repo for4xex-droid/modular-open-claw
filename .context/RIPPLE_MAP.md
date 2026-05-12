@@ -1,5 +1,25 @@
 # 🌊 Aiome Ripple Map
 
+## Phase 14: TTS SSE Streaming & Lip-Sync Integration
+### 1. Robust SSE Streaming Pipeline
+- **変更内容**:
+    - `libs/aiome-core-contracts/src/traits.rs` [MODIFY]: `TtsProvider` トレイトに `synthesize_stream` を追加し、`TtsStreamEvent` (Audio/Viseme) を返す仕様に変更。
+    - `apps/api-server/src/routes/voice.rs` [MODIFY]: `GET/POST /api/v1/voice/synthesize` に `stream=true` パラメータを追加し、SSE 形式でのチャンク配信を実装。
+    - `apps/management-console/src/hooks/useTtsSse.ts` [NEW]: `@microsoft/fetch-event-source` を用いた Accumulate-then-Play 音声チャンク再生機構と、`AbortController` によるストリーム排他制御を実装。
+    - `apps/management-console/src/hooks/useAgentChat.ts` [MODIFY]: 優先的に `useTtsSse` を呼び出し、失敗時にレガシーな静的 Blob フェッチへ自動的にフォールバックする耐障害性ロジックを統合。
+- **波及効果**:
+    - 音声合成のストリーミング再生が可能となり、Time-to-First-Byte (TTFB) が劇的に改善。
+    - フロントエンド側で発生していた `AbortController` 漏れによる AudioContext やメモリリーク（URL Blob）が完全に払拭され、安全性と堅牢性が向上。
+    - `Viseme`（リップシンク）イベントの受容準備が整い、次期 Phase（3D/2D アバター統合）への基盤が完成。
+
+## Phase 2: Native SLM Intelligence Backend
+### 1. Semantic Search & Memory Importance
+- **変更内容**:
+    - `libs/infrastructure/src/llm/native_embedding.rs` [NEW]: ネイティブRustによる埋め込み（Embedding）モデルの推論とコサイン類似度計算を実装。
+    - `libs/infrastructure/src/native_backend.rs` [NEW]: `NativeSlmBackend` を実装。`recall`, `calculate_importance`, `detect_contradictions` の意味的な推論ロジックを提供。
+- **波及効果**:
+    - SLM の外部 CLI 依存を脱却し、Rust ネイティブレイヤーでのインメモリ意味検索と論理矛盾検知（Constitutional Validation）が高速かつ安全に動作するようになった。
+
 ## Hardening Phase: System Isolation & API Consistency
 ### 1. McpDiscovery Fail-Closed Prevention
 - **変更内容**:

@@ -48,7 +48,9 @@
 | `rate_limiter` | エージェント単位のリクエスト頻度制御。DoS 攻撃や予期せぬAPI消費を防ぐ。 | **実装完了** |
 | `samsara_engine` | Soul Engine の L3 転生ロジック実体。Phase 3 で Anamnesis（物語的自己）の LLM 蒸留・継承を実装済。 | **Phase 3 完了** |
 | `security` | 暗号化、認証、Abyss Vault との連携。**Phase 13.3** で `main.rs` の初期化順序を最適化し、`config.clone()` を排除した安全なシークレット共有を実現。Linux 環境での `runsc` 検知も継続サポート。 | **強化完了** |
-| `tts` | `TtsProvider` トレイトに基づく音声合成エンジン。OpenAI (`tts-1`), XTTS, Mock をサポート。バックグラウンドでの非同期合成ジョブ処理を担当。 | **Phase 13.3 完了** |
+| `tts` | `TtsProvider` トレイトに基づく音声合成エンジン。SSEストリーミング出力とリップシンク（Viseme）対応の多重化イベント配信をサポート。 | **Phase 14 完了** |
+| `native_backend` | ネイティブRust実装によるSLM（SuperLocalMemory）機能群。意味検索（recall）、重要度計算、矛盾検知を提供。 | **実装完了** |
+| `native_embedding` | SLMバックエンド向けに、ネイティブRustによるローカル埋め込み（Embedding）モデルの推論とコサイン類似度計算を提供。 | **実装完了** |
 | `skill_arena` | スキルの並列実行と結果の評価、ランキング。**Phase 3**にてSQLite永続化と、MoE Routingのための実行前後の淘汰（Culling）フィードバックループを実装完了。 | **Phase 3 完了** |
 | `slm_bridge` | SuperLocalMemory (SLM) CLI との通信ブリッジ。Poincare スコアに基づく記憶の重要度算出を提供。 | **Phase 4 完了** |
 | `spec_provider` | `FsSpecProvider` を通じた動的ワークフロー仕様のファイルシステムへのエクスポート基盤。パストラバーサル防御、symlink拒否、正規表現によるシークレットサニタイズを実装。 | **Phase 4 完了** |

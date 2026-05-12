@@ -957,19 +957,34 @@ pub trait LoraEngine: Send + Sync + std::fmt::Debug {
     async fn health_check(&self) -> Result<bool, AiomeError>;
 }
 
+/// TTSのストリームから返却されるイベント
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum TtsStreamEvent {
+    /// 音声チャンクデータ
+    Audio(Vec<u8>),
+    /// 口の形（Viseme）とタイミング情報
+    Viseme {
+        viseme: String,
+        timestamp_ms: u64,
+        duration_ms: u64,
+    },
+}
+
 /// 10. TTS (Text-to-Speech) プロバイダー
 #[async_trait]
 pub trait TtsProvider: Send + Sync + std::fmt::Debug {
     /// テキストを音声データに変換
     async fn synthesize(&self, text: &str, voice_id: &str) -> Result<Vec<u8>, AiomeError>;
 
-    /// ストリーム形式でテキストを音声データ（チャンク）に変換（オプトイン用）
+    /// ストリーム形式でテキストを音声データ（チャンク）とVisemeイベントに変換（オプトイン用）
     async fn synthesize_stream(
         &self,
         _text: &str,
         _voice_id: &str,
     ) -> Result<
-        std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Result<Vec<u8>, AiomeError>> + Send>>,
+        std::pin::Pin<
+            Box<dyn tokio_stream::Stream<Item = Result<TtsStreamEvent, AiomeError>> + Send>,
+        >,
         AiomeError,
     > {
         // デフォルトでは明示的に未サポートエラーを返す（サイレントフェイル防止・要件 X-001）

@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+### Added
+- **Real-time SSE Streaming for TTS (Voice API & Frontend)**:
+  - Implemented POST-based SSE streaming for the TTS engine via `/api/v1/voice/synthesize?stream=true`.
+  - Added `TtsStreamEvent` enum to `aiome-core-contracts` to support multiplexed `Audio` and `Viseme` events.
+  - Upgraded `OpenAiTtsProvider` and `MockTtsProvider` to yield streaming events, providing lip-sync (`viseme`) capabilities for Phase 3 visual integrations.
+  - Refactored frontend `useTtsSse.ts` to utilize `@microsoft/fetch-event-source`, implementing Accumulate-then-Play audio chunking.
+- **Native SLM Backend Intelligence (Phase 2)**:
+  - Implemented semantic `recall`, `calculate_importance`, and `detect_contradictions` in `NativeSlmBackend` using native Rust embeddings (`native_embedding.rs`).
+
+### Hardening & Stability
+- **Frontend TTS Fallback & Leak Elimination (Reflexion Pass)**:
+  - Enhanced `useAgentChat.ts` to prioritize SSE streaming TTS, seamlessly falling back to legacy static Blob fetches on stream interruption.
+  - Eliminated critical audio memory leaks by strictly enforcing `AbortController` cleanup and `URL.revokeObjectURL` upon playback completion or error.
+  - Hardened server error handling within `useTtsSse.ts` to safely catch and propagate stream abortions to the fallback pipeline.
+  - Secured `useTtsSse.ts` against log injection vulnerabilities by implementing `sanitizeErrorMessage`.
+
 ### Security
 - **Defense-in-Depth UI Hardening (Reflexion Pass)**:
   - `ArtifactVault`: Applied `encodeURIComponent` to search and category filters, mitigating parameter injection vectors.

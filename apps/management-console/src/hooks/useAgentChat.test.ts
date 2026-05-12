@@ -1,5 +1,9 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useAgentChat } from './useAgentChat';
+import { TextEncoder, TextDecoder } from 'util';
+
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder as any;
 
 // Mock authenticatedFetch
 jest.mock('../lib/auth', () => ({
@@ -141,3 +145,133 @@ describe('useAgentChat Slash Command Interception', () => {
     expect(result.current.history).toHaveLength(0);
   });
 });
+
+// Mock useTtsSse
+const mockSpeak = jest.fn();
+const mockCancel = jest.fn();
+jest.mock('./useTtsSse', () => ({
+  useTtsSse: () => ({
+    speak: mockSpeak,
+    cancel: mockCancel
+  })
+}));
+
+describe('useAgentChat TTS Integration', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSpeak.mockResolvedValue(undefined);
+    global.URL.createObjectURL = jest.fn().mockReturnValue('blob:test');
+    global.URL.revokeObjectURL = jest.fn();
+    global.Audio = jest.fn().mockImplementation(() => ({
+      play: jest.fn().mockResolvedValue(undefined),
+      pause: jest.fn(),
+      src: '',
+      addEventListener: jest.fn((event, cb) => {
+        if (event === 'ended') {
+          setTimeout(cb, 0);
+        }
+      }),
+      removeEventListener: jest.fn()
+    })) as any;
+  });
+
+  it('calls useTtsSse.speak instead of fetch when autoTts is enabled and a message is sent', async () => {
+    const { result } = renderHook(() => useAgentChat());
+    
+    // @ts-expect-error
+    const authMock = require('../lib/auth').authenticatedFetch;
+    authMock.mockClear();
+
+    // Mock successful chat stream response
+    authMock.mockResolvedValueOnce({
+      ok: true,
+      body: {
+        getReader: () => {
+          let done = false;
+          return {
+            read: () => {
+              if (done) return Promise.resolve({ done: true });
+              done = true;
+              const encoder = new TextEncoder();
+              return Promise.resolve({
+                done: false,
+                value: encoder.encode("event: text\ndata: Hello from assistant\n\n")
+              });
+            }
+          };
+        }
+      }
+    });
+
+    await act(async () => {
+      await result.current.sendMessage('Hello');
+    });
+
+    // It should call mockSpeak with the accumulated text
+    expect(mockSpeak).toHaveBeenCalledWith('Hello from assistant');
+    
+    // It should NOT have called fetch for /api/v1/voice/synthesize
+    const fetchCalls = authMock.mock.calls;
+    const hasVoiceFetch = fetchCalls.some((call: any[]) => call[0].includes('/voice/synthesize'));
+    expect(hasVoiceFetch).toBe(false);
+  });
+
+  it('falls back to static blob fetch if useTtsSse.speak throws an error', async () => {
+    const { result } = renderHook(() => useAgentChat());
+    
+    // @ts-expect-error
+    const authMock = require('../lib/auth').authenticatedFetch;
+    authMock.mockClear();
+
+    // Force SSE to fail
+    mockSpeak.mockRejectedValueOnce(new Error('SSE Failed'));
+
+    // Mock successful chat stream response (1st fetch)
+    authMock.mockResolvedValueOnce({
+      ok: true,
+      body: {
+        getReader: () => {
+          let done = false;
+          return {
+            read: () => {
+              if (done) return Promise.resolve({ done: true });
+              done = true;
+              return Promise.resolve({
+                done: false,
+                value: new TextEncoder().encode("event: text\ndata: Fallback text\n\n")
+              });
+            }
+          };
+        }
+      }
+    });
+
+    // Mock successful blob fetch for fallback (2nd fetch)
+    authMock.mockResolvedValueOnce({
+      ok: true,
+      blob: () => Promise.resolve(new Blob(['dummy'], { type: 'audio/wav' }))
+    });
+
+    await act(async () => {
+      await result.current.sendMessage('Trigger');
+    });
+
+    // 1. SSE speak should be called
+    expect(mockSpeak).toHaveBeenCalledWith('Fallback text');
+
+    // Wait a tick for the fallback promise chain
+    await waitFor(() => {
+      // 2. Blob fetch fallback should be called
+      const fetchCalls = authMock.mock.calls;
+      const hasVoiceFetch = fetchCalls.some((call: any[]) => call[0].includes('/voice/synthesize'));
+      expect(hasVoiceFetch).toBe(true);
+    });
+    
+    // 3. ObjectURL should be created and revoked (testing the memory leak fix)
+    expect(global.URL.createObjectURL).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(global.URL.revokeObjectURL).toHaveBeenCalled();
+    });
+  });
+});
+
