@@ -400,8 +400,7 @@ mod tests {
             Ok(aiome_core::llm_provider::LlmResponse {
                 content: self.response.clone(),
                 stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
         async fn complete_with_cache(

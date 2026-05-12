@@ -99,6 +99,31 @@ pub trait TaskConductor: Send + Sync {
     }
 }
 
+/// SOUL.md と EVOLVING_SOUL.md を読み込み、soul_hash を計算する。
+/// AppState::get_system_soul_hash() と同じハッシュロジックを使用する。
+#[tracing::instrument(skip_all, fields(has_path = soul_path.is_some()))]
+async fn compute_soul_hash(soul_path: &Option<std::path::PathBuf>) -> String {
+    use std::hash::{Hash, Hasher};
+    let path = match soul_path {
+        Some(p) => p,
+        None => return "unknown".to_string(),
+    };
+
+    let soul = tokio::fs::read_to_string(path).await.unwrap_or_default();
+    let evolving_soul = if let Some(parent) = path.parent() {
+        tokio::fs::read_to_string(parent.join("EVOLVING_SOUL.md"))
+            .await
+            .unwrap_or_default()
+    } else {
+        String::new()
+    };
+
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    // NOTE: AppState::get_system_soul_hash() と同じフォーマットを使用（ゼロパディングなし）
+    format!("{}{}", soul, evolving_soul).hash(&mut hasher);
+    format!("{:x}", hasher.finish())
+}
+
 /// The Task Dispatcher (Manager). Monitors the JobQueue and dispatches tasks to Conductors.
 pub struct TaskDispatcher {
     conductors: Vec<Arc<dyn TaskConductor>>,
@@ -203,8 +228,17 @@ impl TaskDispatcher {
                                 let j_id = job_id.clone();
                                 let cond = conductor.clone();
                                 tokio::spawn(async move {
-                                    if let Err(e) =
-                                        store_clone.record(&j_id, score as i32, passed, &cond).await
+                                    if let Err(e) = store_clone
+                                        .record(
+                                            &j_id,
+                                            score as i32,
+                                            passed,
+                                            &cond,
+                                            None,
+                                            None,
+                                            None,
+                                        )
+                                        .await
                                     {
                                         tracing::warn!(
                                             "Failed to record quality gate history for {}: {}",
@@ -536,6 +570,7 @@ impl TaskDispatcher {
                         let validator_clone = self.validator.clone();
                         let diagnostics_clone = self.diagnostics.clone();
                         let hooks_clone = self.hook_manager.clone();
+                        let soul_path_clone = self.soul_path.clone();
                         tokio::spawn(async move {
                             // Phase 48-D: Invariant-DAG Verification before execution
                             if let Some(directives_str) = &job.karma_directives {
@@ -813,6 +848,28 @@ impl TaskDispatcher {
                                                 {
                                                     tracing::warn!("Failed to send failed event: {}", send_err);
                                                 }
+
+                                                // --- VERIFY-LEARN: Extract Negative Karma on complete failure ---
+                                                let karma_reason = err_msg.clone();
+                                                let job_id_clone = job_id.clone();
+                                                let jq_for_karma = job_queue_clone.clone();
+                                                let c_name = conductor_clone.conductor_name().to_string();
+                                                let soul_hash_str = compute_soul_hash(&soul_path_clone).await;
+                                                tokio::spawn(async move {
+                                                    if let Err(e) = jq_for_karma.store_karma(
+                                                        &job_id_clone,
+                                                        &c_name,
+                                                        &karma_reason,
+                                                        "negative",
+                                                        &soul_hash_str,
+                                                        None,
+                                                        None,
+                                                        None,
+                                                        true,
+                                                    ).await {
+                                                        tracing::warn!("Failed to store negative karma for failed job {}: {:?}", job_id_clone, e);
+                                                    }
+                                                });
                                             } else {
                                                 warn!("Task {} failed but will be retried. Clearing partial trajectory...", job_id);
                                                 if let Err(e) = job_queue_clone.clear_trajectory_steps(&job_id).await {
@@ -1115,6 +1172,41 @@ mod tests {
     use crate::test_utils::job_queue_mock::{GlobalMockJobQueue, GlobalMockLlm};
     use aiome_core_contracts::traits::*;
     use tokio::time::timeout;
+
+    #[tokio::test]
+    async fn test_compute_soul_hash() {
+        // Test with None
+        let hash_none = compute_soul_hash(&None).await;
+        assert_eq!(hash_none, "unknown");
+
+        // Test with a temporary file
+        let temp_dir = tempfile::tempdir().unwrap();
+        let soul_md_path = temp_dir.path().join("SOUL.md");
+        let evolving_soul_md_path = temp_dir.path().join("EVOLVING_SOUL.md");
+
+        tokio::fs::write(&soul_md_path, "I am the soul")
+            .await
+            .unwrap();
+        tokio::fs::write(&evolving_soul_md_path, "I am evolving")
+            .await
+            .unwrap();
+
+        let hash_some = compute_soul_hash(&Some(soul_md_path)).await;
+        assert_ne!(hash_some, "unknown");
+        // DefaultHasher produces a u64 -> hex は最大16文字（先頭ゼロは省略）
+        assert!(
+            hash_some.len() <= 16 && !hash_some.is_empty(),
+            "Hash should be a valid hex string, got: {}",
+            hash_some
+        );
+
+        // If files are missing, it should fallback to a consistent hash (hash of empty strings)
+        let empty_dir = tempfile::tempdir().unwrap();
+        let missing_path = empty_dir.path().join("SOUL.md");
+        let hash_missing = compute_soul_hash(&Some(missing_path)).await;
+        assert_ne!(hash_missing, "unknown");
+        assert_ne!(hash_missing, hash_some);
+    }
 
     struct TestConductor;
     #[async_trait]
@@ -1471,8 +1563,7 @@ mod tests {
                 Ok(LlmResponse {
                     content: format!("```json\n{}\n```", json_resp),
                     stop_reason: StopReason::EndTurn,
-                    reasoning: None,
-                    metadata: None,
+                    ..Default::default()
                 })
             }
             async fn test_connection(&self) -> Result<(), AiomeError> {
@@ -1667,16 +1758,14 @@ mod tests {
                     return Ok(LlmResponse {
                         content: "NONE".into(),
                         stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-                        reasoning: None,
-                        metadata: None,
+                        ..Default::default()
                     });
                 }
                 if sys.contains("Supreme Constitutional Referee") {
                     return Ok(LlmResponse {
                         content: "PASS".into(),
                         stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-                        reasoning: None,
-                        metadata: None,
+                        ..Default::default()
                     });
                 }
 
@@ -1693,8 +1782,7 @@ mod tests {
                 Ok(LlmResponse {
                     content: format!("```json\n{}\n```", steps),
                     stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-                    reasoning: None,
-                    metadata: None,
+                    ..Default::default()
                 })
             }
             async fn test_connection(&self) -> Result<(), AiomeError> {
@@ -1783,6 +1871,156 @@ mod tests {
         assert_eq!(
             status,
             Some(aiome_core_contracts::traits::JobStatus::AwaitingInput)
+        );
+    }
+
+    #[derive(Debug)]
+    struct FailingConductor;
+    #[async_trait]
+    impl TaskConductor for FailingConductor {
+        fn conductor_name(&self) -> &str {
+            "FailingConductor"
+        }
+        fn capable_categories(&self) -> Vec<String> {
+            vec!["fail_cat".into()]
+        }
+        async fn conduct(
+            &self,
+            _job: Job,
+            _progress_tx: mpsc::Sender<TaskEvent>,
+        ) -> Result<(String, Option<String>), AiomeError> {
+            Err(AiomeError::Infrastructure {
+                reason: "High Uncertainty Limit Exceeded".into(),
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn test_dispatcher_stores_karma_on_high_uncertainty() {
+        let mut job = Job::default();
+        job.id = "job-fail-1".into();
+        job.category = "fail_cat".into();
+
+        let job_queue = Arc::new(GlobalMockJobQueue {
+            job_to_return: std::sync::Mutex::new(Some(job.clone())),
+            fetched_job: std::sync::Mutex::new(Some(job)),
+            ..Default::default()
+        });
+
+        let mut dispatcher = TaskDispatcher::new(
+            job_queue.clone(),
+            Duration::from_millis(10),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        dispatcher.register_conductor(Arc::new(FailingConductor));
+
+        let mut rx = dispatcher.subscribe_events();
+
+        let _handle = tokio::spawn(async move {
+            dispatcher.run_dispatch_loop().await;
+        });
+
+        for _ in 0..10 {
+            if let Ok(TaskEvent::Failed { job_id, .. }) = rx.try_recv() {
+                if job_id == "job-fail-1" {
+                    break;
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+
+        // store_karma は tokio::spawn で非同期実行されるため、
+        // Failed イベント受信後に完了を待つ必要がある
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        let karmas = job_queue.karmas.lock().unwrap().clone();
+        assert!(
+            !karmas.is_empty(),
+            "Karma should be stored on complete failure"
+        );
+        assert_eq!(karmas[0]["karma_type"], "negative");
+        assert_eq!(karmas[0]["skill_id"], "FailingConductor");
+        assert!(
+            karmas[0]["lesson"]
+                .as_str()
+                .unwrap()
+                .contains("High Uncertainty Limit Exceeded"),
+            "Lesson should contain original error message"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_dispatcher_stores_karma_with_soul_path() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let soul_md_path = temp_dir.path().join("SOUL.md");
+        let evolving_soul_md_path = temp_dir.path().join("EVOLVING_SOUL.md");
+        tokio::fs::write(&soul_md_path, "test soul").await.unwrap();
+        tokio::fs::write(&evolving_soul_md_path, "test evolving")
+            .await
+            .unwrap();
+
+        let mut job = Job::default();
+        job.id = "job-fail-2".into();
+        job.category = "fail_cat".into();
+
+        let job_queue = Arc::new(GlobalMockJobQueue {
+            job_to_return: std::sync::Mutex::new(Some(job.clone())),
+            fetched_job: std::sync::Mutex::new(Some(job)),
+            ..Default::default()
+        });
+
+        let mut dispatcher = TaskDispatcher::new(
+            job_queue.clone(),
+            Duration::from_millis(10),
+            None,
+            None,
+            None,
+            None,
+            Some(soul_md_path), // soul_path
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        dispatcher.register_conductor(Arc::new(FailingConductor));
+
+        let mut rx = dispatcher.subscribe_events();
+
+        let _handle = tokio::spawn(async move {
+            dispatcher.run_dispatch_loop().await;
+        });
+
+        for _ in 0..10 {
+            if let Ok(TaskEvent::Failed { job_id, .. }) = rx.try_recv() {
+                if job_id == "job-fail-2" {
+                    break;
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        let karmas = job_queue.karmas.lock().unwrap().clone();
+        assert!(
+            !karmas.is_empty(),
+            "Karma should be stored on complete failure"
+        );
+        assert_ne!(
+            karmas[0]["soul_hash"], "unknown",
+            "soul_hash should not be unknown when soul_path is provided"
         );
     }
 }

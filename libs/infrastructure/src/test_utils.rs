@@ -241,16 +241,27 @@ pub mod job_queue_mock {
         #[allow(clippy::too_many_arguments)]
         async fn store_karma(
             &self,
-            _: &str,
-            _: &str,
-            _: &str,
-            _: &str,
-            _: &str,
-            _: Option<&str>,
-            _: Option<&str>,
-            _: Option<&str>,
-            _: bool,
+            job_id: &str,
+            skill_id: &str,
+            lesson: &str,
+            karma_type: &str,
+            soul_hash: &str,
+            domain: Option<&str>,
+            subtopic: Option<&str>,
+            clone_origin_id: Option<&str>,
+            is_private: bool,
         ) -> Result<(), AiomeError> {
+            self.karmas.lock().unwrap().push(serde_json::json!({
+                "job_id": job_id,
+                "skill_id": skill_id,
+                "lesson": lesson,
+                "karma_type": karma_type,
+                "soul_hash": soul_hash,
+                "domain": domain,
+                "subtopic": subtopic,
+                "clone_origin_id": clone_origin_id,
+                "is_private": is_private,
+            }));
             Ok(())
         }
         async fn adjust_karma_weight(&self, _: &str, _: i32) -> Result<(), AiomeError> {
@@ -563,8 +574,7 @@ pub mod job_queue_mock {
             Ok(LlmResponse {
                 content: "mock".to_string(),
                 stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
         async fn test_connection(&self) -> Result<(), AiomeError> {
@@ -580,8 +590,7 @@ pub mod job_queue_mock {
             Ok(LlmResponse {
                 content: "mock".to_string(),
                 stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
     }

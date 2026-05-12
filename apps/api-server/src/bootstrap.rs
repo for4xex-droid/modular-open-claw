@@ -995,8 +995,16 @@ pub async fn init_core_services(
         3, // failure threshold
     ))
         as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>;
-    let router_provider = Arc::new(infrastructure::llm::humanizer_filter::HumanizerFilter::new(
+
+    let entropy_gate_provider = Arc::new(infrastructure::llm::entropy_gate::EntropyGate::new(
         base_router_provider,
+        2.0, // entropy threshold
+        3,   // max re-ask
+    ))
+        as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>;
+
+    let router_provider = Arc::new(infrastructure::llm::humanizer_filter::HumanizerFilter::new(
+        entropy_gate_provider,
         infrastructure::llm::humanizer_rules::default_rules_ja(),
         infrastructure::llm::writing_context::WritingContext::Default,
     )) as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>;

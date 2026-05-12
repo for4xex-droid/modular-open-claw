@@ -13,10 +13,11 @@ use std::pin::Pin;
 use tokio_stream::Stream;
 
 /// LLMの停止理由
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum StopReason {
     /// 正常終了（モデルが回答を完了）
+    #[default]
     EndTurn,
     /// ツール使用リクエストによる停止
     ToolUse,
@@ -57,8 +58,16 @@ pub struct LlmRequest {
     pub metadata: Option<std::collections::HashMap<String, String>>,
 }
 
+/// トークンごとの対数確率 (P8a: EntropyGate 基盤)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TokenLogprob {
+    pub token: String,
+    pub logprob: f64,
+    pub top_logprobs: Option<Vec<(String, f64)>>,
+}
+
 /// LLMからの構造化レスポンス
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LlmResponse {
     /// 生成されたテキスト内容
     pub content: String,
@@ -68,6 +77,8 @@ pub struct LlmResponse {
     pub reasoning: Option<String>,
     /// プロバイダー固有のメタデータ (例: "interaction_id")
     pub metadata: Option<std::collections::HashMap<String, String>>,
+    /// トークンごとの対数確率（取得可能なプロバイダーのみ）
+    pub logprobs: Option<Vec<TokenLogprob>>,
 }
 
 /// LLMプロバイダーの共通インターフェース
@@ -144,4 +155,33 @@ pub struct NativeModelConfig {
     pub quantization: Option<String>,
     /// 埋め込み次元数 (Embeddingモデルの場合)
     pub embedding_dim: Option<usize>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_llm_response_default() {
+        let response = LlmResponse::default();
+        assert_eq!(response.content, "");
+        assert_eq!(response.stop_reason, StopReason::EndTurn);
+        assert_eq!(response.reasoning, None);
+        assert_eq!(response.metadata, None);
+    }
+
+    #[test]
+    fn test_token_logprob_field() {
+        let logprob = TokenLogprob {
+            token: "hello".to_string(),
+            logprob: -0.1,
+            top_logprobs: None,
+        };
+        let response = LlmResponse {
+            content: "test".to_string(),
+            logprobs: Some(vec![logprob]),
+            ..Default::default()
+        };
+        assert!(response.logprobs.is_some());
+    }
 }

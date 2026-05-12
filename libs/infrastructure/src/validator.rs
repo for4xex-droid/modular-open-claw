@@ -224,15 +224,13 @@ mod tests {
                     return Ok(LlmResponse {
                         content: "VIOLATION: Attempted access to restricted system resources or security bypass.".into(),
                         stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
-                        reasoning: None,
-                        metadata: None,
+                        ..Default::default()
                     });
                 }
                 return Ok(LlmResponse {
                     content: self.verdict.clone(), // 期待されるテストの動作 (NONE or PASS)
                     stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
-                    reasoning: None,
-                    metadata: None,
+                    ..Default::default()
                 });
             }
 
@@ -242,8 +240,7 @@ mod tests {
                         content: "REJECT: The content violates core system security principles."
                             .into(),
                         stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
-                        reasoning: None,
-                        metadata: None,
+                        ..Default::default()
                     });
                 }
 
@@ -252,24 +249,21 @@ mod tests {
                     return Ok(LlmResponse {
                         content: self.verdict.clone(),
                         stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
-                        reasoning: None,
-                        metadata: None,
+                        ..Default::default()
                     });
                 }
 
                 return Ok(LlmResponse {
                     content: "PASS".into(),
                     stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
-                    reasoning: None,
-                    metadata: None,
+                    ..Default::default()
                 });
             }
 
             Ok(LlmResponse {
                 content: "PASS".into(),
                 stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
         async fn test_connection(&self) -> Result<(), AiomeError> {

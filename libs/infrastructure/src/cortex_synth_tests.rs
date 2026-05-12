@@ -26,8 +26,7 @@ impl LlmProvider for MockLlmProvider {
         Ok(LlmResponse {
             content: self.json_response.clone(),
             stop_reason: StopReason::EndTurn,
-            metadata: None,
-            reasoning: None,
+            ..Default::default()
         })
     }
 
@@ -135,8 +134,7 @@ async fn test_generate_dataset_filters_contradicted_beliefs(
             Ok(LlmResponse {
                 content,
                 stop_reason: StopReason::EndTurn,
-                metadata: None,
-                reasoning: None,
+                ..Default::default()
             })
         }
         async fn stream_complete(

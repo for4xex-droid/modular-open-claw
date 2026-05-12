@@ -205,8 +205,9 @@ mod tests {
                 Ok(aiome_core_contracts::LlmResponse {
                     content: "Mocked Execution Result".into(),
                     metadata: Some(std::collections::HashMap::new()),
-                    reasoning: None,
+
                     stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
+                    ..Default::default()
                 })
             }
             async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
@@ -328,8 +329,9 @@ some_skill { "data": "hello" }"#;
                 Ok(aiome_core_contracts::llm::LlmResponse {
                     content: json_resp.into(),
                     metadata: Some(std::collections::HashMap::new()),
-                    reasoning: None,
+
                     stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
+                    ..Default::default()
                 })
             }
             fn name(&self) -> &str {

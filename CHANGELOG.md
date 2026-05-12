@@ -13,6 +13,10 @@
   - Implemented semantic `recall`, `calculate_importance`, and `detect_contradictions` in `NativeSlmBackend` using native Rust embeddings (`native_embedding.rs`).
 
 ### Hardening & Stability
+- **Telemetry Hardening**:
+  - Implemented dynamic `soul_hash` computation in `TaskDispatcher` via asynchronous file reads (`tokio::fs`) to eliminate the hardcoded `"unknown"` fallback during failed job auditing.
+  - Ensured format consistency (`{:x}`) with `AppState::get_system_soul_hash()` to maintain strict system-wide telemetry accuracy.
+  - Wrapped `compute_soul_hash` with `#[tracing::instrument]` for robust observability of the telemetry injection phase.
 - **Frontend TTS Fallback & Leak Elimination (Reflexion Pass)**:
   - Enhanced `useAgentChat.ts` to prioritize SSE streaming TTS, seamlessly falling back to legacy static Blob fetches on stream interruption.
   - Eliminated critical audio memory leaks by strictly enforcing `AbortController` cleanup and `URL.revokeObjectURL` upon playback completion or error.

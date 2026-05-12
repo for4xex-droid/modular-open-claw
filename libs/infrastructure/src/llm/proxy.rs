@@ -141,6 +141,7 @@ impl LlmProvider for ProxyLlmProvider {
             stop_reason: body.stop_reason,
             reasoning: body.reasoning,
             metadata: body.metadata,
+            ..Default::default()
         })
     }
 

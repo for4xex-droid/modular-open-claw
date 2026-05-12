@@ -1,5 +1,15 @@
 # 🌊 Aiome Ripple Map
 
+## Phase 15: Telemetry & Observability Hardening
+### 1. TaskDispatcher Telemetry Integration (`soul_hash`)
+- **変更内容**:
+    - `libs/infrastructure/src/task_orchestrator/mod.rs` [MODIFY]: `compute_soul_hash` ヘルパーを追加し、ハードコードされていた `"unknown"` `soul_hash` を動的に計算する仕様へ改修。
+    - `libs/infrastructure/src/task_orchestrator/mod.rs` [MODIFY]: `store_karma` 内で、タスクが失敗した際の教訓 (`negative` カルマ) の記録時に `compute_soul_hash` を呼び出し。ハッシュ値は `AppState::get_system_soul_hash()` と一貫するようゼロパディングなしの hex (`{:x}`) にフォーマット。
+    - `libs/infrastructure/src/task_orchestrator/mod.rs` [MODIFY]: `#[tracing::instrument]` を適用し、ハッシュ計算ステップの Observability（可観測性）を強化。TDD ユニットテストおよび統合テストを追加。
+- **波及効果**:
+    - Aiome の学習システムにおいて、どの Soul / Evolving Soul 状態でエラーが発生したかが正確に紐付けられるようになり、将来的なコンテキスト自動修復機能（Auto-Remediation）やカルマ分析の精度が劇的に向上する。
+    - `AppState` との `soul_hash` アルゴリズム互換性が確保されたことで、フロントエンド/バックエンド間で魂の同一性が完全にトラッキング可能となった。
+
 ## Phase 14: TTS SSE Streaming & Lip-Sync Integration
 ### 1. Robust SSE Streaming Pipeline
 - **変更内容**:

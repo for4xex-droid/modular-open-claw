@@ -620,16 +620,14 @@ mod tests {
             Ok(LlmResponse {
                 content: self.content.clone(),
                 stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
         async fn complete_with_cache(&self, _req: LlmRequest) -> Result<LlmResponse, AiomeError> {
             Ok(LlmResponse {
                 content: self.content.clone(),
                 stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
         async fn stream_complete(
@@ -953,8 +951,7 @@ mod tests {
             Ok(LlmResponse {
                 content,
                 stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
         async fn complete_with_cache(&self, _req: LlmRequest) -> Result<LlmResponse, AiomeError> {

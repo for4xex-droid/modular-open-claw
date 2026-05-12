@@ -300,8 +300,7 @@ mod tests {
             Ok(LlmResponse {
                 content: "HEARTBEAT_OK".to_string(),
                 stop_reason: StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
         async fn test_connection(&self) -> Result<(), ContractError> {

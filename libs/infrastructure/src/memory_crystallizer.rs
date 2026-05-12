@@ -191,8 +191,7 @@ mod tests {
             Ok(LlmResponse {
                 content: "[Knowledge] TDD is essential for quality.".into(),
                 stop_reason: StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
         async fn test_connection(&self) -> Result<(), aiome_core_contracts::error::AiomeError> {

@@ -427,8 +427,7 @@ mod tests {
             Ok(LlmResponse {
                 content,
                 stop_reason: StopReason::EndTurn,
-                metadata: None,
-                reasoning: None,
+                ..Default::default()
             })
         }
 

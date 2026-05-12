@@ -5103,6 +5103,19 @@
           "created_at": {
             "type": "string"
           },
+          "details": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entropy_score": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
           "id": {
             "type": "string"
           },
@@ -5111,6 +5124,13 @@
           },
           "passed": {
             "type": "boolean"
+          },
+          "retry_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
           },
           "score": {
             "type": "integer",

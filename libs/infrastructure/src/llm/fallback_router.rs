@@ -69,12 +69,7 @@ impl LlmProvider for FallbackRouter {
                 match self.primary.complete(&current_prompt, system).await {
                     Ok(resp) => {
                         self.circuit_breaker.record_success().await;
-                        return Ok(LlmResponse {
-                            content: resp.content,
-                            stop_reason: resp.stop_reason,
-                            reasoning: resp.reasoning,
-                            metadata: resp.metadata,
-                        });
+                        return Ok(resp);
                     }
                     Err(e) => {
                         let err_msg = e.to_string();
@@ -150,8 +145,7 @@ impl LlmProvider for FallbackRouter {
                 Ok(LlmResponse {
                     content: "{\"text\": \"ごめんなさい、ちょっと接続が不安定みたい。あとでまた話しかけてね！\", \"emotion\": \"neutral\", \"action\": \"none\"}".to_string(),
                     stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
-                    reasoning: None,
-                    metadata: None,
+                    ..Default::default()
                 })
             }
         }
@@ -290,8 +284,7 @@ mod tests {
             Ok(LlmResponse {
                 content: self.response.clone(),
                 stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
         async fn stream_complete(

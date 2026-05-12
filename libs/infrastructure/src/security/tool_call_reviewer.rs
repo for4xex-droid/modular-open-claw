@@ -164,8 +164,7 @@ mod tests {
             Ok(LlmResponse {
                 content: self.response_content.clone(),
                 stop_reason: StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
 
@@ -190,8 +189,7 @@ mod tests {
             content: "I will write the file.\nwrite_to_file {\"path\": \"/nonexistent/path\"}"
                 .to_string(),
             stop_reason: StopReason::EndTurn,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         };
 
         let result = hook.on_post_execute(&req, &res).await;
@@ -216,8 +214,7 @@ mod tests {
             content: "I will write the file.\nwrite_to_file {\"path\": \"/valid/path\"}"
                 .to_string(),
             stop_reason: StopReason::EndTurn,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         };
 
         let result = hook.on_post_execute(&req, &res).await;
@@ -235,8 +232,7 @@ mod tests {
         let res = LlmResponse {
             content: "I will view the file.\nview_file {\"path\": \"/valid/path\"}".to_string(),
             stop_reason: StopReason::EndTurn,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         };
 
         let result = hook.on_post_execute(&req, &res).await;
@@ -256,8 +252,7 @@ mod tests {
             content: "I will write the file.\nwrite_to_file {\"path\": \"/nonexistent/path\"}"
                 .to_string(),
             stop_reason: StopReason::EndTurn,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         };
 
         let result = hook.on_post_execute(&req, &res).await;

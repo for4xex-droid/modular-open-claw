@@ -197,8 +197,7 @@ impl SemanticCache {
             return Ok(Some(LlmResponse {
                 content,
                 stop_reason: StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             }));
         }
 
@@ -225,8 +224,7 @@ impl SemanticCache {
                         return Ok(Some(LlmResponse {
                             content,
                             stop_reason: StopReason::EndTurn,
-                            reasoning: None,
-                            metadata: None,
+                            ..Default::default()
                         }));
                     }
                 }
@@ -302,8 +300,7 @@ mod tests {
         let response = LlmResponse {
             content: "hi there".to_string(),
             stop_reason: StopReason::EndTurn,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         };
 
         // Initially empty

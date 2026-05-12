@@ -210,8 +210,7 @@ mod tests {
             Ok(LlmResponse {
                 content: self.reply.clone(),
                 stop_reason: StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
         fn name(&self) -> &str {

@@ -75,8 +75,7 @@ impl LlmProvider for ChaosLlmProvider {
             ChaosMode::EmptyResponse => Ok(LlmResponse {
                 content: String::new(),
                 stop_reason: StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             }),
             ChaosMode::Timeout(dur) => {
                 tokio::time::sleep(*dur).await;
@@ -87,14 +86,12 @@ impl LlmProvider for ChaosLlmProvider {
             ChaosMode::MalformedJson => Ok(LlmResponse {
                 content: "{invalid json///".into(),
                 stop_reason: StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             }),
             ChaosMode::GiantOutput(size) => Ok(LlmResponse {
                 content: "x".repeat(*size),
                 stop_reason: StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             }),
             ChaosMode::AlwaysFail => Err(AiomeError::Infrastructure {
                 reason: "Chaos: Forced failure".into(),
@@ -178,8 +175,7 @@ impl LlmProvider for MockLlm {
             Ok(LlmResponse {
                 content: self.content.clone(),
                 stop_reason: StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
     }

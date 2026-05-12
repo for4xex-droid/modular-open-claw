@@ -62,8 +62,7 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
         Ok(aiome_core_contracts::LlmResponse {
             content,
             stop_reason: aiome_core_contracts::StopReason::EndTurn,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         })
     }
     async fn complete_with_cache(
@@ -390,8 +389,7 @@ impl aiome_core_contracts::traits::LoraEngine for MockLoraEngine {
         Ok(aiome_core_contracts::llm::LlmResponse {
             content: "LlmResponse from MockLoraEngine".to_string(),
             stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         })
     }
     async fn health_check(&self) -> Result<bool, aiome_core::error::AiomeError> {
@@ -908,8 +906,7 @@ impl aiome_core_contracts::traits::LoraEngine for E2eMockLoraEngine {
         Ok(aiome_core_contracts::llm::LlmResponse {
             content: "LlmResponse from E2eMockLoraEngine".to_string(),
             stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         })
     }
     async fn train(

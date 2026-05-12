@@ -122,8 +122,7 @@ mod tests {
             Ok(aiome_core_contracts::llm::LlmResponse {
                 content: self.response.clone(),
                 stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
         async fn test_connection(&self) -> Result<(), AiomeError> {

@@ -149,8 +149,7 @@ impl OllamaProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         })
     }
 
@@ -258,8 +257,7 @@ impl LlmProvider for OllamaProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         })
     }
 
@@ -522,8 +520,7 @@ impl LlmProvider for AbyssVaultProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         })
     }
 
@@ -758,8 +755,7 @@ impl LlmProvider for GeminiProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         })
     }
 
@@ -1074,8 +1070,7 @@ impl LlmProvider for OpenAiProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         })
     }
 
@@ -1329,8 +1324,7 @@ impl LlmProvider for ClaudeProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         })
     }
 
@@ -1529,8 +1523,7 @@ impl LlmProvider for LmStudioProvider {
         Ok(LlmResponse {
             content,
             stop_reason,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         })
     }
 
@@ -1748,9 +1741,7 @@ impl LlmProvider for MockLlmProvider {
             } else {
                 self.response.clone()
             },
-            stop_reason: StopReason::EndTurn,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         })
     }
     async fn stream_complete(

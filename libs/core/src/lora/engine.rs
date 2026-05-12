@@ -78,7 +78,7 @@ impl LoraEngineTrait for LoraEngine {
             content: format!("[LoRA: {}] Generated response for: {}", lora_id, prompt),
             stop_reason: StopReason::EndTurn,
             reasoning: Some("Mock LoRA generation".into()),
-            metadata: None,
+            ..Default::default()
         })
     }
 

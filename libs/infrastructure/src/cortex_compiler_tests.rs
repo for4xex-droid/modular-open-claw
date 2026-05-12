@@ -27,8 +27,7 @@ impl LlmProvider for MockLlmProvider {
         Ok(LlmResponse {
             content: self.json_response.clone(),
             stop_reason: StopReason::EndTurn,
-            metadata: None,
-            reasoning: None,
+            ..Default::default()
         })
     }
 

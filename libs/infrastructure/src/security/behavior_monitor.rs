@@ -141,8 +141,7 @@ mod tests {
         let ok_response = LlmResponse {
             content: "{\"safe\": true}".into(),
             stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         };
         assert!(monitor
             .on_post_execute(&request, &ok_response)
@@ -153,8 +152,7 @@ mod tests {
         let bad_response = LlmResponse {
             content: "Here is your file: /etc/passwd".to_string(),
             stop_reason: StopReason::EndTurn,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         };
         let res = monitor.on_post_execute(&request, &bad_response).await;
         assert!(res.is_err());

@@ -154,13 +154,13 @@ impl InteractionsGeminiProvider {
 
         Ok(LlmResponse {
             content,
-            stop_reason: StopReason::EndTurn, // 簡略化
             reasoning: if reasoning.is_empty() {
                 None
             } else {
                 Some(reasoning)
             },
             metadata: Some(response_metadata),
+            ..Default::default()
         })
     }
 }

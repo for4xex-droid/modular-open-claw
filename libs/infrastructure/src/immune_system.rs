@@ -327,8 +327,7 @@ mod tests {
             Ok(LlmResponse {
                 content: self.reply.clone(),
                 stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
         async fn complete_with_cache(

@@ -224,8 +224,7 @@ mod tests {
             Ok(LlmResponse {
                 content: self.response_json.clone(),
                 stop_reason: StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
 
@@ -272,8 +271,7 @@ mod tests {
         let response = LlmResponse {
             content: "[]".to_string(),
             stop_reason: StopReason::EndTurn,
-            reasoning: None,
-            metadata: None,
+            ..Default::default()
         };
 
         let result = hook.on_post_execute(&request, &response).await;

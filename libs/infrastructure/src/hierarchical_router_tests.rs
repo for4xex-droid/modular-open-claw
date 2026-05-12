@@ -104,8 +104,7 @@ mod tests {
                 Ok(aiome_core::llm_provider::LlmResponse {
                     content: "I choose option 1 because it fits best.".into(),
                     stop_reason: aiome_core_contracts::StopReason::EndTurn,
-                    reasoning: None,
-                    metadata: None,
+                    ..Default::default()
                 })
             }
         }

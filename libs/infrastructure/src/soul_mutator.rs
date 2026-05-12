@@ -228,8 +228,7 @@ mod tests {
             Ok(LlmResponse {
                 content: self.mutation_response.clone(),
                 stop_reason: StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
         async fn complete_with_cache(

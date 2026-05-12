@@ -36,15 +36,13 @@ impl LlmProvider for MockLlm {
             Ok(LlmResponse {
                 content: "FAILED".to_string(),
                 stop_reason: StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         } else {
             Ok(LlmResponse {
                 content: "```json\n{\n  \"title\": \"Sample Cortex Document\",\n  \"summary\": \"A test summary\",\n  \"tags\": [\"test\", \"cortex\"],\n  \"entities\": [{\"name\": \"AI\", \"type\": \"Technology\"}]\n}\n```".to_string(),
                 stop_reason: StopReason::EndTurn,
-                reasoning: None,
-                metadata: None,
+                ..Default::default()
             })
         }
     }

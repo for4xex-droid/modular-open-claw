@@ -424,8 +424,7 @@ mod tests {
                 Ok(LlmResponse {
                     content: self.response_content.clone(),
                     stop_reason: aiome_core_contracts::StopReason::EndTurn,
-                    reasoning: None,
-                    metadata: None,
+                    ..Default::default()
                 })
             }
         }

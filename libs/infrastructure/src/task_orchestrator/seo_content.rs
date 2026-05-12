@@ -261,9 +261,9 @@ mod tests {
                 Some(sys.unwrap_or("").to_string());
             Ok(LlmResponse {
                 content: "SEO content...".to_string(),
-                metadata: None,
-                reasoning: None,
+
                 stop_reason: StopReason::EndTurn,
+                ..Default::default()
             })
         }
         async fn test_connection(&self) -> Result<(), AiomeError> {

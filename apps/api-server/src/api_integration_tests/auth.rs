@@ -136,9 +136,9 @@ async fn test_security_regression_sentinel_block() {
         ) -> Result<aiome_core_contracts::llm::LlmResponse, aiome_core::error::AiomeError> {
             Ok(aiome_core_contracts::llm::LlmResponse {
                 content: r#"{"status": "blocked", "reason": "malicious code execution detected", "violated_pattern": "rm -rf"} "#.into(),
-                metadata: None,
-                reasoning: None,
+
                 stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
+                ..Default::default()
             })
         }
         async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
