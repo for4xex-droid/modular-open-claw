@@ -1,9 +1,10 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useAgentChat } from './useAgentChat';
+// @ts-expect-error Node util module types may not be installed in frontend
 import { TextEncoder, TextDecoder } from 'util';
 
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder as any;
+(globalThis as any).TextEncoder = TextEncoder;
+(globalThis as any).TextDecoder = TextDecoder as any;
 
 // Mock authenticatedFetch
 jest.mock('../lib/auth', () => ({
@@ -160,9 +161,9 @@ describe('useAgentChat TTS Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSpeak.mockResolvedValue(undefined);
-    global.URL.createObjectURL = jest.fn().mockReturnValue('blob:test');
-    global.URL.revokeObjectURL = jest.fn();
-    global.Audio = jest.fn().mockImplementation(() => ({
+    (globalThis as any).URL.createObjectURL = jest.fn().mockReturnValue('blob:test');
+    (globalThis as any).URL.revokeObjectURL = jest.fn();
+    (globalThis as any).Audio = jest.fn().mockImplementation(() => ({
       play: jest.fn().mockResolvedValue(undefined),
       pause: jest.fn(),
       src: '',
@@ -268,9 +269,9 @@ describe('useAgentChat TTS Integration', () => {
     });
     
     // 3. ObjectURL should be created and revoked (testing the memory leak fix)
-    expect(global.URL.createObjectURL).toHaveBeenCalled();
+    expect((globalThis as any).URL.createObjectURL).toHaveBeenCalled();
     await waitFor(() => {
-      expect(global.URL.revokeObjectURL).toHaveBeenCalled();
+      expect((globalThis as any).URL.revokeObjectURL).toHaveBeenCalled();
     });
   });
 });

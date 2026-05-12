@@ -1,6 +1,9 @@
 ## [Unreleased]
 
 ### Added
+- **Observability Hardening**:
+  - Added TTS Error Rate tracking panel to `aiome_voice_metrics.json` Grafana dashboard.
+  - Implemented TDD infrastructure test `td_grafana_error_rate_panel` to ensure the Error Rate panel is permanently guarded against regression.
 - **Real-time SSE Streaming for TTS (Voice API & Frontend)**:
   - Implemented POST-based SSE streaming for the TTS engine via `/api/v1/voice/synthesize?stream=true`.
   - Added `TtsStreamEvent` enum to `aiome-core-contracts` to support multiplexed `Audio` and `Viseme` events.
@@ -19,9 +22,19 @@
 ### Security
 - **Defense-in-Depth UI Hardening (Reflexion Pass)**:
   - `ArtifactVault`: Applied `encodeURIComponent` to search and category filters, mitigating parameter injection vectors.
-  - `SkillVault` & `ArtifactVault`: Added robust `Array.isArray()` structural validation checks against API fetch responses. Prevents silent UI crashes and ensures state integrity when the backend returns unexpected formats.
+  - `SkillVault`, `ArtifactVault`, & `AgentConsole`: Added robust `Array.isArray()` structural validation checks against API fetch responses. Prevents silent UI crashes and ensures state integrity when the backend returns unexpected formats.
 
 ### Fixed
+- **Production React Component Hardening (Reflexion Phase 1)**:
+  - Eliminated non-deterministic ROI calculation `Math.random()` in `AgentConsole.tsx`, replacing it with a stable, deterministic ID-based hash to stabilize UI renders.
+  - Fixed TypeScript type-safety gaps by replacing `any` with `Record<string, unknown>` in `ArtifactVault.tsx`.
+  - Resolved variable shadowing warnings (`t` to `tag`) in translation mapping functions across `ArtifactVault.tsx`.
+  - Added XSS/SSRF path injection mitigation by wrapping `previewFile.file.name` in `encodeURIComponent` within iframe src assignments.
+  - Purged dead code (unused `proofPower` prop) from `AgentConsole.tsx` to satisfy strict linting.
+- **Backend Configuration Routing (Reflexion Phase 1)**:
+  - Fixed a critical routing bug in `settings.rs` where the `test_cloud_connection` handler failed to match `"anthropic"`, causing valid API test requests to fall through to the "testing not fully implemented" error trap. Covered by new async TDD test `test_cloud_connection_anthropic_mapping`.
+  - Cleaned up duplicate `stripe_api_key` entries within the `SECRETS` constant in `settings.rs` to establish a singular canonical whitelist.
+  - Resolved unused imports (`StatusCode`, `tracing::info`) in `settings.rs` to achieve a fully clean `cargo check` with zero warnings (Reflexion Phase 2).
 - **UI State Race Conditions**:
   - `McpDashboard`: Refactored `executeRemoveServer` and `handleEnableServer` state updates to await explicit boolean success flags from `handleSaveConfig()`. Resolved critical race conditions where the confirm modal would close prematurely even if the server configuration failed to save.
   - `ArtifactVault`: Fixed an identical race condition in `executeDeleteArtifact` ensuring the artifact deletion modal only closes upon a successful API response.

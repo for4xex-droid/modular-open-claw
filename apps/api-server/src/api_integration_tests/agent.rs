@@ -807,3 +807,71 @@ async fn test_heartbeat_dpo_e2e_integration() -> Result<(), Box<dyn std::error::
 
     Ok(())
 }
+
+#[serial]
+#[tokio::test]
+async fn test_expression_generation_with_tts_stream() {
+    let (server, state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    use aiome_core::traits::SettingsOps;
+    use aiome_core_contracts::traits::{JobQueue, KarmaRegistry};
+
+    // Setup Tts settings to use mock TTS
+    let _ = state
+        .job_queue
+        .get_inner()
+        .update_setting("tts_provider", "openai", "system", false)
+        .await;
+    let _ = state
+        .job_queue
+        .get_inner()
+        .update_setting("llm_api_key", "dummy", "system", false)
+        .await;
+
+    // Create a job first to satisfy foreign key constraint
+    state
+        .job_queue
+        .enqueue("Testing", "TTS Stream", "standard", None, None, None, 1)
+        .await
+        .unwrap();
+    let jobs = state.job_queue.fetch_recent_jobs(1).await.unwrap();
+    let job_id = jobs[0].id.clone();
+
+    // Provide karma using correct signature
+    state
+        .job_queue
+        .get_inner()
+        .store_karma(
+            &job_id,
+            "skill-1",
+            "test lesson",
+            "Technical",
+            "hash-1",
+            None,
+            None,
+            None,
+            false,
+        )
+        .await
+        .unwrap();
+
+    let resp = server
+        .post("/api/expression/generate")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+    let json: serde_json::Value = resp.json();
+    let audio_path = json["audio_path"].as_str();
+    assert!(audio_path.is_some(), "Expression should have an audio_path");
+
+    // RED condition: The viseme file should be generated alongside the audio file
+    let base_path = std::path::PathBuf::from(audio_path.unwrap());
+    let viseme_path = base_path.with_extension("visemes.json");
+
+    assert!(
+        viseme_path.exists(),
+        "Visemes file must be generated via synthesize_stream"
+    );
+}

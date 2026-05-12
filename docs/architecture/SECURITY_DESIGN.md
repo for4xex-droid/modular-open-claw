@@ -120,6 +120,9 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 96 | **Timing Attack (Auth)** | **Short-circuiting length comparison in verify_constant_time** | 🔴 High | **Non-short-circuiting Bitwise AND (`&`) Enforcement (Reflexion Phase 4)** |
 | 97 | **Identity Null Panic** | **UUID parse unwrap() during token generation** | 🔴 High | **Zero-panic `uuid::uuid!` macro enforcement (Reflexion Phase 4)** |
 | 98 | **Split-Brain Economic States** | **Aiome and Nurture API ledgers drifting out of sync** | 🔴 High | **Centralized Commerce HTTP Proxy via OxiLeanProofCertificate (Nurture Phase 4)** |
+| 99 | **Iframe Path Injection** | **XSS/SSRF via unsanitized `previewFile.file.name`** | 🔴 High | **`encodeURIComponent` wrapper around iframe src (Reflexion Phase 1)** |
+| 100 | **UI State Crash (TypeError)** | **Silent UI failure on malformed API array responses** | 🟡 Mid | **`Array.isArray()` structural validation enforcement (Reflexion Phase 1)** |
+| 101 | **Non-Deterministic UI Renders**| **`Math.random()` usage in React render paths causing hydration mismatches** | 🟡 Mid | **Deterministic ID-based hashing substitution (Reflexion Phase 1)** |
 
 ## 3. Defense Architecture
 
@@ -213,8 +216,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | Validation | Middleware Dependent | Hardened Core Implementation |
 
 ---
-*Last Mutated: 2026-05-10*
-*Managed by: Aiome Sovereign Task Force (Ref: Hardening Aiome Security Infrastructure / Federation v1.5 Hardening / Dynamic Spec Export)*
+*Last Mutated: 2026-05-13*
+*Managed by: Aiome Sovereign Task Force (Ref: Hardening Aiome Security Infrastructure / Reflexion Pass)*
 
 ## 6. Deep Dive: The Abyss Vault (Key Proxy)
 

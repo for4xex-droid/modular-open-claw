@@ -146,3 +146,15 @@ fn td_f2_changelog_unreleased_count() {
         unreleased_count
     );
 }
+
+#[test]
+fn td_grafana_error_rate_panel() {
+    let path =
+        workspace_root().join("docker/grafana/provisioning/dashboards/aiome_voice_metrics.json");
+    let content = fs::read_to_string(path).unwrap_or_default();
+    assert!(
+        content.contains("\"title\": \"TTS Error Rate\"")
+            || content.contains("\"title\": \"Request Failure Rate\""),
+        "TDD RED: Grafana dashboard missing Error Rate panel"
+    );
+}

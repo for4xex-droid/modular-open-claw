@@ -8,6 +8,7 @@ import { useCallback, useRef } from 'react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { API_BASE } from '../config';
 import { getAuthHeaders } from '../lib/auth';
+import type { VisemeFrame } from '../types/avatar';
 
 /** Sanitize server-provided error messages to prevent log injection. */
 const sanitizeErrorMessage = (raw: string): string => {
@@ -50,6 +51,7 @@ export const useTtsSse = (): UseTtsSseReturn => {
         // onmessage callbacks cannot reliably throw within fetchEventSource's internal loop.
         let serverError: Error | null = null;
         const audioChunks: Uint8Array[] = [];
+        const visemes: VisemeFrame[] = [];
 
         try {
             await fetchEventSource(`${API_BASE}/api/v1/voice/synthesize?stream=true`, {
@@ -70,7 +72,12 @@ export const useTtsSse = (): UseTtsSseReturn => {
                         }
                         audioChunks.push(bytes);
                     } else if (ev.event === 'viseme') {
-                        // Reserved for Phase 3 (Lip-sync queue)
+                        try {
+                            const vData = JSON.parse(ev.data);
+                            visemes.push(vData);
+                        } catch (e) {
+                            console.error("Failed to parse viseme", e);
+                        }
                     } else if (ev.event === 'error') {
                         let errStr = ev.data;
                         try {
@@ -104,7 +111,7 @@ export const useTtsSse = (): UseTtsSseReturn => {
 
                     audio.play().then(() => {
                         window.dispatchEvent(new CustomEvent('aiome_vitality_event', {
-                            detail: { type: 'tts_started', data: {} }
+                            detail: { type: 'tts_started', data: { visemes, audioElement: audio } }
                         }));
                     }).catch(e => {
                         console.error('TTS Playback failed:', e);

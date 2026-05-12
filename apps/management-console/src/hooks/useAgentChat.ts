@@ -164,7 +164,7 @@ export const useAgentChat = (): UseAgentChatReturn => {
 
                 audio.play().then(() => {
                     window.dispatchEvent(new CustomEvent('aiome_vitality_event', {
-                        detail: { type: 'tts_started', data: {} }
+                        detail: { type: 'tts_started', data: { visemes: [], audioElement: audio } }
                     }));
                 }).catch(err => {
                     console.error("TTS Fallback Playback failed:", err);

@@ -5,6 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 import React, { useEffect, useRef, useState } from 'react';
+import { useVisemeSync } from '../../hooks/useVisemeSync';
 
 /**
  * Prop definitions for InxRenderer
@@ -75,16 +76,51 @@ const InxRenderer: React.FC<InxRendererProps> = ({ modelUrl, avatarState }) => {
         };
     }, [modelUrl]);
 
+    const visemeSync = useVisemeSync();
+    const visemeSyncTickRef = useRef(visemeSync.tick);
+    visemeSyncTickRef.current = visemeSync.tick;
+    const [currentViseme, setCurrentViseme] = useState<string | null>(null);
+    const prevVisemeRef = useRef<string | null>(null);
+
     useEffect(() => {
-        if (!isLoaded) return;
-        // Apply AvatarState animations/parameters to the model
-        console.log(`[InxRenderer] Applying state: ${avatarState}`);
+        if (!isLoaded || avatarState !== 'speaking') {
+            setCurrentViseme(null);
+            return;
+        }
+
+        let animationFrameId: number;
+        let lastTime = performance.now();
+
+        const loop = (time: number) => {
+            const delta = (time - lastTime) / 1000;
+            lastTime = time;
+
+            const { viseme } = visemeSyncTickRef.current(delta);
+            if (viseme !== prevVisemeRef.current) {
+                prevVisemeRef.current = viseme;
+                setCurrentViseme(viseme);
+            }
+
+            // Phase 2: Inochi2D instance に viseme パラメータを送信する
+            // if (wasmInstance && viseme) {
+            //     wasmInstance.setParameter(viseme, weight);
+            // }
+
+            animationFrameId = requestAnimationFrame(loop);
+        };
+
+        animationFrameId = requestAnimationFrame(loop);
+
+        return () => cancelAnimationFrame(animationFrameId);
+    // Note: visemeSyncTickRef is used inside the loop to avoid
+    // depending on the unstable visemeSync object reference.
     }, [avatarState, isLoaded]);
 
     return (
         <div style={{ position: 'relative', width: '100%', height: '100%', pointerEvents: 'none' }}>
             <canvas
                 ref={canvasRef}
+                data-viseme={currentViseme ?? ''}
                 style={{
                     width: '100%',
                     height: '100%',

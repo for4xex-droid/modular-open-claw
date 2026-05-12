@@ -27,6 +27,24 @@ export default function SeoPulseView() {
     const { events } = useSystemVitality();
     const [geoOptimizerStatus, setGeoOptimizerStatus] = useState<SidecarHealth | null>(null);
     const [history, setHistory] = useState<QualityGateEvent[]>([]);
+    const [currentViseme, setCurrentViseme] = useState<string | null>(null);
+
+    useEffect(() => {
+        let timeoutId: ReturnType<typeof setTimeout>;
+        const handleViseme = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            if (customEvent.detail?.viseme) {
+                setCurrentViseme(customEvent.detail.viseme);
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => setCurrentViseme(null), 150);
+            }
+        };
+        window.addEventListener('aiome_viseme_played', handleViseme);
+        return () => {
+            window.removeEventListener('aiome_viseme_played', handleViseme);
+            clearTimeout(timeoutId);
+        };
+    }, []);
 
     useEffect(() => {
         const fetchStatus = async () => {
@@ -100,8 +118,32 @@ export default function SeoPulseView() {
                     '...'
                 )}
             </div>
+
+            {/* Viseme Visualizer */}
+            <div className="mt-4 p-3 bg-[var(--background-color)] rounded-lg border border-[var(--border-color)]">
+                <div className="text-xs font-semibold text-[var(--text-color-secondary)] mb-2 uppercase tracking-wider">
+                    Procedural Lip-Sync
+                </div>
+                <div className="flex items-center space-x-2">
+                    <div className="text-sm">Active Viseme:</div>
+                    <div className={`px-3 py-1 rounded text-sm font-bold transition-all duration-75 ${currentViseme ? 'bg-[var(--accent-color)] text-white scale-110 shadow-lg' : 'bg-[var(--surface-color)] text-[var(--text-color-secondary)]'}`}>
+                        {currentViseme || 'SIL'}
+                    </div>
+                    {/* Visual mouth shape indicator */}
+                    <div className="flex-1 flex justify-center items-center h-8">
+                        <div className={`transition-all duration-100 rounded-full border-2 border-[var(--accent-color)] ${
+                            currentViseme === 'AA' ? 'w-6 h-6' :
+                            currentViseme === 'IH' ? 'w-8 h-2' :
+                            currentViseme === 'OU' ? 'w-3 h-3' :
+                            currentViseme === 'EE' ? 'w-7 h-2' :
+                            currentViseme === 'OH' ? 'w-4 h-5' :
+                            'w-4 h-1 border-[var(--border-color)]'
+                        }`} />
+                    </div>
+                </div>
+            </div>
             
-            <div className="space-y-2">
+            <div className="mt-4 space-y-2">
                 {combinedEvents.length === 0 ? (
                     <div className="text-[var(--text-color-secondary)] italic text-sm">
                         {t('seoPulse.noEvents', { defaultValue: 'No recent audits...' }) as string}

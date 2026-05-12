@@ -45,7 +45,7 @@ interface ArtifactEdge {
   target_id: string;
   source_type: string;
   relation: string;
-  metadata: any;
+  metadata: Record<string, unknown>;
   created_at: string;
 }
 
@@ -243,7 +243,7 @@ const ArtifactVault = () => {
               </div>
 
               <div className="tag-list">
-                {artifact.tags.map(t => <span key={t} className="tag">#{t}</span>)}
+                {artifact.tags.map(tag => <span key={tag} className="tag">#{tag}</span>)}
               </div>
 
               {artifact.signature && (
@@ -348,7 +348,7 @@ const ArtifactVault = () => {
                   <div className="detail-group">
                     <label><Tag size={14} /> Tags</label>
                     <div className="tag-list">
-                      {selectedArtifact.tags.map(t => <span key={t} className="tag">#{t}</span>)}
+                      {selectedArtifact.tags.map(tag => <span key={tag} className="tag">#{tag}</span>)}
                     </div>
                   </div>
                   {selectedArtifact.karma_refs.length > 0 && (
@@ -415,7 +415,7 @@ const ArtifactVault = () => {
                 <iframe
                   ref={iframeRef}
                   title="HTML Preview"
-                  src={`${API_BASE}/api/artifacts/${previewFile.artifact.id}/files/${previewFile.file.name}`}
+                  src={`${API_BASE}/api/artifacts/${previewFile.artifact.id}/files/${encodeURIComponent(previewFile.file.name)}`}
                   style={{ width: '100%', height: '100%', border: 'none' }}
                   sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" // allow-same-origin is intentionally omitted for security
                 />

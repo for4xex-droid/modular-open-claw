@@ -3,14 +3,17 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies BEFORE copying .npmrc.
-# The project's .npmrc sets ignore-scripts=true (supply-chain attack mitigation),
-# but esbuild/rollup require postinstall scripts to download platform-specific
-# binaries. By copying only package files first, npm ci runs with scripts enabled.
-COPY package.json package-lock.json ./
+# Install dependencies securely.
+# We copy .npmrc first which contains `ignore-scripts=true`.
+# This is a critical supply-chain mitigation. We then manually
+# rebuild only the packages that legitimately require native binaries.
+COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 
-# Now copy the rest (including .npmrc, source code, etc.)
+# Rebuild esbuild for Vite
+RUN npm rebuild esbuild
+
+# Now copy the rest (including source code, etc.)
 COPY . .
 
 # Build the application (tsc type-check + vite bundle)

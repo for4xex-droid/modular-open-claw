@@ -23,7 +23,6 @@ import { ActivityFeed } from './common/ActivityFeed';
 
 export interface AgentConsoleProps {
     sessionSavedChars?: number;
-    proofPower?: number;
 }
 
 interface RoiStats {
@@ -91,8 +90,12 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         authenticatedFetch(`${API_BASE}/api/v1/audit/ledger`)
                     ]);
                     
-                    const artifacts = artifactsRes.ok ? await artifactsRes.json() : [];
-                    const ledger = ledgerRes.ok ? await ledgerRes.json() : [];
+                    const artifactsRaw = artifactsRes.ok ? await artifactsRes.json() : [];
+                    const ledgerRaw = ledgerRes.ok ? await ledgerRes.json() : [];
+                    
+                    // Structural validation: ensure API responses are arrays (same pattern as ArtifactVault)
+                    const artifacts = Array.isArray(artifactsRaw) ? artifactsRaw : [];
+                    const ledger = Array.isArray(ledgerRaw) ? ledgerRaw : [];
                     
                     const blueprints = (artifacts as ArtifactRecord[]).filter(a => a.category === 'Blueprint' || a.category === 'blueprint');
                     const tasksCount = ledger.length || 0;
@@ -106,7 +109,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             name: bp.name || 'Untitled Blueprint',
                             status: 'Running',
                             nextRun: 'Active',
-                            roi: '+$' + (Math.floor(Math.random() * 500) + 100) + '/mo'
+                            roi: '+$' + (Math.abs(bp.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % 500 + 100) + '/mo'
                         }))
                     });
                 } catch (e) {
@@ -215,7 +218,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><Clock size={16} /> Tasks Executed</div>
                             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>{stats ? stats.tasksExecuted.toLocaleString() : '...'}</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--accent-emerald)' }}>+12% this week</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Lifetime metrics</div>
                         </div>
                         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><DollarSign size={16} /> Estimated Savings</div>

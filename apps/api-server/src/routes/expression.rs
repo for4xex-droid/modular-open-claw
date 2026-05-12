@@ -155,93 +155,100 @@ pub async fn generate_expression(
 
     // 4. NG-22 / Phase 10.1a: Trigger TTS if configured
     if let Ok(Some(tts_prov)) = state.job_queue.get_setting_value("tts_provider").await {
-        let (audio_res, ext) = if tts_prov == "openai" {
+        if tts_prov != "none" {
             let voice = state
                 .job_queue
                 .get_setting_value("tts_voice")
                 .await
                 .unwrap_or(None)
                 .unwrap_or_else(|| "alloy".to_string());
-            if let Ok(Some(api_key)) = state.job_queue.get_setting_value("llm_api_key").await {
-                tracing::info!(
-                    "🗣️ [TTS] Synthesizing OpenAI audio for Expression {} with voice '{}'",
-                    expression.id,
-                    voice
-                );
-                (
-                    ExpressionEngine::synthesize_audio_openai(
-                        &expression.content,
-                        &voice,
-                        &api_key,
-                    )
-                    .await,
-                    "mp3",
-                )
-            } else {
-                tracing::warn!("⚠️ [TTS] OpenAI TTS selected but no API key configured.");
-                (
-                    Err(aiome_core::error::AiomeError::Infrastructure {
-                        reason: "Missing API Key".into(),
-                    }),
-                    "mp3",
-                )
-            }
-        } else if tts_prov == "xtts" {
-            let speaker = state
-                .job_queue
-                .get_setting_value("tts_voice") // speaker_id used here
-                .await
-                .unwrap_or(None)
-                .unwrap_or_else(|| "p225".to_string());
-            let endpoint = state
-                .job_queue
-                .get_setting_value("tts_endpoint")
-                .await
-                .unwrap_or(None)
-                .unwrap_or_else(|| {
-                    state
-                        .config
-                        .xtts_endpoint
-                        .clone()
-                        .unwrap_or_else(|| "http://xtts:8020".to_string())
-                });
 
             tracing::info!(
-                "🗣️ [TTS] Synthesizing XTTS audio for Expression {} with speaker '{}'",
+                "🗣️ [TTS] Synthesizing audio stream for Expression {} with voice '{}'",
                 expression.id,
-                speaker
+                voice
             );
-            (
-                ExpressionEngine::synthesize_audio_xtts(&expression.content, &speaker, &endpoint)
-                    .await,
-                "wav",
-            )
-        } else {
-            (
-                Err(aiome_core::error::AiomeError::Infrastructure {
-                    reason: "Unsupported TTS provider".into(),
-                }),
-                "raw",
-            )
-        };
 
-        if let Ok((audio_bytes, dur)) = audio_res {
-            let audio_dir = state.config.resolver.resolve("audio");
-            let _ = std::fs::create_dir_all(&audio_dir);
-            let path = audio_dir.join(format!("{}.{}", expression.id, ext));
-            if let Err(e) = std::fs::write(&path, audio_bytes) {
-                tracing::error!("Failed to write audio file {}: {}", path.display(), e);
-            } else {
-                expression.audio_path = Some(path.to_string_lossy().to_string());
-                expression.duration_ms = Some(dur as i32);
-                tracing::info!("✅ [TTS] Audio saved to {} ({}ms)", path.display(), dur);
+            let tts_provider = state.tts_provider.get_inner();
+
+            match tts_provider
+                .synthesize_stream(&expression.content, &voice)
+                .await
+            {
+                Ok(mut stream) => {
+                    use tokio_stream::StreamExt;
+                    let mut audio_buffer = Vec::new();
+                    let mut visemes = Vec::new();
+
+                    while let Some(event_res) = stream.next().await {
+                        match event_res {
+                            Ok(aiome_core_contracts::traits::TtsStreamEvent::Audio(bytes)) => {
+                                audio_buffer.extend_from_slice(&bytes);
+                            }
+                            Ok(aiome_core_contracts::traits::TtsStreamEvent::Viseme {
+                                viseme,
+                                timestamp_ms,
+                                duration_ms,
+                            }) => {
+                                visemes.push(serde_json::json!({
+                                    "viseme": viseme,
+                                    "timestamp_ms": timestamp_ms,
+                                    "duration_ms": duration_ms
+                                }));
+                            }
+                            Err(e) => {
+                                tracing::error!("❌ [TTS] Stream error: {:?}", e);
+                                break;
+                            }
+                        }
+                    }
+
+                    if !audio_buffer.is_empty() {
+                        let audio_dir = state.config.resolver.resolve("audio");
+                        let _ = std::fs::create_dir_all(&audio_dir);
+
+                        let ext = if tts_prov == "xtts" { "wav" } else { "mp3" };
+                        let path = audio_dir.join(format!("{}.{}", expression.id, ext));
+
+                        if let Err(e) = std::fs::write(&path, &audio_buffer) {
+                            tracing::error!("Failed to write audio file {}: {}", path.display(), e);
+                        } else {
+                            expression.audio_path = Some(path.to_string_lossy().to_string());
+                            tracing::info!("✅ [TTS] Audio saved to {}", path.display());
+
+                            // Save visemes if available
+                            if !visemes.is_empty() {
+                                let viseme_path =
+                                    audio_dir.join(format!("{}.visemes.json", expression.id));
+                                if let Err(e) = std::fs::write(
+                                    &viseme_path,
+                                    serde_json::to_string(&visemes).unwrap_or_default(),
+                                ) {
+                                    tracing::error!(
+                                        "Failed to write viseme file {}: {}",
+                                        viseme_path.display(),
+                                        e
+                                    );
+                                } else {
+                                    tracing::info!(
+                                        "✅ [TTS] Visemes saved to {}",
+                                        viseme_path.display()
+                                    );
+                                }
+                            }
+                        }
+                    } else {
+                        tracing::warn!("❌ [TTS] Stream completed but no audio data was received.");
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "❌ [TTS] Failed to initialize synthesis stream via {}: {:?}",
+                        tts_prov,
+                        e
+                    );
+                }
             }
-        } else if audio_res.is_err() && tts_prov != "none" {
-            tracing::warn!(
-                "❌ [TTS] Failed to synthesize audio via {}: {:?}",
-                tts_prov,
-                audio_res.err()
-            );
         }
     }
 

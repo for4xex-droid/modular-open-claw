@@ -277,6 +277,7 @@ pub async fn synthesize_voice_handler(
     let is_stream = query.stream.unwrap_or(false);
 
     if is_stream {
+        let start = std::time::Instant::now();
         let audio_stream = state
             .tts_provider
             .synthesize_stream(&req.text, voice_id)
@@ -286,6 +287,14 @@ pub async fn synthesize_voice_handler(
                 AppError::internal(format!("TTS streaming failed: {}", e))
             })?;
 
+        let latency = start.elapsed().as_secs_f64();
+        metrics::histogram!(
+            "aiome_tts_synthesis_latency_seconds",
+            "mode" => "stream"
+        )
+        .record(latency);
+        metrics::counter!("aiome_tts_requests_total", "mode" => "stream").increment(1);
+
         use axum::response::sse::{KeepAlive, Sse};
 
         let sse_stream = map_tts_stream_to_sse(audio_stream);
@@ -293,6 +302,7 @@ pub async fn synthesize_voice_handler(
             .keep_alive(KeepAlive::default())
             .into_response())
     } else {
+        let start = std::time::Instant::now();
         let audio_bytes = state
             .tts_provider
             .synthesize(&req.text, voice_id)
@@ -301,6 +311,14 @@ pub async fn synthesize_voice_handler(
                 error!("❌ [Voice] Synthesis failed: {}", e);
                 AppError::internal(format!("TTS synthesis failed: {}", e))
             })?;
+
+        let latency = start.elapsed().as_secs_f64();
+        metrics::histogram!(
+            "aiome_tts_synthesis_latency_seconds",
+            "mode" => "blob"
+        )
+        .record(latency);
+        metrics::counter!("aiome_tts_requests_total", "mode" => "blob").increment(1);
 
         Ok((
             StatusCode::OK,

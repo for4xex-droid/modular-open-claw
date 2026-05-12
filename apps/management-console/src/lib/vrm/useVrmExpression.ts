@@ -8,12 +8,19 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { VRM } from '@pixiv/three-vrm';
 
+import { useVisemeSync } from '../../hooks/useVisemeSync';
+
+/** VRM 口形素（母音）表現名。speaking ケース内で共有。 */
+const VOWELS = ['aa', 'ih', 'ou', 'ee', 'oh'] as const;
+
 export const useVrmExpression = (vrm: VRM | null, avatarState: string) => {
     const blinkTimerRef = useRef(3 + Math.random() * 3);
     const isBlinkingRef = useRef(false);
     const blinkDurationRef = useRef(0);
     const lipIndexRef = useRef(0);
     const lipTimerRef = useRef(0);
+
+    const visemeSync = useVisemeSync();
 
     useFrame((_, delta) => {
         if (!vrm) return;
@@ -75,19 +82,30 @@ export const useVrmExpression = (vrm: VRM | null, avatarState: string) => {
                 break;
 
             case 'speaking': {
+                resetExpressions();
                 em.setValue('happy', 0.2);
-                em.setValue('surprised', 0);
-                em.setValue('angry', 0);
-                em.setValue('sad', 0);
 
-                lipTimerRef.current -= delta;
-                if (lipTimerRef.current <= 0) {
-                    const vowels = ['aa', 'ih', 'ou', 'ee', 'oh'];
-                    vowels.forEach(v => em.setValue(v, 0));
-                    const vowel = vowels[lipIndexRef.current % vowels.length];
-                    em.setValue(vowel, 0.6 + Math.random() * 0.4);
-                    lipIndexRef.current++;
-                    lipTimerRef.current = 0.08 + Math.random() * 0.12;
+                const { viseme, weight, isActive } = visemeSync.tick(delta);
+
+                if (isActive) {
+                    // Procedural lip-sync based on queued visemes
+                    VOWELS.forEach(v => em.setValue(v, 0));
+
+                    if (viseme && (VOWELS as readonly string[]).includes(viseme)) {
+                        em.setValue(viseme, weight);
+                        // Dispatch for UI visualization
+                        window.dispatchEvent(new CustomEvent('aiome_viseme_played', { detail: { viseme: viseme.toUpperCase() } }));
+                    }
+                } else {
+                    // Fallback to random lip-sync if no visemes provided
+                    lipTimerRef.current -= delta;
+                    if (lipTimerRef.current <= 0) {
+                        VOWELS.forEach(v => em.setValue(v, 0));
+                        const vowel = VOWELS[lipIndexRef.current % VOWELS.length];
+                        em.setValue(vowel, 0.6 + Math.random() * 0.4);
+                        lipIndexRef.current++;
+                        lipTimerRef.current = 0.08 + Math.random() * 0.12;
+                    }
                 }
                 break;
             }

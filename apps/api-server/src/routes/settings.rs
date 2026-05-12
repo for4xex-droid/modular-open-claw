@@ -9,14 +9,9 @@ use crate::error::AppError;
 use crate::{auth::Authenticated, AppState};
 use aiome_core::traits::SettingsOps;
 use aiome_core_contracts::AuditLogger;
-use axum::{
-    extract::{Json, State},
-    http::StatusCode,
-};
+use axum::extract::{Json, State};
 use serde::{Deserialize, Serialize};
-use std::net::{IpAddr, ToSocketAddrs};
-use tracing::{error, info, warn};
-use url::Url;
+use tracing::{error, warn};
 
 #[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct UpdateSettingsRequest {
@@ -129,7 +124,6 @@ pub const SECRETS: &[&str] = &[
     "gemini_api_key",
     "x_bearer_token",
     "search_api_key",
-    "stripe_api_key",
     "stripe_webhook_secret",
     "polar_api_key",
     "polar_webhook_secret",
@@ -400,7 +394,7 @@ async fn test_cloud_connection(
                 }),
             }
         }
-        "claude" => {
+        "anthropic" | "claude" => {
             match client
                 .get("https://api.anthropic.com/v1/models")
                 .timeout(std::time::Duration::from_secs(10))
@@ -654,6 +648,20 @@ mod tests {
         assert!(
             ALLOWED_CATEGORIES.contains(&"integrations"),
             "integrations should be in allowed_categories"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_cloud_connection_anthropic_mapping() {
+        // test_cloud_connection should correctly route "anthropic" (not fall back to not implemented)
+        let res = test_cloud_connection("anthropic", Some("fake_token"), None).await;
+
+        // Since the token is fake, it will fail to connect or return an error status,
+        // but it MUST NOT return the "not fully implemented" fallback message.
+        assert!(
+            !res.message.contains("not fully implemented"),
+            "Service 'anthropic' was not routed correctly in test_cloud_connection. Message: {}",
+            res.message
         );
     }
 }

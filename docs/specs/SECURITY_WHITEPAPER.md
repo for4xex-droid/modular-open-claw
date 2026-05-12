@@ -89,6 +89,7 @@ Aiome は連邦学習（Federation）機能を備えていますが、この通�
 *   **読み取り専用ファイルシステムへの対応**: 書き込み可能領域を最小限（ログとDBのみ）に限定し、ルートファイルシステムを読み取り専用でマウント可能な設計にしています。これにより、マルウェアの永続化を物理的に阻止します。
 *   **ホストデーモンへの非直接アクセス**: AI がタスク委譲のために Docker を操作する際は、直接 UNIX ソケットを叩くのではなく、Native Tool 経由で制限された入力のみを受け付ける設計になっています。
 *   **Safe Frontend Runtime (TypeScript Strict Boundaries)**: TypeScript の `any` トラップによる意図しない型パニック（例外補足時の `undefined.message` アクセス違反など）を根絶するため、例外捕捉レイヤーにて `catch (err: unknown)` および `instanceof Error` ガードを全般的に義務化しています。これにより、API や外部ライブラリからの予期せぬ挙動に対しても、管理コンソール画面がクラッシュ（ホワイトアウト）せず、安全な退避状態（Graceful Degradation）を維持します。
+*   **UI State Structural Integrity**: 予期せぬ API レスポンス（例: 配列の代わりにオブジェクトや文字列が返るなど）に起因するサイレントな TypeError や画面のフリーズを防ぐため、フロントエンドの主要な状態管理層（AgentConsole, ArtifactVault 等）において `Array.isArray()` による厳格な構造的バリデーションを義務付けています。
 
 ---
 
@@ -105,7 +106,7 @@ Aiome は連邦学習（Federation）機能を備えていますが、この通�
 Aiome のセキュリティは、「隠すこと」ではなく「破られない構造を作ること」に重点を置いています。たとえ内部ソースコードが公開されたとしても、数学的・物理的、強固なカオス耐性、そして OS アーキテクチャ上の制約によって、お客様の API キーやデータの完全性は守られ続けます。
 
 ---
-*最終更新: 2026-05-08 (Asia/Tokyo) - Zero-Panic Error Hardening added*
+*最終更新: 2026-05-13 (Asia/Tokyo) - Reflexion Pass UI Hardening added*
 
 ## 2.6. A2UI Generative Interface Guardrails (Phase 0)
 LLM が動的に UI を生成する A2UI プロトコルにおいて、不正なペイロードがブラウザ上で実行されることを防ぐため、厳格なバリデーション層を設けています。
