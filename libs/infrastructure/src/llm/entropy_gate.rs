@@ -189,7 +189,7 @@ mod tests {
     fn test_calculate_sequence_entropy_uncertain() {
         let uncertain = vec![TokenLogprob {
             token: "a".into(),
-            logprob: -0.6931471805599453,
+            logprob: -std::f64::consts::LN_2,
             top_logprobs: None,
         }];
         let entropy = calculate_sequence_entropy(&uncertain);
@@ -206,10 +206,10 @@ mod tests {
         // Uniform distribution over 2 tokens: H = 1.0 bit
         let with_tops = vec![TokenLogprob {
             token: "a".into(),
-            logprob: -0.6931471805599453, // ln(0.5)
+            logprob: -std::f64::consts::LN_2, // ln(0.5)
             top_logprobs: Some(vec![
-                ("a".to_string(), -0.6931471805599453),
-                ("b".to_string(), -0.6931471805599453),
+                ("a".to_string(), -std::f64::consts::LN_2),
+                ("b".to_string(), -std::f64::consts::LN_2),
             ]),
         }];
         let entropy = calculate_sequence_entropy(&with_tops);
@@ -263,7 +263,7 @@ mod tests {
         let call_count = Arc::new(AtomicUsize::new(0));
         let mock = Arc::new(EntropyMockProvider {
             call_count: call_count.clone(),
-            uncertain_logprob: -0.693147, // entropy ≈ 0.5
+            uncertain_logprob: -std::f64::consts::LN_2, // entropy ≈ 0.5
         });
 
         // threshold 0.1, max_re_ask 2回
@@ -299,7 +299,7 @@ mod tests {
                 content: "uncertain".into(),
                 logprobs: Some(vec![TokenLogprob {
                     token: "x".into(),
-                    logprob: -0.693147,
+                    logprob: -std::f64::consts::LN_2,
                     top_logprobs: None,
                 }]),
                 ..Default::default()
