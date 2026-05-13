@@ -127,7 +127,9 @@ impl LoraTrainingService {
             active_jobs: Arc::new(RwLock::new(HashMap::new())),
             job_semaphore: compute_semaphore
                 .unwrap_or_else(|| Arc::new(tokio::sync::Semaphore::new(1))),
-            datasets_dir: shared::app_data::AppDataResolver::new().resolve("datasets"),
+            datasets_dir: shared::app_data::AppDataResolver::new()
+                .unwrap()
+                .resolve("datasets"),
         }
     }
 
@@ -513,7 +515,7 @@ impl LoraEngine for LoraTrainingService {
                 .to_string()
         };
 
-        let resolver = shared::app_data::AppDataResolver::new();
+        let resolver = shared::app_data::AppDataResolver::new().unwrap();
 
         // LoRA Adapter Family Isolation:
         // Organize adapters by base model family (e.g., "gemma4", "qwen3.5")
@@ -691,7 +693,7 @@ pub struct AdapterFamilyInfo {
 /// Returns a list of families with their adapter IDs, enabling the UI to switch
 /// between Qwen-based and Gemma-based adapters.
 pub fn list_adapter_families() -> Vec<AdapterFamilyInfo> {
-    let resolver = shared::app_data::AppDataResolver::new();
+    let resolver = shared::app_data::AppDataResolver::new().unwrap();
     let vault_lora_dir = resolver.resolve("vault/lora");
 
     let mut families = Vec::new();

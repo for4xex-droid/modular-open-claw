@@ -69,6 +69,7 @@ impl Default for SecurityConfig {
                 "uvx".to_string(),
             ],
             workspace_root: shared::app_data::AppDataResolver::new()
+                .unwrap()
                 .root()
                 .to_path_buf(),
             vault_path: None,
@@ -85,6 +86,7 @@ impl SecurityConfig {
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| {
                 shared::app_data::AppDataResolver::new()
+                    .unwrap()
                     .root()
                     .to_string_lossy()
                     .to_string()

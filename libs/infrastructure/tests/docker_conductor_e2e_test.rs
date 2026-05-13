@@ -19,6 +19,7 @@ use uuid::Uuid;
 // IMPORTANT: This test requires a running Docker/Podman daemon and the aiome-shadow-worker image built.
 // Since it spins up real containers, it might be slow. We tag it implicitly as an integration test.
 #[tokio::test]
+#[ignore = "Requires aiome-shadow-worker docker image to be built locally"]
 async fn test_docker_conductor_e2e_success_flow() {
     dotenvy::dotenv().ok();
 

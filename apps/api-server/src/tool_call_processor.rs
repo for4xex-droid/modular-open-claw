@@ -190,7 +190,7 @@ mod tests {
         );
 
         let mut config = shared::config::AiomeConfig::default();
-        config.resolver = shared::app_data::AppDataResolver::new();
+        config.resolver = shared::app_data::AppDataResolver::new().unwrap();
 
         #[derive(Debug)]
         struct MockLlm;

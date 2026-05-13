@@ -123,12 +123,19 @@ pub struct TrajectoryStep {
     /// Phase 47: 検証所要時間 (マイクロ秒)
     #[serde(default)]
     pub verification_time_us: Option<u64>,
-    /// Phase 48: DAG ノードのハッシュ（改ざん検知用）
     #[serde(default)]
     pub state_hash: Option<String>,
     /// Phase 48: 親ノードのハッシュ
     #[serde(default)]
     pub parent_state_hash: Option<String>,
+
+    // --- Phase G: RL Observability ---
+    /// RL/Constitutional Validator による報酬シグナル (0.0 - 1.0)
+    #[serde(default)]
+    pub reward_signal: Option<f64>,
+    /// 実行時のシステムプロンプトハッシュ（一意性特定用）
+    #[serde(default)]
+    pub llm_prompt_hash: Option<String>,
 }
 
 impl TrajectoryStep {
@@ -201,6 +208,17 @@ mod tests {
             "****** [REDACTED BY ZTAS] ******"
         );
     }
+
+    #[test]
+    fn test_trajectory_step_new_fields() {
+        let step = TrajectoryStep {
+            reward_signal: Some(0.85),
+            llm_prompt_hash: Some("abcdef123".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(step.reward_signal, Some(0.85));
+        assert_eq!(step.llm_prompt_hash.as_deref(), Some("abcdef123"));
+    }
 }
 
 /// ⛓️ 制約違反の証拠
@@ -221,6 +239,15 @@ pub struct AgentDiagnosis {
     pub evidence: Vec<ConstraintViolation>,
     pub self_repair_hint: String,
     pub diagnosed_at: String,
+}
+
+/// 🎯 教師データ（Triplet）表現
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct TrajectoryTriplet {
+    pub prompt: String,
+    pub response: String,
+    pub reward_signal: f64,
+    pub task_context: Option<String>,
 }
 
 /// 📥 TrajectoryStore トレイト
@@ -247,4 +274,14 @@ pub trait TrajectoryStore: Send + Sync {
 
     /// 診断情報を取得する
     async fn fetch_diagnosis(&self, job_id: &str) -> Result<Option<AgentDiagnosis>, AiomeError>;
+
+    /// 軌跡ステップの報酬シグナルを更新する
+    async fn update_trajectory_reward(
+        &self,
+        job_id: &str,
+        step_id: Option<u32>,
+        reward_signal: f64,
+    ) -> Result<(), AiomeError> {
+        Ok(()) // Default implementation for backward compatibility
+    }
 }

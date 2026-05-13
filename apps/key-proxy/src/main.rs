@@ -36,6 +36,10 @@ struct ProxyRequest {
 struct ProxyResponse {
     content: String,
     stop_reason: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    total_tokens: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_time_ms: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -105,7 +109,7 @@ async fn main() -> anyhow::Result<()> {
     //    Initial attempt from CWD (essential for dev environments)
     dotenvy::dotenv().ok();
 
-    let resolver = shared::app_data::AppDataResolver::new();
+    let resolver = shared::app_data::AppDataResolver::new().unwrap();
 
     //    Explicit attempt from application root (essential for Production)
     let app_env_path = resolver.root().join(".env");
@@ -141,7 +145,7 @@ async fn main() -> anyhow::Result<()> {
     quotas.insert("api-server".to_string(), 50000);
     quotas.insert("aiome-agent".to_string(), 10000);
 
-    let resolver = shared::app_data::AppDataResolver::new();
+    let resolver = shared::app_data::AppDataResolver::new().unwrap();
     let persistence_path = env::var("QUOTA_DB_PATH")
         .map(PathBuf::from)
         .unwrap_or_else(|_| resolver.resolve("config/key_proxy_state.json"));
@@ -341,6 +345,8 @@ pub(crate) async fn handle_llm_complete(
         }
     }
 
+    let start_time = tokio::time::Instant::now();
+
     let res = state
         .client
         .post(url)
@@ -367,9 +373,18 @@ pub(crate) async fn handle_llm_complete(
                             .unwrap_or("")
                             .to_string();
 
+                        let total_tokens = body
+                            .get("usageMetadata")
+                            .and_then(|u| u.get("totalTokenCount"))
+                            .and_then(|c| c.as_u64());
+
+                        let response_time_ms = start_time.elapsed().as_millis() as u64;
+
                         Json(ProxyResponse {
                             content: text,
                             stop_reason: "end_turn".to_string(),
+                            total_tokens,
+                            response_time_ms: Some(response_time_ms),
                         })
                         .into_response()
                     }
@@ -652,6 +667,19 @@ mod tests {
             gemini_payload.get("system_instruction").is_some(),
             "Should include system_instruction when system prompt is present"
         );
+    }
+
+    #[test]
+    fn test_proxy_response_includes_telemetry() {
+        use crate::ProxyResponse;
+        let resp = ProxyResponse {
+            content: "test".into(),
+            stop_reason: "end_turn".into(),
+            total_tokens: Some(42),
+            response_time_ms: Some(150),
+        };
+        assert_eq!(resp.total_tokens, Some(42));
+        assert_eq!(resp.response_time_ms, Some(150));
     }
 }
 

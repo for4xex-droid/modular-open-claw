@@ -66,7 +66,7 @@ async fn main() -> anyhow::Result<()> {
     // 1. Initial attempt from CWD (essential for dev environments)
     dotenvy::dotenv().ok();
 
-    let resolver = shared::app_data::AppDataResolver::new();
+    let resolver = shared::app_data::AppDataResolver::new().unwrap();
 
     // 2. Explicit attempt from application root (essential for Production)
     let app_env_path = resolver.root().join(".env");

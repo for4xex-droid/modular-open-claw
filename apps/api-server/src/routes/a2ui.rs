@@ -70,16 +70,31 @@ pub async fn submit_a2ui_action(
     if parts.len() != 2 {
         return Err(AppError::bad_request("Malformed action string"));
     }
+    let action_type = parts[0];
     let target_id = parts[1];
 
-    // Validate UUID format
-    // UUID 形式の構造検証のみ。値自体は文字列として使用する。
-    if uuid::Uuid::parse_str(target_id).is_err() {
-        return Err(AppError::bad_request("Invalid target UUID format"));
+    match action_type {
+        "approve_job" | "cancel_job" => {
+            // Validate UUID format for jobs
+            if uuid::Uuid::parse_str(target_id).is_err() {
+                return Err(AppError::bad_request("Invalid target UUID format"));
+            }
+        }
+        "run_skill" => {
+            if target_id.is_empty()
+                || target_id.len() > 64
+                || !target_id
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_')
+            {
+                return Err(AppError::bad_request("Invalid skill name format"));
+            }
+        }
+        _ => return Err(AppError::bad_request("Unknown action type")),
     }
 
     // 4. Action Dispatching
-    match parts[0] {
+    match action_type {
         "approve_job" => {
             state
                 .job_queue
@@ -103,10 +118,18 @@ pub async fn submit_a2ui_action(
                 })?;
         }
         "run_skill" => {
-            // Future extension: run_skill with specific target
-            return Err(AppError::bad_request(
-                "run_skill is not fully implemented via A2UI yet",
-            ));
+            let skill_name = target_id;
+            let payload_str = serde_json::to_string(&req.payload.unwrap_or_default())
+                .unwrap_or_else(|_| "{}".to_string());
+            state
+                .wasm_skill_manager
+                .get_inner()
+                .dry_run_skill(skill_name, &payload_str)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to run skill {}: {}", skill_name, e);
+                    AppError::internal(&format!("Skill execution failed: {}", e))
+                })?;
         }
         _ => {
             return Err(AppError::bad_request("Unknown action type"));
@@ -115,6 +138,6 @@ pub async fn submit_a2ui_action(
 
     Ok(Json(A2uiActionResponse {
         success: true,
-        message: format!("Action {} dispatched successfully", parts[0]),
+        message: format!("Action {} dispatched successfully", action_type),
     }))
 }

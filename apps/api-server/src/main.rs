@@ -152,7 +152,7 @@ async fn main() -> anyhow::Result<()> {
                     break;
                 }
                 _ = interval.tick() => {
-                    if state_for_bg.is_feature_enabled("federation_v1_5").await {
+                    if state_for_bg.is_feature_enabled(shared::feature_flags::FEDERATION_V1_5_FLAG).await {
                         info!("♻️ [Maintenance] Running periodic federated metrics push & sync...");
                         if let Err(e) = jq_for_bg.do_push_federated_metrics().await {
                             error!("🚨 [Maintenance] Failed to push federated metrics: {}", e);

@@ -175,6 +175,7 @@ pub mod spec_provider;
 pub mod supervisor;
 
 pub mod task_orchestrator;
+pub mod trajectory_adapter;
 pub mod trajectory_graph;
 pub mod trend_sonar;
 pub mod tts;

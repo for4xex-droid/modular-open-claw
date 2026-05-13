@@ -252,6 +252,13 @@ impl TaskRegistry for UniversalJobQueue {
     async fn update_job_status(&self, job_id: &str, status: JobStatus) -> Result<(), AiomeError> {
         Box::pin(self.do_update_job_status(job_id, status.as_str())).await
     }
+    async fn append_job_karma_directives(
+        &self,
+        job_id: &str,
+        hint: &str,
+    ) -> Result<(), AiomeError> {
+        Box::pin(self.do_append_job_karma_directives(job_id, hint)).await
+    }
     async fn reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError> {
         Box::pin(self.do_reclaim_zombie_jobs(timeout_minutes)).await
     }
@@ -355,6 +362,11 @@ impl AuditStore for UniversalJobQueue {
     }
     async fn clear_trajectory_steps(&self, job_id: &str) -> Result<(), AiomeError> {
         self.trajectory_store.clear_trajectory_steps(job_id).await
+    }
+    async fn update_trajectory_reward(&self, job_id: &str, reward: f64) -> Result<(), AiomeError> {
+        self.trajectory_store
+            .update_trajectory_reward(job_id, None, reward)
+            .await
     }
     async fn fetch_diagnosis(
         &self,

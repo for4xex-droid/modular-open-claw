@@ -54,7 +54,7 @@ export default defineConfig({
       timeout: 180 * 1000, // Wait up to 3 minutes for compilation
       env: {
         API_SERVER_SECRET: 'dev_secret_change_me_immedately',
-        KANI_STUB_MODE: 'true',
+        AIOME_DEV_MODE: '1',
         RUST_LOG: 'info',
         AIOME_DEV_MODE: '1',
         CELL_ID: 'cell_001',

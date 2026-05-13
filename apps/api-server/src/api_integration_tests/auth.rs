@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 use super::common::*;
 use crate::app_state::Component;
 use axum::http::StatusCode;
@@ -25,12 +32,14 @@ async fn test_settings_authorized_and_crud() {
     let settings = get_resp.json::<serde_json::Value>();
     let settings_array = settings.as_array().unwrap();
 
-    // DB migration inserts 'feature_flag.federation_v1_5' automatically.
+    // DB migration inserts feature flag automatically.
     // Assert that the array is not empty and contains the flag.
     assert!(!settings_array.is_empty());
-    let has_federation_flag = settings_array
-        .iter()
-        .any(|s| s["key"] == "feature_flag.federation_v1_5");
+    let expected_flag = format!(
+        "feature_flag.{}",
+        shared::feature_flags::FEDERATION_V1_5_FLAG
+    );
+    let has_federation_flag = settings_array.iter().any(|s| s["key"] == expected_flag);
     assert!(has_federation_flag);
 
     // Put a valid setting (ollama_model is allowed)
@@ -62,9 +71,7 @@ async fn test_settings_authorized_and_crud() {
     assert!(has_ollama_model);
 
     // Ensure the initial federation flag is still present
-    let has_federation_flag2 = settings_array2
-        .iter()
-        .any(|s| s["key"] == "feature_flag.federation_v1_5");
+    let has_federation_flag2 = settings_array2.iter().any(|s| s["key"] == expected_flag);
     assert!(has_federation_flag2);
 }
 #[serial]

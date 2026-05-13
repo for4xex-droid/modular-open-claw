@@ -18,15 +18,6 @@
     "description": "A cross-platform symbolication library written in Rust, using `gimli`"
   },
   {
-    "name": "adler",
-    "version": "1.0.2",
-    "authors": "Jonas Schievink <jonasschievink@gmail.com>",
-    "repository": "https://github.com/jonas-schievink/adler.git",
-    "license": "0BSD OR Apache-2.0 OR MIT",
-    "license_file": null,
-    "description": "A simple clean-room implementation of the Adler-32 checksum"
-  },
-  {
     "name": "adler2",
     "version": "2.0.1",
     "authors": "Jonas Schievink <jonasschievink@gmail.com>|oyvindln <oyvindln@users.noreply.github.com>",
@@ -34,15 +25,6 @@
     "license": "0BSD OR Apache-2.0 OR MIT",
     "license_file": null,
     "description": "A simple clean-room implementation of the Adler-32 checksum"
-  },
-  {
-    "name": "adler32",
-    "version": "1.2.0",
-    "authors": "Remi Rampin <remirampin@gmail.com>",
-    "repository": "https://github.com/remram44/adler32-rs",
-    "license": "Zlib",
-    "license_file": null,
-    "description": "Minimal Adler32 implementation for Rust."
   },
   {
     "name": "adobe-cmap-parser",
@@ -1179,6 +1161,15 @@
     "description": "A vector of bits"
   },
   {
+    "name": "bit_field",
+    "version": "0.10.3",
+    "authors": "Philipp Oppermann <dev@phil-opp.com>",
+    "repository": "https://github.com/phil-opp/rust-bit-field",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Simple bit field trait providing get_bit, get_bits, set_bit, and set_bits methods for Rust's integral types."
+  },
+  {
     "name": "bitcoin-io",
     "version": "0.1.4",
     "authors": "Matt Corallo <birchneutea@mattcorallo.com>",
@@ -1663,15 +1654,6 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Minimal, flexible command line parser"
-  },
-  {
-    "name": "clippy_test",
-    "version": "1.0.0",
-    "authors": null,
-    "repository": null,
-    "license": "Apache-2.0",
-    "license_file": null,
-    "description": null
   },
   {
     "name": "cmake",
@@ -2439,15 +2421,6 @@
     "description": "Common reusable types for implementing the sentry.io protocol."
   },
   {
-    "name": "deflate",
-    "version": "0.8.6",
-    "authors": "oyvindln <oyvindln@users.noreply.github.com>",
-    "repository": "https://github.com/image-rs/deflate-rs",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "description": "A DEFLATE, zlib and gzip encoder written in rust."
-  },
-  {
     "name": "der",
     "version": "0.7.10",
     "authors": "RustCrypto Developers",
@@ -2959,6 +2932,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Block or poll on event_listener easily"
+  },
+  {
+    "name": "exr",
+    "version": "1.74.0",
+    "authors": "johannesvollmer <contact@johannesvollmer.com>",
+    "repository": "https://github.com/johannesvollmer/exrs",
+    "license": "BSD-3-Clause",
+    "license_file": null,
+    "description": "Read and write OpenEXR files without any unsafe code"
   },
   {
     "name": "extism",
@@ -3574,8 +3556,8 @@
   },
   {
     "name": "gif",
-    "version": "0.11.4",
-    "authors": "nwin <nwin@users.noreply.github.com>",
+    "version": "0.13.3",
+    "authors": "The image-rs Developers",
     "repository": "https://github.com/image-rs/image-gif",
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
@@ -3751,6 +3733,15 @@
     "license": "MIT",
     "license_file": null,
     "description": "An HTTP/2 client and server"
+  },
+  {
+    "name": "half",
+    "version": "2.7.1",
+    "authors": "Kathryn Long <squeeself@gmail.com>",
+    "repository": "https://github.com/VoidStarKat/half-rs",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "Half-precision floating point f16 and bf16 types for Rust implementing the IEEE 754-2008 standard binary16 and bfloat16 types."
   },
   {
     "name": "hashbrown",
@@ -4258,12 +4249,12 @@
   },
   {
     "name": "image",
-    "version": "0.23.14",
+    "version": "0.24.9",
     "authors": "The image-rs Developers",
     "repository": "https://github.com/image-rs/image",
-    "license": "MIT",
+    "license": "Apache-2.0 OR MIT",
     "license_file": null,
-    "description": "Imaging library written in Rust. Provides basic filters and decoders for the most common image formats."
+    "description": "Imaging library. Provides basic image processing and encoders/decoders for common image formats."
   },
   {
     "name": "image",
@@ -4273,15 +4264,6 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Imaging library. Provides basic image processing and encoders/decoders for common image formats."
-  },
-  {
-    "name": "img_hash",
-    "version": "3.2.0",
-    "authors": "Austin Bonander <austin.bonander@gmail.com>",
-    "repository": "http://github.com/abonander/img_hash",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "description": "A simple library that provides perceptual hashing and difference calculation for images."
   },
   {
     "name": "impl-codec",
@@ -4591,8 +4573,8 @@
   },
   {
     "name": "jpeg-decoder",
-    "version": "0.1.22",
-    "authors": "Ulf Nilsson <kaksmet@gmail.com>",
+    "version": "0.3.2",
+    "authors": "The image-rs Developers",
     "repository": "https://github.com/image-rs/jpeg-decoder",
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
@@ -4750,6 +4732,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "A library to encode and decode LEB128 compressed integers."
+  },
+  {
+    "name": "lebe",
+    "version": "0.5.3",
+    "authors": "johannesvollmer <contact@johannesvollmer.com>",
+    "repository": "https://github.com/johannesvollmer/lebe",
+    "license": "BSD-3-Clause",
+    "license_file": null,
+    "description": "Tiny, dead simple, high performance endianness conversions with a generic API"
   },
   {
     "name": "libappindicator",
@@ -5221,24 +5212,6 @@
   },
   {
     "name": "miniz_oxide",
-    "version": "0.3.7",
-    "authors": "Frommi <daniil.liferenko@gmail.com>|oyvindln <oyvindln@users.noreply.github.com>",
-    "repository": "https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide",
-    "license": "MIT",
-    "license_file": null,
-    "description": "DEFLATE compression and decompression library rewritten in Rust based on miniz"
-  },
-  {
-    "name": "miniz_oxide",
-    "version": "0.4.4",
-    "authors": "Frommi <daniil.liferenko@gmail.com>|oyvindln <oyvindln@users.noreply.github.com>",
-    "repository": "https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide",
-    "license": "Apache-2.0 OR MIT OR Zlib",
-    "license_file": null,
-    "description": "DEFLATE compression and decompression library rewritten in Rust based on miniz"
-  },
-  {
-    "name": "miniz_oxide",
     "version": "0.8.9",
     "authors": "Frommi <daniil.liferenko@gmail.com>|oyvindln <oyvindln@users.noreply.github.com>|Rich Geldreich richgel99@gmail.com",
     "repository": "https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide",
@@ -5536,15 +5509,6 @@
   },
   {
     "name": "num-complex",
-    "version": "0.2.4",
-    "authors": "The Rust Project Developers",
-    "repository": "https://github.com/rust-num/num-complex",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "description": "Complex numbers implementation for Rust"
-  },
-  {
-    "name": "num-complex",
     "version": "0.4.6",
     "authors": "The Rust Project Developers",
     "repository": "https://github.com/rust-num/num-complex",
@@ -5578,15 +5542,6 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "External iterators for generic mathematics"
-  },
-  {
-    "name": "num-rational",
-    "version": "0.3.2",
-    "authors": "The Rust Project Developers",
-    "repository": "https://github.com/rust-num/num-rational",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "description": "Rational numbers implementation for Rust"
   },
   {
     "name": "num-rational",
@@ -6301,15 +6256,6 @@
   },
   {
     "name": "png",
-    "version": "0.16.8",
-    "authors": "nwin <nwin@users.noreply.github.com>",
-    "repository": "https://github.com/image-rs/image-png.git",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "description": "PNG decoding and encoding library in pure Rust"
-  },
-  {
-    "name": "png",
     "version": "0.17.16",
     "authors": "The image-rs Developers",
     "repository": "https://github.com/image-rs/image-png",
@@ -6694,6 +6640,15 @@
     "license": "Apache-2.0 OR BSD-3-Clause",
     "license_file": null,
     "description": "Fast and accurate math"
+  },
+  {
+    "name": "qoi",
+    "version": "0.4.1",
+    "authors": "Ivan Smirnov <rust@ivan.smirnov.ie>",
+    "repository": "https://github.com/aldanor/qoi-rust",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "VERY fast encoder/decoder for QOI (Quite Okay Image) format"
   },
   {
     "name": "quanta",
@@ -7309,21 +7264,12 @@
   },
   {
     "name": "rustdct",
-    "version": "0.4.0",
+    "version": "0.7.1",
     "authors": "Elliott Mahler <join.together at gmail>",
     "repository": "https://github.com/ejmahler/rust_dct",
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Compute Discrete Cosine Transforms (DCT) of any size in O(nlogn) time, in pure Rust."
-  },
-  {
-    "name": "rustfft",
-    "version": "3.0.1",
-    "authors": "Allen Welkie <allen.welkie at gmail>|Elliott Mahler <join.together at gmail>",
-    "repository": "https://github.com/awelkie/RustFFT",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "description": "Compute FFTs of any size in O(nlogn) time, in pure Rust."
   },
   {
     "name": "rustfft",
@@ -7522,15 +7468,6 @@
     "license": "MIT",
     "license_file": null,
     "description": "Macros for #[derive(JsonSchema)], for use with schemars"
-  },
-  {
-    "name": "scoped_threadpool",
-    "version": "0.1.9",
-    "authors": "Marvin Löbel <loebel.marvin@gmail.com>",
-    "repository": "https://github.com/Kimundi/scoped-threadpool-rs",
-    "license": "MIT",
-    "license_file": null,
-    "description": "A library for scoped and cached threadpools."
   },
   {
     "name": "scopeguard",
@@ -8749,8 +8686,8 @@
   },
   {
     "name": "tiff",
-    "version": "0.6.1",
-    "authors": "ccgn|bvssvni <bvssvni@gmail.com>|nwin|TyOverby <ty@pre-alpha.com>|HeroicKatora|Calum|CensoredUsername <cens.username@gmail.com>|Robzz|birktj",
+    "version": "0.9.1",
+    "authors": "The image-rs Developers",
     "repository": "https://github.com/image-rs/image-tiff",
     "license": "MIT",
     "license_file": null,
@@ -9142,15 +9079,6 @@
     "license": "MIT",
     "license_file": null,
     "description": "Utilities for implementing and composing `tracing` subscribers."
-  },
-  {
-    "name": "transpose",
-    "version": "0.1.0",
-    "authors": "Elliott Mahler <join.together@gmail.com>",
-    "repository": "http://github.com/ejmahler/transpose",
-    "license": "Apache-2.0 OR MIT",
-    "license_file": null,
-    "description": "Utility for transposing multi-dimensional data"
   },
   {
     "name": "transpose",
@@ -9619,6 +9547,15 @@
     "license": "Apache-2.0 OR MIT",
     "license_file": null,
     "description": "Tiny crate to check the version of the installed/running rustc."
+  },
+  {
+    "name": "visual-hash",
+    "version": "3.3.2",
+    "authors": "Austin Bonander <austin.bonander@gmail.com>|JMA <archer884@zoho.com",
+    "repository": "https://github.com/archer884/visual-hash",
+    "license": "Apache-2.0 OR MIT",
+    "license_file": null,
+    "description": "A simple library that provides perceptual hashing and difference calculation for images."
   },
   {
     "name": "vswhom",
@@ -11428,6 +11365,15 @@
     "license": "Apache-2.0 OR MIT OR Zlib",
     "license_file": null,
     "description": "Core utilities for image processing in the zune family of crates"
+  },
+  {
+    "name": "zune-inflate",
+    "version": "0.2.54",
+    "authors": null,
+    "repository": null,
+    "license": "Apache-2.0 OR MIT OR Zlib",
+    "license_file": null,
+    "description": "A heavily optimized deflate decompressor in Pure Rust"
   },
   {
     "name": "zune-jpeg",

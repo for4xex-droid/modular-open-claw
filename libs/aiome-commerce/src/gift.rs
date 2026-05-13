@@ -33,12 +33,13 @@ impl TremendousGiftEngine {
         sandbox: bool,
         pool: DatabasePool,
         audit_logger: Arc<dyn AuditLogger>,
-    ) -> Self {
+    ) -> Result<Self, aiome_core::error::AiomeError> {
         // Double check for production safety (😈 Demon's Advocate Gate 4)
         #[cfg(debug_assertions)]
         if !sandbox {
-            panic!("🚨 [SECURITY] Attempting to use PRODUCTION Tremendous API in a DEBUG build! This is strictly forbidden to prevent accidental real fund usage during development/testing.");
-            // allow-anti-pattern: fatal configuration error at boot
+            return Err(aiome_core::error::AiomeError::SecurityViolation {
+                reason: "Attempting to use PRODUCTION Tremendous API in a DEBUG build! This is strictly forbidden to prevent accidental real fund usage during development/testing.".to_string(),
+            });
         }
 
         let base_url = if sandbox {
@@ -46,13 +47,13 @@ impl TremendousGiftEngine {
         } else {
             "https://tremendous.com/api/v2".to_string()
         };
-        Self {
+        Ok(Self {
             api_key,
             base_url,
             client: aiome_core::http::get_http_client().clone(),
             pool,
             audit_logger,
-        }
+        })
     }
 }
 
@@ -273,6 +274,7 @@ mod tests {
             pool,
             logger,
         )
+        .unwrap()
     }
 
     #[tokio::test]
@@ -312,7 +314,8 @@ mod tests {
         };
         let logger = std::sync::Arc::new(MockAuditLogger);
         let sandbox_engine =
-            TremendousGiftEngine::new(SecretString::from("key".to_string()), true, pool, logger);
+            TremendousGiftEngine::new(SecretString::from("key".to_string()), true, pool, logger)
+                .unwrap();
         assert!(sandbox_engine.base_url.contains("testflight"));
     }
 }

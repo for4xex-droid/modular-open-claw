@@ -103,25 +103,11 @@ pub trait TaskConductor: Send + Sync {
 /// AppState::get_system_soul_hash() と同じハッシュロジックを使用する。
 #[tracing::instrument(skip_all, fields(has_path = soul_path.is_some()))]
 async fn compute_soul_hash(soul_path: &Option<std::path::PathBuf>) -> String {
-    use std::hash::{Hash, Hasher};
     let path = match soul_path {
         Some(p) => p,
         None => return "unknown".to_string(),
     };
-
-    let soul = tokio::fs::read_to_string(path).await.unwrap_or_default();
-    let evolving_soul = if let Some(parent) = path.parent() {
-        tokio::fs::read_to_string(parent.join("EVOLVING_SOUL.md"))
-            .await
-            .unwrap_or_default()
-    } else {
-        String::new()
-    };
-
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    // NOTE: AppState::get_system_soul_hash() と同じフォーマットを使用（ゼロパディングなし）
-    format!("{}{}", soul, evolving_soul).hash(&mut hasher);
-    format!("{:x}", hasher.finish())
+    shared::soul_hash::compute_from_path(path).await
 }
 
 /// The Task Dispatcher (Manager). Monitors the JobQueue and dispatches tasks to Conductors.
@@ -759,6 +745,29 @@ impl TaskDispatcher {
                                                         Ok(Ok(verdict)) => {
                                                             if verdict.should_evolve {
                                                                 info!("✅ Job {} passed Oracle review.", j_id);
+
+                                                                // Feed back the alignment score to the trajectory as a reward signal
+                                                                if let Err(e) = q.update_trajectory_reward(&j_id, verdict.alignment_score).await {
+                                                                    warn!("Failed to update trajectory reward for job {}: {}", j_id, e);
+                                                                }
+
+                                                                // Phase G-4: Extract high-reward triplets and store as KarmaDirectives
+                                                                if let Some(validator) = validator_clone.clone() {
+                                                                    if let Ok(steps) = q.fetch_trajectory_steps(&j_id).await {
+                                                                        let adapter = crate::trajectory_adapter::TrajectoryToTripletAdapter::new(validator);
+                                                                        if let Err(e) = adapter.extract_and_store_triplets(
+                                                                            steps,
+                                                                            &j_id,
+                                                                            &c_name,
+                                                                            "", // Extracting soul_hash here is difficult, use empty for now
+                                                                            0.8, // Configurable threshold for "good" trajectory
+                                                                            q.clone()
+                                                                        ).await {
+                                                                            warn!("Failed to extract and store trajectory triplets: {}", e);
+                                                                        }
+                                                                    }
+                                                                }
+
                                                                 do_completion(q, p_tx, j_id, out_clone, r_hash, k_dirs, c_name, gig_engine_clone, validator_clone.clone(), hooks_clone.clone()).await;
                                                             } else {
                                                                 let reason = verdict.reasoning.clone();
@@ -813,8 +822,17 @@ impl TaskDispatcher {
                                                 tokio::spawn(async move {
                                                     match diag.diagnose(&steps, &d_job).await {
                                                         Ok(agent_diagnosis) => {
-                                                            if let Err(e) = d_jq.store_diagnosis(&d_id, agent_diagnosis).await {
+                                                            if let Err(e) = d_jq.store_diagnosis(&d_id, agent_diagnosis.clone()).await {
                                                                 tracing::error!("🔥 [Watchtower] Critical Failure: Could not store diagnosis for {}: {:?}", d_id, e);
+                                                            }
+
+                                                            // Phase E-1/E-2: Reflexion Loop
+                                                            if !is_poisoned {
+                                                                if let Err(e) = d_jq.append_job_karma_directives(&d_id, &agent_diagnosis.self_repair_hint).await {
+                                                                    tracing::error!("🔥 [Reflexion] Failed to append self-repair hint to Job {}: {:?}", d_id, e);
+                                                                } else {
+                                                                    tracing::info!("🔄 [Reflexion] Appended self-repair hint to Job {} for next retry.", d_id);
+                                                                }
                                                             }
                                                         }
                                                         Err(e) => {

@@ -53,7 +53,7 @@ impl CommerceEngine for MockCommerceEngine {
         _item_id: Uuid,
         _metadata: serde_json::Value,
     ) -> Result<String, AiomeError> {
-        unimplemented!()
+        Ok("mock_purchase_id".to_string())
     }
 
     async fn get_daily_spend(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
@@ -71,7 +71,7 @@ impl CommerceEngine for MockCommerceEngine {
     }
 
     async fn list_escrows(&self, _agent_id: Uuid) -> Result<Vec<EscrowRecord>, AiomeError> {
-        unimplemented!()
+        Ok(vec![])
     }
 
     async fn escrow_release(
@@ -87,11 +87,11 @@ impl CommerceEngine for MockCommerceEngine {
     }
 
     async fn stake(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
-        unimplemented!()
+        Ok(())
     }
 
     async fn slash(&self, _agent_id: Uuid, _amount: u64, _reason: &str) -> Result<(), AiomeError> {
-        unimplemented!()
+        Ok(())
     }
 
     async fn register_license(
@@ -101,11 +101,11 @@ impl CommerceEngine for MockCommerceEngine {
         _transaction_id: &str,
         _license_type: &str,
     ) -> Result<String, AiomeError> {
-        unimplemented!()
+        Ok("mock_license_id".to_string())
     }
 
     fn verify_signature(&self, _payload: &str, _sig_header: &str) -> Result<(), AiomeError> {
-        unimplemented!()
+        Ok(())
     }
 
     async fn create_checkout_session(
@@ -115,7 +115,7 @@ impl CommerceEngine for MockCommerceEngine {
         _success_url: &str,
         _cancel_url: &str,
     ) -> Result<String, AiomeError> {
-        unimplemented!()
+        Ok("mock_session_id".to_string())
     }
 
     async fn create_subscription(
@@ -123,7 +123,7 @@ impl CommerceEngine for MockCommerceEngine {
         _agent_id: Uuid,
         _plan_id: &str,
     ) -> Result<String, AiomeError> {
-        unimplemented!()
+        Ok("mock_subscription_id".to_string())
     }
 
     async fn cancel_subscription(
@@ -131,14 +131,14 @@ impl CommerceEngine for MockCommerceEngine {
         _agent_id: Uuid,
         _subscription_id: &str,
     ) -> Result<(), AiomeError> {
-        unimplemented!()
+        Ok(())
     }
 
     async fn get_subscription_status(
         &self,
         _agent_id: Uuid,
     ) -> Result<SubscriptionStatus, AiomeError> {
-        unimplemented!()
+        Ok(SubscriptionStatus::None)
     }
 
     async fn transfer(
@@ -147,7 +147,7 @@ impl CommerceEngine for MockCommerceEngine {
         _to_id: Uuid,
         _amount: u64,
     ) -> Result<String, AiomeError> {
-        unimplemented!()
+        Ok("mock_transfer_id".to_string())
     }
 
     async fn deduct_generation_cost(
@@ -157,7 +157,7 @@ impl CommerceEngine for MockCommerceEngine {
         _amount: u64,
         _generation_type: &str,
     ) -> Result<(), AiomeError> {
-        unimplemented!()
+        Ok(())
     }
 
     async fn instant_refund(
@@ -165,7 +165,7 @@ impl CommerceEngine for MockCommerceEngine {
         _transaction_id: &str,
         _actor_id: Uuid,
     ) -> Result<(), AiomeError> {
-        unimplemented!()
+        Ok(())
     }
 
     async fn withdraw_points(
@@ -173,11 +173,16 @@ impl CommerceEngine for MockCommerceEngine {
         _actor_id: Uuid,
         _points_to_withdraw: u64,
     ) -> Result<(), AiomeError> {
-        unimplemented!()
+        Ok(())
     }
 
     async fn get_points(&self, _agent_id: Uuid) -> Result<PointsBalance, AiomeError> {
-        unimplemented!()
+        Ok(PointsBalance {
+            balance: 0,
+            lifetime_earned: 0,
+            lifetime_withdrawn: 0,
+            conversion_rate_bps: 0,
+        })
     }
 
     async fn get_transaction_history(
@@ -185,7 +190,7 @@ impl CommerceEngine for MockCommerceEngine {
         _agent_id: Uuid,
         _limit: u32,
     ) -> Result<Vec<TransactionRecord>, AiomeError> {
-        unimplemented!()
+        Ok(vec![])
     }
 }
 

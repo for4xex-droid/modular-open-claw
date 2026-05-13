@@ -619,7 +619,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         ))),
         config: Component::new({
             let mut config = AiomeConfig::default();
-            config.resolver = shared::app_data::AppDataResolver::new();
+            config.resolver = shared::app_data::AppDataResolver::new().unwrap();
 
             config.gemini_api_key = None;
             config.openai_api_key = None;

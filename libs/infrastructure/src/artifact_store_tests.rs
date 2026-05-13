@@ -248,6 +248,13 @@ mod tests {
             async fn cancel_job(&self, _: &str) -> Result<(), AiomeError> {
                 Ok(())
             }
+            async fn append_job_karma_directives(
+                &self,
+                _: &str,
+                _: &str,
+            ) -> Result<(), AiomeError> {
+                Ok(())
+            }
             async fn update_job_status(
                 &self,
                 _: &str,

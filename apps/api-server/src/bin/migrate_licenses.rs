@@ -14,7 +14,7 @@ use uuid::Uuid;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. 環境変数のセットアップ
     let _ = dotenvy::dotenv(); // Load .env
-    let resolver = shared::app_data::AppDataResolver::new();
+    let resolver = shared::app_data::AppDataResolver::new().unwrap();
     let db_url = env::var("AIOME_DB_PATH")
         .or_else(|_| env::var("DATABASE_URL"))
         .unwrap_or_else(|_| resolver.db_url());

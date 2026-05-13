@@ -6,7 +6,6 @@
  */
 
 use std::path::{Path, PathBuf};
-use tracing::warn;
 
 /// Aiome のアプリケーションデータを統合管理・解決する構造体。
 /// 環境（Dev / Prod / Tauri）に応じて適切な物理パスを返します。
@@ -17,7 +16,7 @@ pub struct AppDataResolver {
 
 impl Default for AppDataResolver {
     fn default() -> Self {
-        Self::new()
+        Self::new().unwrap_or_else(|e| panic!("Fatal: {}", e))
     }
 }
 
@@ -26,20 +25,22 @@ impl AppDataResolver {
     ///
     /// `CELL_ID` 環境変数が設定されている場合、ルートパスの末尾にセル名前空間を追加します。
     /// パストラバーサル防止のため、`CELL_ID` は英数字・ハイフン・アンダースコアのみ許可されます。
-    pub fn new() -> Self {
-        let cell_id = std::env::var("CELL_ID").unwrap_or_else(|_| {
-            let is_test_binary = std::env::current_exe()
-                .map(|p| p.to_string_lossy().contains("/deps/"))
-                .unwrap_or(false);
-            if is_test_binary {
-                "test-cell".to_string()
-            } else {
-                panic!("🚨 FATAL: CELL_ID is required for AppDataResolver!"); // allow-anti-pattern: fatal configuration error at boot
+    pub fn new() -> Result<Self, String> {
+        let cell_id = match std::env::var("CELL_ID") {
+            Ok(val) => val,
+            Err(_) => {
+                let is_test_binary = std::env::current_exe()
+                    .map(|p| p.to_string_lossy().contains("/deps/"))
+                    .unwrap_or(false);
+                if is_test_binary {
+                    "test-cell".to_string()
+                } else {
+                    return Err("🚨 FATAL: CELL_ID is required for AppDataResolver!".to_string());
+                }
             }
-        });
+        };
         if !Self::is_safe_cell_id(&cell_id) {
-            panic!("🚨 FATAL: CELL_ID '{}' contains invalid characters. Only [a-zA-Z0-9_-] (max 64 chars) are allowed.", cell_id);
-            // allow-anti-pattern: fatal configuration error at boot
+            return Err(format!("🚨 FATAL: CELL_ID '{}' contains invalid characters. Only [a-zA-Z0-9_-] (max 64 chars) are allowed.", cell_id));
         }
 
         let is_dev = std::env::var("AIOME_DEV_MODE")
@@ -68,7 +69,7 @@ impl AppDataResolver {
                 })
         };
 
-        Self { root }
+        Ok(Self { root })
     }
 
     /// `CELL_ID` がパストラバーサルを含まない安全な値かを検証します。
@@ -134,7 +135,7 @@ mod tests {
     fn test_resolve_root_dev() {
         env::set_var("CELL_ID", "test-cell");
         env::set_var("AIOME_DEV_MODE", "1");
-        let resolver = AppDataResolver::new();
+        let resolver = AppDataResolver::new().unwrap();
         assert!(resolver.root().to_string_lossy().contains("workspace"));
     }
 
@@ -143,7 +144,7 @@ mod tests {
     fn test_resolve_root_prod() {
         env::set_var("CELL_ID", "test-cell");
         env::remove_var("AIOME_DEV_MODE");
-        let resolver = AppDataResolver::new();
+        let resolver = AppDataResolver::new().unwrap();
         #[cfg(target_os = "macos")]
         assert!(resolver
             .root()
@@ -156,7 +157,7 @@ mod tests {
     fn test_db_path_resolution() {
         env::set_var("CELL_ID", "test-cell");
         env::set_var("AIOME_DEV_MODE", "1");
-        let resolver = AppDataResolver::new();
+        let resolver = AppDataResolver::new().unwrap();
         let path = resolver.db_path();
         // Since resolve() might return an absolute path, we just check for the components
         let path_str = path.to_string_lossy();
@@ -169,7 +170,7 @@ mod tests {
     fn test_db_url_resolution() {
         env::set_var("CELL_ID", "test-cell");
         env::set_var("AIOME_DEV_MODE", "1");
-        let resolver = AppDataResolver::new();
+        let resolver = AppDataResolver::new().unwrap();
         let url = resolver.db_url();
         assert!(url.starts_with("sqlite://"));
         assert!(url.contains("aiome.db"));
@@ -180,7 +181,7 @@ mod tests {
     fn test_cell_id_namespacing() {
         env::set_var("AIOME_DEV_MODE", "1");
         env::set_var("CELL_ID", "test-cell-42");
-        let resolver = AppDataResolver::new();
+        let resolver = AppDataResolver::new().unwrap();
 
         // root に CELL_ID が含まれること
         let root_str = resolver.root().to_string_lossy().to_string();
@@ -208,7 +209,7 @@ mod tests {
     fn test_cell_id_absent_defaults_to_test_cell() {
         env::set_var("AIOME_DEV_MODE", "1");
         clean_cell_id();
-        let resolver = AppDataResolver::new();
+        let resolver = AppDataResolver::new().unwrap();
         assert!(resolver.root().to_string_lossy().contains("test-cell"));
     }
 
@@ -217,13 +218,11 @@ mod tests {
     fn test_cell_id_rejects_traversal() {
         env::set_var("AIOME_DEV_MODE", "1");
         env::set_var("CELL_ID", "../../etc");
-        let result = std::panic::catch_unwind(|| {
-            AppDataResolver::new();
-        });
+        let result = AppDataResolver::new();
         clean_cell_id();
         assert!(
             result.is_err(),
-            "Expected panic due to invalid characters in CELL_ID"
+            "Expected Err due to invalid characters in CELL_ID"
         );
     }
 

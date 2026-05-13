@@ -906,6 +906,9 @@ mod tests {
         async fn cancel_job(&self, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
+        async fn append_job_karma_directives(&self, _: &str, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
         async fn update_job_status(
             &self,
             _: &str,
@@ -984,6 +987,9 @@ mod tests {
             Ok(1)
         }
         async fn clear_trajectory_steps(&self, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn update_trajectory_reward(&self, _: &str, _: f64) -> Result<(), AiomeError> {
             Ok(())
         }
 
@@ -1634,10 +1640,6 @@ mod tests {
         }
 
         let dream = DreamState::new(Arc::new(MockLlm)).with_incident_repo(repo.clone());
-
-        // Disable stub mode so verify_with_kani attempts real execution (which fails without Podman).
-        // Using empty string instead of remove_var to avoid parallel test race conditions.
-        std::env::set_var("KANI_STUB_MODE", "");
 
         // In non-stub mode, verify_with_kani will fail because Podman/Kani are not available.
         // This causes retry_count to increment and eventually reach MAX_KANI_RETRIES → WontFix.

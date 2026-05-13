@@ -12,7 +12,7 @@ use chrono::Utc;
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 /// Structure representing a single audit log event to be asynchronously written to the ledger.
 #[derive(Debug, Clone)]
@@ -156,8 +156,27 @@ impl AsyncAuditLogger {
                                         "❌ [AsyncAuditLogger] Database insert failed for actor {}: {}. Payload: {}",
                                         entry.table_name, e, entry_new_data_str
                                     );
-                                    // Trigger panic to restart the task if DB connection goes bad
-                                    panic!("AuditLogger database insert failed: {}", e); // allow-anti-pattern: panic to restart task
+                                    // Fallback to DLQ file to avoid data loss and prevent panic
+                                    let dlq_path = crate::security::GLOBAL_SECURITY_CONFIG.workspace_root.join("audit_dlq.jsonl");
+                                    let dlq_json = serde_json::json!({
+                                        "timestamp": chrono::Utc::now().to_rfc3339(),
+                                        "table": entry.table_name,
+                                        "operation": entry.operation,
+                                        "error": e.to_string(),
+                                        "payload": entry.new_data,
+                                    });
+                                    let dlq_entry = format!("{}\n", dlq_json);
+                                    use std::fs::OpenOptions;
+                                    use std::io::Write;
+                                    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&dlq_path) {
+                                        if let Err(io_err) = file.write_all(dlq_entry.as_bytes()) {
+                                            error!("CRITICAL: Failed to write to audit DLQ at {}: {}", dlq_path.display(), io_err);
+                                        } else {
+                                            warn!("Saved failed audit entry to DLQ: {}", dlq_path.display());
+                                        }
+                                    } else {
+                                        error!("CRITICAL: Failed to open audit DLQ at {}", dlq_path.display());
+                                    }
                                 }
                             }
                         }
@@ -300,7 +319,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_audit_merkle_chain_integrity_after_panic() {
+    async fn test_audit_merkle_chain_integrity_after_db_failure() {
         let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
 
         let schema = "CREATE TABLE audit_ledger_global (
@@ -332,7 +351,7 @@ mod tests {
         )
         .unwrap();
 
-        // This will panic the worker
+        // This will cause a DLQ fallback (table not found) — worker continues without panic
         let _ = logger
             .log_event("OP2_FAIL", "test", &json!({"record_id": "2"}))
             .await;

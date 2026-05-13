@@ -90,6 +90,8 @@ impl StrategicPlanner for DefaultStrategicPlanner {
                     verification_time_us: None,
                     state_hash: None,
                     parent_state_hash: None,
+                    reward_signal: None,
+                    llm_prompt_hash: None,
                 });
                 current_step_id += 1;
             }
@@ -117,6 +119,8 @@ impl StrategicPlanner for DefaultStrategicPlanner {
                 verification_time_us: None,
                 state_hash: None,
                 parent_state_hash: None,
+                reward_signal: None,
+                llm_prompt_hash: None,
             });
         }
 

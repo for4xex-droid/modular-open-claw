@@ -276,7 +276,7 @@ impl DockerConductor {
         // Detached Container Execution (gRPC Server) - Gap I, J, L, N, R, S
         // Gap N: Added `--rm` for cleanup guarantee and `--label` for potential GC
         let cmd = format!(
-            "{} run -d --rm --label aiome_managed=true --name {} --network aiome-internal -p 127.0.0.1:0:50051 -v {}:/app/config/agent.yaml:ro --env-file {} aiome-shadow-worker",
+            "{} run -d --rm --label aiome_managed=true --name {} --network aiome-internal -p 127.0.0.1::50051 -v {}:/app/config/agent.yaml:ro --env-file {} aiome-shadow-worker",
             self.container_runtime,
             container_name,
             yaml_path.display(),

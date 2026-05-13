@@ -11,7 +11,8 @@ use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod mcp_server;
-// mod mdns_broadcaster; // Deferred to v1.5
+#[cfg(feature = "federation")]
+mod mdns_broadcaster;
 mod routes;
 
 #[tokio::main]
@@ -273,10 +274,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("Listening on {}", addr);
 
     // Start mDNS Broadcaster
-    // Federation features (including mDNS P2P discovery) are deferred to v1.5
-    // let did = "did:key:z6MkhaXgBZDvotDkL5257faiztiuC2ZXpu258wtVGnQkERfN"; // Placeholder for Phase 52
-    // let _mdns_daemon = mdns_broadcaster::start_mdns_broadcaster(8080, did)
-    //     .unwrap_or_else(|e| panic!("Failed to start mdns broadcaster: {}", e));
+    #[cfg(feature = "federation")]
+    let _mdns_daemon = {
+        let did = "did:key:z6MkhaXgBZDvotDkL5257faiztiuC2ZXpu258wtVGnQkERfN"; // Placeholder for Phase 52 # gitleaks:allow
+        match mdns_broadcaster::start_mdns_broadcaster(8080, did) {
+            Ok(d) => Some(d),
+            Err(e) => {
+                tracing::error!("Failed to start mdns broadcaster: {}", e);
+                None
+            }
+        }
+    };
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;
@@ -285,10 +293,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 pub fn setup_router() -> Router {
     let config = shared::config::AiomeConfig::load().unwrap_or_default();
-    Router::new()
-        .nest("/.well-known", routes::well_known_routes())
-        .nest(
-            "/api/v1/federation",
-            routes::federation::router().with_state(std::sync::Arc::new(config)),
-        )
+    let router = Router::new().nest("/.well-known", routes::well_known_routes());
+
+    #[cfg(feature = "federation")]
+    let router = router.nest(
+        "/api/v1/federation",
+        routes::federation::router().with_state(std::sync::Arc::new(config)),
+    );
+
+    router
 }

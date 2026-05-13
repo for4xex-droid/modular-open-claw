@@ -217,6 +217,8 @@ pub async fn execute_wasm_skill(
         verification_time_us: None,
         state_hash: None,
         parent_state_hash: None,
+        reward_signal: None,
+        llm_prompt_hash: None,
     };
 
     let result_str = match unverified.verify(&state.wasm_skill_manager).await {

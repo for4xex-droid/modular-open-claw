@@ -1,6 +1,17 @@
 ## [Unreleased]
 
 ### Added
+- **Phase G Observability**: Expanded `TrajectoryStep` with `reward_signal` and `llm_prompt_hash` for Reinforcement Learning feedback loop.
+- **Phase G Observability**: Added `total_tokens` and `response_time_ms` telemetry to `ProxyResponse` in `key-proxy` for LLM performance tracking.
+- **Phase G Observability**: Implemented `TrajectoryToTripletAdapter` with `ConstitutionalValidator` integration to extract RLHF-ready `TrajectoryTriplet`s safely.
+- **Phase G Trajectory Store**: Implemented `update_trajectory_reward` method in `TrajectoryStore` to support closed-loop performance metric persistence.
+- **Phase G Observability**: Connected Oracle evaluation (`alignment_score`) to `TrajectoryStore::update_trajectory_reward()` in `task_orchestrator` to complete the RL feedback loop.
+- **Phase G Observability**: Implemented `extract_and_store_triplets` in `TrajectoryToTripletAdapter` and integrated it into `task_orchestrator` to automatically promote high-reward trajectories into `KarmaDirectives` for closed-loop policy optimization.
+- **Phase E Reflexion Loop**: Integrated Reflexion loop into `TaskOrchestrator`. Automatically injects `self_repair_hint` from Watchtower diagnostics into job `karma_directives` for robust retry iterations.
+- **Phase 16 LLM Pipeline Completion**: Finalized `humanizer_rules.rs` with `LazyLock` for static regex rules to eliminate zero-panic violations and improved performance. Integrated `EntropyGate`, `HumanizerFilter`, and `WritingContext` into the pipeline.
+- **Phase G Database**: Added SQLite and Postgres migrations for `trajectory_steps` schema extensions.
+
+### Added
 - **Observability Hardening**:
   - Added TTS Error Rate tracking panel to `aiome_voice_metrics.json` Grafana dashboard.
   - Implemented TDD infrastructure test `td_grafana_error_rate_panel` to ensure the Error Rate panel is permanently guarded against regression.
@@ -13,10 +24,29 @@
   - Implemented semantic `recall`, `calculate_importance`, and `detect_contradictions` in `NativeSlmBackend` using native Rust embeddings (`native_embedding.rs`).
 
 ### Hardening & Stability
+- **LLM Pipeline Security**:
+  - Replaced `process::exit(1)` with `.expect("static regex")` in `humanizer_rules.rs` to securely compile static Regex patterns while avoiding `LazyLock` over-engineering, preserving `HumanizerFilter`'s ownership model without runtime panic risks.
 - **Telemetry Hardening**:
   - Implemented dynamic `soul_hash` computation in `TaskDispatcher` via asynchronous file reads (`tokio::fs`) to eliminate the hardcoded `"unknown"` fallback during failed job auditing.
+  - Extracted shared hash logic into `libs/shared/src/soul_hash.rs` to unify computation between `AppState` and `TaskDispatcher` (Phase B).
   - Ensured format consistency (`{:x}`) with `AppState::get_system_soul_hash()` to maintain strict system-wide telemetry accuracy.
   - Wrapped `compute_soul_hash` with `#[tracing::instrument]` for robust observability of the telemetry injection phase.
+- **Sovereign Verifier Productionization**:
+  - Deprecated `KANI_STUB_MODE` workspace-wide to enforce OxiLean and Kani verification processes in production environments (Phase D).
+  - Transitioned Aegis Sentinel patch validation to purely Podman-backed rootless execution (`aiome/kani-verifier:latest`).
+  - Switched `apps/api-server/src/routes/commerce.rs` and `playwright.config.ts` to `AIOME_DEV_MODE` for dev constraints.
+- **Zero-Panic Stability Refinements (Phase E)**:
+  - Eliminated dangerous `allow-anti-pattern` panics in `audit_logger.rs` and `gift.rs`.
+  - Introduced DLQ (Dead Letter Queue) file fallback (`audit_dlq.jsonl`) for critical database inserts in `AsyncAuditLogger` to ensure zero data loss during DB downtime.
+  - Refactored `TremendousGiftEngine::new` to return `Result<Self, AiomeError>` instead of panicking when instantiated incorrectly.
+- **Browser Red Team Refinements (Phase F)**:
+  - Cleaned up leftover `unimplemented!()` stubs within `MockCommerceEngine` in `browser_red_team_tdd.rs` to fully adhere to the zero-panic principle.
+  - Successfully executed full system-wide end-to-end verification via TDD workflow, proving zero regressions in Sovereign Verifier isolation.
+- **Federation v1.5 Feature Flag**:
+  - Established `shared::feature_flags` module and defined `FEDERATION_V1_5_FLAG` (Phase C).
+  - Refactored `api-server/src/main.rs` to consume the feature flag instead of hardcoded strings.
+  - Added SQLite purge logic unit tests (`test_hub_purge_logic`) to `samsara-hub` to guarantee strict physical eviction limits.
+  - Organized `aiome-node` federation routes behind the `federation` cargo feature to safely defer P2P deployment to v1.5.
 - **Frontend TTS Fallback & Leak Elimination (Reflexion Pass)**:
   - Enhanced `useAgentChat.ts` to prioritize SSE streaming TTS, seamlessly falling back to legacy static Blob fetches on stream interruption.
   - Eliminated critical audio memory leaks by strictly enforcing `AbortController` cleanup and `URL.revokeObjectURL` upon playback completion or error.
@@ -141,7 +171,7 @@
 
 ### Fixed
 - **License Compliance Verification**:
-  - Added missing Apache-2.0 copyright headers to 11 `.rs` files across `libs/infrastructure` and `apps/api-server`, ensuring 100% compliance with `/license-check` constraints.
+  - Added missing Apache-2.0 copyright headers to 12 `.rs` files across `libs/infrastructure`, `libs/shared` and `apps/api-server`, ensuring 100% compliance with `/license-check` constraints.
   - Expanded the `ammonia` sanitization whitelist to permit essential SVG chart attributes (e.g., `viewBox`, `d`, `fill`) while maintaining robust XSS defenses.
 - **System Instructions Rendering (Phase 4)**:
   - Cleaned up legacy manual formatting in `build_system_instructions`. Completely transitioned to the `PromptRegistry` rendering engine (`system/core.md`), establishing a single source of truth for prompt structure.

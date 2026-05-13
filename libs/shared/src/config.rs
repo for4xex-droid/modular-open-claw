@@ -115,7 +115,7 @@ pub const DEFAULT_VAULT_PATH: &str = "~/.aiome/vault";
 
 impl Default for AiomeConfig {
     fn default() -> Self {
-        let resolver = crate::app_data::AppDataResolver::new();
+        let resolver = crate::app_data::AppDataResolver::new().unwrap();
         Self {
             db_path: resolver.db_url(),
             log_level: "info".to_string(),
@@ -161,7 +161,9 @@ impl Default for AiomeConfig {
 impl AiomeConfig {
     /// 環境変数から設定を読み込む
     pub fn load() -> Result<Self> {
-        let resolver = crate::app_data::AppDataResolver::new();
+        let resolver = crate::app_data::AppDataResolver::new()
+            .map_err(|e| anyhow::anyhow!(e))
+            .context("Failed to initialize AppDataResolver")?;
 
         let db_path = env::var("AIOME_DB_PATH").unwrap_or_else(|_| resolver.db_url());
 

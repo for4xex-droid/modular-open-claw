@@ -88,12 +88,6 @@ impl AegisProver {
             });
         }
 
-        // Phase A: Stubbed Kani verification
-        if std::env::var("KANI_STUB_MODE").unwrap_or_default() == "true" {
-            metrics::counter!("aegis_patch_verification_success").increment(1);
-            return Ok(true);
-        }
-
         use crate::security::{SafeCommandBuilder, SandboxProfile, GLOBAL_SECURITY_CONFIG};
         use aiome_core_contracts::security::PermissionManifest;
         use shared::sandbox::PathSandbox;
@@ -339,29 +333,12 @@ mod tests {
 
     #[tokio::test]
     #[serial_test::serial]
-    async fn test_verify_with_kani() {
-        std::env::set_var("KANI_STUB_MODE", "true");
+    async fn test_verify_with_kani_proceeds_to_podman() {
         let prover = AegisProver::new(Arc::new(MockLlm));
 
-        let result = prover.verify_with_kani("fn patched() {}").await.unwrap();
-        assert!(result);
-
-        // Cleanup to prevent leaking to other tests
-        std::env::remove_var("KANI_STUB_MODE");
-    }
-
-    #[tokio::test]
-    #[serial_test::serial]
-    async fn test_verify_with_kani_stub_disabled_proceeds_to_podman() {
-        // Ensure stub mode is explicitly disabled
-        std::env::set_var("KANI_STUB_MODE", "false");
-
-        let prover = AegisProver::new(Arc::new(MockLlm));
-
-        // When stub mode is false, verify_with_kani proceeds to execute podman.
+        // verify_with_kani proceeds to execute podman.
         // In the test environment, podman or aiome/kani-verifier is typically absent,
-        // causing a subprocess failure. We verify that it attempts to spawn the process
-        // rather than returning early with Ok(true).
+        // causing a subprocess failure. We verify that it attempts to spawn the process.
         let result = prover.verify_with_kani("fn patched() {}").await;
 
         match result {
@@ -383,12 +360,9 @@ mod tests {
                     reason
                 );
             }
-            Ok(true) => panic!("Stub mode was not skipped! Returned Ok(true)"),
+            Ok(true) => panic!("Should not succeed if podman image is missing! Returned Ok(true)"),
             other => panic!("Unexpected result: {:?}", other),
         }
-
-        // Cleanup
-        std::env::remove_var("KANI_STUB_MODE");
     }
 
     #[test]

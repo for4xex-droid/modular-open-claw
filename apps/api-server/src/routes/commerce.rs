@@ -519,8 +519,7 @@ pub async fn create_checkout_session(
     }
 
     // Defensive URL validation: only allow https:// scheme in production
-    let is_dev = std::env::var("AIOME_DEV_MODE").unwrap_or_default() == "1"
-        || std::env::var("KANI_STUB_MODE").unwrap_or_default() == "true";
+    let is_dev = std::env::var("AIOME_DEV_MODE").unwrap_or_default() == "1";
 
     let is_valid_scheme = |url: &str| -> bool {
         if url.starts_with("https://") {

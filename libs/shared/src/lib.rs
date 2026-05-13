@@ -62,6 +62,12 @@ pub mod strings;
 /// ウォッチタワー機能
 pub mod watchtower;
 
+/// Feature flags for system capabilities
+pub mod feature_flags;
+
+/// Global Soul Hash calculation logic
+pub mod soul_hash;
+
 /// Macros use these re-exports to avoid requiring dependencies in caller crates.
 pub mod reexport {
     pub use aiome_core_contracts::error::AiomeError;

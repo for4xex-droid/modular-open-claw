@@ -5605,6 +5605,13 @@
               "null"
             ]
           },
+          "llm_prompt_hash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "実行時のシステムプロンプトハッシュ（一意性特定用）"
+          },
           "output": {},
           "parent_state_hash": {
             "type": [
@@ -5629,12 +5636,19 @@
             ],
             "description": "「なぜこの行動を選んだか」の推論理由"
           },
+          "reward_signal": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "RL/Constitutional Validator による報酬シグナル (0.0 - 1.0)"
+          },
           "state_hash": {
             "type": [
               "string",
               "null"
-            ],
-            "description": "Phase 48: DAG ノードのハッシュ（改ざん検知用）"
+            ]
           },
           "step_category": {
             "$ref": "#/components/schemas/StepCategory",

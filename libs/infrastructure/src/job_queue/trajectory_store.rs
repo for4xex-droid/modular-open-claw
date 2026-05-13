@@ -99,6 +99,39 @@ impl TrajectoryStore for SqliteTrajectoryStore {
     async fn fetch_diagnosis(&self, job_id: &str) -> Result<Option<AgentDiagnosis>, AiomeError> {
         self.do_fetch_diagnosis(job_id).await
     }
+
+    async fn update_trajectory_reward(
+        &self,
+        job_id: &str,
+        step_id: Option<u32>,
+        reward_signal: f64,
+    ) -> Result<(), AiomeError> {
+        if let Some(id) = step_id {
+            let q = format!(
+                "UPDATE trajectory_steps SET reward_signal = {} WHERE job_id = {} AND step_id = {}",
+                self.pool.ph(0),
+                self.pool.ph(1),
+                self.pool.ph(2)
+            );
+            sql_exec!(&self.pool, &q, reward_signal, job_id, id as i64).map_err(|e| {
+                AiomeError::Infrastructure {
+                    reason: format!("Failed to update trajectory reward: {}", e),
+                }
+            })?;
+        } else {
+            let q = format!(
+                "UPDATE trajectory_steps SET reward_signal = {} WHERE job_id = {}",
+                self.pool.ph(0),
+                self.pool.ph(1)
+            );
+            sql_exec!(&self.pool, &q, reward_signal, job_id).map_err(|e| {
+                AiomeError::Infrastructure {
+                    reason: format!("Failed to update trajectory reward: {}", e),
+                }
+            })?;
+        }
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -114,8 +147,8 @@ impl TrajectoryOps for SqliteTrajectoryStore {
         let step_cat = serde_json::to_string(&step.step_category)
             .unwrap_or_else(|_| "\"General\"".to_string());
 
-        let q = format!("INSERT INTO trajectory_steps (job_id, step_id, action, tool_name, input_json, output_json, timestamp, constraint_violations, is_critical_failure, failure_category, reasoning, parent_step_id, step_category, completion_criteria, interaction_id) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14})",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11), self.pool.ph(12), self.pool.ph(13), self.pool.ph(14));
+        let q = format!("INSERT INTO trajectory_steps (job_id, step_id, action, tool_name, input_json, output_json, timestamp, constraint_violations, is_critical_failure, failure_category, reasoning, parent_step_id, step_category, completion_criteria, interaction_id, reward_signal, llm_prompt_hash) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16})",
+            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11), self.pool.ph(12), self.pool.ph(13), self.pool.ph(14), self.pool.ph(15), self.pool.ph(16));
 
         let parent_id_cast = step.parent_step_id.map(|id| id as i64);
 
@@ -136,7 +169,9 @@ impl TrajectoryOps for SqliteTrajectoryStore {
             parent_id_cast,
             &step_cat,
             &step.completion_criteria,
-            &step.interaction_id
+            &step.interaction_id,
+            &step.reward_signal,
+            &step.llm_prompt_hash
         )
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to record trajectory step: {}", e),
@@ -145,7 +180,7 @@ impl TrajectoryOps for SqliteTrajectoryStore {
     }
 
     async fn do_fetch_trajectory(&self, job_id: &str) -> Result<Vec<TrajectoryStep>, AiomeError> {
-        let q = format!("SELECT step_id, action, tool_name, input_json, output_json, timestamp, constraint_violations, is_critical_failure, failure_category, reasoning, parent_step_id, step_category, completion_criteria, interaction_id FROM trajectory_steps WHERE job_id = {} ORDER BY step_id ASC", self.pool.ph(0));
+        let q = format!("SELECT step_id, action, tool_name, input_json, output_json, timestamp, constraint_violations, is_critical_failure, failure_category, reasoning, parent_step_id, step_category, completion_criteria, interaction_id, reward_signal, llm_prompt_hash FROM trajectory_steps WHERE job_id = {} ORDER BY step_id ASC", self.pool.ph(0));
         let mut steps = Vec::new();
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
@@ -199,6 +234,8 @@ impl TrajectoryOps for SqliteTrajectoryStore {
                         verification_time_us: None,
                         state_hash: None,
                         parent_state_hash: None,
+                        reward_signal: row.get("reward_signal"),
+                        llm_prompt_hash: row.get("llm_prompt_hash"),
                         ..Default::default()
                     });
                 }
@@ -254,6 +291,8 @@ impl TrajectoryOps for SqliteTrajectoryStore {
                         verification_time_us: None,
                         state_hash: None,
                         parent_state_hash: None,
+                        reward_signal: row.get("reward_signal"),
+                        llm_prompt_hash: row.get("llm_prompt_hash"),
                         ..Default::default()
                     });
                 }

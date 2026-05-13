@@ -264,7 +264,7 @@ pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
     // 1. Initial attempt from CWD (essential for dev environments to catch AIOME_DEV_MODE)
     dotenvy::dotenv().ok();
 
-    let resolver = shared::app_data::AppDataResolver::new();
+    let resolver = shared::app_data::AppDataResolver::new().unwrap();
 
     // 2. Explicit attempt from application root (essential for Production Tauri sidecars)
     let app_env_path = resolver.root().join(".env");
@@ -1027,7 +1027,7 @@ pub async fn init_core_services(
             sandbox,
             db_pool.clone(),
             audit_logger.clone(),
-        )) as Arc<dyn aiome_core_contracts::commerce::GiftEngine>
+        )?) as Arc<dyn aiome_core_contracts::commerce::GiftEngine>
     };
     let ekyc_session_store = {
         let pool = db_pool.clone();

@@ -317,6 +317,8 @@ pub trait TaskRegistry: Send + Sync + std::fmt::Debug {
     async fn requeue_job(&self, job_id: &str) -> Result<(), AiomeError>;
     async fn cancel_job(&self, job_id: &str) -> Result<(), AiomeError>;
     async fn update_job_status(&self, job_id: &str, status: JobStatus) -> Result<(), AiomeError>;
+    async fn append_job_karma_directives(&self, job_id: &str, hint: &str)
+        -> Result<(), AiomeError>;
     async fn reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError>;
     async fn get_pending_job_count(&self) -> Result<i64, AiomeError>;
     async fn get_job_count_since(
@@ -347,6 +349,7 @@ pub trait AuditStore: Send + Sync + std::fmt::Debug {
         job_id: &str,
     ) -> Result<Vec<crate::trajectory::TrajectoryStep>, AiomeError>;
     async fn clear_trajectory_steps(&self, job_id: &str) -> Result<(), AiomeError>;
+    async fn update_trajectory_reward(&self, job_id: &str, reward: f64) -> Result<(), AiomeError>;
     async fn fetch_diagnosis(
         &self,
         job_id: &str,

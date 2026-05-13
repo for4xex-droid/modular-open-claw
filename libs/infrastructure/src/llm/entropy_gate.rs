@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Apache License, Version 2.0.
+ */
+
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::llm::{LlmProvider, LlmRequest, LlmResponse, TokenLogprob};
 use async_trait::async_trait;

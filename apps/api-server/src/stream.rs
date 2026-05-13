@@ -25,7 +25,7 @@ use std::sync::Arc;
 use tokio::time::{interval, timeout, Duration};
 use tracing::{debug, error, info, warn};
 
-use crate::agent_engine::{build_system_instructions, parse_tool_calls, read_app_data_file};
+use crate::agent_engine::{build_system_instructions, parse_tool_calls};
 use crate::routes::agent::AgentChatRequest;
 use crate::AppState;
 
@@ -73,15 +73,7 @@ pub async fn trigger_agent_chat_stream(
             _ => {}
         }
 
-        let soul_hash = {
-            use std::hash::{Hash, Hasher};
-            let resolver = &state.config.get_inner().resolver;
-            let soul = read_app_data_file(resolver, "SOUL.md").await;
-            let evolving_soul = read_app_data_file(resolver, "EVOLVING_SOUL.md").await;
-            let mut hasher = std::collections::hash_map::DefaultHasher::new();
-            format!("{}{}", soul, evolving_soul).hash(&mut hasher);
-            format!("{:x}", hasher.finish())
-        };
+        let soul_hash = state.get_system_soul_hash().await;
 
         // Sprint 1-A: Fetch relevant karma using proper search
         let karma_result = state.job_queue.fetch_relevant_karma(&payload.prompt, "global", 5, &soul_hash).await.unwrap_or_else(|_| aiome_core::traits::KarmaSearchResult::empty());

@@ -8,6 +8,7 @@ use axum::routing::get;
 use axum::Router;
 
 pub mod agent_card;
+#[cfg(feature = "federation")]
 pub mod federation;
 
 pub fn well_known_routes() -> Router {

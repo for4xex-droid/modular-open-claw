@@ -1003,6 +1003,8 @@ async fn test_sqlite_trajectory_store() {
         verification_time_us: None,
         state_hash: None,
         parent_state_hash: None,
+        reward_signal: None,
+        llm_prompt_hash: None,
     };
 
     jq.trajectory_store
@@ -1052,6 +1054,44 @@ async fn test_sqlite_trajectory_store() {
 
     assert_eq!(fetched.root_cause, "Missing argument");
     assert_eq!(fetched.self_repair_hint, "Add argument");
+}
+
+#[tokio::test]
+async fn test_sqlite_update_trajectory_reward() {
+    use aiome_core::trajectory::{TrajectoryStep, TrajectoryStore};
+    let (jq, _tmp) = create_test_queue().await;
+
+    let job_id = jq
+        .enqueue("Testing", "Reward Topic", "Standard", None, None, None, 0)
+        .await
+        .expect("Failed to enqueue job");
+
+    let mut step = TrajectoryStep::default();
+    step.step_id = 1;
+    step.job_id = Some(job_id.clone());
+    step.llm_prompt_hash = Some("hash123".to_string());
+
+    jq.trajectory_store
+        .record_step(&job_id, step)
+        .await
+        .expect("Failed to record step");
+
+    // UPDATE test
+    jq.trajectory_store
+        .update_trajectory_reward(&job_id, Some(1), 0.95)
+        .await
+        .expect("Failed to update reward");
+
+    // Fetch and verify
+    let trajectory = jq
+        .trajectory_store
+        .fetch_trajectory(&job_id)
+        .await
+        .expect("Failed to fetch trajectory");
+
+    assert_eq!(trajectory.len(), 1);
+    assert_eq!(trajectory[0].reward_signal, Some(0.95));
+    assert_eq!(trajectory[0].llm_prompt_hash.as_deref(), Some("hash123"));
 }
 
 #[tokio::test]

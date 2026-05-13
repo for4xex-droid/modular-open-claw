@@ -151,4 +151,50 @@ mod tests {
             "Binary timeline must survive PUSH/SYNC roundtrip"
         );
     }
+
+    #[tokio::test]
+    async fn test_hub_purge_logic() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        let db_pool = shared::db::DatabasePool::Sqlite(pool.clone());
+        let _: () = crate::init_hub_db(&db_pool).await.unwrap();
+
+        // 1. Insert 5 records into quarantined_karma
+        for i in 1..=5 {
+            sqlx::query("INSERT INTO quarantined_karma (id, node_id, karma_type, related_skill, lesson, weight, lamport_clock, created_at, received_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)")
+                .bind(format!("test_id_{}", i))
+                .bind("node1")
+                .bind("type")
+                .bind("skill")
+                .bind(format!("lesson {}", i))
+                .bind(10i32)
+                .bind(100i64)
+                .bind(chrono::Utc::now())
+                .bind(chrono::Utc::now())
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+
+        // Verify 5 records exist
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM quarantined_karma")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count.0, 5);
+
+        // 2. Execute purge logic with LIMIT 2 (simulating 100,000 limit)
+        // Note: The actual production limit is 100,000, but we test the SQL logic with 2 here
+        let q_karma_prune = "DELETE FROM quarantined_karma WHERE id NOT IN (SELECT id FROM quarantined_karma ORDER BY received_at DESC LIMIT 2)";
+        let _ = shared::sql_exec!(&db_pool, q_karma_prune).unwrap();
+
+        // 3. Verify only 2 records remain (the most recent ones based on received_at)
+        let count_after: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM quarantined_karma")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count_after.0, 2);
+    }
 }

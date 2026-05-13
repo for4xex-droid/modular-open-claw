@@ -18,7 +18,7 @@ use tracing::{info, warn};
 /// LLMの出力から「AIくささ」を除去するためのミドルウェア
 pub struct HumanizerFilter {
     inner: Arc<dyn LlmProvider + Send + Sync>,
-    rules: Vec<HumanizerRule>,
+    rules: &'static [HumanizerRule],
     context: WritingContext,
 }
 
@@ -36,7 +36,7 @@ impl HumanizerFilter {
     /// 新しい `HumanizerFilter` インスタンスを作成します。
     pub fn new(
         inner: Arc<dyn LlmProvider + Send + Sync>,
-        rules: Vec<HumanizerRule>,
+        rules: &'static [HumanizerRule],
         context: WritingContext,
     ) -> Self {
         Self {
@@ -66,7 +66,7 @@ impl HumanizerFilter {
 
         let mut current_text = text.to_string();
 
-        for rule in &self.rules {
+        for rule in self.rules {
             // コンテキスト判定
             if !rule.active_contexts.is_empty() && !rule.active_contexts.contains(&self.context) {
                 continue;
@@ -161,6 +161,7 @@ mod tests {
     use crate::llm::writing_context::WritingContext;
     use aiome_core::llm_provider::MockLlmProvider;
     use regex::Regex;
+    use std::sync::LazyLock;
 
     #[tokio::test]
     async fn test_em_dash_replacement() {
@@ -228,22 +229,73 @@ mod tests {
             should_fail: false,
         });
         // 特定のルールのみのテスト
-        let rules = vec![HumanizerRule {
-            name: "em_dash_replacement",
-            pattern: Regex::new(r"——").unwrap(),
-            action: HumanizerAction::Replace("、".to_string()),
-            active_contexts: vec![WritingContext::Chat], // Chatのみ有効
-        }];
+        static TEST_RULES: LazyLock<Vec<HumanizerRule>> = LazyLock::new(|| {
+            vec![HumanizerRule {
+                name: "em_dash_replacement",
+                pattern: Regex::new(r"——").unwrap(),
+                action: HumanizerAction::Replace("、".to_string()),
+                active_contexts: vec![WritingContext::Chat], // Chatのみ有効
+            }]
+        });
 
         let filter_manifesto =
-            HumanizerFilter::new(base.clone(), rules.clone(), WritingContext::Manifesto);
+            HumanizerFilter::new(base.clone(), &TEST_RULES, WritingContext::Manifesto);
         let res1 = filter_manifesto.complete("prompt", None).await.unwrap();
         // Manifestoではルール適用されない
         assert_eq!(res1.content, text);
 
-        let filter_chat = HumanizerFilter::new(base.clone(), rules, WritingContext::Chat);
+        let filter_chat = HumanizerFilter::new(base.clone(), &TEST_RULES, WritingContext::Chat);
         let res2 = filter_chat.complete("prompt", None).await.unwrap();
         // Chatでは適用される
         assert_eq!(res2.content, "これはテスト、です");
+    }
+
+    #[tokio::test]
+    async fn test_excessive_hedging_removal() {
+        let base = Arc::new(MockLlmProvider {
+            response: "明日は雨が降るかもしれない可能性がある。".into(),
+            should_fail: false,
+        });
+        // excessive_hedging は vec![WritingContext::TechLog, WritingContext::Chat, WritingContext::Default]
+        let filter = HumanizerFilter::new(base, default_rules_ja(), WritingContext::Default);
+        let res = filter.complete("prompt", None).await.unwrap();
+        assert_eq!(res.content, "明日は雨が降るだろう。");
+    }
+
+    #[tokio::test]
+    async fn test_filler_phrases_warning_only() {
+        let original_text = "雨であるため、結果として遅刻しました。";
+        let base = Arc::new(MockLlmProvider {
+            response: original_text.into(),
+            should_fail: false,
+        });
+        let filter = HumanizerFilter::new(base, default_rules_ja(), WritingContext::Default);
+        let res = filter.complete("prompt", None).await.unwrap();
+        // LogWarning なので置換されない
+        assert_eq!(res.content, original_text);
+    }
+
+    #[tokio::test]
+    async fn test_inflated_significance_removal() {
+        let base = Arc::new(MockLlmProvider {
+            response: "この結果は、新機能の重要性をさらに浮き彫りにしています。".into(),
+            should_fail: false,
+        });
+        let filter = HumanizerFilter::new(base, default_rules_ja(), WritingContext::Default);
+        let res = filter.complete("prompt", None).await.unwrap();
+        assert_eq!(res.content, "この結果は、新機能を示しています。");
+    }
+
+    #[tokio::test]
+    async fn test_ai_vocabulary_warning_only() {
+        let original_text = "さらに、新しい仕様が追加されました。";
+        let base = Arc::new(MockLlmProvider {
+            response: original_text.into(),
+            should_fail: false,
+        });
+        let filter = HumanizerFilter::new(base, default_rules_ja(), WritingContext::Default);
+        let res = filter.complete("prompt", None).await.unwrap();
+        // LogWarning なので置換されない
+        assert_eq!(res.content, original_text);
     }
 }

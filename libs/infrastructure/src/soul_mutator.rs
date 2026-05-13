@@ -384,6 +384,9 @@ mod tests {
         async fn cancel_job(&self, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
+        async fn append_job_karma_directives(&self, _: &str, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
         async fn update_job_status(
             &self,
             _: &str,
@@ -462,6 +465,9 @@ mod tests {
             Ok(1)
         }
         async fn clear_trajectory_steps(&self, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn update_trajectory_reward(&self, _: &str, _: f64) -> Result<(), AiomeError> {
             Ok(())
         }
 

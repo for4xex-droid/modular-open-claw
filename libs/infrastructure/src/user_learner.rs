@@ -56,7 +56,7 @@ impl UserLearner {
         &self,
         conversation_summary: &str,
     ) -> Result<bool, Box<dyn std::error::Error>> {
-        let resolver = shared::app_data::AppDataResolver::new();
+        let resolver = shared::app_data::AppDataResolver::new().unwrap();
         let user_path = resolver.resolve("USER.md").to_string_lossy().to_string();
         let current_user = std::fs::read_to_string(&user_path).unwrap_or_default();
 

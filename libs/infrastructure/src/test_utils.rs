@@ -92,6 +92,9 @@ pub mod job_queue_mock {
         async fn cancel_job(&self, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
+        async fn append_job_karma_directives(&self, _: &str, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
         async fn update_job_status(
             &self,
             _: &str,
@@ -157,6 +160,9 @@ pub mod job_queue_mock {
         }
         async fn clear_trajectory_steps(&self, _: &str) -> Result<(), AiomeError> {
             self.trajectory.lock().unwrap().clear();
+            Ok(())
+        }
+        async fn update_trajectory_reward(&self, _: &str, _: f64) -> Result<(), AiomeError> {
             Ok(())
         }
 

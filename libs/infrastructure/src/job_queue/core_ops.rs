@@ -38,6 +38,11 @@ pub trait CoreOps {
     async fn do_requeue_job(&self, job_id: &str) -> Result<(), AiomeError>;
     async fn do_cancel_job(&self, job_id: &str) -> Result<(), AiomeError>;
     async fn do_update_job_status(&self, job_id: &str, status: &str) -> Result<(), AiomeError>;
+    async fn do_append_job_karma_directives(
+        &self,
+        job_id: &str,
+        hint: &str,
+    ) -> Result<(), AiomeError>;
     async fn do_reclaim_zombie_jobs(&self, timeout_minutes: i64) -> Result<u64, AiomeError>;
     async fn do_set_creative_rating(&self, job_id: &str, rating: i32) -> Result<(), AiomeError>;
     async fn do_heartbeat_pulse(&self, job_id: &str) -> Result<(), AiomeError>;
@@ -362,6 +367,41 @@ impl CoreOps for UniversalJobQueue {
             self.pool.ph(2)
         );
         sql_exec!(&self.pool, &q, status, &now, job_id)?;
+        Ok(())
+    }
+
+    async fn do_append_job_karma_directives(
+        &self,
+        job_id: &str,
+        hint: &str,
+    ) -> Result<(), AiomeError> {
+        let job = self
+            .do_fetch_job(job_id)
+            .await?
+            .ok_or_else(|| AiomeError::ArtifactNotFound {
+                path: format!("job:{}", job_id),
+            })?;
+
+        let new_directives = match job.karma_directives {
+            Some(mut d) => {
+                if !d.ends_with('\n') {
+                    d.push('\n');
+                }
+                d.push_str("[Reflexion]: ");
+                d.push_str(hint);
+                d
+            }
+            None => format!("[Reflexion]: {}", hint),
+        };
+
+        let now = Utc::now().to_rfc3339();
+        let q = format!(
+            "UPDATE jobs SET karma_directives = {0}, updated_at = {1} WHERE id = {2}",
+            self.pool.ph(0),
+            self.pool.ph(1),
+            self.pool.ph(2)
+        );
+        sql_exec!(&self.pool, &q, new_directives, &now, job_id)?;
         Ok(())
     }
 
