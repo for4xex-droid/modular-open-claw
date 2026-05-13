@@ -26,8 +26,8 @@
 | `constraint_checker` | AgentRx における行動制約の検証エンジン。**Phase 55** で出力サイズ制限とエコー攻撃検知を追加。 | **Phase 55 完了** |
 | `context_engine` | 会話履歴や環境情報をLLMに提供。**Phase 2B** で感情履歴（Karma/somatic_valence）から動的 Mood を計算し、LLMプロンプトへ注入（Somatic Context & Emotional RAG）機能を追加。 | **Phase 2B 強化** |
 | `cortex_ingester`| LLMを用いたURL, テキスト, PDFからのドメイン特化型Markdownナレッジ抽出エンジン。 | **Phase A 完了** |
-| `cortex_compiler`| 未加工のドキュメント群から概念（Concepts）を抽出し、一貫したWiki記事を自律的にコンパイルするエンジン。 | **Phase B 完了** |
-| `cortex_query`   | 抽出済みのドキュメントやコンパイル済みWikiの双方に対して、セマンティックな意味検索を提供するエンジン。**Phase D** にてO(N)スキャンを排除する FTS5 高速化＋LIKEフォールバック機構付きの実稼働 O(1) パイプラインへ進化。 | **Phase D 完了** |
+| `cortex_compiler`| 未加工のドキュメント群から概念（Concepts）を抽出し、一貫したWiki記事を自律的にコンパイルするエンジン。Graphify抽出戦略に基づきリンクの `confidence` タグ (1.0/0.7/0.4) を算出する機能を搭載。 | **Phase B & CT 完了** |
+| `cortex_query`   | 抽出済みのドキュメントやコンパイル済みWikiの双方に対して、セマンティックな意味検索を提供するエンジン。FTS5 高速化に加え、Typed Linksの最小 `confidence` に基づく `evidence_quality` (extracted/inferred/ambiguous) 導出機能を統合済。 | **Phase D & CT 完了** |
 | `dataset_extractor` | SoulStoreから記憶（`experiences`）を抽出し、MLX LoRA学習用JSONLデータセットに動的に蒸留・フォーマット変換を行うETL基盤。スレッドセーフかつコンテキスト維持（破滅的忘却防止）を担う。 | **Phase 1A-2 完了** |
 | `diagnostics` | AgentRx の軌跡分析と自己診断（LLM Judge）。OpenAPI 公開および管理画面統合済。**Phase B**にて `FailureCategory` 別の集計を返す `/api/v1/audit/diagnostics/summary` API を追加。 | **Phase B 拡張済** |
 | `dream_state` | アイドル時の自律思考（探求夢・反省夢）の状態管理。api-server側で `DreamService` ランタイムとしてバックグラウンド統合完了。 | **インテリジェンス層統合完了** |
@@ -80,7 +80,7 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-05-14 (Asia/Tokyo) - Economic Observability Phase A & B*
+*最終更新: 2026-05-14 (Asia/Tokyo) - Cortex Intelligence Integration Phase AR*
 
 ## Phase 6 Integration Notes
 

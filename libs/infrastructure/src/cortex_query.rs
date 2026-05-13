@@ -766,7 +766,10 @@ mod tests {
         });
 
         let engine = CortexQueryEngine::new(provider, pool);
-        let ans = engine.query("What is the keyword?").await.unwrap();
+        let ans = engine
+            .query("What is the keyword?")
+            .await
+            .expect("query failed");
 
         assert!(ans.source_articles.contains(&"Topic A".to_string()));
         assert_eq!(ans.evidence_quality, Some("extracted".to_string()));

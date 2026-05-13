@@ -1,6 +1,12 @@
 ## [Unreleased]
 
 ### Added
+- **Cortex Intelligence Infrastructure**:
+  - Implemented Cortex Native Confidence Tags in `cortex_compiler` (CT-1) yielding 1.0, 0.7, or 0.4 scores based on Graphify context extraction strategies.
+  - Implemented `evidence_quality` logic in `CortexAnswer` inside `cortex_query`, mapping the `MIN(confidence)` of Typed Links to `extracted`, `inferred`, or `ambiguous`.
+  - Added `/api/v1/cortex/god-nodes` API endpoint for detecting central God Nodes based on connection counts inside `cortex_concept_index`.
+  - Finalized `ADR-042: Auto RIPPLE_MAP Architecture & Cortex Intelligence Integration` for strict AST dependency analysis and Zero-Panic architectural boundaries.
+
 - **Economic Observability (Phase A & B)**: 
   - Updated LLM pricing table in `dynamic.rs` to accurately track costs for `gemini-2.5-flash`, `gemini-2.5-pro`, `gpt-4.1`, and `claude-sonnet-4-20250514`.
   - Added `/api/v1/audit/diagnostics/summary` endpoint to `audit.rs` and `router.rs` to provide aggregated statistical summaries of failure categories across all jobs.
