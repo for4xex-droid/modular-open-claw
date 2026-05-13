@@ -532,6 +532,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit/diagnostics/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_diagnostics_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit/ledger": {
         parameters: {
             query?: never;
@@ -809,6 +825,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["export_dpo_dataset_handler"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cortex/god-nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["god_nodes_handler"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1667,6 +1699,11 @@ export interface components {
         AutoToggle: {
             enabled: boolean;
         };
+        CategoryCount: {
+            /** Format: int64 */
+            count: number;
+            failure_category: string;
+        };
         ChatMessage: {
             content: string;
             role: string;
@@ -1683,6 +1720,7 @@ export interface components {
             answer_md: string;
             /** Format: double */
             confidence: number;
+            evidence_quality?: string | null;
             question: string;
             source_articles: string[];
         };
@@ -1710,6 +1748,11 @@ export interface components {
             root_cause?: string | null;
             self_repair_hint?: string | null;
             timestamp?: string | null;
+        };
+        DiagnosisSummaryResponse: {
+            categories: components["schemas"]["CategoryCount"][];
+            /** Format: int64 */
+            total_diagnoses: number;
         };
         EkycSessionResponse: {
             session_id: string;
@@ -1801,6 +1844,10 @@ export interface components {
          * @enum {string}
          */
         GigOrderStatus: "Open" | "Bidding" | "Accepted" | "InProgress" | "Delivered" | "Verified" | "Rejected" | "Disputed" | "Completed" | "Cancelled";
+        GodNode: {
+            concept: string;
+            connections: number;
+        };
         GraphData: {
             edges: components["schemas"]["GraphEdge"][];
             nodes: components["schemas"]["GraphNode"][];
@@ -2070,9 +2117,14 @@ export interface components {
         QualityGateEntry: {
             conductor: string;
             created_at: string;
+            details?: string | null;
+            /** Format: double */
+            entropy_score?: number | null;
             id: string;
             job_id: string;
             passed: boolean;
+            /** Format: int32 */
+            retry_count?: number | null;
             /** Format: int64 */
             score: number;
         };
@@ -2237,6 +2289,8 @@ export interface components {
             interaction_id?: string | null;
             is_critical_failure: boolean;
             job_id?: string | null;
+            /** @description 実行時のシステムプロンプトハッシュ（一意性特定用） */
+            llm_prompt_hash?: string | null;
             output: unknown;
             /** @description Phase 48: 親ノードのハッシュ */
             parent_state_hash?: string | null;
@@ -2247,7 +2301,11 @@ export interface components {
             parent_step_id?: number | null;
             /** @description 「なぜこの行動を選んだか」の推論理由 */
             reasoning?: string | null;
-            /** @description Phase 48: DAG ノードのハッシュ（改ざん検知用） */
+            /**
+             * Format: double
+             * @description RL/Constitutional Validator による報酬シグナル (0.0 - 1.0)
+             */
+            reward_signal?: number | null;
             state_hash?: string | null;
             /** @description ステップの種別カテゴリ */
             step_category: components["schemas"]["StepCategory"];
@@ -3315,6 +3373,40 @@ export interface operations {
             };
         };
     };
+    get_diagnostics_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Aggregated diagnostics summary */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiagnosisSummaryResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_audit_ledger: {
         parameters: {
             query?: never;
@@ -3820,6 +3912,29 @@ export interface operations {
                 };
                 content: {
                     "text/plain": string;
+                };
+            };
+        };
+    };
+    god_nodes_handler: {
+        parameters: {
+            query?: {
+                /** @description Number of top nodes to return (default: 10, max: 50) */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successfully retrieved God Nodes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GodNode"][];
                 };
             };
         };

@@ -17,6 +17,7 @@ pub struct CortexAnswer {
     pub answer_md: String,
     pub source_articles: Vec<String>,
     pub confidence: f64,
+    pub evidence_quality: Option<String>,
 }
 
 /// Default maximum characters for context injection into LLM prompts.
@@ -121,6 +122,7 @@ impl CortexQueryEngine {
             answer_md: rlm_resp.content,
             source_articles: initial_context.source_articles,
             confidence: 0.95,
+            evidence_quality: initial_context.evidence_quality,
         })
     }
 
@@ -229,8 +231,23 @@ impl CortexQueryEngine {
         let mut context_text = String::new();
 
         let mut total_backlinks = 0usize;
+        let mut min_confidence: Option<f64> = None;
 
         for art_id in &article_ids_vec {
+            let conf_res: Result<Option<f64>, _> = sqlx::query_scalar(
+                "SELECT MIN(confidence) FROM cortex_typed_links WHERE source_article_id = $1 OR target_article_id = $2"
+            )
+            .bind(art_id)
+            .bind(art_id)
+            .fetch_one(sqlite_pool)
+            .await;
+
+            if let Ok(Some(c)) = conf_res {
+                if min_confidence.map_or(true, |curr| c < curr) {
+                    min_confidence = Some(c);
+                }
+            }
+
             let row_opt = sqlx::query(
                 "SELECT title, content_md, backlinks FROM cortex_wiki_articles WHERE id = ?",
             )
@@ -359,11 +376,22 @@ Provide your answer in JSON format exactly like this:
             tracing::warn!("Failed to log query activity: {}", e);
         }
 
+        let evidence_quality = min_confidence.map(|c| {
+            if c >= 0.8 {
+                "extracted".to_string()
+            } else if c >= 0.5 {
+                "inferred".to_string()
+            } else {
+                "ambiguous".to_string()
+            }
+        });
+
         Ok(CortexAnswer {
             question: question.to_string(),
             answer_md: final_answer_md,
             source_articles,
             confidence,
+            evidence_quality,
         })
     }
 
@@ -712,5 +740,35 @@ mod tests {
         assert!(ans.is_ok());
         let ans_val = ans.unwrap();
         assert_eq!(ans_val.answer_md, "Deeply reasoned context.");
+    }
+
+    #[tokio::test]
+    async fn test_evidence_quality_derivation() {
+        let pool = setup_db_pool().await;
+        let sqlite_pool = pool.get_sqlite_pool_or_err().unwrap();
+
+        // 1. Setup wiki articles
+        sqlx::query("INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash) VALUES ('art1', 'Topic A', 'content', 'hash')").execute(sqlite_pool).await.unwrap();
+        sqlx::query("INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash) VALUES ('art2', 'Topic B', 'content', 'hash')").execute(sqlite_pool).await.unwrap();
+
+        // 2. Setup concept index to link 'keyword' to both articles
+        sqlx::query("INSERT INTO cortex_concept_index (concept, article_ids) VALUES ('keyword', '[\"art1\", \"art2\"]')").execute(sqlite_pool).await.unwrap();
+
+        // 3. Setup typed links
+        // We will insert a link between art1 and art2 with confidence 0.8 -> extracted
+        sqlx::query("INSERT INTO cortex_typed_links (source_article_id, target_article_id, link_type, confidence) VALUES ('art1', 'art2', 'references', 0.85)").execute(sqlite_pool).await.unwrap();
+
+        let provider = Arc::new(MockLlmProvider {
+            responses: tokio::sync::Mutex::new(vec![
+                "[\"keyword\"]".to_string(), // extracted keyword
+                "{\"answer_md\": \"Answer\", \"confidence\": 0.9}".to_string(), // answer
+            ]),
+        });
+
+        let engine = CortexQueryEngine::new(provider, pool);
+        let ans = engine.query("What is the keyword?").await.unwrap();
+
+        assert!(ans.source_articles.contains(&"Topic A".to_string()));
+        assert_eq!(ans.evidence_quality, Some("extracted".to_string()));
     }
 }

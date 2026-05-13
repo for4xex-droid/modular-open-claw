@@ -737,17 +737,47 @@ Source Texts:
                         }
                     }
 
+                    let is_prev_boundary = if pos > 0 {
+                        content_md_lower[..pos]
+                            .chars()
+                            .last()
+                            .map_or(true, |c| !c.is_alphanumeric())
+                    } else {
+                        true
+                    };
+
+                    let end_pos = pos + target_title_lower.len();
+                    let is_next_boundary = if end_pos < content_md_lower.len() {
+                        content_md_lower[end_pos..]
+                            .chars()
+                            .next()
+                            .map_or(true, |c| !c.is_alphanumeric())
+                    } else {
+                        true
+                    };
+
+                    let exact_match = is_prev_boundary && is_next_boundary;
+
+                    let confidence = if derived_link_type != "references" {
+                        0.7
+                    } else if exact_match {
+                        1.0
+                    } else {
+                        0.4
+                    };
+
                     let evidence = context_window.to_string(); // Save lowered context as evidence to avoid byte slicing issues
 
                     if let Err(e) = sqlx::query(
-                        "INSERT INTO cortex_typed_links (source_article_id, target_article_id, link_type, evidence_text)
-                         VALUES ($1, $2, $3, $4)
-                         ON CONFLICT(source_article_id, target_article_id, link_type) DO UPDATE SET evidence_text = excluded.evidence_text"
+                        "INSERT INTO cortex_typed_links (source_article_id, target_article_id, link_type, evidence_text, confidence)
+                         VALUES ($1, $2, $3, $4, $5)
+                         ON CONFLICT(source_article_id, target_article_id, link_type) DO UPDATE SET evidence_text = excluded.evidence_text, confidence = excluded.confidence"
                     )
                     .bind(&id)
                     .bind(target_id)
                     .bind(derived_link_type)
                     .bind(evidence)
+                    .bind(confidence)
                     .execute(pool)
                     .await {
                         tracing::warn!(source = %id, target = %target_id, link_type = %derived_link_type, "Failed to upsert typed link: {}", e);

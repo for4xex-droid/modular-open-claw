@@ -158,10 +158,11 @@ async fn test_update_backlinks_and_typed_links() {
         source: String,
         target: String,
         link_type: String,
+        confidence: f64,
     }
 
     let links: Vec<TypedLinkRow> = sqlx::query_as::<_, TypedLinkRow>(
-        "SELECT source_article_id as source, target_article_id as target, link_type FROM cortex_typed_links ORDER BY source, target"
+        "SELECT source_article_id as source, target_article_id as target, link_type, confidence FROM cortex_typed_links ORDER BY source, target"
     )
     .fetch_all(sqlite_pool)
     .await
@@ -172,18 +173,30 @@ async fn test_update_backlinks_and_typed_links() {
         .find(|l| l.source == "art1" && l.target == "art2")
         .expect("A -> B exists");
     assert_eq!(a_b.link_type, "references");
+    assert_eq!(
+        a_b.confidence, 1.0,
+        "Exact title match should yield 1.0 confidence"
+    );
 
     let c_a = links
         .iter()
         .find(|l| l.source == "art3" && l.target == "art1")
         .expect("C -> A exists");
     assert_eq!(c_a.link_type, "contradicts");
+    assert_eq!(
+        c_a.confidence, 0.7,
+        "Keyword inferred match should yield 0.7 confidence"
+    );
 
     let c_b = links
         .iter()
         .find(|l| l.source == "art3" && l.target == "art2")
         .expect("C -> B exists");
     assert_eq!(c_b.link_type, "extends");
+    assert_eq!(
+        c_b.confidence, 0.7,
+        "Keyword inferred match should yield 0.7 confidence"
+    );
 }
 
 #[tokio::test]

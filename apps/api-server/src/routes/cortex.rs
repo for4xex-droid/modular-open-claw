@@ -6,7 +6,7 @@
  */
 use aiome_core::traits::SettingsOps;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
     Json,
@@ -504,4 +504,68 @@ pub async fn export_dpo_dataset_handler(
         ],
         jsonl,
     ))
+}
+
+#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct GodNode {
+    pub concept: String,
+    pub connections: usize,
+}
+
+#[derive(Deserialize)]
+pub struct GodNodeQuery {
+    pub limit: Option<usize>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/cortex/god-nodes",
+    params(
+        ("limit" = Option<usize>, Query, description = "Number of top nodes to return (default: 10, max: 50)")
+    ),
+    responses(
+        (status = 200, description = "Successfully retrieved God Nodes", body = [GodNode])
+    ),
+    security(
+        ("bearer" = [])
+    )
+)]
+pub async fn god_nodes_handler(
+    State(state): State<crate::app_state::AppState>,
+    Query(query): Query<GodNodeQuery>,
+    _auth: crate::auth::Authenticated,
+) -> Result<Json<Vec<GodNode>>, aiome_core::error::AiomeError> {
+    let limit = query.limit.unwrap_or(10).clamp(1, 50);
+    let pool = state.db_pool.get_sqlite_pool_or_err()?;
+
+    let rows =
+        sqlx::query("SELECT concept, article_ids FROM cortex_concept_index ORDER BY concept")
+            .fetch_all(pool)
+            .await
+            .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
+
+    use sqlx::Row;
+    let mut nodes = Vec::new();
+    for row in rows {
+        let concept = row.try_get::<String, _>("concept").unwrap_or_default();
+        let ids_json = row
+            .try_get::<String, _>("article_ids")
+            .unwrap_or_else(|_| "[]".to_string());
+        let connections = if let Ok(ids) = serde_json::from_str::<Vec<String>>(&ids_json) {
+            ids.len()
+        } else {
+            0
+        };
+        nodes.push(GodNode {
+            concept,
+            connections,
+        });
+    }
+
+    nodes.sort_by(|a, b| b.connections.cmp(&a.connections));
+    nodes.truncate(limit);
+
+    Ok(Json(nodes))
 }

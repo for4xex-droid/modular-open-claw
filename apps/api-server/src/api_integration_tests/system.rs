@@ -578,3 +578,19 @@ async fn test_metrics_observability() {
         "Custom metric aiome_api_requests_total is missing from Prometheus output!"
     );
 }
+
+#[tokio::test]
+async fn test_cortex_god_nodes() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let res = server
+        .get("/api/v1/cortex/god-nodes?limit=5")
+        .add_header(axum::http::header::AUTHORIZATION, bearer)
+        .await;
+
+    res.assert_status_ok();
+
+    let json = res.json::<serde_json::Value>();
+    assert!(json.is_array(), "Expected God Nodes to be an array");
+}

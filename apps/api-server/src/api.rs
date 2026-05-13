@@ -114,6 +114,7 @@ use utoipa::OpenApi;
         crate::routes::cortex::suggest_questions_handler,
         crate::routes::cortex::synth_dataset_handler,
         crate::routes::cortex::export_dpo_dataset_handler,
+        crate::routes::cortex::god_nodes_handler,
         // LoRA Marketplace
         crate::routes::lora_market::list_market,
         crate::routes::lora_market::publish_listing,
@@ -203,6 +204,7 @@ use utoipa::OpenApi;
             crate::routes::cortex::QueryReq,
             infrastructure::cortex_query::CortexAnswer,
             crate::routes::cortex::SynthReq,
+            crate::routes::cortex::GodNode,
             // LoRA Marketplace
             aiome_core_contracts::lora_marketplace::ListingStatus,
             aiome_core_contracts::lora_marketplace::PurchaseStatus,

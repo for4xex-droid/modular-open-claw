@@ -1789,6 +1789,46 @@
         ]
       }
     },
+    "/api/v1/cortex/god-nodes": {
+      "get": {
+        "tags": [
+          "crate::routes::cortex"
+        ],
+        "operationId": "god_nodes_handler",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of top nodes to return (default: 10, max: 50)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved God Nodes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GodNode"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/cortex/ingest": {
       "post": {
         "tags": [
@@ -3890,6 +3930,12 @@
             "type": "number",
             "format": "double"
           },
+          "evidence_quality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "question": {
             "type": "string"
           },
@@ -4341,6 +4387,22 @@
           "Completed",
           "Cancelled"
         ]
+      },
+      "GodNode": {
+        "type": "object",
+        "required": [
+          "concept",
+          "connections"
+        ],
+        "properties": {
+          "concept": {
+            "type": "string"
+          },
+          "connections": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
       },
       "GraphData": {
         "type": "object",

@@ -411,6 +411,7 @@ pub fn build_app(
                     "/dpo/dataset",
                     get(routes::cortex::export_dpo_dataset_handler),
                 )
+                .route("/god-nodes", get(routes::cortex::god_nodes_handler))
                 .route_layer(
                     tower::ServiceBuilder::new()
                         .layer(axum::error_handling::HandleErrorLayer::new(
