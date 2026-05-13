@@ -1,6 +1,11 @@
 ## [Unreleased]
 
 ### Added
+- **Sinking Ship #19 — Pre-migration Backup Guard**: `backup_sqlite_db_before_migration()` in `bootstrap.rs` automatically creates a `.pre_migration.bak` snapshot before `sqlx::migrate!()` runs. Skips `:memory:` and PostgreSQL paths. Non-fatal on failure.
+- **Sinking Ship #19 — SQLite Online Backup**: `scripts/backup.sh` now uses `sqlite3 .backup` for WAL-safe hot snapshots before tar archiving. Falls back gracefully when `sqlite3` is unavailable.
+- **Sinking Ship #19 — Backup Scheduling**: Added `AIOME_BACKUP_DIR` and `AIOME_MAX_BACKUPS` to `.env.example` with cron scheduling instructions.
+
+### Added
 - **Phase G Observability**: Expanded `TrajectoryStep` with `reward_signal` and `llm_prompt_hash` for Reinforcement Learning feedback loop.
 - **Phase G Observability**: Added `total_tokens` and `response_time_ms` telemetry to `ProxyResponse` in `key-proxy` for LLM performance tracking.
 - **Phase G Observability**: Implemented `TrajectoryToTripletAdapter` with `ConstitutionalValidator` integration to extract RLHF-ready `TrajectoryTriplet`s safely.

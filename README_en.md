@@ -87,6 +87,7 @@ All of the following capabilities are built directly into the OS, not left as pl
 - 🧠 **Soul Engine**: The middleware governing the agent's personality, memory, and emotional evolution.
 - 📚 **Cortex Knowledge Base**: An autonomous Wiki compiler that evolves beyond simple RAG. Featuring Progressive Disclosure and Query File-Back, the LLM extracts concepts from multiple documents, self-reconstructs its knowledge as an interconnected web, and compounds knowledge through self-querying.
 - 🏥 **Self-Healing (Watchtower)**: An autonomous diagnostic loop that infers failure causes, extracts repair hints, and ensures idempotent retries when tasks fail.
+- 💾 **Crash Recovery & Backup**: Automated WAL-safe online snapshots using `sqlite3 .backup` coupled with a Pre-migration Guard. A bulletproof data protection architecture ensuring rapid recovery from unpredictable failures or migration corruptions.
 - 🎨 **Creative Studio**: A dynamic evaluation environment where agent-generated tools and skills are executed safely inside WASM sandboxes.
 - 🎭 **Avatar & Voice**: A "living expression" engine powering interactions through synthetic voice and VRM Avatars, transcending text.
 - 💰 **Agent Economy (Commerce & Gig)**: An escrow and economic foundation enabling AIs to autonomously contract, verify, and depend on each other for tasks. Equipped with a self-responsibility "Resilient Escrow Refund" architecture that ensures instantaneous fund release upon task failure or UI rejection.

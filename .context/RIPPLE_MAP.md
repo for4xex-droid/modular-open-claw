@@ -623,6 +623,20 @@
     - `backup.sh` のリストア操作は新しいディレクトリ構造に依存するため、旧形式のバックアップ tar は手動マイグレーションが必要。
     - TimesFM ポート変更により `TIMESFM_SIDECAR_URL` を手動で設定しているユーザーは `.env` 更新が必要。
 
+## Sinking Ship #19: Automated Backup Strategy
+### 1. Pre-migration Backup Guard + SQLite Online Backup
+- **変更内容**:
+    - `apps/api-server/src/bootstrap.rs` [MODIFY]: `backup_sqlite_db_before_migration()` 関数を追加。`init_database()` 内の `UniversalJobQueue::new()` 呼び出し直前に `config.db_path` を用いて `std::fs::copy()` による `.pre_migration.bak` スナップショットを自動生成。`:memory:` および PostgreSQL パスは自動スキップ。失敗は非致命的（`warn!` のみ）。
+    - `scripts/backup.sh` [MODIFY]: L45-46 のコメントを実コードに昇格。`sqlite3 .backup` による WAL-safe ホットスナップショットを tar アーカイブ前に実行。`sqlite3` 未インストール環境では tar フォールバック。tar 後に `.db.bak` ファイルを自動クリーンアップ。
+    - `.env.example` [MODIFY]: `AIOME_BACKUP_DIR`, `AIOME_MAX_BACKUPS` セクションと cron スケジューリング手順を追記。
+    - `libs/shared/src/config.rs` [MODIFY]: `AiomeConfig::default()` 内の `unwrap()` を `expect()` に修正（Zero-Panic Policy 準拠）。
+- **波及効果**:
+    - `backup_sqlite_db_before_migration()` は `bootstrap.rs::init_database()` からのみ呼び出される。戻り値の型変更なし → 呼び出し元への影響ゼロ。
+    - テスト環境（`:memory:` SQLite）では自動スキップされるため CI 破壊リスクなし。
+    - `.gitignore` に `*.bak` が既存のため、`.pre_migration.bak` が誤コミットされるリスクなし。
+
+
+
 ## Sprint F: A2UI Generative Interface (Phase 0)
 ### 1. SSE Stream → Frontend Rendering Pipeline
 - **変更内容**:

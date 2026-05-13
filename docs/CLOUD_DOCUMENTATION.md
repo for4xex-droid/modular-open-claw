@@ -26,6 +26,10 @@ Welcome to the Aiome project documentation. This wiki is automatically generated
 - [soul](./soul.md)
 - [infrastructure](./infrastructure.md)
 
+## 🛠️ Operations
+
+- [Backup Strategy](./operations/BACKUP.md)
+
 ## 🛡️ Iron Principles
 
 - **Result Type Mandatory**: `unwrap()` and `expect()` are forbidden.

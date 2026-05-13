@@ -18,6 +18,9 @@ If you uncover a vector that allows an Agent to bypass the `AdaptiveImmuneSystem
 For commerce and gig features, Aiome uses the `StripeCommerceEngine`. To ensure absolute security in production environments, the engine enforces a strict "Fail-Closed" policy.
 If the `AIOME_DEV_MODE` environment variable is not explicitly set to `true` (or when running in Release mode), using test webhook secrets (e.g., `whsec_test`) will actively block the webhook verification process. Ensure `AIOME_DEV_MODE="false"` is set or omitted in your production deployments to prevent test-bypass vulnerabilities.
 
+## Data Protection & Incident Recovery
+Aiome employs an automatic Pre-migration Guard and supports WAL-safe SQLite Online Backups to protect against data loss from database corruption or failed migrations. If an agent goes rogue or a systemic failure occurs, operators can securely revert to the most recent snapshot without data inconsistency. Please refer to the Operations Manual for backup scheduling.
+
 ## Reporting a Vulnerability
 
 **Please do not report security vulnerabilities through public GitHub issues.**

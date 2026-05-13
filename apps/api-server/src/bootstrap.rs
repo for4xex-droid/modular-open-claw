@@ -461,6 +461,9 @@ pub async fn init_database(preflight: &PreflightResult) -> anyhow::Result<Databa
         Arc::new(infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(ts_pool))
     };
 
+    // 🛡️ Pre-migration automatic backup (Sinking Ship Audit #19)
+    backup_sqlite_db_before_migration(&config.db_path);
+
     let job_queue =
         infrastructure::job_queue::UniversalJobQueue::new(db_pool.clone(), None, trajectory_store)
             .await
@@ -1955,6 +1958,38 @@ pub async fn spawn_background_workers(
     Ok(())
 }
 
+fn backup_sqlite_db_before_migration(db_path: &str) {
+    if !db_path.starts_with("postgres://")
+        && !db_path.starts_with("postgresql://")
+        && !db_path.contains(":memory:")
+    {
+        let db_file = db_path
+            .strip_prefix("sqlite://")
+            .or_else(|| db_path.strip_prefix("sqlite:"))
+            .unwrap_or(db_path);
+
+        let bak_path = format!("{}.pre_migration.bak", db_file);
+
+        if std::path::Path::new(db_file).exists() {
+            match std::fs::copy(db_file, &bak_path) {
+                Ok(bytes) => {
+                    tracing::info!(
+                        "📸 [Backup] Pre-migration snapshot: {} ({} bytes)",
+                        bak_path,
+                        bytes
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "⚠️ [Backup] Pre-migration snapshot failed (non-fatal): {}",
+                        e
+                    );
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1988,5 +2023,77 @@ mod tests {
 
         assert!(is_secure_production_secret("my_super_secret_key_123!@#")); // Valid (26 chars)
         assert!(is_secure_production_secret("1234567890123456")); // Valid (16 chars)
+    }
+
+    #[test]
+    fn test_backup_sqlite_db_before_migration() {
+        use std::io::Write;
+
+        let dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let db_file = dir.path().join("test.db");
+        let mut file = std::fs::File::create(&db_file).expect("Failed to create test DB");
+        file.write_all(b"dummy db content")
+            .expect("Failed to write test data");
+
+        let db_path = format!("sqlite://{}", db_file.to_string_lossy());
+        backup_sqlite_db_before_migration(&db_path);
+
+        let bak_path = format!("{}.pre_migration.bak", db_file.to_string_lossy());
+        assert!(
+            std::path::Path::new(&bak_path).exists(),
+            "Backup file should be created"
+        );
+
+        let content = std::fs::read_to_string(&bak_path).expect("Failed to read backup");
+        assert_eq!(content, "dummy db content");
+    }
+
+    #[test]
+    fn test_backup_skips_memory_db() {
+        backup_sqlite_db_before_migration(":memory:");
+        // No file should be created — :memory: is an in-memory DB.
+        // If it tried to copy, it would panic. Success = no panic.
+    }
+
+    #[test]
+    fn test_backup_skips_postgres() {
+        backup_sqlite_db_before_migration("postgres://user:pass@localhost/aiome");
+        backup_sqlite_db_before_migration("postgresql://user:pass@localhost/aiome");
+        // No file operations should occur for PostgreSQL URLs.
+    }
+
+    #[test]
+    fn test_backup_skips_nonexistent_file() {
+        let dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let db_file = dir.path().join("nonexistent.db");
+        let db_path = format!("sqlite://{}", db_file.to_string_lossy());
+
+        backup_sqlite_db_before_migration(&db_path);
+
+        let bak_path = format!("{}.pre_migration.bak", db_file.to_string_lossy());
+        assert!(
+            !std::path::Path::new(&bak_path).exists(),
+            "Backup file should NOT be created for nonexistent DB"
+        );
+    }
+
+    #[test]
+    fn test_backup_with_bare_path_no_prefix() {
+        use std::io::Write;
+
+        let dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let db_file = dir.path().join("bare.db");
+        let mut file = std::fs::File::create(&db_file).expect("Failed to create test DB");
+        file.write_all(b"bare path content")
+            .expect("Failed to write");
+
+        // Test with raw path (no sqlite:// prefix)
+        backup_sqlite_db_before_migration(&db_file.to_string_lossy());
+
+        let bak_path = format!("{}.pre_migration.bak", db_file.to_string_lossy());
+        assert!(
+            std::path::Path::new(&bak_path).exists(),
+            "Backup should work with bare file paths too"
+        );
     }
 }

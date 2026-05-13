@@ -42,12 +42,25 @@ command_backup() {
     # but for SQLite it's safest to run this while API is stopped, or rely on .backup command)
     echo "Compressing $DATA_DIR -> $TAR_FILE"
     
-    # Optional: if you want perfect SQLite backup without stopping container,
-    # you could do: sqlite3 data/api/aiome.db ".backup 'data/api/aiome.db.bak'"
-    # and then archive the .bak file. Here we just archive the directory.
+    # 🛡️ SQLite Online Backup (WAL-safe hot snapshot)
+    if command -v sqlite3 >/dev/null 2>&1; then
+        for DB_FILE in "$DATA_DIR"/api/*.db "$DATA_DIR"/hub/*.db "$DATA_DIR"/nurture/*.db; do
+            if [ -f "$DB_FILE" ]; then
+                echo "  📸 Creating WAL-safe snapshot: ${DB_FILE}.bak"
+                sqlite3 "$DB_FILE" ".backup '${DB_FILE}.bak'" 2>/dev/null || {
+                    echo "  ⚠️  sqlite3 .backup failed for $DB_FILE (continuing with tar fallback)"
+                }
+            fi
+        done
+    else
+        echo "  ℹ️  sqlite3 not found — using tar-only backup (WAL consistency not guaranteed)"
+    fi
     
     # 🛡️ O-1: セル内の全サブディレクトリ (api, hub, nurture) をバックアップ
     tar -czf "$TAR_FILE" -C "$(dirname "$DATA_DIR")" "$(basename "$DATA_DIR")/"
+    
+    # 🧹 Cleanup temporary .bak snapshots (already archived in tar)
+    find "$DATA_DIR" -name "*.db.bak" -type f -delete 2>/dev/null || true
     
     # 1.5 Database Encryption Audit Check (Step 2)
     echo "Verifying Database Encryption Status..."

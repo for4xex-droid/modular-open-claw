@@ -166,6 +166,11 @@ AIの性格や話し方を定義するファイルです。オンボーディン
 ### 5.3 DB ファイルの場所
 SQLite DB は `workspace/aiome.db` に自動作成されます。
 
+### 5.4 Data Protection & Backups
+システム保護のため、2層のバックアップ機構が動作します。
+1. **Pre-Migration Guard**: 起動時（マイグレーション前）に自動で `.pre_migration.bak` スナップショットを作成し、スキーマ変更失敗時のロールバックを担保します。
+2. **Automated Rolling Backups (Cron推奨)**: WAL-safe なホットスナップショットと世代管理を行うスクリプトが用意されています。詳細は [`docs/operations/BACKUP.md`](../operations/BACKUP.md) を参照してください。
+
 ---
 
 ## 6. Monitoring (監視)

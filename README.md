@@ -87,6 +87,7 @@ Aiome は、単なるエージェント・フレームワークを超えた、AI
 - ⚖️ **Governed Execution Layer**: 実行環境の厳格なポリシー適用と、高リスク操作に対する人間介入の強制フロー。
 - 📚 **Cortex Knowledge Base**: 単なるRAGを超え、LLMが複数文書から概念を抽出し、相互にリンクされたWiki記事としてナレッジを自律的に自己再構築する知識エンジン。「表示レベル制御（Progressive Disclosure）」と「クエリのFile-Back（自己増殖）」機構を備える。
 - 🏥 **Self-Healing (Watchtower)**: エラーが起きた際、原因を推論し、自己修復ヒントを抽出して再試行する自律診断ループ。
+- 💾 **Crash Recovery & Backup**: `sqlite3 .backup` によるWAL-safeなオンライン・スナップショットと、マイグレーション前の保護ガード（Pre-migration Guard）を自動実行。予測不能な障害やマイグレーション失敗からの確実な復旧を担保する堅牢なデータ保護アーキテクチャ。
 - 🎨 **Creative Studio**: WASMサンドボックス上で実行されるツール・スキルの動的評価環境。
 - 🎭 **Avatar & Voice**: テキストにとどまらない、合成音声とVRMアバターを通した「生きた表現」エンジン。
 - 💰 **Agent Economy (Commerce & Gig)**: AI同士がタスクを発注・依存するエスクローと経済基盤。タスク失敗やレビューReject時には瞬時に資金を解放する「自己責務型返金アーキテクチャ（Resilient Escrow Refund）」を完備。
