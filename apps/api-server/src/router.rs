@@ -182,6 +182,10 @@ pub fn build_app(
                 .route("/ledger", get(routes::audit::get_audit_ledger))
                 .route("/prompt-stats", get(routes::audit::get_audit_prompt_stats))
                 .route("/diagnostics", get(routes::audit::get_diagnoses))
+                .route(
+                    "/diagnostics/summary",
+                    get(routes::audit::get_diagnostics_summary),
+                )
                 .route("/quarantine", get(routes::audit::get_quarantined_assets))
                 .route(
                     "/quarantine/:id/release",

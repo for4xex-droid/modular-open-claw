@@ -152,6 +152,20 @@ pub struct DiagnosisResponse {
     pub timestamp: Option<String>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, utoipa::ToSchema, Debug, PartialEq)]
+pub struct DiagnosisSummaryResponse {
+    pub total_diagnoses: i64,
+    pub categories: Vec<CategoryCount>,
+}
+
+#[derive(
+    serde::Serialize, serde::Deserialize, sqlx::FromRow, utoipa::ToSchema, Debug, PartialEq,
+)]
+pub struct CategoryCount {
+    pub failure_category: String,
+    pub count: i64,
+}
+
 #[derive(serde::Serialize, utoipa::ToSchema)]
 pub struct TrendsResponse {
     pub trends: Vec<aiome_core::traits::TrendItem>,

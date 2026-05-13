@@ -1,5 +1,17 @@
 # 🌊 Aiome Ripple Map
 
+## Phase A & B: Economic Observability & Quality Gates
+### 1. Cost Tracking & Diagnostics Summary
+- **変更内容**:
+    - `libs/infrastructure/src/llm/dynamic.rs` [MODIFY]: LLM 料金テーブルに `gemini-2.5-flash`, `gemini-2.5-pro`, `gpt-4.1`, `claude-sonnet-4-20250514` 等の最新モデルを追加。
+    - `apps/api-server/src/routes/general.rs` [MODIFY]: `DiagnosisSummaryResponse`, `CategoryCount` のレスポンス型を追加。
+    - `apps/api-server/src/routes/audit.rs` [MODIFY]: `get_diagnostics_summary` ハンドラを実装し、全ジョブのエラーカテゴリ別統計情報を提供。
+    - `apps/api-server/src/router.rs` [MODIFY]: `/api/v1/audit/diagnostics/summary` ルートを登録。
+    - `apps/api-server/src/api_integration_tests/system.rs` [MODIFY]: `test_diagnostics_summary_api` TDDテストを追加し、FK制約対応と正常稼働を確認。
+- **波及効果**:
+    - Aiome インフラがプロバイダー別のコストを正確に把握可能になり、ダッシュボードでの Unit Economics 管理が完成。
+    - エラーカテゴリ (FailureCategory) の集計 API により、LLM エラーや PlanAdherenceFailure 等のトレンドを俯瞰的に分析可能となった。
+
 ## Phase E: TaskOrchestrator Reflexion Loop
 ### 1. Self-Repair Hint Injection & Retry Mechanics
 - **変更内容**:

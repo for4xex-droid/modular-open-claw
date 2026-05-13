@@ -7,7 +7,8 @@
 
 use crate::error::AppError;
 use crate::routes::general::{
-    AuditLedgerResponse, DiagnosisResponse, LogEntryResponse, PromptStatsResponse,
+    AuditLedgerResponse, CategoryCount, DiagnosisResponse, DiagnosisSummaryResponse,
+    LogEntryResponse, PromptStatsResponse,
 };
 use crate::AppState;
 use aiome_core::traits::*;
@@ -150,6 +151,56 @@ pub async fn get_diagnoses(
     })?;
 
     Ok(Json(diagnoses))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/audit/diagnostics/summary",
+    responses(
+        (status = 200, description = "Aggregated diagnostics summary", body = DiagnosisSummaryResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn get_diagnostics_summary(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+) -> Result<Json<DiagnosisSummaryResponse>, AppError> {
+    // Defense-in-Depth: Admin/System ロール検証（ミドルウェアと二重チェック）
+    if !auth
+        .roles
+        .iter()
+        .any(|r| matches!(r, Role::Admin | Role::System))
+    {
+        return Err(aiome_core::error::AiomeError::SecurityViolation {
+            reason: "Access denied: Admin or System role required".to_string(),
+        }
+        .into());
+    }
+
+    let pool = state.db_pool.get_inner().get_sqlite_pool_or_err()?;
+
+    let total_row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM agent_diagnoses")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
+            reason: format!("DB Error: {}", e),
+        })?;
+
+    let categories: Vec<CategoryCount> = sqlx::query_as(
+        "SELECT failure_category, COUNT(*) as count FROM agent_diagnoses GROUP BY failure_category",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
+        reason: format!("DB Error: {}", e),
+    })?;
+
+    Ok(Json(DiagnosisSummaryResponse {
+        total_diagnoses: total_row.0,
+        categories,
+    }))
 }
 
 #[utoipa::path(

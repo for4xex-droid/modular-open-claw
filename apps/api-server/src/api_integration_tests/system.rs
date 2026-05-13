@@ -153,6 +153,104 @@ async fn test_diagnostics_api() {
     let json = resp.json::<serde_json::Value>();
     assert!(json.as_array().is_some());
 }
+
+#[serial]
+#[tokio::test]
+async fn test_diagnostics_summary_api() {
+    let (server, state, _tmp) = create_test_server().await;
+
+    // Arrange: Insert some test diagnoses with categories
+    let db_pool = state.db_pool.get_inner().get_sqlite_pool_or_err().unwrap();
+
+    // Insert parent jobs first to satisfy FK constraint
+    let insert_job_sql = "INSERT INTO jobs (id, category, topic, style_name, karma_directives, status) VALUES (?, 'test_cat', 'test_topic', 'test_style', '[]', 'Failed')";
+    sqlx::query(insert_job_sql)
+        .bind("job1")
+        .execute(db_pool)
+        .await
+        .unwrap();
+    sqlx::query(insert_job_sql)
+        .bind("job2")
+        .execute(db_pool)
+        .await
+        .unwrap();
+    sqlx::query(insert_job_sql)
+        .bind("job3")
+        .execute(db_pool)
+        .await
+        .unwrap();
+
+    sqlx::query(
+        "INSERT INTO agent_diagnoses (job_id, critical_failure_step, failure_category, root_cause, evidence, self_repair_hint, diagnosed_at) 
+         VALUES (?, 1, 'PlanAdherenceFailure', 'r1', 'e1', 'h1', '2026-05-13T00:00:00Z')"
+    ).bind("job1").execute(db_pool).await.unwrap();
+
+    sqlx::query(
+        "INSERT INTO agent_diagnoses (job_id, critical_failure_step, failure_category, root_cause, evidence, self_repair_hint, diagnosed_at) 
+         VALUES (?, 2, 'PlanAdherenceFailure', 'r2', 'e2', 'h2', '2026-05-13T00:00:00Z')"
+    ).bind("job2").execute(db_pool).await.unwrap();
+
+    sqlx::query(
+        "INSERT INTO agent_diagnoses (job_id, critical_failure_step, failure_category, root_cause, evidence, self_repair_hint, diagnosed_at) 
+         VALUES (?, 3, 'SystemFailure', 'r3', 'e3', 'h3', '2026-05-13T00:00:00Z')"
+    ).bind("job3").execute(db_pool).await.unwrap();
+
+    let resp = server
+        .get("/api/v1/audit/diagnostics/summary")
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer mock_valid_token_admin:{}", uuid::Uuid::new_v4()),
+        )
+        .await;
+
+    if resp.status_code() != StatusCode::OK {
+        let err_text = resp.text();
+        panic!(
+            "Diagnostics summary API failed with status: {}, body: {:?}",
+            resp.status_code(),
+            err_text
+        );
+    }
+    let json = resp.json::<serde_json::Value>();
+    assert_eq!(json.get("total_diagnoses").unwrap().as_i64().unwrap(), 3);
+
+    let categories = json.get("categories").unwrap().as_array().unwrap();
+    assert_eq!(categories.len(), 2);
+
+    let mut plan_count = 0;
+    let mut sys_count = 0;
+    for cat in categories {
+        let name = cat.get("failure_category").unwrap().as_str().unwrap();
+        let count = cat.get("count").unwrap().as_i64().unwrap();
+        if name == "PlanAdherenceFailure" {
+            plan_count = count;
+        }
+        if name == "SystemFailure" {
+            sys_count = count;
+        }
+    }
+    assert_eq!(plan_count, 2);
+    assert_eq!(sys_count, 1);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_diagnostics_summary_api_forbidden() {
+    let (server, _state, _tmp) = create_test_server().await;
+
+    // Non-admin user should be rejected
+    let other_id = uuid::Uuid::new_v4();
+    let other_auth = format!("Bearer mock_valid_token_testuser:{}", other_id);
+    let resp = server
+        .get("/api/v1/audit/diagnostics/summary")
+        .add_header(axum::http::header::AUTHORIZATION, &other_auth)
+        .await;
+    assert_eq!(
+        resp.status_code(),
+        axum::http::StatusCode::FORBIDDEN,
+        "Non-admin users should not access diagnostics summary"
+    );
+}
 #[serial]
 #[tokio::test]
 async fn test_artifacts_api() {

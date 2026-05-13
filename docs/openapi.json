@@ -1139,6 +1139,37 @@
         ]
       }
     },
+    "/api/v1/audit/diagnostics/summary": {
+      "get": {
+        "tags": [
+          "crate::routes::audit"
+        ],
+        "operationId": "get_diagnostics_summary",
+        "responses": {
+          "200": {
+            "description": "Aggregated diagnostics summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagnosisSummaryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/audit/ledger": {
       "get": {
         "tags": [
@@ -3786,6 +3817,22 @@
           }
         }
       },
+      "CategoryCount": {
+        "type": "object",
+        "required": [
+          "failure_category",
+          "count"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "failure_category": {
+            "type": "string"
+          }
+        }
+      },
       "ChatMessage": {
         "type": "object",
         "required": [
@@ -3965,6 +4012,25 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "DiagnosisSummaryResponse": {
+        "type": "object",
+        "required": [
+          "total_diagnoses",
+          "categories"
+        ],
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryCount"
+            }
+          },
+          "total_diagnoses": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

@@ -1035,22 +1035,7 @@ pub async fn log_evaluation(
     token_in: Option<i64>,
     token_out: Option<i64>,
 ) {
-    // Gap #4 Fix: Inject cost_usd / token logic here
-    let cost = match model.as_str() {
-        "gpt-4o" => {
-            (token_in.unwrap_or(0) as f64 * 5.0 / 1_000_000.0)
-                + (token_out.unwrap_or(0) as f64 * 15.0 / 1_000_000.0)
-        }
-        "claude-3-5-sonnet-20241022" | "claude-3-7-sonnet" => {
-            (token_in.unwrap_or(0) as f64 * 3.0 / 1_000_000.0)
-                + (token_out.unwrap_or(0) as f64 * 15.0 / 1_000_000.0)
-        }
-        "gemini-1.5-pro-002" | "gemini-2.0-flash-exp" => {
-            (token_in.unwrap_or(0) as f64 * 1.25 / 1_000_000.0)
-                + (token_out.unwrap_or(0) as f64 * 5.0 / 1_000_000.0)
-        }
-        _ => 0.0, // Default internal model -> 0 cost
-    };
+    let cost = calculate_cost_usd(&model, token_in, token_out);
 
     if let Err(e) = logger
         .log(crate::llm::evaluation_logger::EvaluationLogEntry {
@@ -1069,6 +1054,85 @@ pub async fn log_evaluation(
         tracing::warn!(
             "Observability: evaluation log write failed (non-fatal): {}",
             e
+        );
+    }
+}
+
+/// Returns (input_cost_per_million, output_cost_per_million) for a given model.
+/// Returns None for local/unknown models (cost = 0).
+fn model_pricing(model: &str) -> Option<(f64, f64)> {
+    match model {
+        "gpt-4o" => Some((5.0, 15.0)),
+        "gpt-4.1" => Some((2.0, 8.0)),
+        "gpt-4.1-mini" => Some((0.4, 1.6)),
+        "claude-3-5-sonnet-20241022" | "claude-3-7-sonnet" | "claude-sonnet-4-20250514" => {
+            Some((3.0, 15.0))
+        }
+        "claude-opus-4-20250514" => Some((15.0, 75.0)),
+        "gemini-1.5-pro-002" | "gemini-2.0-flash-exp" => Some((1.25, 5.0)),
+        "gemini-2.5-flash" => Some((0.15, 0.60)),
+        "gemini-2.5-pro" => Some((1.25, 10.0)),
+        _ => None, // Local/internal model -> 0 cost
+    }
+}
+
+pub fn calculate_cost_usd(model: &str, token_in: Option<i64>, token_out: Option<i64>) -> f64 {
+    let Some((input_rate, output_rate)) = model_pricing(model) else {
+        return 0.0;
+    };
+    let input_tokens = token_in.unwrap_or(0).max(0) as f64;
+    let output_tokens = token_out.unwrap_or(0).max(0) as f64;
+    (input_tokens * input_rate / 1_000_000.0) + (output_tokens * output_rate / 1_000_000.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cost_calculation_per_model() {
+        let t_in = Some(1_000_000);
+        let t_out = Some(1_000_000);
+
+        // 既存モデルの正常系テスト
+        assert_eq!(calculate_cost_usd("gpt-4o", t_in, t_out), 20.0); // $5 + $15
+        assert_eq!(calculate_cost_usd("claude-3-7-sonnet", t_in, t_out), 18.0); // $3 + $15
+
+        // 2025-2026 新規モデル
+        assert_eq!(calculate_cost_usd("gemini-2.5-flash", t_in, t_out), 0.75); // $0.15 + $0.60
+        assert_eq!(calculate_cost_usd("gemini-2.5-pro", t_in, t_out), 11.25); // $1.25 + $10.00
+        assert_eq!(calculate_cost_usd("gpt-4.1", t_in, t_out), 10.0); // $2.00 + $8.00
+        assert_eq!(calculate_cost_usd("gpt-4.1-mini", t_in, t_out), 2.0); // $0.40 + $1.60
+        assert_eq!(
+            calculate_cost_usd("claude-sonnet-4-20250514", t_in, t_out),
+            18.0
+        );
+        assert_eq!(
+            calculate_cost_usd("claude-opus-4-20250514", t_in, t_out),
+            90.0
+        );
+
+        // ローカルモデル（Ollama等）は無料
+        assert_eq!(calculate_cost_usd("qwen3.5:9b", t_in, t_out), 0.0);
+    }
+
+    #[test]
+    fn test_cost_calculation_edge_cases() {
+        // None トークン → 0 コスト
+        assert_eq!(calculate_cost_usd("gpt-4o", None, None), 0.0);
+        assert_eq!(calculate_cost_usd("gpt-4o", Some(1000), None), 0.005);
+        assert_eq!(calculate_cost_usd("gpt-4o", None, Some(1000)), 0.015);
+
+        // 未知のモデル → 0 コスト
+        assert_eq!(
+            calculate_cost_usd("unknown-model-v99", Some(1_000_000), Some(1_000_000)),
+            0.0
+        );
+
+        // 空文字モデル → 0 コスト
+        assert_eq!(
+            calculate_cost_usd("", Some(1_000_000), Some(1_000_000)),
+            0.0
         );
     }
 }

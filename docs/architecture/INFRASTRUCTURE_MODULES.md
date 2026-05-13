@@ -29,7 +29,7 @@
 | `cortex_compiler`| 未加工のドキュメント群から概念（Concepts）を抽出し、一貫したWiki記事を自律的にコンパイルするエンジン。 | **Phase B 完了** |
 | `cortex_query`   | 抽出済みのドキュメントやコンパイル済みWikiの双方に対して、セマンティックな意味検索を提供するエンジン。**Phase D** にてO(N)スキャンを排除する FTS5 高速化＋LIKEフォールバック機構付きの実稼働 O(1) パイプラインへ進化。 | **Phase D 完了** |
 | `dataset_extractor` | SoulStoreから記憶（`experiences`）を抽出し、MLX LoRA学習用JSONLデータセットに動的に蒸留・フォーマット変換を行うETL基盤。スレッドセーフかつコンテキスト維持（破滅的忘却防止）を担う。 | **Phase 1A-2 完了** |
-| `diagnostics` | AgentRx の軌跡分析と自己診断（LLM Judge）。OpenAPI 公開および管理画面統合済。 | **Phase 8.8** |
+| `diagnostics` | AgentRx の軌跡分析と自己診断（LLM Judge）。OpenAPI 公開および管理画面統合済。**Phase B**にて `FailureCategory` 別の集計を返す `/api/v1/audit/diagnostics/summary` API を追加。 | **Phase B 拡張済** |
 | `dream_state` | アイドル時の自律思考（探求夢・反省夢）の状態管理。api-server側で `DreamService` ランタイムとしてバックグラウンド統合完了。 | **インテリジェンス層統合完了** |
 | `forecast` | Google `timesfm-2.5-200m-pytorch` と通信し、成長停滞等の時系列予測を透過的に返す `ForecastProvider` トレイトの実装。 | **Phase 3D 完了** |
 | `heartbeat_wakeup` | 定期的な自己診断とプロアクティブなアクションのトリガー。 | 実装完了 |
@@ -38,7 +38,7 @@
 | `cortex_file_projector` | ADR-025: Duke大学研究に基づき、Cortex Wiki記事をファイルシステム階層（カテゴリ/記事.md）として物理投影。`content_hash` 差分更新により冪等性を保証し、DreamState の Agent-Native Discovery モードで自律探索精度を向上。 | **ADR-025 実装完了** |
 | `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済。**Federation v1.5** で P2pSanitizer 防御壁を追加し、SamsaraHub へのペイロードを CSAM / Toxicity 動的ブロックリストで浄化。 | **強化完了** |
 | `knowledge_indexer` | ドキュメントや過去の Karma を高速検索可能にインデックス。 | 実装完了 |
-| `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。ストリーミング通信時の Pre-execute Hook バイパス遮断および Ollama の LoRA 動内ビルダ統合済。**Phase v3/16** にて `EntropyGate` (Shannon Entropy 自動再質問)、`HumanizerFilter` (AI くささ除去)、`WritingContext` (コンテキスト別ルール適用) を実装しパイプラインを完成。静的 Regex パターンのパニックリスクを排除した `LazyLock` による堅牢化を完了。 | **第4世代進化** |
+| `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。ストリーミング通信時の Pre-execute Hook バイパス遮断および Ollama の LoRA 動内ビルダ統合済。**Phase v3/16** にて `EntropyGate` (Shannon Entropy 自動再質問)、`HumanizerFilter` (AI くささ除去)、`WritingContext` (コンテキスト別ルール適用) を実装しパイプラインを完成。静的 Regex パターンのパニックリスクを排除した `LazyLock` による堅牢化を完了。**Phase A** で最新モデルのユニットエコノミクス（コスト追跡）を実装。 | **第4世代進化** |
 | `lora_autotuner` | ロス履歴に基づき LoRA 学習のハイパーパラメータ（LR, Epochs, Rank）を自律調整するエンジン。 | **Phase 55 完了** |
 | `lora_marketplace` | LoRAアダプターファイルのSHA-256ハッシュ検証、エスクロー決済（CommerceEngine連携）、および分離されたファイル移動（PathSandbox）を提供する人格売買・流通インフラ。PostgreSQL/SQLite両対応。 | **実装完了** |
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。エラーのサイレント隠蔽(`let _ =`)を防止し軌跡可視化を強化。 | **強化完了** |
@@ -80,7 +80,7 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-05-14 (Asia/Tokyo) - Sinking Ship #19 Automated Backup Strategy*
+*最終更新: 2026-05-14 (Asia/Tokyo) - Economic Observability Phase A & B*
 
 ## Phase 6 Integration Notes
 

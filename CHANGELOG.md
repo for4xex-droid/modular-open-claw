@@ -1,6 +1,10 @@
 ## [Unreleased]
 
 ### Added
+- **Economic Observability (Phase A & B)**: 
+  - Updated LLM pricing table in `dynamic.rs` to accurately track costs for `gemini-2.5-flash`, `gemini-2.5-pro`, `gpt-4.1`, and `claude-sonnet-4-20250514`.
+  - Added `/api/v1/audit/diagnostics/summary` endpoint to `audit.rs` and `router.rs` to provide aggregated statistical summaries of failure categories across all jobs.
+  
 - **Sinking Ship #19 — Pre-migration Backup Guard**: `backup_sqlite_db_before_migration()` in `bootstrap.rs` automatically creates a `.pre_migration.bak` snapshot before `sqlx::migrate!()` runs. Skips `:memory:` and PostgreSQL paths. Non-fatal on failure.
 - **Sinking Ship #19 — SQLite Online Backup**: `scripts/backup.sh` now uses `sqlite3 .backup` for WAL-safe hot snapshots before tar archiving. Falls back gracefully when `sqlite3` is unavailable.
 - **Sinking Ship #19 — Backup Scheduling**: Added `AIOME_BACKUP_DIR` and `AIOME_MAX_BACKUPS` to `.env.example` with cron scheduling instructions.
