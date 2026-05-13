@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 #![cfg_attr(test, allow(clippy::unwrap_used))]
-use aiome_core::llm_provider::{GeminiProvider, LlmProvider, OllamaProvider};
+use aiome_core::llm_provider::{LlmProvider, OllamaProvider};
 use aiome_core_contracts::a2a::internal::{
     ExecuteTaskRequest, TaskProgress,
     docker_conductor_server::{DockerConductor, DockerConductorServer},
@@ -26,7 +26,7 @@ mod proof_service;
 
 pub struct ShadowWorkerService {
     auth_token: String,
-    gemini_api_key: Option<secrecy::SecretString>,
+    key_proxy_url: Option<String>,
 }
 
 #[tonic::async_trait]
@@ -55,7 +55,7 @@ impl DockerConductor for ShadowWorkerService {
         let (tx, rx) = mpsc::channel(4);
         let job_id = req.job_id.clone();
         let prompt_b64 = req.prompt_b64.clone();
-        let gemini_key = self.gemini_api_key.clone();
+        let proxy_url = self.key_proxy_url.clone();
 
         tokio::spawn(async move {
             info!("Executing task for job: {}", job_id);
@@ -118,15 +118,72 @@ impl DockerConductor for ShadowWorkerService {
                 }))
                 .await;
 
-            // Use GEMINI_API_KEY if exists, else fallback to Ollama
-            let llm_res = match gemini_key {
-                Some(key) if !secrecy::ExposeSecret::expose_secret(&key).is_empty() => {
-                    let provider = GeminiProvider::new(
-                        aiome_core::http::get_http_client().clone(),
-                        key,
-                        "gemini-2.5-flash".to_string(),
-                    );
-                    provider.complete(&prompt, Some("You are an autonomous Aiome Shadow Worker. Execute the requested objective securely.")).await
+            // Use KEY_PROXY_URL if exists, else fallback to Ollama
+            let llm_res = match proxy_url {
+                Some(url) if !url.is_empty() => {
+                    let mut client_builder = reqwest::Client::builder();
+                    if let Ok(secret) = std::env::var("VAULT_SECRET") {
+                        let mut headers = reqwest::header::HeaderMap::new();
+                        if let Ok(header_val) =
+                            reqwest::header::HeaderValue::from_str(&format!("Bearer {}", secret))
+                        {
+                            headers.insert(reqwest::header::AUTHORIZATION, header_val);
+                        }
+                        client_builder = client_builder.default_headers(headers);
+                    }
+                    let client = client_builder
+                        .build()
+                        .unwrap_or_else(|_| reqwest::Client::new());
+
+                    let proxy_endpoint =
+                        format!("{}/api/v1/llm/complete", url.trim_end_matches('/'));
+
+                    let body = serde_json::json!({
+                        "caller_id": "shadow-worker",
+                        "prompt": prompt,
+                        "system": "You are an autonomous Aiome Shadow Worker. Execute the requested objective securely.",
+                        "endpoint": "gemini"
+                    });
+
+                    async fn proxy_call(
+                        client: &reqwest::Client,
+                        url: &str,
+                        body: serde_json::Value,
+                    ) -> Result<aiome_core::llm_provider::LlmResponse, aiome_core::error::AiomeError>
+                    {
+                        let res = client.post(url).json(&body).send().await.map_err(|e| {
+                            aiome_core::error::AiomeError::Infrastructure {
+                                reason: e.to_string(),
+                            }
+                        })?;
+                        if !res.status().is_success() {
+                            return Err(aiome_core::error::AiomeError::Infrastructure {
+                                reason: format!("Proxy returned {}", res.status()),
+                            });
+                        }
+
+                        // Parse ProxyResponse
+                        let parsed: serde_json::Value = res.json().await.map_err(|e| {
+                            aiome_core::error::AiomeError::Infrastructure {
+                                reason: e.to_string(),
+                            }
+                        })?;
+                        let content = parsed
+                            .get("content")
+                            .and_then(|c| c.as_str())
+                            .unwrap_or("")
+                            .to_string();
+
+                        Ok(aiome_core::llm_provider::LlmResponse {
+                            content,
+                            stop_reason: aiome_core_contracts::StopReason::EndTurn,
+                            reasoning: None,
+                            metadata: None,
+                            logprobs: None,
+                        })
+                    }
+
+                    proxy_call(&client, &proxy_endpoint, body).await
                 }
                 _ => {
                     // Internal docker network or host path
@@ -198,16 +255,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map_err(|_| "A2A_AUTH_TOKEN environment variable is required")?;
     shared::security::scrub_env("A2A_AUTH_TOKEN");
 
-    let gemini_api_key = env::var("GEMINI_API_KEY")
-        .ok()
-        .map(secrecy::SecretString::from);
-    shared::security::scrub_env("GEMINI_API_KEY");
+    let key_proxy_url = env::var("KEY_PROXY_URL").ok();
+    // Do not scrub KEY_PROXY_URL since it's just a local URL, not a secret
 
     let proof_auth_token = auth_token.clone();
 
     let worker = ShadowWorkerService {
         auth_token,
-        gemini_api_key,
+        key_proxy_url,
     };
 
     let proof_timeout_secs: u64 = env::var("OXILEAN_PROOF_TIMEOUT_SECS")

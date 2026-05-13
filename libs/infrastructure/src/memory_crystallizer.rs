@@ -27,12 +27,15 @@ pub enum FactCategory {
 }
 
 /// 短期記憶から長期Karmaへの結晶化エンジン
+use crate::cortex_synth::{SynthPair, SynthQualityJudge};
+
 pub struct MemoryCrystallizer {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     ops: Arc<dyn DistillationOps>,
     semaphore: Arc<Semaphore>,
     slm_bridge: Option<Arc<SlmBridge>>,
     belief_gate: Option<Arc<BeliefConsistencyGate>>,
+    judge: Option<Arc<dyn SynthQualityJudge>>,
 }
 
 impl MemoryCrystallizer {
@@ -43,6 +46,7 @@ impl MemoryCrystallizer {
         semaphore: Arc<Semaphore>,
         slm_bridge: Option<Arc<SlmBridge>>,
         belief_gate: Option<Arc<BeliefConsistencyGate>>,
+        judge: Option<Arc<dyn SynthQualityJudge>>,
     ) -> Self {
         Self {
             provider,
@@ -50,6 +54,7 @@ impl MemoryCrystallizer {
             semaphore,
             slm_bridge,
             belief_gate,
+            judge,
         }
     }
 
@@ -94,6 +99,36 @@ impl MemoryCrystallizer {
                                 raw_karma_chunk.iter().map(|(id, _)| id.clone()).collect();
 
                             let mut domain = None;
+
+                            // Phase 1.5: CortexSynth Quality Gate
+                            if let Some(judge) = &self.judge {
+                                let eval_pair = SynthPair {
+                                    instruction: format!("Abstract facts for skill: {}", skill),
+                                    response: resp.content.clone(),
+                                    source_article_id: "karma_distillation".to_string(),
+                                    // SynthPair requires quality_score but karma distillation
+                                    // has no self-reported score. Use 1.0 as a neutral placeholder
+                                    // so the Judge evaluates purely on content quality.
+                                    quality_score: 1.0,
+                                };
+                                match judge.evaluate(&eval_pair).await {
+                                    Ok(v) if !v.accept => {
+                                        warn!(
+                                            "⚠️ [MemoryCrystallizer] Judge rejected crystallization (score={:.2}): {}",
+                                            v.score, v.reasoning
+                                        );
+                                        // Skip persistence for rejected content to maintain data purity.
+                                        // Raw karma is NOT deleted — it remains available for re-processing
+                                        // in the next cycle, so no data loss occurs.
+                                        continue;
+                                    }
+                                    Err(e) => {
+                                        // Graceful degradation: Judge failure should not block the pipeline.
+                                        warn!("⚠️ [MemoryCrystallizer] Judge error (fallback: accept): {}", e);
+                                    }
+                                    _ => {}
+                                }
+                            }
 
                             // Phase 49: Belief Consistency Gate
                             if let Some(gate) = &self.belief_gate {
@@ -223,6 +258,7 @@ mod tests {
                 Arc::new(jq) as Arc<dyn DistillationOps>,
                 semaphore,
                 slm,
+                None,
                 None,
             );
 

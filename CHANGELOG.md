@@ -1,7 +1,17 @@
 ## [Unreleased]
 
+### Security
+- **Secrets Brokering Architecture (Phase 4)**:
+  - Fully implemented the Vault Proxy pattern for ephemeral containers (`shadow-worker` and `browser-use`), permanently removing third-party billing keys (e.g., `GEMINI_API_KEY`) from runtime container environments.
+  - Refactored `DockerConductor` and `BrowserConductor` to securely broker `KEY_PROXY_URL` and the internal `VAULT_SECRET` via ephemeral `.env.shadow` files.
+  - Hardened `key-proxy`'s `auth_middleware` with Langchain/Google SDK compatibility, introducing Custom Header (`x-goog-api-key`) and Query Parameter (`?key=`) fallback strategies to authenticate securely using the internal `VAULT_SECRET`.
+  - Implemented strict header sanitization in `handle_gemini_passthrough` to actively drop dummy `x-goog-api-key` headers before upstream routing, preventing Double Fault Risks with Google servers and ensuring flawless zero-trust proxy passthrough.
+
 ### Added
 - **Cortex Intelligence Infrastructure**:
+  - Implemented the Memento Quality Refinement Pattern (Phase 1.5) by introducing the `SynthQualityJudge` trait and `LlmSynthJudge` implementation.
+  - Injected `SynthQualityJudge` into `CortexSynthesizer` to automatically filter sub-par generated pairs with a `rejected_count` telemetry log, acting as a secondary rigorous quality gate before `BeliefConsistencyGate`.
+  - Injected `SynthQualityJudge` into `MemoryCrystallizer` to perform quality validation on extracted knowledge prior to database persistence, enforcing Graceful Degradation on failure to avoid data loss.
   - Implemented Cortex Native Confidence Tags in `cortex_compiler` (CT-1) yielding 1.0, 0.7, or 0.4 scores based on Graphify context extraction strategies.
   - Implemented `evidence_quality` logic in `CortexAnswer` inside `cortex_query`, mapping the `MIN(confidence)` of Typed Links to `extracted`, `inferred`, or `ambiguous`.
   - Added `/api/v1/cortex/god-nodes` API endpoint for detecting central God Nodes based on connection counts inside `cortex_concept_index`.

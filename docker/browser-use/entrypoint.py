@@ -20,14 +20,30 @@ def init_llm(provider: str):
     else:
         # Default to Gemini
         from browser_use import ChatGoogle
+        
+        key_proxy_url = os.environ.get("KEY_PROXY_URL")
         gemini_key = os.environ.get("GEMINI_API_KEY")
-        if not gemini_key:
-            raise ValueError("GEMINI_API_KEY environment variable is required")
+        vault_secret = os.environ.get("VAULT_SECRET")
         
-        # セキュリティ：環境変数からAPIキーをパージして、プロンプトインジェクション等による流出を防ぐ
-        del os.environ["GEMINI_API_KEY"]
+        # Security: purge from environment
+        if "GEMINI_API_KEY" in os.environ:
+            del os.environ["GEMINI_API_KEY"]
+            
+        if not key_proxy_url and not gemini_key:
+            raise ValueError("Either KEY_PROXY_URL or GEMINI_API_KEY environment variable is required")
+            
+        # We need a dummy key if using proxy without real key, as SDK requires it
+        api_key_to_use = gemini_key if gemini_key else (vault_secret if vault_secret else "dummy_key_for_proxy")
         
-        return ChatGoogle(model="gemini-2.0-flash", api_key=gemini_key)
+        kwargs = {"model": "gemini-2.0-flash", "api_key": api_key_to_use}
+        
+        if key_proxy_url:
+            # Route traffic through Aiome Abyss Vault
+            proxy_base = f"{key_proxy_url.rstrip('/')}/proxy/gemini"
+            kwargs["client_options"] = {"api_endpoint": proxy_base}
+            kwargs["transport"] = "rest" # Force REST instead of gRPC for proxy
+            
+        return ChatGoogle(**kwargs)
 
 async def main():
     try:

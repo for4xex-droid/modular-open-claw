@@ -203,6 +203,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/llm/embed", post(handle_llm_embed))
         .route("/api/v1/wp/publish", post(handle_wp_publish))
         .route("/api/v1/health", get(|| async { StatusCode::OK }))
+        .route("/proxy/gemini/*path", post(handle_gemini_passthrough))
+        .route("/proxy/gemini/*path", get(handle_gemini_passthrough))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             auth_middleware,
@@ -295,6 +297,40 @@ pub(crate) async fn auth_middleware(
             if bool::from(subtle::ConstantTimeEq::ct_eq(
                 auth_header.as_bytes(),
                 expected.as_bytes(),
+            )) {
+                authenticated = true;
+            }
+        }
+    }
+
+    // Strategy 3: Query parameter fallback (for SDKs that use key=... instead of headers)
+    if !authenticated {
+        if let Some(query) = req.uri().query() {
+            for param in query.split('&') {
+                if param.starts_with("key=") {
+                    let provided_key = &param[4..];
+                    if bool::from(subtle::ConstantTimeEq::ct_eq(
+                        provided_key.as_bytes(),
+                        state.vault_secret.expose_secret().as_bytes(),
+                    )) {
+                        authenticated = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Strategy 4: Custom header fallback (for Google GenAI SDK which uses x-goog-api-key)
+    if !authenticated {
+        if let Some(goog_key) = req
+            .headers()
+            .get("x-goog-api-key")
+            .and_then(|h| h.to_str().ok())
+        {
+            if bool::from(subtle::ConstantTimeEq::ct_eq(
+                goog_key.as_bytes(),
+                state.vault_secret.expose_secret().as_bytes(),
             )) {
                 authenticated = true;
             }
@@ -609,6 +645,112 @@ async fn check_and_increment_quota(
     Ok((total, q.last_reset_day))
 }
 
+pub(crate) fn build_gemini_passthrough_url(path: &str, query: Option<&str>) -> String {
+    let base = format!(
+        "https://generativelanguage.googleapis.com/{}",
+        path.trim_start_matches('/')
+    );
+    if let Some(q) = query {
+        if !q.is_empty() {
+            return format!("{}?{}", base, q);
+        }
+    }
+    base
+}
+
+pub(crate) async fn handle_gemini_passthrough(
+    State(state): State<AppState>,
+    axum::extract::Path(path): axum::extract::Path<String>,
+    req: axum::extract::Request,
+) -> impl IntoResponse {
+    let query_string = req.uri().query().unwrap_or("").to_string();
+    let method = req.method().clone();
+
+    // Convert Request body to bytes
+    let (parts, body) = req.into_parts();
+    let body_bytes = match axum::body::to_bytes(body, usize::MAX).await {
+        Ok(b) => b,
+        Err(e) => {
+            error!("❌ [KeyProxy] Failed to read passthrough body: {}", e);
+            return (StatusCode::BAD_REQUEST, "Invalid body").into_response();
+        }
+    };
+
+    let mut target_url = build_gemini_passthrough_url(&path, Some(&query_string));
+
+    // Inject API key if not present
+    if !target_url.contains("key=") {
+        let separator = if target_url.contains('?') { "&" } else { "?" };
+        target_url = format!(
+            "{}{}key={}",
+            target_url,
+            separator,
+            state.gemini_key.expose_secret()
+        );
+    } else {
+        // Replace fake key with real key if it was passed
+        let fake_key_start = target_url.find("key=").unwrap() + 4;
+        let fake_key_end = target_url[fake_key_start..]
+            .find('&')
+            .map(|i| i + fake_key_start)
+            .unwrap_or(target_url.len());
+        target_url.replace_range(
+            fake_key_start..fake_key_end,
+            state.gemini_key.expose_secret(),
+        );
+    }
+
+    info!("🌐 [KeyProxy] Passthrough to Gemini API: {}", path);
+
+    let mut request_builder = state.client.request(method, &target_url);
+    for (name, value) in parts.headers.iter() {
+        let name_lower = name.as_str().to_lowercase();
+        // Drop dangerous or overwritten headers
+        if name_lower == "host" || name_lower == "authorization" || name_lower == "x-goog-api-key" {
+            continue;
+        }
+        request_builder = request_builder.header(name, value);
+    }
+
+    // Ensure Content-Type is present
+    if !parts.headers.contains_key("Content-Type") {
+        request_builder = request_builder.header("Content-Type", "application/json");
+    }
+
+    let request_builder = request_builder.body(body_bytes);
+
+    let res = match request_builder.send().await {
+        Ok(r) => r,
+        Err(e) => {
+            error!("❌ [KeyProxy] Gemini upstream error: {}", e);
+            return (StatusCode::BAD_GATEWAY, "Proxy error").into_response();
+        }
+    };
+
+    let status = res.status();
+    let headers = res.headers().clone();
+    let content_type = headers
+        .get("Content-Type")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("application/json")
+        .to_string();
+
+    let res_bytes = match res.bytes().await {
+        Ok(b) => b,
+        Err(e) => {
+            error!("❌ [KeyProxy] Failed to read Gemini response: {}", e);
+            return (StatusCode::BAD_GATEWAY, "Proxy read error").into_response();
+        }
+    };
+
+    (
+        status,
+        [(axum::http::header::CONTENT_TYPE, content_type)],
+        res_bytes,
+    )
+        .into_response()
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -639,6 +781,16 @@ mod tests {
             None,
             "Should omit system_instruction when system prompt is absent"
         );
+    }
+
+    #[test]
+    fn test_gemini_passthrough_url_construction() {
+        let path = "v1beta/models/gemini-2.0-flash:generateContent".to_string();
+        let query_string = Some("key=TEST_DUMMY_KEY".to_string());
+        let expected = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=TEST_DUMMY_KEY";
+
+        let constructed = crate::build_gemini_passthrough_url(&path, query_string.as_deref());
+        assert_eq!(constructed, expected);
     }
 
     #[test]

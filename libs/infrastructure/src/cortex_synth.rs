@@ -12,10 +12,92 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
 
+/// Trait for evaluating the quality of synthetic instruction-response pairs.
+/// Implementations should return a `JudgeVerdict` indicating whether the pair
+/// meets the project's quality bar. Injected via DI into `CortexSynthesizer`
+/// and `MemoryCrystallizer` to enforce a secondary quality gate beyond
+/// self-reported scores.
+#[async_trait::async_trait]
+pub trait SynthQualityJudge: Send + Sync {
+    async fn evaluate(&self, pair: &SynthPair) -> Result<JudgeVerdict, AiomeError>;
+}
+
+/// The result of a quality evaluation by a `SynthQualityJudge`.
+#[derive(Debug)]
+pub struct JudgeVerdict {
+    /// Quality score between 0.0 and 1.0.
+    pub score: f64,
+    /// Whether the pair passes the quality bar, as determined by the judge implementation.
+    pub accept: bool,
+    /// Human-readable explanation of the verdict.
+    pub reasoning: String,
+}
+
+/// LLM-backed implementation of `SynthQualityJudge`.
+/// Uses an LLM provider to evaluate instruction-response pair quality
+/// via structured JSON output.
+#[derive(Debug)]
+pub struct LlmSynthJudge {
+    provider: Arc<dyn LlmProvider>,
+}
+
+impl LlmSynthJudge {
+    pub fn new(provider: Arc<dyn LlmProvider>) -> Self {
+        Self { provider }
+    }
+}
+
+#[async_trait::async_trait]
+impl SynthQualityJudge for LlmSynthJudge {
+    async fn evaluate(&self, pair: &SynthPair) -> Result<JudgeVerdict, AiomeError> {
+        // Use XML delimiters to prevent prompt injection from pair content
+        let prompt = format!(
+            "You are an expert evaluator of instruction-response pairs.\n\
+            Evaluate the following pair for clarity, accuracy, and usefulness.\n\
+            Output ONLY a JSON object with 'score' (0.0 to 1.0), 'accept' (boolean, true if score >= 0.7), and 'reasoning' (string).\n\n\
+            <INSTRUCTION>\n{}\n</INSTRUCTION>\n<RESPONSE>\n{}\n</RESPONSE>",
+            pair.instruction, pair.response
+        );
+
+        let system_msg = "You are a rigorous quality judge. Output pure JSON.";
+        let res = self.provider.complete(&prompt, Some(system_msg)).await?;
+        let json_str = match crate::llm::utils::extract_json(&res.content) {
+            Ok(s) => s,
+            Err(_) => {
+                tracing::warn!(
+                    "[SynthJudge] Failed to extract JSON from LLM response, defaulting to reject"
+                );
+                "{}".to_string()
+            }
+        };
+
+        let parsed: serde_json::Value =
+            serde_json::from_str(&json_str).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to parse Judge JSON: {}", e),
+            })?;
+
+        // Defaults: missing score → 0.0, missing accept → derived from score threshold,
+        // missing reasoning → placeholder. This ensures graceful handling of malformed LLM output.
+        let score = parsed["score"].as_f64().unwrap_or(0.0);
+        let accept = parsed["accept"].as_bool().unwrap_or(score >= 0.7);
+        let reasoning = parsed["reasoning"]
+            .as_str()
+            .unwrap_or("No reasoning provided")
+            .to_string();
+
+        Ok(JudgeVerdict {
+            score,
+            accept,
+            reasoning,
+        })
+    }
+}
+
 pub struct CortexSynthesizer {
     llm_provider: Arc<dyn LlmProvider>,
     pool: DatabasePool,
     belief_gate: Option<Arc<BeliefConsistencyGate>>,
+    judge: Option<Arc<dyn SynthQualityJudge>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,11 +127,13 @@ impl CortexSynthesizer {
         llm_provider: Arc<dyn LlmProvider>,
         pool: DatabasePool,
         belief_gate: Option<Arc<BeliefConsistencyGate>>,
+        judge: Option<Arc<dyn SynthQualityJudge>>,
     ) -> Self {
         Self {
             llm_provider,
             pool,
             belief_gate,
+            judge,
         }
     }
 
@@ -59,6 +143,8 @@ impl CortexSynthesizer {
         let mut pairs = Vec::new();
         let mut total_articles = 0;
         let mut last_id = "".to_string();
+        let mut judge_accepted = 0;
+        let mut judge_rejected = 0;
 
         loop {
             let articles = sqlx::query(
@@ -78,6 +164,10 @@ impl CortexSynthesizer {
             for row in articles {
                 use sqlx::Row;
                 let id = row.try_get::<String, _>("id").unwrap_or_default();
+                if id.is_empty() {
+                    tracing::warn!("Skipping article with empty ID (possible schema anomaly)");
+                    continue;
+                }
                 last_id = id.clone(); // Update cursor to the current last id
                 let title = row.try_get::<String, _>("title").unwrap_or_default();
                 let content = row.try_get::<String, _>("content_md").unwrap_or_default();
@@ -101,8 +191,16 @@ impl CortexSynthesizer {
 
                 match res_timeout {
                     Ok(Ok(res)) => {
-                        let json_str = crate::llm::utils::extract_json(&res.content)
-                            .unwrap_or_else(|_| "[]".to_string());
+                        let json_str = match crate::llm::utils::extract_json(&res.content) {
+                            Ok(s) => s,
+                            Err(_) => {
+                                tracing::warn!(
+                                    "Failed to extract JSON from LLM response for article {}",
+                                    id
+                                );
+                                "[]".to_string()
+                            }
+                        };
 
                         let extracted_pairs: Vec<SynthPair> = match serde_json::from_str(&json_str)
                         {
@@ -139,6 +237,30 @@ impl CortexSynthesizer {
                                     }
                                 }
                                 if is_acceptable {
+                                    if let Some(judge) = &self.judge {
+                                        match judge.evaluate(&p).await {
+                                            Ok(v) if !v.accept => {
+                                                tracing::info!(
+                                                    "Pair rejected by Judge (score={:.2}): {}",
+                                                    v.score,
+                                                    v.reasoning
+                                                );
+                                                judge_rejected += 1;
+                                                is_acceptable = false;
+                                            }
+                                            Err(e) => {
+                                                tracing::warn!(
+                                                    "Judge error (fallback: accept): {}",
+                                                    e
+                                                );
+                                            }
+                                            Ok(_) => {
+                                                judge_accepted += 1;
+                                            }
+                                        }
+                                    }
+                                }
+                                if is_acceptable {
                                     pairs.push(p);
                                 }
                             }
@@ -152,6 +274,16 @@ impl CortexSynthesizer {
 
                 total_articles += 1;
             }
+        }
+
+        let judge_total = judge_accepted + judge_rejected;
+        if judge_total > 0 {
+            tracing::info!(
+                "📊 [SynthJudge] accepted={}, rejected={}, reject_rate={:.1}%",
+                judge_accepted,
+                judge_rejected,
+                (judge_rejected as f64 / judge_total as f64) * 100.0
+            );
         }
 
         let total_pairs = pairs.len() as u32;

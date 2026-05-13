@@ -266,10 +266,16 @@ Gemini 2.0 Flash Live 用の双方向音声対話基盤として `LiveSessionMan
 - **Defense-in-Depth**: `RlmClient` において `max_depth`、`max_budget_usd` の厳密な境界値検証、128KB 以上のプロンプト遮断、および 1KB エラーレスポンス切り捨てによる DoS 防止層（SSRF 防御）を備えています。
 - **Cost Circuit Breaker**: RLM の反復推論による予算超過を防止するため、厳格な `Budget Limit` チェックとコスト追跡を行います。
 
+### 3.14 Secrets Brokering (Vault Proxy Pattern) (Phase 4 実装)
+`BrowserConductor` および `DockerConductor` によって生成される全てのエフェメラル・シャドウコンテナ（`shadow-worker`, `browser-use`）は、サードパーティのLLM APIキー（例: `GEMINI_API_KEY`）を直接環境変数として持ちません。
+- **Ephemeral Authentication**: 代わりに、内部的な `VAULT_SECRET` と `KEY_PROXY_URL` を `.env.shadow` 経由でコンテナに渡し、`key-proxy` に接続させます。
+- **Langchain Compatibility**: `key-proxy` の `auth_middleware` は、`Authorization` ヘッダーに加えて、Query Parameter (`?key=`) や Custom Header (`x-goog-api-key`) をサポートし、Python / Langchain の標準SDKから透過的にプロキシを利用可能にしています。
+- **Double Fault Prevention**: `key-proxy` のルーティング層において、ダミーとして送信された `x-goog-api-key` や不要な `Host` ヘッダーを能動的に削除（Sanitize）し、Google/OpenAIサーバーへの転送時に認証エラー（401 Unauthorized）が再発（Double Fault）することを構造的に防ぎます。
+
 ---
 
 *Document managed by Aiome Infrastructure Team*
-*最終更新: 2026-04-24 (Phase 3 Reflexion / UI Leakage Defense)*
+*最終更新: 2026-05-13 (Phase 4 Secrets Brokering)*
 
 ---
 

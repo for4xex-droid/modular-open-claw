@@ -30,8 +30,9 @@ pub struct DockerConductor {
     concurrency_limit: Arc<Semaphore>,
     grpc_config: GrpcClientConfig,
     active_escrows: DashMap<String, String>,
-    /// Shadow Worker コンテナに渡す Gemini API キー（パージ済み環境変数の代替）
-    gemini_api_key: SecretString,
+    /// Shadow Worker に渡す Vault Broker の URL
+    pub key_proxy_url: Option<String>,
+    pub vault_secret: Option<secrecy::SecretString>,
     /// ランタイム（podman優先、なければdocker）
     container_runtime: String,
 }
@@ -40,7 +41,8 @@ impl DockerConductor {
     pub fn new(
         commerce_engine: Option<Arc<dyn CommerceEngine>>,
         grpc_config: GrpcClientConfig,
-        gemini_api_key: SecretString,
+        key_proxy_url: Option<String>,
+        vault_secret: Option<secrecy::SecretString>,
     ) -> Self {
         let container_runtime = shared::container_runtime::detect_runtime().to_string();
 
@@ -50,7 +52,8 @@ impl DockerConductor {
             concurrency_limit: Arc::new(Semaphore::new(3)), // MAX 3 concurrent shadow clones
             grpc_config,
             active_escrows: DashMap::new(),
-            gemini_api_key,
+            key_proxy_url,
+            vault_secret,
             container_runtime,
         }
     }
@@ -250,15 +253,24 @@ impl DockerConductor {
             .await;
 
         // Gap R: Write secrets to ephemeral env-file instead of CLI args (Threat #39 mitigation)
-        // This prevents API keys from being visible via `ps aux` on the host.
+        // GEMINI_API_KEY is no longer written. Instead, KEY_PROXY_URL is brokered.
         let env_file_path = temp_dir.join(".env.shadow");
         let max_job_cost = crate::context_engine::ContextBudget::default().max_job_cost_usd;
-        let env_file_content = format!(
-            "A2A_AUTH_TOKEN={}\nGEMINI_API_KEY={}\nMAX_JOB_COST_USD={}\n",
-            auth_token,
-            self.gemini_api_key.expose_secret(),
-            max_job_cost
+
+        // A2A_AUTH_TOKEN is a one-time UUID required for grpc connection.
+        let mut env_file_content = format!(
+            "A2A_AUTH_TOKEN={}\nMAX_JOB_COST_USD={}\n",
+            auth_token, max_job_cost
         );
+
+        if let Some(proxy) = &self.key_proxy_url {
+            env_file_content.push_str(&format!("KEY_PROXY_URL={}\n", proxy));
+        }
+
+        if let Some(secret) = &self.vault_secret {
+            env_file_content.push_str(&format!("VAULT_SECRET={}\n", secret.expose_secret()));
+        }
+
         if let Err(e) = std::fs::write(&env_file_path, &env_file_content) {
             let _ = std::fs::remove_dir_all(&temp_dir);
             return Err(AiomeError::Infrastructure {
@@ -698,5 +710,28 @@ impl TaskConductor for DockerConductor {
         }
 
         self.stop_and_remove_container(job_id).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::grpc::a2a_grpc_client::GrpcClientConfig;
+
+    #[test]
+    fn test_docker_conductor_initialization_with_proxy() {
+        let grpc_config = GrpcClientConfig {
+            endpoint_url: "http://localhost".to_string(),
+            connect_timeout: std::time::Duration::from_secs(1),
+            auth_token: "".to_string(),
+        };
+
+        let proxy_url = "http://key-proxy:9999".to_string();
+
+        // This will fail to compile (RED) because `new` doesn't accept `key_proxy_url` yet.
+        let conductor = DockerConductor::new(None, grpc_config, Some(proxy_url.clone()), None);
+
+        // The implementation should store it as `key_proxy_url` instead of `gemini_api_key`
+        assert_eq!(conductor.key_proxy_url, Some(proxy_url));
     }
 }

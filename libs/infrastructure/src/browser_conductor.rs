@@ -18,18 +18,23 @@ use uuid::Uuid;
 /// BrowserConductor: browser-use 統合のための TaskConductor
 pub struct BrowserConductor {
     pub commerce_engine: Option<Arc<dyn CommerceEngine>>,
-    pub gemini_api_key: SecretString,
+
+    pub key_proxy_url: Option<String>,
+    pub vault_secret: Option<SecretString>,
     pub concurrency_limit: Arc<Semaphore>,
 }
 
 impl BrowserConductor {
     pub fn new(
         commerce_engine: Option<Arc<dyn CommerceEngine>>,
-        gemini_api_key: SecretString,
+        key_proxy_url: Option<String>,
+        vault_secret: Option<SecretString>,
     ) -> Self {
         Self {
             commerce_engine,
-            gemini_api_key,
+
+            key_proxy_url,
+            vault_secret,
             concurrency_limit: Arc::new(Semaphore::new(1)), // OOM回避のための直列実行
         }
     }
@@ -107,12 +112,18 @@ impl TaskConductor for BrowserConductor {
         })?;
 
         let env_file_path = temp_dir.join(".env.shadow");
-        let env_content = if provider == "ollama" {
+        let mut env_content = if provider == "ollama" {
             "OLLAMA_BASE_URL=http://host.docker.internal:11434\n".to_string()
         } else {
-            use secrecy::ExposeSecret;
-            format!("GEMINI_API_KEY={}\n", self.gemini_api_key.expose_secret())
+            String::new()
         };
+        if let Some(proxy) = &self.key_proxy_url {
+            env_content.push_str(&format!("KEY_PROXY_URL={}\n", proxy));
+        }
+        if let Some(secret) = &self.vault_secret {
+            use secrecy::ExposeSecret;
+            env_content.push_str(&format!("VAULT_SECRET={}\n", secret.expose_secret()));
+        }
 
         std::fs::write(&env_file_path, env_content).map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to write env file: {}", e),

@@ -81,7 +81,7 @@ async fn test_generate_dataset_filters_low_quality() -> Result<(), Box<dyn std::
         json_response: mock_json.to_string(),
     });
 
-    let synth = CortexSynthesizer::new(provider, pool, None);
+    let synth = CortexSynthesizer::new(provider, pool, None, None);
     let dataset = synth.generate_dataset().await?;
 
     // The low quality score (< 0.6) should be filtered out
@@ -168,7 +168,7 @@ async fn test_generate_dataset_filters_contradicted_beliefs(
         None,
     ));
 
-    let synth = CortexSynthesizer::new(provider, pool, Some(gate));
+    let synth = CortexSynthesizer::new(provider, pool, Some(gate), None);
     let dataset = synth.generate_dataset().await?;
 
     // The high quality score (0.9) pair should be filtered out by the gate
@@ -188,7 +188,7 @@ async fn test_export_to_jsonl_sharegpt_format() -> Result<(), Box<dyn std::error
         json_response: String::new(),
     });
     let pool = setup_db_pool().await?;
-    let synth = CortexSynthesizer::new(provider, pool, None);
+    let synth = CortexSynthesizer::new(provider, pool, None, None);
 
     let pairs = vec![SynthPair {
         source_article_id: "test".to_string(),
@@ -221,5 +221,178 @@ async fn test_export_to_jsonl_sharegpt_format() -> Result<(), Box<dyn std::error
         "Exported dataset should contain human role"
     );
 
+    Ok(())
+}
+
+#[derive(Clone)]
+struct MockSynthJudge {
+    accept: bool,
+    score: f64,
+}
+
+#[async_trait]
+impl SynthQualityJudge for MockSynthJudge {
+    async fn evaluate(&self, _pair: &SynthPair) -> Result<JudgeVerdict, AiomeError> {
+        Ok(JudgeVerdict {
+            score: self.score,
+            accept: self.accept,
+            reasoning: "Mock evaluation".to_string(),
+        })
+    }
+}
+
+/// A judge that always returns an error, to test graceful degradation.
+struct FailingSynthJudge;
+
+#[async_trait]
+impl SynthQualityJudge for FailingSynthJudge {
+    async fn evaluate(&self, _pair: &SynthPair) -> Result<JudgeVerdict, AiomeError> {
+        Err(AiomeError::Infrastructure {
+            reason: "Simulated judge failure".to_string(),
+        })
+    }
+}
+
+#[tokio::test]
+async fn test_judge_accepts_high_quality() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = setup_db_pool().await?;
+    let sqlite_pool = pool.get_sqlite_pool_or_err()?;
+
+    sqlx::query(
+        "INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash)
+         VALUES ('art-j1', 'Judge Accept', 'Content to be judged.', 'hash-j1')",
+    )
+    .execute(sqlite_pool)
+    .await?;
+
+    let mock_json = r#"```json
+    [
+        {"instruction": "What is it?", "response": "Content.", "quality_score": 0.8}
+    ]
+    ```"#;
+
+    let provider = Arc::new(MockLlmProvider {
+        json_response: mock_json.to_string(),
+    });
+
+    let judge = Arc::new(MockSynthJudge {
+        accept: true,
+        score: 0.9,
+    });
+
+    let synth = CortexSynthesizer::new(provider, pool, None, Some(judge));
+    let dataset = synth.generate_dataset().await?;
+
+    assert_eq!(dataset.pairs.len(), 1, "Judge should accept the pair");
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_judge_rejects_low_quality() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = setup_db_pool().await?;
+    let sqlite_pool = pool.get_sqlite_pool_or_err()?;
+
+    sqlx::query(
+        "INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash)
+         VALUES ('art-j2', 'Judge Reject', 'Bad content.', 'hash-j2')",
+    )
+    .execute(sqlite_pool)
+    .await?;
+
+    // Self-reported score is high (0.9), but external judge will reject it.
+    let mock_json = r#"```json
+    [
+        {"instruction": "What?", "response": "Bad.", "quality_score": 0.9}
+    ]
+    ```"#;
+
+    let provider = Arc::new(MockLlmProvider {
+        json_response: mock_json.to_string(),
+    });
+
+    let judge = Arc::new(MockSynthJudge {
+        accept: false,
+        score: 0.3,
+    });
+
+    let synth = CortexSynthesizer::new(provider, pool, None, Some(judge));
+    let dataset = synth.generate_dataset().await?;
+
+    assert_eq!(
+        dataset.pairs.len(),
+        0,
+        "Judge should reject the pair despite high self-reported score"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_no_judge_fallback() -> Result<(), Box<dyn std::error::Error>> {
+    // Tests that if no judge is provided, we just use the quality_score (as it was before).
+    let pool = setup_db_pool().await?;
+    let sqlite_pool = pool.get_sqlite_pool_or_err()?;
+
+    sqlx::query(
+        "INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash)
+         VALUES ('art-j3', 'Fallback', 'Content.', 'hash-j3')",
+    )
+    .execute(sqlite_pool)
+    .await?;
+
+    let mock_json = r#"```json
+    [
+        {"instruction": "Q", "response": "A", "quality_score": 0.7}
+    ]
+    ```"#;
+
+    let provider = Arc::new(MockLlmProvider {
+        json_response: mock_json.to_string(),
+    });
+
+    // None for judge
+    let synth = CortexSynthesizer::new(provider, pool, None, None);
+    let dataset = synth.generate_dataset().await?;
+
+    assert_eq!(
+        dataset.pairs.len(),
+        1,
+        "Should fallback to quality_score >= 0.6"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_judge_error_fallback() -> Result<(), Box<dyn std::error::Error>> {
+    // When the judge returns Err, the pair should still be accepted (graceful degradation).
+    let pool = setup_db_pool().await?;
+    let sqlite_pool = pool.get_sqlite_pool_or_err()?;
+
+    sqlx::query(
+        "INSERT INTO cortex_wiki_articles (id, title, content_md, content_hash)
+         VALUES ('art-j4', 'Error Fallback', 'Content.', 'hash-j4')",
+    )
+    .execute(sqlite_pool)
+    .await?;
+
+    let mock_json = r#"```json
+    [
+        {"instruction": "Q", "response": "A", "quality_score": 0.8}
+    ]
+    ```"#;
+
+    let provider = Arc::new(MockLlmProvider {
+        json_response: mock_json.to_string(),
+    });
+
+    let judge: Arc<dyn SynthQualityJudge> = Arc::new(FailingSynthJudge);
+
+    let synth = CortexSynthesizer::new(provider, pool, None, Some(judge));
+    let dataset = synth.generate_dataset().await?;
+
+    assert_eq!(
+        dataset.pairs.len(),
+        1,
+        "Judge error should gracefully degrade to accept"
+    );
     Ok(())
 }

@@ -14,7 +14,6 @@ use aiome_core::traits::Job;
 use async_trait::async_trait;
 use infrastructure::browser_conductor::BrowserConductor;
 use infrastructure::task_orchestrator::TaskConductor;
-use secrecy::SecretString;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -199,7 +198,7 @@ async fn test_browser_conductor_charges_100_coins_for_gemini() {
     let engine = Arc::new(MockCommerceEngine::new());
     let engine_ref = engine.clone();
 
-    let conductor = BrowserConductor::new(Some(engine), SecretString::new("gemini-key".into()));
+    let conductor = BrowserConductor::new(Some(engine), Some("gemini-key".into()), None);
 
     let job = Job {
         id: Uuid::new_v4().to_string(),
@@ -226,7 +225,7 @@ async fn test_browser_conductor_charges_0_coins_for_ollama() {
     let engine = Arc::new(MockCommerceEngine::new());
     let engine_ref = engine.clone();
 
-    let conductor = BrowserConductor::new(Some(engine), SecretString::new("gemini-key".into()));
+    let conductor = BrowserConductor::new(Some(engine), Some("http://key-proxy:9999".into()), None);
 
     let job = Job {
         id: Uuid::new_v4().to_string(),
@@ -255,7 +254,7 @@ async fn test_browser_conductor_overrides_max_steps() {
     // Since we mock the actual Docker execution, we'll need to expose a method
     // to build the sanitized payload, or check the generated environment variables.
 
-    let conductor = BrowserConductor::new(None, SecretString::new("gemini-key".into()));
+    let conductor = BrowserConductor::new(None, Some("http://key-proxy:9999".into()), None);
 
     let raw_topic = serde_json::json!({
         "llm_provider": "gemini",

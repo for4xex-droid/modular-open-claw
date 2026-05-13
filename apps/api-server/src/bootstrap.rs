@@ -897,6 +897,9 @@ pub async fn init_core_services(
             forge_semaphore.clone(),
             slm_bridge.clone(),
             Some(belief_gate.clone()),
+            Some(Arc::new(infrastructure::cortex_synth::LlmSynthJudge::new(
+                provider.clone(),
+            ))),
         ),
     );
 
@@ -1309,27 +1312,19 @@ pub async fn init_core_services(
         connect_timeout: std::time::Duration::from_secs(5),
         auth_token: "".to_string(), // dynamically overwritten in conduct()
     };
-    let docker_gemini_key = config
-        .gemini_api_key
-        .as_ref()
-        .map(|k| secrecy::SecretString::from(secrecy::ExposeSecret::expose_secret(k).to_string()))
-        .unwrap_or_else(|| secrecy::SecretString::from(String::new()));
     let docker_conductor = Arc::new(infrastructure::docker_conductor::DockerConductor::new(
         commerce_engine.clone(),
         grpc_config,
-        docker_gemini_key,
+        Some(config.key_proxy_url.clone()),
+        config.vault_secret.clone(),
     ));
     task_dispatcher.register_conductor(docker_conductor);
 
     // Register BrowserConductor
-    let browser_gemini_key = config
-        .gemini_api_key
-        .as_ref()
-        .map(|k| secrecy::SecretString::from(secrecy::ExposeSecret::expose_secret(k).to_string()))
-        .unwrap_or_else(|| secrecy::SecretString::from(String::new()));
     let browser_conductor = Arc::new(infrastructure::browser_conductor::BrowserConductor::new(
         commerce_engine.clone(),
-        browser_gemini_key,
+        Some(config.key_proxy_url.clone()),
+        config.vault_secret.clone(),
     ));
     task_dispatcher.register_conductor(browser_conductor);
 

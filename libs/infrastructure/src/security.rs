@@ -30,6 +30,9 @@ pub struct SecurityConfig {
     /// use_runsc_sandbox (F-01)
     #[serde(default = "default_true")]
     pub use_runsc_sandbox: bool,
+    /// enable_syscall_audit (Phase 0)
+    #[serde(default)]
+    pub enable_syscall_audit: bool,
 }
 
 fn default_true() -> bool {
@@ -74,6 +77,7 @@ impl Default for SecurityConfig {
                 .to_path_buf(),
             vault_path: None,
             use_runsc_sandbox: true,
+            enable_syscall_audit: false,
         }
     }
 }
@@ -354,14 +358,8 @@ impl RuntimeJail for BastionGuard {
         } else if cfg!(target_os = "linux") && !self.is_system_internal {
             let runsc_exists = BastionGuard::binary_exists_on_path("runsc");
 
-            if runsc_exists {
-                let mut args = Vec::new();
-                if profile == SandboxProfile::Strict || profile == SandboxProfile::WasmRun {
-                    args.push("--network=none".to_string());
-                }
-                args.push("do".to_string());
-                args.push(binary.to_string());
-                ("runsc".to_string(), args)
+            if runsc_exists && GLOBAL_SECURITY_CONFIG.use_runsc_sandbox {
+                build_runsc_args(profile, binary, GLOBAL_SECURITY_CONFIG.enable_syscall_audit)
             } else {
                 (binary.to_string(), vec![])
             }
@@ -471,13 +469,11 @@ impl BastionGuard {
             let runsc_exists = Self::binary_exists_on_path("runsc");
 
             if runsc_exists && GLOBAL_SECURITY_CONFIG.use_runsc_sandbox {
-                let mut runsc_args = Vec::new();
-                if profile == SandboxProfile::Strict || profile == SandboxProfile::WasmRun {
-                    runsc_args.push("--network=none".to_string());
-                }
-                runsc_args.push("do".to_string());
-                runsc_args.push(binary.to_string());
-                return ("runsc".to_string(), runsc_args);
+                return build_runsc_args(
+                    profile,
+                    binary,
+                    GLOBAL_SECURITY_CONFIG.enable_syscall_audit,
+                );
             }
         }
         (binary.to_string(), vec![])
@@ -739,6 +735,23 @@ impl VoiceCoreDrm {
     }
 }
 
+pub(crate) fn build_runsc_args(
+    profile: SandboxProfile,
+    binary: &str,
+    enable_syscall_audit: bool,
+) -> (String, Vec<String>) {
+    let mut args = Vec::new();
+    if profile == SandboxProfile::Strict || profile == SandboxProfile::WasmRun {
+        args.push("--network=none".to_string());
+    }
+    if enable_syscall_audit {
+        args.push("--strace".to_string());
+    }
+    args.push("do".to_string());
+    args.push(binary.to_string());
+    ("runsc".to_string(), args)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -861,6 +874,48 @@ mod tests {
 
     #[tokio::test]
     async fn test_bastion_guard_disallow_shell() {
+        let manifest = PermissionManifest {
+            allow_shell_execution: false,
+            ..Default::default()
+        };
+        let guard = BastionGuard::new(manifest);
+    }
+
+    #[test]
+    fn test_syscall_audit_config_parsing() {
+        let json = r#"{
+            "allowed_binaries": [],
+            "workspace_root": "/tmp",
+            "enable_syscall_audit": true
+        }"#;
+        let config: SecurityConfig = serde_json::from_str(json).unwrap();
+        assert!(config.enable_syscall_audit);
+
+        let json_default = r#"{
+            "allowed_binaries": [],
+            "workspace_root": "/tmp"
+        }"#;
+        let config_default: SecurityConfig = serde_json::from_str(json_default).unwrap();
+        assert!(!config_default.enable_syscall_audit);
+    }
+
+    #[test]
+    fn test_build_runsc_args() {
+        let (cmd, args) = build_runsc_args(SandboxProfile::Default, "ls", true);
+        assert_eq!(cmd, "runsc");
+        assert_eq!(args, vec!["--strace", "do", "ls"]);
+
+        let (cmd2, args2) = build_runsc_args(SandboxProfile::Strict, "ls", false);
+        assert_eq!(cmd2, "runsc");
+        assert_eq!(args2, vec!["--network=none", "do", "ls"]);
+
+        let (cmd3, args3) = build_runsc_args(SandboxProfile::Strict, "ls", true);
+        assert_eq!(cmd3, "runsc");
+        assert_eq!(args3, vec!["--network=none", "--strace", "do", "ls"]);
+    }
+
+    #[tokio::test]
+    async fn test_bastion_guard_disallow_shell_real() {
         let manifest = PermissionManifest {
             allow_shell_execution: false,
             ..Default::default()

@@ -1,5 +1,27 @@
 # 🌊 Aiome Ripple Map
 
+## Phase 4: Secrets Brokering (Vault Proxy Architecture)
+### 1. Ephemeral Container Secret Isolation
+- **変更内容**:
+    - `libs/infrastructure/src/docker_conductor.rs` [MODIFY]: `DockerConductor::new` のシグネチャを拡張し、`vault_secret: Option<SecretString>` と `key_proxy_url: Option<String>` を追加。これらを一時的な `.env.shadow` に環境変数 `VAULT_SECRET` と `KEY_PROXY_URL` として出力するよう改修。レガシーな `GEMINI_API_KEY` を注入から完全に排除。
+    - `libs/infrastructure/src/browser_conductor.rs` [MODIFY]: `BrowserConductor::new` のシグネチャと環境変数注入を同様に `vault_secret` 対応に改修。`browser_red_team_tdd.rs` のテストスイートも合わせて修正。
+    - `docker/browser-use/entrypoint.py` [MODIFY]: 起動時に `VAULT_SECRET` と `KEY_PROXY_URL` を読み取り、Langchain などのプロキシベースのリクエスト認証に用いるように変更。
+    - `apps/key-proxy/src/main.rs` [MODIFY]: `auth_middleware` に Strategy 4 (`x-goog-api-key` カスタムヘッダー) を追加。Gemini パススルー時の `handle_gemini_passthrough` にて、送信元のダミーヘッダー (`x-goog-api-key`, `Authorization`) を能動的に削除（Sanitize）し、Double Fault による 401 エラーを防止するロジックを追加。
+- **波及効果**:
+    - 全てのシャドウワーカーとブラウザワーカーがローカルの `GEMINI_API_KEY` のコピーを持たずに実行されるようになり、コンテナ侵害時のサードパーティキーの漏洩（Exfiltration）リスクが物理的に遮断された。
+    - プロキシ側での透過的なヘッダーサニタイズにより、Google GenAI SDK や Langchain などの標準ライブラリとの互換性を保ちながら Zero-Trust プロキシを経由することが可能となった。
+## Phase Memento 1.5: CortexSynth Quality Gate Integration
+### 1. SynthQualityJudge Implementation & DI
+- **変更内容**:
+    - `libs/infrastructure/src/cortex_synth.rs` [MODIFY]: `SynthQualityJudge` trait, `JudgeVerdict` struct, `LlmSynthJudge` を追加。`generate_dataset` ループ内に 3段目の品質ゲートとして Judge 呼び出しをインラインで統合。
+    - `libs/infrastructure/src/cortex_synth_tests.rs` [MODIFY]: `MockSynthJudge` を作成し、3件の振る舞い検証テスト (Accept, Reject, Fallback) を追加。
+    - `libs/infrastructure/src/memory_crystallizer.rs` [MODIFY]: `MemoryCrystallizer::new` シグネチャを変更し `judge` を追加。事実結晶化ループに `evaluate` を追加（失敗時は Graceful Degradation）。
+    - `apps/api-server/src/routes/cortex.rs` [MODIFY]: `CortexSynthesizer` に `LlmSynthJudge` インスタンスを DI 注入するよう修正。
+    - `apps/api-server/src/bootstrap.rs` [MODIFY]: `MemoryCrystallizer` のバックグラウンドタスク生成時に `LlmSynthJudge` インスタンスを DI 注入するよう修正。
+- **波及効果**:
+    - Synthetic Data 生成パイプラインにおいて、AI 自身による品質評価ループが組み込まれ、Mement パターンによるデータセットの純度維持機能が有効化された。
+    - `MemoryCrystallizer` の知識抽出においても不適切な解釈がデータベースへ永続化されるのを防止するセカンダリゲートが構築された。
+
 ## Phase A & B: Economic Observability & Quality Gates
 ### 1. Cost Tracking & Diagnostics Summary
 - **変更内容**:

@@ -382,9 +382,12 @@ pub async fn synth_dataset_handler(
     );
 
     let synth = infrastructure::cortex_synth::CortexSynthesizer::new(
-        provider,
+        provider.clone(),
         (*pool).clone(),
         Some(std::sync::Arc::new(belief_gate)),
+        Some(std::sync::Arc::new(
+            infrastructure::cortex_synth::LlmSynthJudge::new(provider),
+        )),
     );
     let jq = state.job_queue.get_inner().clone();
     let base_model = req.base_model;

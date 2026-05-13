@@ -10,7 +10,6 @@ use aiome_core::traits::Job;
 use infrastructure::docker_conductor::DockerConductor;
 use infrastructure::grpc::a2a_grpc_client::GrpcClientConfig;
 use infrastructure::task_orchestrator::{TaskConductor, TaskEvent};
-use secrecy::SecretString;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::info;
@@ -62,11 +61,22 @@ async fn test_docker_conductor_e2e_success_flow() {
         auth_token: "dummy-token".to_string(),
     };
 
-    let conductor = DockerConductor::new(
-        None,
-        config,
-        SecretString::new("dummy-gemini-key".to_string()),
-    ); // No commerce engine for test
+    // Check if the image exists locally
+    let image_check = infrastructure::security::SafeCommandBuilder::new(runtime)
+        .arg("image")
+        .arg("inspect")
+        .arg("aiome-shadow-worker:latest")
+        .build_internal()
+        .unwrap()
+        .output()
+        .await;
+
+    if image_check.is_err() || !image_check.unwrap().status.success() {
+        println!("Skipping E2E test as aiome-shadow-worker:latest image is not built locally");
+        return;
+    }
+
+    let conductor = DockerConductor::new(None, config, Some("http://key-proxy:9999".into()), None); // No commerce engine for test
     let (tx, mut rx) = mpsc::channel(100);
 
     let job_id = Uuid::new_v4().to_string();
