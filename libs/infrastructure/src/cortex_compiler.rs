@@ -741,7 +741,7 @@ Source Texts:
                         content_md_lower[..pos]
                             .chars()
                             .last()
-                            .map_or(true, |c| !c.is_alphanumeric())
+                            .is_none_or(|c| !c.is_alphanumeric())
                     } else {
                         true
                     };
@@ -751,7 +751,7 @@ Source Texts:
                         content_md_lower[end_pos..]
                             .chars()
                             .next()
-                            .map_or(true, |c| !c.is_alphanumeric())
+                            .is_none_or(|c| !c.is_alphanumeric())
                     } else {
                         true
                     };

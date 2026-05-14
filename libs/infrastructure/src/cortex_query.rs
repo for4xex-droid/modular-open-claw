@@ -243,7 +243,7 @@ impl CortexQueryEngine {
             .await;
 
             if let Ok(Some(c)) = conf_res {
-                if min_confidence.map_or(true, |curr| c < curr) {
+                if min_confidence.is_none_or(|curr| c < curr) {
                     min_confidence = Some(c);
                 }
             }
