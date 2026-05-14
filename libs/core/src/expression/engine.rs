@@ -64,8 +64,8 @@ impl ExpressionEngine {
         if let Some(last_line) = lines.last() {
             if last_line.to_uppercase().starts_with("EMOTION:") {
                 let em_str = last_line
-                    .splitn(2, ':')
-                    .nth(1)
+                    .split_once(':')
+                    .map(|x| x.1)
                     .unwrap_or("reflective")
                     .trim()
                     .to_lowercase();
