@@ -307,8 +307,7 @@ pub(crate) async fn auth_middleware(
     if !authenticated {
         if let Some(query) = req.uri().query() {
             for param in query.split('&') {
-                if param.starts_with("key=") {
-                    let provided_key = &param[4..];
+                if let Some(provided_key) = param.strip_prefix("key=") {
                     if bool::from(subtle::ConstantTimeEq::ct_eq(
                         provided_key.as_bytes(),
                         state.vault_secret.expose_secret().as_bytes(),
