@@ -68,7 +68,8 @@ async fn main() -> anyhow::Result<()> {
     // 1. Initial attempt from CWD (essential for dev environments)
     dotenvy::dotenv().ok();
 
-    let resolver = shared::app_data::AppDataResolver::new().unwrap();
+    let resolver = shared::app_data::AppDataResolver::new()
+        .map_err(|e| anyhow::anyhow!("Failed to initialize AppDataResolver: {}", e))?;
 
     // 2. Explicit attempt from application root (essential for Production)
     let app_env_path = resolver.root().join(".env");
@@ -307,10 +308,12 @@ pub fn build_app(state: Arc<HubState>) -> Router {
             axum::http::header::AUTHORIZATION,
         ]);
 
-    use crate::handlers::biome::{biome_relay_handler, biome_ws_handler, create_topic_handler, list_topics_handler};
+    use crate::handlers::biome::{
+        biome_relay_handler, biome_ws_handler, create_topic_handler, list_topics_handler,
+    };
+    use crate::handlers::middleware::auth_middleware;
     use crate::handlers::system::{health_handler, list_agents_handler};
     use crate::handlers::timeline::timeline_sync_handler;
-    use crate::handlers::middleware::auth_middleware;
 
     let router = Router::new()
         .route("/api/v1/federation/sync", post(sync_handler))

@@ -30,7 +30,8 @@ async fn main() -> Result<()> {
     // 1. Initial attempt from CWD (essential for dev environments)
     dotenvy::dotenv().ok();
 
-    let resolver = shared::app_data::AppDataResolver::new().unwrap();
+    let resolver = shared::app_data::AppDataResolver::new()
+        .map_err(|e| anyhow::anyhow!("Failed to initialize AppDataResolver: {}", e))?;
 
     // 2. Explicit attempt from application root
     let app_env_path = resolver.root().join(".env");

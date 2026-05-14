@@ -146,7 +146,7 @@ export const AiaaOnboardingWizard = () => {
                     className={`chip ${data.targetTasks.includes(task.key) ? 'active' : ''}`}
                     style={{
                       border: data.targetTasks.includes(task.key) ? '1px solid var(--accent-cyan)' : '1px solid var(--border)',
-                      background: data.targetTasks.includes(task.key) ? 'rgba(0,255,255,0.1)' : 'var(--bg-secondary)'
+                      background: data.targetTasks.includes(task.key) ? 'var(--accent-cyan-glass)' : 'var(--bg-secondary)'
                     }}
                   >
                     {label}

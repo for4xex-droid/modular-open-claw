@@ -59,7 +59,7 @@ graph TD
 
 ### T1-4: 🆕 NAPI Bridge の `state.rs` — 独立したシークレット管理
 
-[napi-bridge/state.rs](file:///Users/motista/Desktop/antigravity/aiome/libs/napi-bridge/src/state.rs) が `api-server/bootstrap.rs` とは**完全に独立した**初期化パスで以下を行う：
+[napi-bridge/state.rs](file:///Users/motista/Desktop/antigravity/aiome/libs/napi-bridge/src/state.rs) が `api-server/bootstrap/` とは**完全に独立した**初期化パスで以下を行う：
 
 - L22: `std::env::var("AIOME_DB_PATH")` で独自のDBプール作成
 - L77-125: `std::env::var("GEMINI_API_KEY")` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` を直接読み取り
@@ -79,7 +79,7 @@ graph TD
 
 **影響:** スキーマ変更時に SQLite と Postgres の DDL を手動で同期する必要があり、不整合が入りやすい。
 
-### T2-2: `bootstrap.rs` — 1,446行の初期化関数
+### T2-2: `bootstrap/` — 1,446行の初期化関数
 
 前回指摘（v1 H-3）の再確認。7段階の起動シーケンスが1関数に凝縮されている。
 
@@ -103,7 +103,7 @@ WAL モードは有効化されているが（`samsara-hub` が `PRAGMA wal_chec
 
 ### T2-5: `broadcast::channel(100)` のバッファサイズ
 
-`bootstrap.rs:383` と `samsara-hub:155` の両方で `broadcast::channel(100)` が使用されている。受信者が遅れた場合、**メッセージがドロップされる**（Lagged エラー）。高頻度イベント（Karma 蓄積、チャット等）時にデータロスの可能性。
+`bootstrap/` と `samsara-hub:155` の両方で `broadcast::channel(100)` が使用されている。受信者が遅れた場合、**メッセージがドロップされる**（Lagged エラー）。高頻度イベント（Karma 蓄積、チャット等）時にデータロスの可能性。
 
 ---
 
@@ -174,7 +174,7 @@ NAPI Bridge にも追加で7箇所発見。合計 **60+ 箇所**。
 4. [HIGH] Federation 層のスタブ実装を明示的に disabled/stub として文書化
    → Phase 4 で本実装する際の設計書を先行作成
 5. [HIGH] Docker Conductor のポート割り当てを portpicker に委譲
-6. [MEDIUM] bootstrap.rs の Stage 分割（少なくとも3ファイルに）
+6. [MEDIUM] `bootstrap/` の Stage 分割（少なくとも3ファイルに）
 7. [MEDIUM] テストヘルパーの抽出
 8. [LOW] samsara-hub DDL のマイグレーション化
 ```

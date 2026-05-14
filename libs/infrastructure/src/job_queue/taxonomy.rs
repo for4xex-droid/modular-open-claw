@@ -78,7 +78,14 @@ Constraint: Output ONLY raw JSON. No markdown blocks."#;
 
                 // VULN-62: Strict domain whitelisting to prevent hallucinatory domains
                 // NOTE: "General" is the system fallback domain, must be in this list.
-                let valid_domains = ["Technical", "Creative", "Governance", "Social", "Meta", "General"];
+                let valid_domains = [
+                    "Technical",
+                    "Creative",
+                    "Governance",
+                    "Social",
+                    "Meta",
+                    "General",
+                ];
                 if !valid_domains.contains(&taxonomy.domain.as_str()) {
                     tracing::warn!(
                         "🧬 [Taxonomy] Invalid domain returned from LLM: {}",

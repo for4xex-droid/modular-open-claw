@@ -31,7 +31,7 @@ pub fn verify_ed25519_signature(pubkey_b64: &str, sig_b64: &str, payload: &str) 
             }
         }
     }
-    
+
     warn!("🛡️ [Auth] Invalid Ed25519 Signature detected");
     false
 }

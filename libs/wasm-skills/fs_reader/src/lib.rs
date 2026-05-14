@@ -41,8 +41,8 @@ fn is_safe_file_path(path: &Path) -> bool {
         if let Some(ext) = ext_os.to_str() {
             let ext_lower = ext.to_lowercase();
             let allowed = [
-                "txt", "md", "json", "yaml", "yml", "csv", "tsv", "toml",
-                "rs", "py", "ts", "js", "html", "css", "xml", "log",
+                "txt", "md", "json", "yaml", "yml", "csv", "tsv", "toml", "rs", "py", "ts", "js",
+                "html", "css", "xml", "log",
             ];
             return allowed.contains(&ext_lower.as_str());
         }
@@ -164,7 +164,9 @@ mod tests {
         // Hidden files
         assert!(!is_safe_file_path(Path::new("/mnt/workspace/.env")));
         assert!(!is_safe_file_path(Path::new("/mnt/workspace/.kube/config")));
-        assert!(!is_safe_file_path(Path::new("/mnt/workspace/.aws/credentials")));
+        assert!(!is_safe_file_path(Path::new(
+            "/mnt/workspace/.aws/credentials"
+        )));
 
         // Crypto / Secret files
         assert!(!is_safe_file_path(Path::new("/mnt/workspace/secret.pem")));
@@ -183,16 +185,24 @@ mod tests {
     #[test]
     fn test_hidden_dir_bypass() {
         // Critical: files with allowed extensions inside hidden directories must be BLOCKED
-        assert!(!is_safe_file_path(Path::new("/mnt/workspace/.git/config.json")));
+        assert!(!is_safe_file_path(Path::new(
+            "/mnt/workspace/.git/config.json"
+        )));
         assert!(!is_safe_file_path(Path::new("/mnt/workspace/.git/HEAD")));
-        assert!(!is_safe_file_path(Path::new("/mnt/workspace/.aws/config.yaml")));
-        assert!(!is_safe_file_path(Path::new("/mnt/workspace/.ssh/known_hosts.txt")));
+        assert!(!is_safe_file_path(Path::new(
+            "/mnt/workspace/.aws/config.yaml"
+        )));
+        assert!(!is_safe_file_path(Path::new(
+            "/mnt/workspace/.ssh/known_hosts.txt"
+        )));
         assert!(!is_safe_file_path(Path::new("/mnt/workspace/.env.local")));
     }
 
     #[test]
     fn test_no_extension() {
         // Files without extensions should be blocked (Default Deny)
-        assert!(!is_safe_file_path(Path::new("/mnt/workspace/unknown_binary")));
+        assert!(!is_safe_file_path(Path::new(
+            "/mnt/workspace/unknown_binary"
+        )));
     }
 }

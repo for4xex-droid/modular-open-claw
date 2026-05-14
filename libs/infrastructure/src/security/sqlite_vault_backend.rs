@@ -195,7 +195,8 @@ mod tests {
 
     async fn setup_db() -> DatabasePool {
         let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
-        let schema = "CREATE TABLE vault_keys (asset_id TEXT PRIMARY KEY, encrypted_key BLOB NOT NULL)";
+        let schema =
+            "CREATE TABLE vault_keys (asset_id TEXT PRIMARY KEY, encrypted_key BLOB NOT NULL)";
         sql_exec!(&pool, schema).unwrap();
         pool
     }
@@ -204,7 +205,7 @@ mod tests {
     async fn test_store_and_get_dek() {
         let pool = setup_db().await;
         let backend = UniversalVaultBackend::new_with_master_key(pool, vec![0u8; 32]);
-        
+
         let asset_id = Uuid::new_v4();
         let dek = vec![1, 2, 3, 4, 5];
 

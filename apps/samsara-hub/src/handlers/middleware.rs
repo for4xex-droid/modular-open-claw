@@ -4,10 +4,7 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
-use axum::{
-    extract::State,
-    http::StatusCode,
-};
+use axum::{extract::State, http::StatusCode};
 use std::sync::Arc;
 use tracing::warn;
 

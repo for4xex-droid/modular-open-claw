@@ -184,8 +184,8 @@ HEARTBEAT.mdを確認し、緊急のタスクやユーザーへの報告事項�
                         // Use word-boundary aware matching to avoid false positives
                         // (e.g., "evaluate" should not match "eval")
                         let dangerous_patterns = [
-                            "curl ", "wget ", "bash ", "sudo ", "rm -rf",
-                            " eval ", "eval(", ";eval",
+                            "curl ", "wget ", "bash ", "sudo ", "rm -rf", " eval ", "eval(",
+                            ";eval",
                         ];
                         let lower = reply.to_lowercase();
                         if dangerous_patterns.iter().any(|p| lower.contains(p)) {

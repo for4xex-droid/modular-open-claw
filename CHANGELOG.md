@@ -6,6 +6,9 @@
 - **Watchtower WS**: Separated LLM timeout from provider errors for precise diagnostics. Suppressed user input payloads from logs (CWE-532).
 
 ### Changed
+- **Tech Debt Remediation (Phase 1 & 2)**:
+  - Decomposed the `api-server`'s monolithic `bootstrap.rs` (2,094 lines) into a modularized `bootstrap/` directory with 6 distinct submodules (`preflight.rs`, `database.rs`, `llm_providers.rs`, `state_assembly.rs`, `workers.rs`, `helpers.rs`), cutting the core file size by over 50%.
+  - Added robust Jest/React Testing Library unit tests for critical UI components (`EscrowManagementView`, `TaskApprovalOverlay`), pushing frontend test coverage over 90% and securing state management loops.
 - **TypeScript Strict Boundaries**:
   - `VoiceStore.tsx`: Eliminated `any` type usage with `Record<string, unknown>`. Added `Array.isArray()` structural guard and safe property coercion.
   - `Timeline.tsx`: Introduced `TimelineEvent` interface, replacing `any[]` state. Added `.ok` response checks, `typeof` property guards, and NaN-safe date sorting.

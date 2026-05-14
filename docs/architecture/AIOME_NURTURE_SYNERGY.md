@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-05-08
+> **最終更新**: 2026-05-15
 > **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
 
 ---
@@ -225,6 +225,7 @@ graph LR
         CP[commerce-protocol]
         NC[nurture-core]
         NI[nurture-infra]
+        NB[nurture-bridge]
         NA[nurture-api]
     end
 
@@ -232,11 +233,13 @@ graph LR
     NI --> NC
     NC --> CP
     NI --> CP
+    NA --> NB
+    NI --> NB
 
     NI -->|"path = ../aiome/libs/core"| AC
     NI -->|"path = ../aiome/libs/shared"| SH
     NI -->|"path = ../aiome/libs/infrastructure"| INF
-    NA -->|"path = ../aiome/libs/core"| AC
+    NB -->|"path = ../aiome/libs/aiome-core-contracts"| CONTRACTS
 
     style AC fill:#4CAF50,color:white
     style SH fill:#4CAF50,color:white
@@ -246,6 +249,7 @@ graph LR
     style NC fill:#FF9800,color:white
     style NI fill:#FF9800,color:white
     style NA fill:#FF9800,color:white
+    style NB fill:#FF9800,color:white
 ```
 
 ### 具体的な依存ポイント（Rust `use` 文レベル）

@@ -8397,8 +8397,6 @@ checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 name = "nurture-api"
 version = "0.1.0"
 dependencies = [
- "aiome-contracts",
- "aiome-core",
  "aiome-core-contracts",
  "anyhow",
  "async-stream",
@@ -8411,14 +8409,13 @@ dependencies = [
  "commerce-protocol",
  "dotenvy",
  "futures-util",
- "infrastructure",
  "jsonwebtoken",
+ "nurture-bridge",
  "nurture-core",
  "nurture-infra",
  "secrecy",
  "serde",
  "serde_json",
- "shared",
  "sqlx",
  "subtle",
  "tokio",
@@ -8430,6 +8427,17 @@ dependencies = [
  "tracing-subscriber",
  "utoipa",
  "uuid",
+]
+
+[[package]]
+name = "nurture-bridge"
+version = "0.1.0"
+dependencies = [
+ "aiome-core",
+ "aiome-core-contracts",
+ "async-trait",
+ "infrastructure",
+ "shared",
 ]
 
 [[package]]
@@ -8451,8 +8459,7 @@ dependencies = [
 name = "nurture-infra"
 version = "0.1.0"
 dependencies = [
- "aiome-contracts",
- "aiome-core",
+ "aiome-core-contracts",
  "async-stripe",
  "async-stripe-webhook",
  "async-trait",
@@ -8467,8 +8474,8 @@ dependencies = [
  "gltf",
  "hmac-sha256",
  "http 1.4.0",
- "infrastructure",
  "nix 0.29.0",
+ "nurture-bridge",
  "nurture-core",
  "rand 0.8.5",
  "reqwest 0.12.28",
@@ -8476,7 +8483,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "shared",
  "sqlx",
  "svix",
  "thiserror 1.0.69",

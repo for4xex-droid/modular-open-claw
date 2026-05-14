@@ -397,9 +397,13 @@ pub async fn synth_dataset_handler(
             Ok(dataset) => {
                 let temp_id = uuid::Uuid::new_v4().to_string();
                 let dataset_id = format!("synth_{}.jsonl", temp_id);
-                let datasets_dir = shared::app_data::AppDataResolver::new()
-                    .unwrap()
-                    .resolve("datasets");
+                let datasets_dir = match shared::app_data::AppDataResolver::new() {
+                    Ok(r) => r.resolve("datasets"),
+                    Err(e) => {
+                        tracing::error!("Failed to resolve datasets dir: {}", e);
+                        return;
+                    }
+                };
                 if let Err(e) = tokio::fs::create_dir_all(&datasets_dir).await {
                     tracing::error!("Failed to create datasets directory: {}", e);
                     return;

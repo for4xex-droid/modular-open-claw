@@ -13,7 +13,7 @@ Detailed documentation for the `api-server` crate.
 - `src/tool_call_router.rs`
 - `src/auth.rs`
 - `src/job_management_tests.rs`
-- `src/bootstrap.rs`
+- `src/bootstrap/`
 - `src/plugin_loader.rs`
 - `src/api_integration_tests/` (Directory for domain-driven integration test modules)
 - `src/system_instructions.rs`
@@ -48,7 +48,7 @@ Detailed documentation for the `api-server` crate.
 - `src/routes/cortex.rs`
 - `src/routes/auth.rs`
 - `src/routes/model_setup.rs`
-- `src/routes/bootstrap.rs`
+- `src/routes/bootstrap/`
 - `src/routes/skill.rs`
 - `src/routes/biome.rs`
 - `src/routes/lora_market.rs`

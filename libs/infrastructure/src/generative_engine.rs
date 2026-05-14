@@ -76,7 +76,9 @@ impl GenerativeEngine for ComfyUiGenerativeEngine {
                             reason: "Missing prompt_id in ComfyUI response".into(),
                         })?;
                 let output_path = shared::app_data::AppDataResolver::new()
-                    .unwrap()
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("Failed to initialize AppDataResolver: {}", e),
+                    })?
                     .resolve("artifacts")
                     .join(format!("comfy_output_{}.png", prompt_id));
                 Ok(ArtifactResponse {

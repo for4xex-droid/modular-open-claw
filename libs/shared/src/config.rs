@@ -116,7 +116,7 @@ pub const DEFAULT_VAULT_PATH: &str = "~/.aiome/vault";
 impl Default for AiomeConfig {
     fn default() -> Self {
         let resolver = crate::app_data::AppDataResolver::new()
-            .expect("Failed to initialize AppDataResolver for default config");
+            .expect("Failed to initialize AppDataResolver for default config"); // allow-anti-pattern: Default impl
         Self {
             db_path: resolver.db_url(),
             log_level: "info".to_string(),

@@ -238,8 +238,11 @@ mod tests {
         assert!(!store.is_quarantined(hash).await.unwrap());
 
         // 2. Quarantine asset
-        let id = store.quarantine_asset("bad_image.png", hash, AssetReason::CsamHit).await.unwrap();
-        
+        let id = store
+            .quarantine_asset("bad_image.png", hash, AssetReason::CsamHit)
+            .await
+            .unwrap();
+
         // 3. Now it is quarantined
         assert!(store.is_quarantined(hash).await.unwrap());
 

@@ -96,7 +96,10 @@ JSONフォーマット:
                     // SEC: LLM output size limit (64KB) to prevent disk exhaustion
                     const MAX_LLM_OUTPUT_SIZE: usize = 64 * 1024;
                     if reply.len() > MAX_LLM_OUTPUT_SIZE {
-                        warn!("⚠️ [UserLearner] LLM output too large ({} bytes), skipping", reply.len());
+                        warn!(
+                            "⚠️ [UserLearner] LLM output too large ({} bytes), skipping",
+                            reply.len()
+                        );
                         return Ok(false);
                     }
 
@@ -167,7 +170,10 @@ JSONフォーマット:
                             info!("✅ [UserLearner] USER.md updated (legacy fallback).");
                             return Ok(true);
                         }
-                        warn!("⚠️ [UserLearner] Failed to parse LLM update: {}", &reply[..reply.len().min(200)]);
+                        warn!(
+                            "⚠️ [UserLearner] Failed to parse LLM update: {}",
+                            &reply[..reply.len().min(200)]
+                        );
                     }
                 }
                 Err(e) => {

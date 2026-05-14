@@ -202,7 +202,7 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
             );
         case 'codeBlock':
             return (
-                <pre style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.5)', borderRadius: 'var(--radius-sm)', overflowX: 'auto', fontSize: '0.8rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', margin: '0.5rem 0' }}>
+                <pre style={{ padding: '0.75rem', background: 'var(--black-50)', borderRadius: 'var(--radius-sm)', overflowX: 'auto', fontSize: '0.8rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', margin: '0.5rem 0' }}>
                     <code>{String(component.props?.code || '')}</code>
                 </pre>
             );

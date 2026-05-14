@@ -128,8 +128,15 @@ impl LoraTrainingService {
             job_semaphore: compute_semaphore
                 .unwrap_or_else(|| Arc::new(tokio::sync::Semaphore::new(1))),
             datasets_dir: shared::app_data::AppDataResolver::new()
-                .unwrap()
-                .resolve("datasets"),
+                .map(|r| r.resolve("datasets"))
+                .unwrap_or_else(|e| {
+                    tracing::error!(
+                        "⚠️ AppDataResolver failed in LoraTrainingService::new: {}",
+                        e
+                    );
+                    // allow-anti-pattern: datasets dir fallback
+                    std::path::PathBuf::from("datasets")
+                }),
         }
     }
 
@@ -515,7 +522,10 @@ impl LoraEngine for LoraTrainingService {
                 .to_string()
         };
 
-        let resolver = shared::app_data::AppDataResolver::new().unwrap();
+        let resolver =
+            shared::app_data::AppDataResolver::new().map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to initialize AppDataResolver: {}", e),
+            })?;
 
         // LoRA Adapter Family Isolation:
         // Organize adapters by base model family (e.g., "gemma4", "qwen3.5")
@@ -693,7 +703,16 @@ pub struct AdapterFamilyInfo {
 /// Returns a list of families with their adapter IDs, enabling the UI to switch
 /// between Qwen-based and Gemma-based adapters.
 pub fn list_adapter_families() -> Vec<AdapterFamilyInfo> {
-    let resolver = shared::app_data::AppDataResolver::new().unwrap();
+    let resolver = match shared::app_data::AppDataResolver::new() {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(
+                "Failed to initialize AppDataResolver in list_adapter_families: {}",
+                e
+            );
+            return Vec::new();
+        }
+    };
     let vault_lora_dir = resolver.resolve("vault/lora");
 
     let mut families = Vec::new();

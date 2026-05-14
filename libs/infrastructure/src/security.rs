@@ -72,9 +72,11 @@ impl Default for SecurityConfig {
                 "uvx".to_string(),
             ],
             workspace_root: shared::app_data::AppDataResolver::new()
-                .unwrap()
-                .root()
-                .to_path_buf(),
+                .map(|r| r.root().to_path_buf())
+                .unwrap_or_else(|e| {
+                    tracing::warn!("Failed to initialize AppDataResolver in SecurityConfig default: {}. Falling back to '.'", e);
+                    std::path::PathBuf::from(".")
+                }),
             vault_path: None,
             use_runsc_sandbox: true,
             enable_syscall_audit: false,
@@ -90,10 +92,12 @@ impl SecurityConfig {
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| {
                 shared::app_data::AppDataResolver::new()
-                    .unwrap()
-                    .root()
-                    .to_string_lossy()
-                    .to_string()
+                    .map(|r| r.root().to_string_lossy().to_string())
+                    .unwrap_or_else(|e| {
+                        tracing::error!("⚠️ AppDataResolver failed in load_or_default: {}", e);
+                        // allow-anti-pattern: WORKSPACE_DIR未設定時のフォールバック
+                        ".".to_string()
+                    })
             });
         let workspace_root = std::path::PathBuf::from(&workspace);
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());

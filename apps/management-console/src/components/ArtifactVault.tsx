@@ -739,7 +739,7 @@ const ArtifactVault = () => {
           z-index: 2001;
           display: flex;
           flex-direction: column;
-          box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+          box-shadow: 0 20px 40px var(--black-50);
           overflow: hidden;
         }
         .preview-header {

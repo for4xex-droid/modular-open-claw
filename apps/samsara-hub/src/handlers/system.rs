@@ -4,13 +4,9 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
-use axum::{
-    extract::State,
-    http::StatusCode,
-    Json,
-};
-use std::sync::Arc;
 use crate::state::HubState;
+use axum::{extract::State, http::StatusCode, Json};
+use std::sync::Arc;
 
 pub async fn health_handler() -> (StatusCode, Json<serde_json::Value>) {
     (

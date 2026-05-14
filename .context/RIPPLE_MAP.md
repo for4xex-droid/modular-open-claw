@@ -1,5 +1,14 @@
 # 🌊 Aiome Ripple Map
 
+## Tech Debt Remediation: Bootstrap Modularization
+### 1. API Server Bootstrap Extraction
+- **変更内容**:
+    - `apps/api-server/src/bootstrap.rs` [MODIFY/DELETE]: 2,094行のモノリスを `bootstrap/mod.rs` に縮小し、サブ関数群を 6つのファイルに抽出。
+    - `apps/api-server/src/bootstrap/*.rs` [NEW]: `preflight.rs`, `database.rs`, `llm_providers.rs`, `state_assembly.rs`, `workers.rs`, `helpers.rs` を新規作成。
+- **波及効果**:
+    - 巨大な初期化シーケンスの認知負荷が大幅に低下。各サブシステム（データベース、LLM、ワーカー）のセットアップが独立したファイルに分離された。
+    - 外部参照パス（`crate::bootstrap::`）は不変に保たれており、他のモジュールやテスト（`bootstrap_tests.rs`）への悪影響はない。
+
 ## Aiome Security & Stability Hardening (Zero-Panic & CWE-209)
 ### 1. Artifact Store Zero-Panic Compliance
 - **変更内容**:

@@ -72,18 +72,17 @@ pub async fn create_topic_handler(
         "SELECT COALESCE(SUM(weight), 0) FROM approved_karma WHERE node_id = {} AND karma_type = 'Technical'",
         state.pool.ph(0)
     );
-    let karma_sum =
-        match sql_fetch_optional!(&state.pool, (i64,), &karma_query, &req.peer_pubkey) {
-            Ok(Some((k,))) => k,
-            Ok(None) => 0,
-            Err(e) => {
-                tracing::error!("Failed to fetch karma: {}", e);
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({"error": "Database error during Karma verification"})),
-                );
-            }
-        };
+    let karma_sum = match sql_fetch_optional!(&state.pool, (i64,), &karma_query, &req.peer_pubkey) {
+        Ok(Some((k,))) => k,
+        Ok(None) => 0,
+        Err(e) => {
+            tracing::error!("Failed to fetch karma: {}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error during Karma verification"})),
+            );
+        }
+    };
 
     info!(
         "🛡️ [Hub] PoK Check for {}: Technical Karma = {}",

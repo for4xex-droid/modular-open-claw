@@ -143,9 +143,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         }
                     }
                     _ => {
-                        warn!(
-                            "⚠️ [WatchtowerWS] Unhandled command variant received."
-                        );
+                        warn!("⚠️ [WatchtowerWS] Unhandled command variant received.");
                     }
                 }
             }

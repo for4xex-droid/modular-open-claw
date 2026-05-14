@@ -569,8 +569,10 @@ impl ArtifactStore for UniversalArtifactStore {
                         target_id: r.try_get("target_id").unwrap_or_default(),
                         source_type: r.try_get("source_type").unwrap_or_default(),
                         relation: r.try_get("relation").unwrap_or_default(),
-                        metadata: serde_json::from_str(&r.try_get::<String, _>("metadata").unwrap_or_default())
-                            .unwrap_or_default(),
+                        metadata: serde_json::from_str(
+                            &r.try_get::<String, _>("metadata").unwrap_or_default(),
+                        )
+                        .unwrap_or_default(),
                         created_at: r.try_get("created_at").unwrap_or_default(),
                     });
                 }
@@ -593,8 +595,10 @@ impl ArtifactStore for UniversalArtifactStore {
                         target_id: r.try_get("target_id").unwrap_or_default(),
                         source_type: r.try_get("source_type").unwrap_or_default(),
                         relation: r.try_get("relation").unwrap_or_default(),
-                        metadata: serde_json::from_str(&r.try_get::<String, _>("metadata").unwrap_or_default())
-                            .unwrap_or_default(),
+                        metadata: serde_json::from_str(
+                            &r.try_get::<String, _>("metadata").unwrap_or_default(),
+                        )
+                        .unwrap_or_default(),
                         created_at: r.try_get("created_at").unwrap_or_default(),
                     });
                 }
