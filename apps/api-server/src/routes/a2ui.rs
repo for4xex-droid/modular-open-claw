@@ -128,7 +128,7 @@ pub async fn submit_a2ui_action(
                 .await
                 .map_err(|e| {
                     tracing::error!("Failed to run skill {}: {}", skill_name, e);
-                    AppError::internal(&format!("Skill execution failed: {}", e))
+                    AppError::internal(format!("Skill execution failed: {}", e))
                 })?;
         }
         _ => {
