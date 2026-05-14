@@ -56,7 +56,8 @@ impl UserLearner {
         &self,
         conversation_summary: &str,
     ) -> Result<bool, Box<dyn std::error::Error>> {
-        let resolver = shared::app_data::AppDataResolver::new().unwrap();
+        let resolver = shared::app_data::AppDataResolver::new()
+            .map_err(|e| format!("AppDataResolver init failed: {}", e))?;
         let user_path = resolver.resolve("USER.md").to_string_lossy().to_string();
         let current_user = std::fs::read_to_string(&user_path).unwrap_or_default();
 
@@ -92,12 +93,21 @@ JSONフォーマット:
                         return Ok(false);
                     }
 
+                    // SEC: LLM output size limit (64KB) to prevent disk exhaustion
+                    const MAX_LLM_OUTPUT_SIZE: usize = 64 * 1024;
+                    if reply.len() > MAX_LLM_OUTPUT_SIZE {
+                        warn!("⚠️ [UserLearner] LLM output too large ({} bytes), skipping", reply.len());
+                        return Ok(false);
+                    }
+
                     // JSON パースの試行
                     // LLM が Markdown のコードブロックで囲んでくる場合があるため、トリミング
-                    let json_str = reply
+                    let trimmed = reply.trim();
+                    let json_str = trimmed
                         .strip_prefix("```json")
+                        .or_else(|| trimmed.strip_prefix("```"))
                         .and_then(|s| s.strip_suffix("```"))
-                        .unwrap_or(reply)
+                        .unwrap_or(trimmed)
                         .trim();
 
                     #[derive(Deserialize)]
@@ -157,7 +167,7 @@ JSONフォーマット:
                             info!("✅ [UserLearner] USER.md updated (legacy fallback).");
                             return Ok(true);
                         }
-                        warn!("⚠️ [UserLearner] Failed to parse LLM update: {}", reply);
+                        warn!("⚠️ [UserLearner] Failed to parse LLM update: {}", &reply[..reply.len().min(200)]);
                     }
                 }
                 Err(e) => {

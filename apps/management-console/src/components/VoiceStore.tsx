@@ -68,7 +68,7 @@ export default function VoiceStore() {
       const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/balance/${agentId}`);
       if (res.ok) {
         const data = await res.json();
-        setBalance(data.coins);
+        setBalance(typeof data?.coins === 'number' ? data.coins : 0);
       } else {
         setBalance(0);
       }
@@ -82,16 +82,18 @@ export default function VoiceStore() {
       const res = await authenticatedFetch(`${API_BASE}/api/v1/voice/list?scope=public`);
       if (res.ok) {
         const data = await res.json();
-        const mappedAssets = data.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          description: item.description,
-          price_coins: item.price_coins,
-          author: item.creator_id,
-          tags: ["voice", "api"],
-        }));
-        if (mappedAssets.length > 0) {
+        if (Array.isArray(data)) {
+          const mappedAssets: VoiceAsset[] = data.map((item: Record<string, unknown>) => ({
+            id: String(item.id ?? ''),
+            name: String(item.name ?? ''),
+            description: String(item.description ?? ''),
+            price_coins: typeof item.price_coins === 'number' ? item.price_coins : 0,
+            author: String(item.creator_id ?? ''),
+            tags: ["voice", "api"],
+          }));
+          if (mappedAssets.length > 0) {
             setAssets(mappedAssets);
+          }
         }
       }
     } catch (e) {
@@ -117,13 +119,13 @@ export default function VoiceStore() {
 
       if (res.ok) {
         setBalance(prev => prev - asset.price_coins);
-        showToast('success', `${asset.name} purchased successfully. DRM key deposited in Abyss Vault.`);
+        showToast('success', t('voice.purchaseSuccess', { name: asset.name }));
       } else {
         const data = await res.json();
-        showToast('error', data.message || 'Insufficient funds');
+        showToast('error', data.message || t('voice.insufficientFunds') || 'Insufficient funds');
       }
     } catch (e) {
-      showToast('error', 'Network error occurred during purchase.');
+      showToast('error', t('common.networkError'));
     } finally {
       setPurchasing(null);
     }
@@ -146,10 +148,10 @@ export default function VoiceStore() {
           window.location.assign(data.url);
         }
       } else {
-        showToast('error', 'Failed to create checkout session.');
+        showToast('error', t('voice.checkoutFailed'));
       }
     } catch (e) {
-      showToast('error', 'Network error occurred.');
+      showToast('error', t('common.networkError'));
     } finally {
       setIsRecharging(false);
     }
@@ -161,10 +163,10 @@ export default function VoiceStore() {
         <div>
           <h3 style={{ margin: 0, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Crown size={24} color="var(--accent-purple)" />
-            Creator Registry & Voice Store
+            {t('voice.title') || 'Creator Registry & Voice Store'}
           </h3>
           <p style={{ margin: "0.5rem 0 0", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-            Acquire premium XTTS voices with mathematically enforced DRM.
+            {t('voice.subtitle') || 'Acquire premium XTTS voices with mathematically enforced DRM.'}
           </p>
         </div>
         <div style={{ 
@@ -188,7 +190,7 @@ export default function VoiceStore() {
             onClick={handleRecharge}
             disabled={isRecharging}
           >
-            {isRecharging ? 'Processing...' : 'Recharge'}
+            {isRecharging ? (t('common.processing') || 'Processing...') : (t('voice.recharge') || 'Recharge')}
           </button>
         </div>
       </div>
@@ -209,7 +211,7 @@ export default function VoiceStore() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
               <div>
                 <h4 style={{ margin: "0 0 0.25rem", color: "var(--text-primary)" }}>{asset.name}</h4>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>by {asset.author}</div>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{t('voice.authorPrefix') || 'by '} {asset.author}</div>
               </div>
               <div style={{ background: "var(--accent-cyan-10)", color: "var(--accent-cyan)", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "4px" }}>
                 <span>{asset.price_coins}</span> KC
@@ -221,15 +223,15 @@ export default function VoiceStore() {
             </p>
 
             <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
-              {asset.tags.map(t => (
-                <span key={t} style={{ 
+              {asset.tags.map(tag => (
+                <span key={tag} style={{ 
                   fontSize: "0.7rem", 
                   padding: "2px 8px", 
                   borderRadius: "12px", 
                   background: "var(--white-05)",
                   color: "var(--text-muted)"
                 }}>
-                  #{t}
+                  #{tag}
                 </span>
               ))}
             </div>
@@ -239,7 +241,7 @@ export default function VoiceStore() {
                 className="secondary-button" 
                 style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}
               >
-                <Volume2 size={16} /> Preview
+                <Volume2 size={16} /> {t('common.preview') || 'Preview'}
               </button>
               <button 
                 className="primary-button" 
@@ -251,19 +253,19 @@ export default function VoiceStore() {
                   <span className="ani-pulse">{t('voice.securing')}</span>
                 ) : (
                   <>
-                    <ShoppingCart size={16} /> Purchase
+                    <ShoppingCart size={16} /> {t('voice.purchase') || 'Purchase'}
                   </>
                 )}
               </button>
             </div>
             {(!isEkycVerified || balance < asset.price_coins) && (
               <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "var(--accent-rose)", textAlign: "center" }}>
-                {!isEkycVerified ? "eKYC Required" : "Insufficient funds"}
+                {!isEkycVerified ? (t('voice.ekycRequired') || 'eKYC Required') : (t('voice.insufficientFunds') || 'Insufficient funds')}
               </div>
             )}
             <div style={{ marginTop: "1rem", fontSize: "0.7rem", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem" }}>
               <ShieldCheck size={12} color="var(--accent-emerald)" />
-              Powered by Abyss Security Proxy DRM
+              {t('voice.drmPowered') || 'Powered by Abyss Security Proxy DRM'}
             </div>
           </motion.div>
         ))}

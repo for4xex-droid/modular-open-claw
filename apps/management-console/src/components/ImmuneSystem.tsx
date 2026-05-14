@@ -43,7 +43,8 @@ const ImmuneSystem: React.FC = () => {
         try {
             const res = await authenticatedFetch(`${API_BASE}/api/synergy/rules`);
             if (res.ok) {
-                const data: ImmuneRule[] = await res.json();
+                const raw = await res.json();
+                const data: ImmuneRule[] = Array.isArray(raw) ? raw : [];
 
                 const mapped = data.map(r => ({
                     ...r,
@@ -61,8 +62,8 @@ const ImmuneSystem: React.FC = () => {
         try {
             const res = await authenticatedFetch(`${API_BASE}/api/v1/audit/quarantine`);
             if (res.ok) {
-                const data = await res.json();
-                setQuarantinedAssets(data);
+                const raw = await res.json();
+                setQuarantinedAssets(Array.isArray(raw) ? raw : []);
             }
         } catch (e) {
             console.error("Failed to fetch quarantined assets", e);
@@ -146,14 +147,14 @@ const ImmuneSystem: React.FC = () => {
                 method: 'DELETE'
             });
             if (res.ok) {
-                showToast('success', 'Immune rule deleted successfully.');
+                showToast('success', t('immune.ruleDeleted'));
                 fetchRules();
             } else {
-                showToast('error', 'Failed to delete immune rule.');
+                showToast('error', t('immune.ruleDeleteFailed'));
             }
         } catch (e) {
             console.error("Failed to delete rule", e);
-            showToast('error', 'Network error occurred while deleting.');
+            showToast('error', t('common.networkError'));
         } finally {
             setDeletingRuleId(null);
         }
@@ -170,14 +171,14 @@ const ImmuneSystem: React.FC = () => {
                 method: 'POST'
             });
             if (res.ok) {
-                showToast('success', 'Asset released successfully.');
+                showToast('success', t('immune.assetReleased'));
                 fetchQuarantined();
             } else {
-                showToast('error', "Failed to release asset: " + (await res.text()));
+                showToast('error', t('immune.releaseFailed') + ': ' + (await res.text()));
             }
         } catch (e) {
             console.error("Failed to release asset", e);
-            showToast('error', "Network error occurred.");
+            showToast('error', t('common.networkError'));
         } finally {
             setReleasingAssetId(null);
         }
@@ -204,20 +205,20 @@ const ImmuneSystem: React.FC = () => {
             <ConfirmModal
                 isOpen={!!deletingRuleId}
                 type="danger"
-                title="Delete Immune Rule"
-                message="Are you sure you want to delete this immune rule?"
-                details="This rule will no longer block or warn on matching patterns."
-                confirmText="Delete"
+                title={t('immune.deleteRuleTitle')}
+                message={t('immune.deleteRuleMessage')}
+                details={t('immune.deleteRuleDetails')}
+                confirmText={t('immune.confirmDelete')}
                 onConfirm={executeDeleteRule}
                 onCancel={() => setDeletingRuleId(null)}
             />
             <ConfirmModal
                 isOpen={!!releasingAssetId}
                 type="warning"
-                title="Release Asset"
-                message="Are you sure you want to release this asset from quarantine?"
-                details="The asset will bypass the quarantine block and become available."
-                confirmText="Release"
+                title={t('immune.releaseAssetTitle')}
+                message={t('immune.releaseAssetMessage')}
+                details={t('immune.releaseAssetDetails')}
+                confirmText={t('immune.confirmRelease')}
                 onConfirm={executeReleaseQuarantine}
                 onCancel={() => setReleasingAssetId(null)}
             />
@@ -237,7 +238,7 @@ const ImmuneSystem: React.FC = () => {
                                 border: 'none', borderRadius: '4px', padding: '0.4rem 1rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.75rem', transition: 'all var(--speed-normal)'
                             }}
                         >
-                            RULES
+                            {t('immune.tabRules')}
                         </button>
                         <button
                             onClick={() => setActiveTab('QUARANTINE')}
@@ -247,7 +248,7 @@ const ImmuneSystem: React.FC = () => {
                                 border: 'none', borderRadius: '4px', padding: '0.4rem 1rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.75rem', transition: 'all var(--speed-normal)'
                             }}
                         >
-                            QUARANTINE
+                            {t('immune.tabQuarantine')}
                         </button>
                         <button
                             onClick={() => setActiveTab('AEGIS')}
@@ -257,7 +258,7 @@ const ImmuneSystem: React.FC = () => {
                                 border: 'none', borderRadius: '4px', padding: '0.4rem 1rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.75rem', transition: 'all var(--speed-normal)'
                             }}
                         >
-                            AEGIS SENTINEL
+                            {t('immune.tabAegis')}
                         </button>
                     </div>
                 </div>
@@ -278,7 +279,7 @@ const ImmuneSystem: React.FC = () => {
                         }}>
                             <Search size={18} color="var(--text-muted)" />
                             <input
-                                placeholder="Search active patterns..."
+                                placeholder={t('immune.searchPlaceholder')}
                                 style={{ background: 'none', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '100%', fontSize: '0.9rem' }}
                             />
                         </div>
@@ -303,7 +304,7 @@ const ImmuneSystem: React.FC = () => {
                             }}
                         >
                             {isAdding ? <X size={18} /> : <Plus size={18} />}
-                            {isAdding ? 'CANCEL' : 'FORGE NEW RULE'}
+                            {isAdding ? t('immune.cancel') : t('immune.forgeNewRule')}
                         </button>
                     )}
                 </div>
@@ -318,7 +319,7 @@ const ImmuneSystem: React.FC = () => {
                         >
                             <div style={{ background: 'var(--bg-glass-light)', border: `1px solid ${editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)'}`, borderRadius: 'var(--radius-lg)', padding: '1.5rem', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '1rem', alignItems: 'flex-end' }}>
                                 <div className="input-group">
-                                    <label style={{ fontSize: '0.7rem', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', display: 'block', marginBottom: '0.4rem', fontWeight: 700 }}>PATTERN (REGEX / TEXT)</label>
+                                    <label style={{ fontSize: '0.7rem', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', display: 'block', marginBottom: '0.4rem', fontWeight: 700 }}>{t('immune.patternLabel')}</label>
                                     <input
                                         value={newRule.pattern}
                                         onChange={e => setNewRule({ ...newRule, pattern: e.target.value })}
@@ -327,7 +328,7 @@ const ImmuneSystem: React.FC = () => {
                                     />
                                 </div>
                                 <div className="input-group">
-                                    <label style={{ fontSize: '0.7rem', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', display: 'block', marginBottom: '0.4rem', fontWeight: 700 }}>SEVERITY (0-100)</label>
+                                    <label style={{ fontSize: '0.7rem', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', display: 'block', marginBottom: '0.4rem', fontWeight: 700 }}>{t('immune.severityLabel')}</label>
                                     <input
                                         type="number"
                                         value={newRule.severity}
@@ -336,7 +337,7 @@ const ImmuneSystem: React.FC = () => {
                                     />
                                 </div>
                                 <div className="input-group">
-                                    <label style={{ fontSize: '0.7rem', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', display: 'block', marginBottom: '0.4rem', fontWeight: 700 }}>ACTION</label>
+                                    <label style={{ fontSize: '0.7rem', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', display: 'block', marginBottom: '0.4rem', fontWeight: 700 }}>{t('immune.actionLabel')}</label>
                                     <select
                                         value={newRule.action}
                                         onChange={e => setNewRule({ ...newRule, action: e.target.value })}
@@ -352,7 +353,7 @@ const ImmuneSystem: React.FC = () => {
                                     className="primary-button"
                                     style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', height: '44px' }}
                                 >
-                                    {editingId ? 'UPDATE RULE' : 'ACTIVATE RULE'}
+                                    {editingId ? t('immune.updateRule') : t('immune.activateRule')}
                                 </button>
                             </div>
                         </motion.div>
@@ -429,7 +430,7 @@ const ImmuneSystem: React.FC = () => {
                                         className="secondary-button"
                                         style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
                                     >
-                                        EDIT
+                                        {t('immune.editButton')}
                                     </button>
                                     <button
                                         onClick={() => handleDeleteRule(rule.id)}
@@ -445,7 +446,7 @@ const ImmuneSystem: React.FC = () => {
                                             fontWeight: 700
                                         }}
                                     >
-                                        DELETE
+                                        {t('immune.deleteButton')}
                                     </button>
                                 </div>
                             </motion.div>
@@ -515,7 +516,7 @@ const ImmuneSystem: React.FC = () => {
                                     className="primary-button"
                                     style={{ background: 'var(--accent-emerald)', padding: '0.5rem 1rem', fontSize: '0.75rem' }}
                                 >
-                                    RELEASE EXCEPTION
+                                    {t('immune.releaseException')}
                                 </button>
                             </motion.div>
                         )) : (
@@ -536,28 +537,28 @@ const ImmuneSystem: React.FC = () => {
                                     gap: 'var(--space-md)'
                                 }}>
                                     <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>TOTAL INCIDENTS (7d)</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>{t('immune.totalIncidents7d')}</div>
                                         <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>{aegisStatus?.stats?.total_incidents_7d || 0}</div>
                                     </div>
                                     <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-glass)' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>UNRESOLVED</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>{t('immune.unresolved')}</div>
                                         <div style={{ fontSize: '2rem', fontWeight: 800, color: aegisStatus?.stats?.unresolved && aegisStatus.stats.unresolved > 0 ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}>
                                             {aegisStatus?.stats?.unresolved || 0}
                                         </div>
                                     </div>
                                     <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-glass)' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>AFFECTED SKILLS</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>{t('immune.affectedSkills')}</div>
                                         <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-amber)' }}>{aegisStatus?.stats?.distinct_skills || 0}</div>
                                     </div>
                                     <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-glass)' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>TOP FAILING SKILL</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>{t('immune.topFailingSkill')}</div>
                                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.8rem' }}>{aegisStatus?.stats?.top_failing_skill || 'None'}</div>
                                     </div>
                                 </div>
 
-                                <h4 style={{ margin: 'var(--space-md) 0 0 0', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem' }}>Open Incidents</h4>
+                                <h4 style={{ margin: 'var(--space-md) 0 0 0', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem' }}>{t('immune.openIncidents')}</h4>
                                 
-                                {aegisStatus && aegisStatus.open_incidents.length > 0 ? aegisStatus.open_incidents.map((incident, i) => (
+                                {aegisStatus && Array.isArray(aegisStatus.open_incidents) && aegisStatus.open_incidents.length > 0 ? aegisStatus.open_incidents.map((incident, i) => (
                                     <motion.div
                                         key={incident.id}
                                         initial={{ opacity: 0, y: 10 }}
@@ -607,7 +608,7 @@ const ImmuneSystem: React.FC = () => {
                                                 </div>
                                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                                                     <span className="font-mono" style={{ background: 'var(--black-30)', padding: '2px 4px', borderRadius: '4px' }}>
-                                                        {incident.input_payload.substring(0, 40)}{incident.input_payload.length > 40 ? '...' : ''}
+                                                        {(incident.input_payload || '').substring(0, 40)}{(incident.input_payload || '').length > 40 ? '...' : ''}
                                                     </span>
                                                     <span style={{ marginLeft: '1rem', opacity: 0.6 }}>Reported: {new Date(incident.created_at).toLocaleString()}</span>
                                                 </div>
@@ -617,8 +618,8 @@ const ImmuneSystem: React.FC = () => {
                                 )) : (
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: 'var(--space-2xl)', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-glass)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)' }}>
                                         <Shield size={48} style={{ opacity: 0.2, margin: '0 auto var(--space-md) auto', display: 'block' }} color="var(--accent-emerald)" />
-                                        <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: 'var(--space-xs)' }}>Zero Active Incidents</div>
-                                        <div style={{ fontSize: '0.9rem' }}>The Aegis Sentinel is monitoring. All systems are stable.</div>
+                                        <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: 'var(--space-xs)' }}>{t('immune.zeroIncidents')}</div>
+                                        <div style={{ fontSize: '0.9rem' }}>{t('immune.zeroIncidentsDesc')}</div>
                                     </motion.div>
                                 )}
                             </div>
@@ -628,10 +629,9 @@ const ImmuneSystem: React.FC = () => {
 
                 <div className="info-box-glass" style={{ marginTop: '3rem', padding: '2rem', textAlign: 'center' }}>
                     <Shield size={32} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                    <h4 style={{ color: 'var(--text-secondary)', margin: 0 }}>{t('immune.heuristicsActive')}</h4>
+                    <h4 style={{ color: 'var(--text-secondary)', margin: 0 }}>{t('immune.abyssVaultTitle')}</h4>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem', lineHeight: 1.6 }}>
-                        The Abyss Vault enforces these rules at the memory-page level. <br />
-                        Unauthorized modifications to the sentinel state are physically impossible.
+                        {t('immune.abyssVaultDesc')}
                     </p>
                 </div>
             </div>

@@ -11,9 +11,22 @@ import { API_BASE } from "../config";
 import { authenticatedFetch } from '../lib/auth';
 import { useTranslation } from '../i18n';
 
+interface TimelineEvent {
+    id?: string;
+    _type: 'karma' | 'evolution';
+    created_at: string;
+    node_id?: string;
+    karma_type?: string;
+    job_id?: string;
+    lesson?: string;
+    inspiration?: string;
+    event_type?: string;
+    description?: string;
+}
+
 const Timeline: React.FC = () => {
     const { t } = useTranslation();
-    const [events, setEvents] = useState<any[]>([]);
+    const [events, setEvents] = useState<TimelineEvent[]>([]);
     const [selfNodeId, setSelfNodeId] = useState<string>("");
     const [loading, setLoading] = useState(true);
 
@@ -23,22 +36,47 @@ const Timeline: React.FC = () => {
             try {
                 // Fetch node id
                 const healthRes = await authenticatedFetch(`${API_BASE}/api/health`);
-                const health = await healthRes.json();
-                setSelfNodeId(health.node_id);
+                if (healthRes.ok) {
+                    const health = await healthRes.json();
+                    setSelfNodeId(typeof health?.node_id === 'string' ? health.node_id : '');
+                }
 
                 // Fetch Karma
                 const karmaRes = await authenticatedFetch(`${API_BASE}/api/synergy/karma`);
-                const karmas = await karmaRes.json();
+                let karmas: Record<string, unknown>[] = [];
+                if (karmaRes.ok) {
+                    const karmasRaw = await karmaRes.json();
+                    karmas = Array.isArray(karmasRaw) ? karmasRaw : [];
+                }
 
                 // Fetch Evolution
                 const evoRes = await authenticatedFetch(`${API_BASE}/api/system/evolution`);
-                const evos = await evoRes.json();
+                let evos: Record<string, unknown>[] = [];
+                if (evoRes.ok) {
+                    const evosRaw = await evoRes.json();
+                    evos = Array.isArray(evosRaw) ? evosRaw : [];
+                }
 
-                // Merge and sort
-                const merged = [
-                    ...karmas.map((k: any) => ({ ...k, _type: 'karma' })),
-                    ...evos.map((e: any) => ({ ...e, _type: 'evolution' }))
-                ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                // Merge and sort (NaN-safe: treat missing dates as epoch 0)
+                const merged: TimelineEvent[] = [
+                    ...karmas.map((k) => ({
+                        id: String(k.id ?? ''),
+                        _type: 'karma' as const,
+                        created_at: String(k.created_at ?? ''),
+                        node_id: typeof k.node_id === 'string' ? k.node_id : undefined,
+                        karma_type: typeof k.karma_type === 'string' ? k.karma_type : undefined,
+                        job_id: typeof k.job_id === 'string' ? k.job_id : undefined,
+                        lesson: typeof k.lesson === 'string' ? k.lesson : undefined,
+                        inspiration: typeof k.inspiration === 'string' ? k.inspiration : undefined,
+                    })),
+                    ...evos.map((e) => ({
+                        id: String(e.id ?? ''),
+                        _type: 'evolution' as const,
+                        created_at: String(e.created_at ?? ''),
+                        event_type: typeof e.event_type === 'string' ? e.event_type : undefined,
+                        description: typeof e.description === 'string' ? e.description : undefined,
+                    }))
+                ].sort((a, b) => (new Date(b.created_at).getTime() || 0) - (new Date(a.created_at).getTime() || 0));
 
                 setEvents(merged);
             } catch (e) {
@@ -59,7 +97,7 @@ const Timeline: React.FC = () => {
                     <h3>{t('timeline.title')}</h3>
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    {events.length} CHRONICLES
+                    {events.length} {t('timeline.chronicles') || 'CHRONICLES'}
                 </div>
             </div>
 

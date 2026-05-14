@@ -115,12 +115,12 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
             }
 
             if let Ok(command) = serde_json::from_str::<ControlCommand>(&text) {
-                info!("🎮 [WatchtowerWS] Received command: {:?}", command);
                 match command {
                     ControlCommand::Chat {
                         message,
                         channel_id,
                     } => {
+                        info!("🎮 [WatchtowerWS] Received: Chat (channel={})", channel_id);
                         let state_clone = state.clone();
                         tokio::spawn(async move {
                             let payload = AgentChatRequest {
@@ -135,6 +135,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                         });
                     }
                     ControlCommand::GetAgentStats => {
+                        info!("🎮 [WatchtowerWS] Received: GetAgentStats");
                         if let Ok(stats) = state.job_queue.get_agent_stats().await {
                             let _ = state
                                 .event_sender
@@ -143,8 +144,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
                     }
                     _ => {
                         warn!(
-                            "⚠️ [WatchtowerWS] Command not implemented yet: {:?}",
-                            command
+                            "⚠️ [WatchtowerWS] Unhandled command variant received."
                         );
                     }
                 }
@@ -277,9 +277,18 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
                 resource_path: None,
             });
         }
-        _ => {
+        Ok(Err(e)) => {
+            error!("❌ [WatchtowerWS] LLM provider error: {:?}", e);
             let _ = state.event_sender.send(CoreEvent::ChatResponse {
-                response: "Error: Cognitive engine timeout or failure.".to_string(),
+                response: "Error: Cognitive engine encountered an error.".to_string(),
+                channel_id: channel_id_u64,
+                resource_path: None,
+            });
+        }
+        Err(_) => {
+            warn!("⏱️ [WatchtowerWS] LLM request timed out after 120s.");
+            let _ = state.event_sender.send(CoreEvent::ChatResponse {
+                response: "Error: Cognitive engine timeout.".to_string(),
                 channel_id: channel_id_u64,
                 resource_path: None,
             });

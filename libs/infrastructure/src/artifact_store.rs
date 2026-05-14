@@ -564,14 +564,14 @@ impl ArtifactStore for UniversalArtifactStore {
                 let mut results = Vec::new();
                 for r in rows {
                     results.push(ArtifactEdge {
-                        id: r.get("id"),
-                        source_id: r.get("source_id"),
-                        target_id: r.get("target_id"),
-                        source_type: r.get("source_type"),
-                        relation: r.get("relation"),
-                        metadata: serde_json::from_str(&r.get::<String, _>("metadata"))
+                        id: r.try_get("id").unwrap_or_default(),
+                        source_id: r.try_get("source_id").unwrap_or_default(),
+                        target_id: r.try_get("target_id").unwrap_or_default(),
+                        source_type: r.try_get("source_type").unwrap_or_default(),
+                        relation: r.try_get("relation").unwrap_or_default(),
+                        metadata: serde_json::from_str(&r.try_get::<String, _>("metadata").unwrap_or_default())
                             .unwrap_or_default(),
-                        created_at: r.get("created_at"),
+                        created_at: r.try_get("created_at").unwrap_or_default(),
                     });
                 }
                 Ok(results)
@@ -588,14 +588,14 @@ impl ArtifactStore for UniversalArtifactStore {
                 let mut results = Vec::new();
                 for r in rows {
                     results.push(ArtifactEdge {
-                        id: r.get("id"),
-                        source_id: r.get("source_id"),
-                        target_id: r.get("target_id"),
-                        source_type: r.get("source_type"),
-                        relation: r.get("relation"),
-                        metadata: serde_json::from_str(&r.get::<String, _>("metadata"))
+                        id: r.try_get("id").unwrap_or_default(),
+                        source_id: r.try_get("source_id").unwrap_or_default(),
+                        target_id: r.try_get("target_id").unwrap_or_default(),
+                        source_type: r.try_get("source_type").unwrap_or_default(),
+                        relation: r.try_get("relation").unwrap_or_default(),
+                        metadata: serde_json::from_str(&r.try_get::<String, _>("metadata").unwrap_or_default())
                             .unwrap_or_default(),
-                        created_at: r.get("created_at"),
+                        created_at: r.try_get("created_at").unwrap_or_default(),
                     });
                 }
                 Ok(results)

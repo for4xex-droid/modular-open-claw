@@ -24,7 +24,16 @@ import {
   Play,
   Library,
   Server,
-  Briefcase
+  Briefcase,
+  Home,
+  LayoutDashboard,
+  GitCommit,
+  TrendingUp,
+  ClipboardList,
+  Coins,
+  BarChart2,
+  PanelLeftClose,
+  PanelLeftOpen
 } from "lucide-react";
 const OnboardingModal = React.lazy(() => import("./components/OnboardingModal"));
 const SystemBirth = React.lazy(() => import("./components/SystemBirth"));
@@ -58,6 +67,7 @@ import { AiaaOnboardingWizard } from "./components/AiaaOnboardingWizard";
 
 import { isAuthenticated } from "./lib/auth";
 import { useAvatarState } from "./hooks/useAvatarState";
+import { AiomeSkeleton } from "./components/common/AiomeSkeleton";
 import { useDisplayMode } from "./hooks/useDisplayMode";
 import { AgentStats, VitalityUIEvent, Karma, SoTEvent } from "./types";
 import { useSystemVitality } from "./hooks/useSystemVitality";
@@ -75,6 +85,7 @@ function App() {
   const [recentEvents, setRecentEvents] = useState<VitalityUIEvent[]>([]);
   const [isAuth, setIsAuth] = useState(isAuthenticated());
   const [sessionSavedChars, setSessionSavedChars] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const seenTokenEventsRef = React.useRef(new Set<number>());
 
   const { events: vitalityEvents, lastEvent, connectionStatus, toggleConnection, lastPingMs } = useSystemVitality();
@@ -332,17 +343,26 @@ function App() {
       </div>
 
       {/* Sidebar — advanced mode only */}
-      {viewMode === 'advanced' && <aside className="sidebar">
-        <div className="brand">
+      {viewMode === 'advanced' && <aside className={`sidebar ${isSidebarOpen ? '' : 'closed'}`} style={{ width: isSidebarOpen ? 'var(--layout-sidebar-width)' : '80px', transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)', padding: isSidebarOpen ? 'var(--space-lg) var(--space-md)' : 'var(--space-lg) var(--space-xs)' }}>
+        <div className="brand" style={{ justifyContent: isSidebarOpen ? 'flex-start' : 'center' }}>
           <BrainCircuit size={28} color="var(--accent-cyan)" />
-          <span>Aiome</span>
+          {isSidebarOpen && <span>Aiome</span>}
+        </div>
+        <div style={{ display: 'flex', justifyContent: isSidebarOpen ? 'flex-end' : 'center', marginBottom: '0.5rem' }}>
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            title="Toggle Sidebar"
+          >
+            {isSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
+          </button>
         </div>
 
         <nav className="nav-group">
           <h4>{t('nav.section.synergyHub')}</h4>
           {isVisible("home-v2") && (
             <NavItem
-              icon={<Activity size={18} />}
+              icon={<Home size={18} />}
               label={t('nav.homeV2')}
               active={activeTab === "home-v2"}
               onClick={() => setActiveTab("home-v2")}
@@ -358,7 +378,7 @@ function App() {
           )}
           {isVisible("dashboard") && (
             <NavItem
-              icon={<Activity size={20} />}
+              icon={<LayoutDashboard size={20} />}
               label={t('nav.biotope')}
               active={activeTab === "dashboard"}
               onClick={() => setActiveTab("dashboard")}
@@ -390,7 +410,7 @@ function App() {
           )}
           {isVisible("causal") && (
             <NavItem
-              icon={<Activity size={20} />}
+              icon={<GitCommit size={20} />}
               label={t('nav.causalTrace')}
               active={activeTab === "causal"}
               onClick={() => setActiveTab("causal")}
@@ -398,7 +418,7 @@ function App() {
           )}
           {isVisible("seo-pulse") && (
             <NavItem
-              icon={<Activity size={20} />}
+              icon={<TrendingUp size={20} />}
               label={t('nav.seoPulse')}
               active={activeTab === "seo-pulse"}
               onClick={() => setActiveTab("seo-pulse")}
@@ -414,7 +434,7 @@ function App() {
           )}
           {isVisible("audit") && (
             <NavItem
-              icon={<Activity size={20} />}
+              icon={<ClipboardList size={20} />}
               label={t('nav.audit')}
               active={activeTab === "audit"}
               onClick={() => setActiveTab("audit")}
@@ -446,7 +466,7 @@ function App() {
           )}
           {isVisible("nurture") && (
             <NavItem
-              icon={<Activity size={20} />}
+              icon={<Coins size={20} />}
               label={t('nav.nurtureEconomy', { defaultValue: 'Economy' }) as string}
               active={activeTab === "nurture"}
               onClick={() => setActiveTab("nurture")}
@@ -498,7 +518,7 @@ function App() {
           )}
           {isVisible("prompt-stats") && (
             <NavItem
-              icon={<Activity size={20} />}
+              icon={<BarChart2 size={20} />}
               label={t('nav.promptStats')}
               active={activeTab === "prompt-stats"}
               onClick={() => setActiveTab("prompt-stats")}
@@ -613,7 +633,17 @@ function App() {
 
         <AnimatePresence mode="wait">
           {/* Use Suspense for lazy loaded components */}
-          <React.Suspense fallback={<div style={{ height: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="ani-pulse" style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>{t('loading')}</div></div>}>
+          <React.Suspense fallback={
+            <div style={{ padding: 'var(--space-lg)', display: 'grid', gap: 'var(--space-lg)', height: '100%' }}>
+              <AiomeSkeleton height="40px" width="30%" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-md)' }}>
+                <AiomeSkeleton height="150px" />
+                <AiomeSkeleton height="150px" />
+                <AiomeSkeleton height="150px" />
+              </div>
+              <AiomeSkeleton height="300px" />
+            </div>
+          }>
             <motion.div
               key={activeTab}
               initial={{ opacity: 0, y: 10 }}

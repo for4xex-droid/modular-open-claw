@@ -41,7 +41,6 @@ impl HeartbeatWakeupService {
         }
     }
 
-    /// ScoreTracker を紐付ける
     /// ScoreTracker と LoraService を紐付ける
     pub fn with_evolution_tools(
         mut self,
@@ -59,9 +58,14 @@ impl HeartbeatWakeupService {
     pub async fn run_wakeup_ping(&self) -> Option<String> {
         let filename = "HEARTBEAT.md";
         let target_path = self.workspace_dir.join(filename);
-        let content = fs::read(target_path)
-            .map(|bytes| String::from_utf8_lossy(&bytes[..bytes.len().min(5000)]).to_string())
-            .unwrap_or_default();
+        let content = match fs::read(&target_path) {
+            Ok(bytes) => String::from_utf8_lossy(&bytes[..bytes.len().min(5000)]).to_string(),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+            Err(e) => {
+                warn!("⚠️ [Heartbeat] Failed to read {:?}: {:?}", target_path, e);
+                return None;
+            }
+        };
 
         // G-24: もしコンテンツが空、または実効性のない場合は早期リターン
         if content.trim().is_empty() || self.is_effectively_empty(&content) {
@@ -177,14 +181,14 @@ HEARTBEAT.mdを確認し、緊急のタスクやユーザーへの報告事項�
                     } else {
                         info!("💓 [Heartbeat] Proactive Talk generated.");
                         // RT-5 Sanitization: Drop any dangerous patterns (shell, markdown injection)
+                        // Use word-boundary aware matching to avoid false positives
+                        // (e.g., "evaluate" should not match "eval")
+                        let dangerous_patterns = [
+                            "curl ", "wget ", "bash ", "sudo ", "rm -rf",
+                            " eval ", "eval(", ";eval",
+                        ];
                         let lower = reply.to_lowercase();
-                        if lower.contains("curl ")
-                            || lower.contains("wget ")
-                            || lower.contains("bash")
-                            || lower.contains("sudo ")
-                            || lower.contains("eval")
-                            || lower.contains("rm -rf")
-                        {
+                        if dangerous_patterns.iter().any(|p| lower.contains(p)) {
                             warn!("🚨 [Heartbeat] Blocked generated text containing potential shell commands or dangerous keywords.");
                             None
                         } else {

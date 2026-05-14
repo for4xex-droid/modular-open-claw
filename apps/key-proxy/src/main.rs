@@ -109,7 +109,7 @@ async fn main() -> anyhow::Result<()> {
     //    Initial attempt from CWD (essential for dev environments)
     dotenvy::dotenv().ok();
 
-    let resolver = shared::app_data::AppDataResolver::new().unwrap();
+    let resolver = shared::app_data::AppDataResolver::new().map_err(|e| anyhow::anyhow!(e))?;
 
     //    Explicit attempt from application root (essential for Production)
     let app_env_path = resolver.root().join(".env");
@@ -145,7 +145,7 @@ async fn main() -> anyhow::Result<()> {
     quotas.insert("api-server".to_string(), 50000);
     quotas.insert("aiome-agent".to_string(), 10000);
 
-    let resolver = shared::app_data::AppDataResolver::new().unwrap();
+    let resolver = shared::app_data::AppDataResolver::new().map_err(|e| anyhow::anyhow!(e))?;
     let persistence_path = env::var("QUOTA_DB_PATH")
         .map(PathBuf::from)
         .unwrap_or_else(|_| resolver.resolve("config/key_proxy_state.json"));
@@ -689,7 +689,13 @@ pub(crate) async fn handle_gemini_passthrough(
         );
     } else {
         // Replace fake key with real key if it was passed
-        let fake_key_start = target_url.find("key=").unwrap() + 4;
+        let fake_key_start = match target_url.find("key=") {
+            Some(idx) => idx + 4,
+            None => {
+                error!("❌ [KeyProxy] Logically unreachable: key= not found in else branch");
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Proxy internal error").into_response();
+            }
+        };
         let fake_key_end = target_url[fake_key_start..]
             .find('&')
             .map(|i| i + fake_key_start)

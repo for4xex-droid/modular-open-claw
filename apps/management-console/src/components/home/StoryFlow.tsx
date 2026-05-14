@@ -31,47 +31,47 @@ interface TimelineEntry {
 /**
  * Map a VitalityEvent to a TimelineEntry for display.
  */
-const mapVitalityEvent = (event: VitalityEvent, index: number): TimelineEntry | null => {
+const mapVitalityEvent = (event: VitalityEvent, index: number, t: (key: string) => string): TimelineEntry | null => {
     const ts = Date.now() - index * 100; // approximate ordering
     const d = (event.data || {}) as Record<string, unknown>;
 
     switch (event.type) {
         case 'level_up':
-            return { id: `sys-${index}`, type: 'system', title: 'LEVEL UP', content: `Level ${String(d?.level ?? '?')} reached! 🎉`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'system', title: t('storyFlow.levelUp') || 'LEVEL UP', content: t('storyFlow.levelUp') || `Level ${String(d?.level ?? '?')} reached! 🎉`, timestamp: ts };
         case 'karma_update':
-            return { id: `sys-${index}`, type: 'system', title: 'MEMORY', content: `${String(d?.lesson ?? 'Memory updated')}`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'system', title: t('storyFlow.memoryUpdate') || 'MEMORY', content: `${String(d?.lesson ?? t('storyFlow.memoryUpdate'))}`, timestamp: ts };
         case 'job_started':
-            return { id: `sys-${index}`, type: 'tool_exec', title: 'JOB STARTED', content: `${String(d?.job_type ?? 'Task')} initiated`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'tool_exec', title: t('storyFlow.jobStarted') || 'JOB STARTED', content: `${String(d?.job_type ?? 'Task')} initiated`, timestamp: ts };
         case 'job_completed':
-            return { id: `sys-${index}`, type: 'system', title: 'JOB COMPLETE', content: `Task finished successfully`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'system', title: t('storyFlow.jobComplete') || 'JOB COMPLETE', content: t('storyFlow.jobComplete') || `Task finished successfully`, timestamp: ts };
         case 'skill_loaded':
         case 'skill_ready':
-            return { id: `sys-${index}`, type: 'system', title: 'SKILL', content: `${String(d?.name ?? 'Skill')} loaded`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'system', title: t('storyFlow.skillLoaded') || 'SKILL', content: `${String(d?.name ?? 'Skill')} loaded`, timestamp: ts };
         case 'immune_alert':
-            return { id: `sys-${index}`, type: 'system', title: '🛡️ IMMUNE ALERT', content: `${String(d?.message ?? 'Security event detected')}`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'system', title: t('storyFlow.immuneAlert') || '🛡️ IMMUNE ALERT', content: `${String(d?.message ?? t('storyFlow.immuneAlert'))}`, timestamp: ts };
         case 'skill_execution':
-            return { id: `sys-${index}`, type: 'tool_exec', title: 'EXECUTING', content: `${String(d?.name ?? 'Tool')}`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'tool_exec', title: t('storyFlow.executing') || 'EXECUTING', content: `${String(d?.name ?? 'Tool')}`, timestamp: ts };
         case 'proactive_talk':
-            return { id: `sys-${index}`, type: 'chat_assistant', title: 'AIOME (PROACTIVE)', content: `${String(d?.message ?? '')}`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'chat_assistant', title: t('storyFlow.proactive') || 'AIOME (PROACTIVE)', content: `${String(d?.message ?? '')}`, timestamp: ts };
         case 'sot_progress': {
-            let msg = 'Thinking in progress';
+            let msg = t('storyFlow.sot.sessionStart') || 'Thinking in progress';
             if (d && d.type) {
                 const innerData = d.data as any;
                 switch (d.type) {
-                    case 'SessionStart': msg = `Started deliberation session`; break;
-                    case 'RoleStart': msg = `Role '${innerData?.role}' started thinking (Round ${innerData?.round})`; break;
-                    case 'RoleOutput': msg = `Role '${innerData?.role}' finished thinking (Round ${innerData?.round})`; break;
-                    case 'Score': msg = `Evaluation scores received (Round ${innerData?.round})`; break;
-                    case 'ThinkerAbstained': msg = `A thinker voluntarily abstained (Round ${innerData?.round})`; break;
-                    case 'ProtocolSelected': msg = `Protocol selected: ${innerData?.protocol}`; break;
-                    case 'SessionEnd': msg = `Session ended`; break;
+                    case 'SessionStart': msg = t('storyFlow.sot.sessionStart') || `Started deliberation session`; break;
+                    case 'RoleStart': msg = (t('storyFlow.sot.roleStart') || `Role started thinking`).replace('{{round}}', innerData?.round || '?'); break;
+                    case 'RoleOutput': msg = (t('storyFlow.sot.roleOutput') || `Role finished thinking`).replace('{{round}}', innerData?.round || '?'); break;
+                    case 'Score': msg = (t('storyFlow.sot.score') || `Evaluation scores received`).replace('{{round}}', innerData?.round || '?'); break;
+                    case 'ThinkerAbstained': msg = (t('storyFlow.sot.abstained') || `A thinker voluntarily abstained`).replace('{{round}}', innerData?.round || '?'); break;
+                    case 'ProtocolSelected': msg = (t('storyFlow.sot.protocolSelected') || `Protocol selected:`).replace('{{protocol}}', innerData?.protocol || '?'); break;
+                    case 'SessionEnd': msg = t('storyFlow.sot.sessionEnd') || `Session ended`; break;
                 }
             }
             if (d?.message) msg = String(d.message);
-            return { id: `sys-${index}`, type: 'system', title: 'THINKING PROCESS', content: msg, timestamp: ts };
+            return { id: `sys-${index}`, type: 'system', title: t('agent.thinkingProcess') || 'THINKING PROCESS', content: msg, timestamp: ts };
         }
         case 'commerce_event':
-            return { id: `sys-${index}`, type: 'system', title: '💰 COMMERCE', content: `${String(d?.description ?? 'Commerce transaction processed')} (${Number(d?.amount ?? 0) > 0 ? '+' : ''}${String(d?.amount ?? 0)} ${String(d?.currency ?? '')})`, timestamp: ts };
+            return { id: `sys-${index}`, type: 'system', title: t('storyFlow.commerceDefault') || '💰 COMMERCE', content: `${String(d?.description ?? t('storyFlow.commerceDefault'))} (${Number(d?.amount ?? 0) > 0 ? '+' : ''}${String(d?.amount ?? 0)} ${String(d?.currency ?? '')})`, timestamp: ts };
         default:
             return null;
     }
@@ -124,7 +124,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
             entries.push({
                 id: `chat-${i}`,
                 type: msg.role === 'user' ? 'chat_user' : 'chat_assistant',
-                title: msg.role === 'user' ? 'OPERATOR' : 'AIOME',
+                title: msg.role === 'user' ? (t('agent.roleUser') || 'OPERATOR') : (t('agent.roleAiome') || 'AIOME'),
                 content: msg.content,
                 timestamp: baseTime - (chat.history.length - i) * 1000,
                 isError: msg.isError,
@@ -138,7 +138,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
             entries.push({
                 id: 'karma-context',
                 type: 'karma',
-                title: chat.relevantKarma.includes('見つかりませんでした') ? 'OUT-OF-DOMAIN' : 'MEMORY RETRIEVED',
+                title: chat.relevantKarma.includes('見つかりませんでした') ? (t('storyFlow.ood') || 'OUT-OF-DOMAIN') : (t('storyFlow.memoryRetrieved') || 'MEMORY RETRIEVED'),
                 content: chat.relevantKarma,
                 timestamp: baseTime - 500,
                 isOod: chat.relevantKarma.includes('見つかりませんでした'),
@@ -150,7 +150,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
             entries.push({
                 id: 'knowledge-context',
                 type: 'knowledge',
-                title: 'PROJECT KNOWLEDGE',
+                title: t('storyFlow.knowledge') || 'PROJECT KNOWLEDGE',
                 content: chat.activeKnowledge,
                 timestamp: baseTime - 400,
             });
@@ -161,7 +161,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
             entries.push({
                 id: 'streaming',
                 type: 'chat_streaming',
-                title: 'AIOME (STREAMING)',
+                title: t('storyFlow.streaming') || 'AIOME (STREAMING)',
                 content: chat.streamingText,
                 timestamp: baseTime,
             });
@@ -170,7 +170,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
         // 5. System events (latest few, avoiding excessive noise)
         const recentSysEvents = sysEvents.slice(0, 8);
         recentSysEvents.forEach((evt, i) => {
-            const mapped = mapVitalityEvent(evt, i);
+            const mapped = mapVitalityEvent(evt, i, t);
             if (mapped) entries.push(mapped);
         });
 
@@ -212,7 +212,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                         background: connectionStatus === 'connected' ? 'var(--accent-emerald)' : 'var(--accent-amber)',
                         boxShadow: connectionStatus === 'connected' ? '0 0 10px var(--accent-emerald)' : 'none',
                     }} />
-                    Active Feed
+                    {t('storyFlow.activeFeed') || 'Active Feed'}
                 </h2>
                 <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                     <TokenSavingsIndicator savedChars={sessionSavedChars} variant="compact" />
@@ -300,7 +300,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                             {t('agent.ready')}
                         </div>
                         <p style={{ fontSize: '0.8rem', maxWidth: '280px', lineHeight: 1.5, opacity: 0.4 }}>
-                            Send a message to start a conversation. System events will appear here in real-time.
+                            {t('storyFlow.emptyHint') || 'Send a message to start a conversation. System events will appear here in real-time.'}
                         </p>
                     </div>
                 )}
@@ -496,10 +496,10 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                     opacity: 0.5,
                 }}>
                     <span>
-                        <kbd style={{ background: 'var(--white-10)', padding: '1px 3px', borderRadius: '3px', fontSize: '0.55rem' }}>Shift+Enter</kbd> newline
+                        <kbd style={{ background: 'var(--white-10)', padding: '1px 3px', borderRadius: '3px', fontSize: '0.55rem' }}>Shift+Enter</kbd> {t('agent.toNewline') || 'newline'}
                     </span>
                     <span className="font-mono" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <Sparkles size={9} color="var(--accent-purple)" /> ENHANCED
+                        <Sparkles size={9} color="var(--accent-purple)" /> {t('storyFlow.enhanced') || 'ENHANCED'}
                     </span>
                 </div>
             </div>

@@ -109,7 +109,7 @@ const EscrowManagementView: React.FC<EscrowManagementViewProps> = ({ agentId }) 
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                   <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ID:</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('common.id') || 'ID:'}</span>
                     <span style={{ fontFamily: 'var(--font-mono)' }}>{escrow.id.substring(0, 8)}...</span>
                   </h4>
                   <div className={`status-badge ${escrow.status.toLowerCase()}`}>
@@ -118,13 +118,13 @@ const EscrowManagementView: React.FC<EscrowManagementViewProps> = ({ agentId }) 
                 </div>
                 
                 <div className="escrow-row">
-                  <span>Amount:</span>
+                  <span>{t('escrow.amount') || 'Amount:'}</span>
                   <strong style={{ fontSize: '1.1rem', color: 'var(--accent-emerald)' }}>
                     {escrow.amount}
                   </strong>
                 </div>
                 <div className="escrow-row">
-                  <span>Created:</span>
+                  <span>{t('escrow.created') || 'Created:'}</span>
                   <strong>{new Date(escrow.created_at).toLocaleString()}</strong>
                 </div>
                 
@@ -137,7 +137,7 @@ const EscrowManagementView: React.FC<EscrowManagementViewProps> = ({ agentId }) 
                       disabled={releasing[escrow.id]}
                     >
                       <Unlock size={14} />
-                      {releasing[escrow.id] ? 'Releasing...' : 'Release Escrow'}
+                      {releasing[escrow.id] ? (t('escrow.releasing') || 'Releasing...') : (t('escrow.release') || 'Release Escrow')}
                     </button>
                   </div>
                 )}

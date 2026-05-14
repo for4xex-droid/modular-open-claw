@@ -26,7 +26,7 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
     // The fallback UI contains the default title
-    expect(screen.getByText('Neural Sync Interrupted')).toBeInTheDocument();
+    expect(screen.getByText('System Error Detected')).toBeInTheDocument();
     // The error message should be displayed in the debug area
     expect(screen.getByText(/Test error/)).toBeInTheDocument();
     // Restore console.error

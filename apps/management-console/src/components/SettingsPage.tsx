@@ -45,7 +45,12 @@ const SettingsPage: React.FC = () => {
             const res = await authenticatedFetch(`${API_BASE}/api/v1/settings`);
             if (res.ok) {
                 const data = await res.json();
-                setSettings(data);
+                if (Array.isArray(data)) {
+                    setSettings(data);
+                } else {
+                    console.error("Unexpected settings response format:", typeof data);
+                    setSettings([]);
+                }
             }
         } catch (error) {
             console.error("Failed to fetch settings", error);
@@ -117,14 +122,14 @@ const SettingsPage: React.FC = () => {
     const update_setting_handler = (val: string, k: string, cat: string) => updateSetting(k, val, cat);
 
     return (
-        <div className="settings-page" style={{ paddingBottom: '8rem' }}>
+        <div className="settings-page">
             {globalError && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '1rem', marginBottom: '1.5rem', backgroundColor: 'var(--accent-rose-10)', color: 'var(--accent-rose)', border: '1px solid var(--accent-rose-30)', borderRadius: 'var(--radius-md)' }}>
                     <AlertTriangle size={20} />
                     {globalError}
                 </div>
             )}
-            <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 'var(--space-lg)', alignItems: 'start' }}>
+            <div className="settings-grid">
 
                 {/* 1. Appearance Section */}
                 <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
@@ -139,7 +144,7 @@ const SettingsPage: React.FC = () => {
                             <input
                                 type="text"
                                 value={getSetting('ai_name')}
-                                placeholder="Watchtower"
+                                placeholder={t('settings.aiNamePlaceholder', { defaultValue: 'Watchtower' }) as string}
                                 onChange={(e) => updateSetting('ai_name', e.target.value, 'identity')}
                                 style={inputStyle}
                             />
@@ -173,6 +178,9 @@ const SettingsPage: React.FC = () => {
 
                         <div>
                             <label style={labelStyle}>{t('settings.displayMode')}</label>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>
+                                {t('settings.displayModeHelp', { defaultValue: 'Choose rendering fidelity. VRM requires GPU.' })}
+                            </div>
                             <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--white-05)', padding: '4px', borderRadius: '10px' }}>
                                 {['vrm', 'lite', 'off'].map((m) => (
                                     <button
@@ -188,6 +196,9 @@ const SettingsPage: React.FC = () => {
 
                         <div>
                             <label style={labelStyle}>{t('settings.interfaceComplexity')}</label>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>
+                                {t('settings.interfaceComplexityHelp', { defaultValue: 'Adjusts available settings and logs based on your experience level.' })}
+                            </div>
                             <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--white-05)', padding: '4px', borderRadius: '10px' }}>
                                 {['beginner', 'intermediate', 'advanced'].map((m) => (
                                     <button
@@ -245,7 +256,7 @@ const SettingsPage: React.FC = () => {
                         <SettingInput 
                             label={t('settings.apiKey')} 
                             value={getSetting('llm_api_key')}
-                            placeholder="Optional API Key"
+                            placeholder={t('settings.optionalApiKey', { defaultValue: 'Optional API Key' }) as string}
                             onBlur={(v) => updateSetting('llm_api_key', v, 'llm')}
                             saving={saving === 'llm_api_key'}
                             isPassword
@@ -278,22 +289,25 @@ const SettingsPage: React.FC = () => {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <div>
-                            <label style={labelStyle}>Active Commerce Provider</label>
+                            <label style={labelStyle}>{t('settings.activeCommerceProvider', { defaultValue: 'Active Commerce Provider' })}</label>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>
+                                {t('settings.commerceProviderHelp', { defaultValue: 'Select the economic engine powering your agent network.' })}
+                            </div>
                             <select
                                 value={getSetting('commerce_provider') || 'mock'}
                                 onChange={(e) => update_setting_handler(e.target.value, 'commerce_provider', 'commerce')}
                                 style={selectStyle}
                             >
-                                <option value="mock" style={{ background: 'var(--bg-primary)' }}>Mock (Local Only)</option>
-                                <option value="stripe" style={{ background: 'var(--bg-primary)' }}>Stripe (Global MoR)</option>
-                                <option value="polar" style={{ background: 'var(--bg-primary)' }}>Polar (MoR & P2P)</option>
+                                <option value="mock" style={{ background: 'var(--bg-primary)' }}>{t('settings.commerceMock', { defaultValue: 'Mock (Local Only)' })}</option>
+                                <option value="stripe" style={{ background: 'var(--bg-primary)' }}>{t('settings.commerceStripe', { defaultValue: 'Stripe (Global MoR)' })}</option>
+                                <option value="polar" style={{ background: 'var(--bg-primary)' }}>{t('settings.commercePolar', { defaultValue: 'Polar (MoR & P2P)' })}</option>
                             </select>
                         </div>
 
                         {getSetting('commerce_provider') === 'stripe' && (
                             <>
                                 <SettingInput 
-                                    label="Stripe API Key" 
+                                    label={t('settings.stripeApiKey', { defaultValue: 'Stripe API Key' }) as string} 
                                     value={getSetting('stripe_api_key')}
                                     placeholder="sk_live_..."
                                     onBlur={(v) => updateSetting('stripe_api_key', v, 'commerce')}
@@ -301,7 +315,7 @@ const SettingsPage: React.FC = () => {
                                     isPassword
                                 />
                                 <SettingInput 
-                                    label="Stripe Webhook Secret" 
+                                    label={t('settings.stripeWebhookSecret', { defaultValue: 'Stripe Webhook Secret' }) as string} 
                                     value={getSetting('stripe_webhook_secret')}
                                     placeholder="whsec_..."
                                     onBlur={(v) => updateSetting('stripe_webhook_secret', v, 'commerce')}
@@ -314,7 +328,7 @@ const SettingsPage: React.FC = () => {
                         {getSetting('commerce_provider') === 'polar' && (
                             <>
                                 <SettingInput 
-                                    label="Polar API Key" 
+                                    label={t('settings.polarApiKey', { defaultValue: 'Polar API Key' }) as string} 
                                     value={getSetting('polar_api_key')}
                                     placeholder="polar_at_..."
                                     onBlur={(v) => updateSetting('polar_api_key', v, 'commerce')}
@@ -322,7 +336,7 @@ const SettingsPage: React.FC = () => {
                                     isPassword
                                 />
                                 <SettingInput 
-                                    label="Polar Webhook Secret" 
+                                    label={t('settings.polarWebhookSecret', { defaultValue: 'Polar Webhook Secret' }) as string} 
                                     value={getSetting('polar_webhook_secret')}
                                     placeholder="whsec_..."
                                     onBlur={(v) => updateSetting('polar_webhook_secret', v, 'commerce')}
@@ -391,42 +405,42 @@ const SettingsPage: React.FC = () => {
                     
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <FeatureToggle 
-                            label="SEO Publishing" 
+                            label={t('settings.ffSeoPublishing', { defaultValue: 'SEO Publishing' }) as string} 
                             flag="feature_flag.seo_publish" 
                             current={getSetting('feature_flag.seo_publish')} 
                             onUpdate={(v) => updateSetting('feature_flag.seo_publish', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.seo_publish'} 
                         />
                         <FeatureToggle 
-                            label="P2P Federation" 
+                            label={t('settings.ffP2pFederation', { defaultValue: 'P2P Federation' }) as string} 
                             flag="feature_flag.p2p_federation" 
                             current={getSetting('feature_flag.p2p_federation')} 
                             onUpdate={(v) => updateSetting('feature_flag.p2p_federation', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.p2p_federation'} 
                         />
                         <FeatureToggle 
-                            label="LoRA Training" 
+                            label={t('settings.ffLoraTraining', { defaultValue: 'LoRA Training' }) as string} 
                             flag="feature_flag.lora_training" 
                             current={getSetting('feature_flag.lora_training')} 
                             onUpdate={(v) => updateSetting('feature_flag.lora_training', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.lora_training'} 
                         />
                         <FeatureToggle 
-                            label="Gig Marketplace" 
+                            label={t('settings.ffGigMarketplace', { defaultValue: 'Gig Marketplace' }) as string} 
                             flag="feature_flag.gig_marketplace" 
                             current={getSetting('feature_flag.gig_marketplace')} 
                             onUpdate={(v) => updateSetting('feature_flag.gig_marketplace', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.gig_marketplace'} 
                         />
                         <FeatureToggle 
-                            label="Intent-First Suggestion" 
+                            label={t('settings.ffIntentFirstSuggestion', { defaultValue: 'Intent-First Suggestion' }) as string} 
                             flag="feature_flag.intent_first_suggestion" 
                             current={getSetting('feature_flag.intent_first_suggestion')} 
                             onUpdate={(v) => updateSetting('feature_flag.intent_first_suggestion', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.intent_first_suggestion'} 
                         />
                         <FeatureToggle 
-                            label="Semantic Tool Reviewer" 
+                            label={t('settings.ffSemanticToolReviewer', { defaultValue: 'Semantic Tool Reviewer' }) as string} 
                             flag="ENABLE_TOOL_REVIEWER" 
                             current={getSetting('ENABLE_TOOL_REVIEWER') || "true"} 
                             onUpdate={(v) => updateSetting('ENABLE_TOOL_REVIEWER', v, 'feature_flags')} 
@@ -436,9 +450,12 @@ const SettingsPage: React.FC = () => {
                 </section>
                 )}
 
-                {viewMode === 'advanced' && <EscrowManagementView />}
-
-                {viewMode === 'advanced' && <McpConfigManager />}
+                {viewMode === 'advanced' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                        <EscrowManagementView />
+                        <McpConfigManager />
+                    </div>
+                )}
 
             </div>
         </div>
@@ -525,15 +542,15 @@ const SecretUpdater: React.FC = () => {
                 headers: { 'Authorization': `Bearer ${newSecret.trim()}` },
             });
             if (res.ok) {
-                setResult({ success: true, message: 'Connection verified! Token saved.' });
+                setResult({ success: true, message: t('settings.tokenVerified') });
                 setNewSecret('');
             } else {
-                setResult({ success: false, message: `Authentication failed (${res.status})` });
+                setResult({ success: false, message: t('settings.authFailed', { status: res.status }) });
                 if (oldSecret) setAuthToken(oldSecret);
                 else clearAuthToken();
             }
         } catch {
-            setResult({ success: false, message: 'Connection failed' });
+            setResult({ success: false, message: t('settings.connectionFailed') });
             if (oldSecret) setAuthToken(oldSecret);
             else clearAuthToken();
         } finally {
@@ -567,6 +584,7 @@ const SecretUpdater: React.FC = () => {
 };
 
 const ToxicityConfig: React.FC<{ value: string, onUpdate: (v: string) => void, saving?: boolean }> = ({ value, onUpdate, saving }) => {
+    const { t } = useTranslation();
     const [draft, setDraft] = useState('');
     const items = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
 
@@ -587,11 +605,11 @@ const ToxicityConfig: React.FC<{ value: string, onUpdate: (v: string) => void, s
     return (
         <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-glass)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                <label style={{ ...labelStyle, marginBottom: 0 }}>Toxicity Blocklist (CSAM/Malware)</label>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.contentSafetyFilter', { defaultValue: 'Content Safety Filter' })}</label>
                 {saving && <Loader2 size={12} className="ani-spin" color="var(--accent-amber)" />}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>
-                Words added here will be blocked during AI generation and Federation P2P messaging.
+                {t('settings.contentSafetyDesc', { defaultValue: 'Words added here will be blocked during AI generation and Federation P2P messaging.' })}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)', marginBottom: '0.6rem' }}>
                 {items.map((item, i) => (
@@ -605,17 +623,17 @@ const ToxicityConfig: React.FC<{ value: string, onUpdate: (v: string) => void, s
                         <X size={12} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={() => removeWord(i)} />
                     </div>
                 ))}
-                {items.length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No blocked words.</span>}
+                {items.length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('settings.noBlockedWords', { defaultValue: 'No blocked words.' })}</span>}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input
-                    type="text" value={draft} placeholder="Enter a banned word..."
+                    type="text" value={draft} placeholder={t('settings.enterBannedWord', { defaultValue: 'Enter a banned word...' }) as string}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') addWord(); }}
                     style={{ ...inputStyle, flex: 1 }}
                 />
                 <button onClick={addWord} style={{ ...testBtnStyle, padding: '0.5rem 0.8rem' }}>
-                    <Plus size={14} /> Add
+                    <Plus size={14} /> {t('settings.add')}
                 </button>
             </div>
         </div>
@@ -705,6 +723,7 @@ const OllamaModelSelector: React.FC<{ value: string, onSelect: (v: string) => vo
 };
 
 const McpConfigManager: React.FC = () => {
+    const { t } = useTranslation();
     const [configJson, setConfigJson] = useState('{\n  "mcp_servers": {}\n}');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -739,13 +758,13 @@ const McpConfigManager: React.FC = () => {
                 body: configJson
             });
             if (res.ok) {
-                setMessage('✅ Reloaded successfully');
+                setMessage(`✅ ${t('settings.reloadedSuccessfully', { defaultValue: 'Reloaded successfully' })}`);
                 setTimeout(() => setMessage(''), 3000);
             } else {
-                setMessage('❌ Error saving');
+                setMessage(`❌ ${t('settings.errorSaving', { defaultValue: 'Error saving' })}`);
             }
         } catch (e) {
-            setMessage('❌ Invalid JSON or network error');
+            setMessage(`❌ ${t('settings.invalidJson', { defaultValue: 'Invalid JSON or network error' })}`);
         } finally {
             setSaving(false);
         }
@@ -755,12 +774,12 @@ const McpConfigManager: React.FC = () => {
         <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                 <Database size={24} color="var(--accent-amber)" />
-                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>MCP Architecture (Analytics & Tools)</h3>
+                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.mcpArchitecture', { defaultValue: 'MCP Architecture (Analytics & Tools)' })}</h3>
             </div>
             {loading ? <div style={{ padding: '2rem', textAlign: 'center' }}><Loader2 className="ani-spin" size={24} color="var(--accent-amber)" /></div> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        Define external MCP servers (GA4, Stripe, etc). Safe to use environment variables like <code>$STRIPE_SECRET_KEY</code>. Saving will restart MCP processes dynamically.
+                        {t('settings.mcpDesc', { defaultValue: 'Define external MCP servers (GA4, Stripe, etc). Safe to use environment variables like $STRIPE_SECRET_KEY. Saving will restart MCP processes dynamically.' })}
                     </div>
                     <textarea 
                         className="font-mono"
@@ -787,7 +806,7 @@ const McpConfigManager: React.FC = () => {
                             }}
                         >
                             {saving ? <Loader2 size={16} className="ani-spin" /> : <Database size={16} />}
-                            Save & Sync Tools
+                            {t('settings.saveSyncTools', { defaultValue: 'Save & Sync Tools' })}
                         </button>
                     </div>
                 </div>
@@ -802,7 +821,6 @@ const FeatureToggle: React.FC<{ label: string, flag: string, current: string, on
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--white-03)', padding: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-glass)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{label}</span>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>({flag})</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 {saving && <Loader2 size={14} className="ani-spin" color="var(--accent-emerald)" />}

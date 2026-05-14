@@ -11,6 +11,10 @@ jest.mock('../config', () => ({
   API_BASE: 'http://localhost'
 }));
 
+jest.mock('../i18n', () => ({
+  useTranslation: () => ({ t: () => undefined })
+}));
+
 describe('AiaaOnboardingWizard', () => {
   beforeEach(() => {
     jest.clearAllMocks();

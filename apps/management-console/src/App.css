@@ -459,3 +459,32 @@ code, pre, kbd, samp, .font-mono {
   box-shadow: 0 0 15px var(--accent-cyan-10);
   outline: none;
 }
+
+/* Settings Page Layout */
+.settings-page {
+  padding-bottom: 8rem;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+  gap: var(--space-lg);
+  align-items: start;
+}
+
+/* Sidebar Collapse Styles */
+.sidebar.closed .nav-item span {
+  display: none;
+}
+.sidebar.closed .nav-group h4 {
+  display: none;
+}
+.sidebar.closed .nav-item {
+  justify-content: center;
+  padding: 0.85rem 0;
+}
+.sidebar.closed .nav-item::before {
+  display: none;
+}

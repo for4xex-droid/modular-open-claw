@@ -12,6 +12,10 @@ jest.mock('./common/Toast', () => ({
   useToast: () => ({ showToast: jest.fn() })
 }));
 
+jest.mock('../i18n', () => ({
+  useTranslation: () => ({ t: () => undefined })
+}));
+
 describe('A2uiRenderer - Generative UI Components', () => {
     it('renders a progress bar', () => {
         const env: any = {

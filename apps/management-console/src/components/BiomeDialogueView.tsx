@@ -135,7 +135,7 @@ const BiomeDialogueView: React.FC = () => {
           </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <Target size={12} /> Topic: {status?.config?.topic_id || topicId}
+              <Target size={12} /> {t('biome.topic') || 'Topic:'} {status?.config?.topic_id || topicId}
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               <Wifi size={12} color={status?.running ? "var(--accent-emerald)" : "var(--text-muted)"} />
@@ -210,7 +210,7 @@ const BiomeDialogueView: React.FC = () => {
       <div className="biome-control-sidebar">
         <div className="stat-card" style={{ padding: 'var(--space-md)', textAlign: 'left' }}>
           <h4 style={{ margin: '0 0 var(--space-sm) 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Play size={14} /> AUTONOMOUS ENGINE
+            <Play size={14} /> {t('biome.autonomousEngine') || 'AUTONOMOUS ENGINE'}
           </h4>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
@@ -253,7 +253,7 @@ const BiomeDialogueView: React.FC = () => {
                     transition: 'all var(--speed-normal)'
                 }}
                >
-                 <Square size={16} fill="currentColor" /> Stop Autonomous Loop
+                 <Square size={16} fill="currentColor" /> {t('biome.stopLoop') || 'Stop Autonomous Loop'}
                </button>
              ) : (
                <button 
@@ -270,7 +270,7 @@ const BiomeDialogueView: React.FC = () => {
 
         <div className="stat-card" style={{ padding: 'var(--space-md)', textAlign: 'left', background: 'var(--accent-purple-05)' }}>
           <h4 style={{ margin: '0 0 var(--space-sm) 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <History size={14} /> PROTOCOL STATS
+            <History size={14} /> {t('biome.protocolStats') || 'PROTOCOL STATS'}
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -285,7 +285,7 @@ const BiomeDialogueView: React.FC = () => {
         </div>
 
         <div className="info-box-glass">
-          <p><strong>Note:</strong> In Sandbox Mode, AI will fallback to local storage if Hub is offline. Topic constraints are enforced by DialogueManager.</p>
+          <p>{t('biome.sandboxNote') || 'In Sandbox Mode, AI will fallback to local storage if Sync Hub is offline. Topic constraints are enforced by DialogueManager.'}</p>
         </div>
       </div>
       

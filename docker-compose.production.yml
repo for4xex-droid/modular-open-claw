@@ -46,8 +46,10 @@ services:
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - RURI_EMBED_URL=http://ruri-embed-server:8100
       - DISCORD_TOKEN=${DISCORD_TOKEN}
+      # DEPRECATED: Legacy auth. Retained for backward compatibility during JWT migration.
+      # Remove after confirming all clients use JWT auth (see ADR-019).
       - API_SERVER_SECRET=${API_SERVER_SECRET}
-      # - FEDERATION_SECRET=${FEDERATION_SECRET}
+      - FEDERATION_SECRET=${FEDERATION_SECRET}
       - TIMESFM_AUTH_TOKEN=${TIMESFM_AUTH_TOKEN}
       - TIMESFM_SIDECAR_URL=http://timesfm-sidecar:3025
       - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
@@ -104,6 +106,11 @@ services:
       - no-new-privileges:true
     user: "1001:1001"
     restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3020/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   samsara-hub:
     build:
@@ -167,9 +174,10 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=512M
-      - /root/.cache:size=2G
+      - /home/appuser/.cache:size=2G
     security_opt:
       - no-new-privileges:true
+    user: "1001:1001"
 
   geo-optimizer:
     build:
@@ -184,3 +192,4 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 30s

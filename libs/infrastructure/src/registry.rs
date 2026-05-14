@@ -282,7 +282,10 @@ impl RegistryManager {
             asset_id.to_string(),
             agent_id.to_string()
         )
-        .unwrap_or((0,));
+        .unwrap_or_else(|e| {
+            tracing::warn!("⚠️ [Registry] Creator check query failed (fail-closed: deny): {:?}", e);
+            (0,)
+        });
 
         if is_creator.0 > 0 {
             return Ok(true);
@@ -299,7 +302,10 @@ impl RegistryManager {
             agent_id.to_string(),
             asset_id.to_string()
         )
-        .unwrap_or((0,));
+        .unwrap_or_else(|e| {
+            tracing::warn!("⚠️ [Registry] License check query failed (fail-closed: deny): {:?}", e);
+            (0,)
+        });
 
         if license_count.0 > 0 {
             return Ok(true);

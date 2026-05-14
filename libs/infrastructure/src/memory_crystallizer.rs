@@ -149,12 +149,18 @@ impl MemoryCrystallizer {
                                             skill
                                         );
                                         // Karma 保存はスキップし、DAG に証拠を記録
+                                        let evidence_value = match serde_json::to_value(&evidence) {
+                                            Ok(v) => v,
+                                            Err(e) => {
+                                                warn!("⚠️ [MemoryCrystallizer] Failed to serialize belief evidence: {:?}", e);
+                                                serde_json::Value::Null
+                                            }
+                                        };
                                         let step = TrajectoryStep {
                                             job_id: Some(format!("crystallize-{}", skill)),
                                             action: "RequestBeliefRevision".into(),
                                             step_category: StepCategory::Decision,
-                                            output: serde_json::to_value(evidence)
-                                                .unwrap_or_default(),
+                                            output: evidence_value,
                                             reasoning: Some(format!(
                                                 "Evidence for skill: {}",
                                                 skill

@@ -1,5 +1,29 @@
 ## [Unreleased]
 
+### Fixed
+- **Zero-Panic: `artifact_store.rs` `get_artifact_edges`**: Replaced 14 panicking `.get()` calls (SQLite + Postgres) with `.try_get().unwrap_or_default()` to prevent runtime panics on missing columns.
+- **CWE-209: `api-server/error.rs`**: Masked internal error details from `anyhow::Error` and `Box<dyn Error>` in client-facing responses. Full chain logged at DEBUG level only.
+- **Watchtower WS**: Separated LLM timeout from provider errors for precise diagnostics. Suppressed user input payloads from logs (CWE-532).
+
+### Changed
+- **TypeScript Strict Boundaries**:
+  - `VoiceStore.tsx`: Eliminated `any` type usage with `Record<string, unknown>`. Added `Array.isArray()` structural guard and safe property coercion.
+  - `Timeline.tsx`: Introduced `TimelineEvent` interface, replacing `any[]` state. Added `.ok` response checks, `typeof` property guards, and NaN-safe date sorting.
+- **Observability: `registry.rs` `check_ownership`**: Added `tracing::warn` to fail-closed DB error fallbacks (previously silent `unwrap_or`).
+- **i18n Compliance**: Replaced hardcoded English strings `"CHRONICLES"` (Timeline) and `"Insufficient funds"` (VoiceStore) with `t()` translation keys.
+- **SECURITY_WHITEPAPER.md**: Updated obsolete `remove_var` reference to `shared::security::scrub_env()`. Corrected §1.7/§1.8 section numbering order. Fixed CJK typo (中→日: 隔离→隔離).
+
+### Changed
+- **Samsara Hub Architecture Modularization (Phase 3)**:
+  - Decomposed the monolithic `main.rs` (1,222 lines) into specialized modules, reducing it to 365 lines of pure initialization and routing logic.
+  - Extracted `auth.rs`: Centralized Ed25519 signature verification (`verify_ed25519_signature`) into a single DRY function, eliminating inline cryptographic code duplication across 3 call sites.
+  - Extracted `workers.rs`: Relocated the `approval_worker` background task (quarantine validation, BFT slashing, data eviction) into a standalone module with backpressure tuning.
+  - Extracted `handlers/biome.rs`: Isolated Biome P2P handlers (`list_topics`, `create_topic`, `biome_relay`, `biome_ws`) with CSAM binary filter and GlassWorm sanitization.
+  - Extracted `handlers/system.rs`: Isolated `health_handler` and `list_agents_handler`.
+  - Extracted `handlers/middleware.rs`: Isolated `auth_middleware` with RBAC enforcement (System/Admin/Federated roles).
+  - Extracted `handlers/timeline.rs`: Isolated CRDT timeline sync handler with Automerge merge logic and 1MB payload guard.
+  - Verified zero regression: all 10 integration tests PASS, zero compiler warnings, zero `unwrap()`/`expect()` in production code.
+
 ### Security
 - **Secrets Brokering Architecture (Phase 4)**:
   - Fully implemented the Vault Proxy pattern for ephemeral containers (`shadow-worker` and `browser-use`), permanently removing third-party billing keys (e.g., `GEMINI_API_KEY`) from runtime container environments.

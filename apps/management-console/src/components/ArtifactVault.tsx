@@ -199,7 +199,7 @@ const ArtifactVault = () => {
               className={`chip ${cat === (filter || 'all') ? 'active' : ''}`}
               onClick={() => setFilter(cat === 'all' ? null : cat)}
             >
-              {cat === 'all' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1)}
+              {cat === 'all' ? (t('artifact.filterAll') || 'All') : cat.charAt(0).toUpperCase() + cat.slice(1)}
             </button>
           ))}
         </div>
@@ -238,7 +238,7 @@ const ArtifactVault = () => {
                 </div>
                 <div className="meta-item">
                   <Hash size={14} />
-                  <span>{artifact.files.length} files</span>
+                  <span>{(t('artifact.fileCount') || '{{count}} files').replace('{{count}}', String(artifact.files.length))}</span>
                 </div>
               </div>
 
@@ -299,7 +299,7 @@ const ArtifactVault = () => {
 
               <div className="modal-content">
                 <div className="file-section">
-                  <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Files <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>({selectedArtifact.files.length})</span></h3>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('artifact.files') || 'Files'} <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>({selectedArtifact.files.length})</span></h3>
                   <div className="file-list">
                     {selectedArtifact.files.map(file => (
                       <div key={file.name} className="file-item">
@@ -316,7 +316,7 @@ const ArtifactVault = () => {
                                onClick={() => setPreviewFile({ artifact: selectedArtifact, file })}
                                className="icon-btn preview-btn"
                                style={{ color: 'var(--accent-cyan)', marginRight: '8px', cursor: 'pointer', background: 'none', border: 'none' }}
-                               title="Preview HTML"
+                               title={t('artifact.previewHtml') || 'Preview HTML'}
                              >
                                <Eye size={16} />
                              </button>
@@ -338,35 +338,35 @@ const ArtifactVault = () => {
 
                 <div className="detail-sidebar">
                   <div className="detail-group">
-                    <label><User size={14} /> Generator</label>
+                    <label><User size={14} /> {t('artifact.generator') || 'Generator'}</label>
                     <p>{selectedArtifact.created_by}</p>
                   </div>
                   <div className="detail-group">
-                    <label><Calendar size={14} /> Created</label>
+                    <label><Calendar size={14} /> {t('artifact.created') || 'Created'}</label>
                     <p>{new Date(selectedArtifact.created_at).toLocaleString()}</p>
                   </div>
                   <div className="detail-group">
-                    <label><Tag size={14} /> Tags</label>
+                    <label><Tag size={14} /> {t('artifact.tags') || 'Tags'}</label>
                     <div className="tag-list">
                       {selectedArtifact.tags.map(tag => <span key={tag} className="tag">#{tag}</span>)}
                     </div>
                   </div>
                   {selectedArtifact.karma_refs.length > 0 && (
                     <div className="detail-group">
-                      <label><Dna size={14} /> Karma Source</label>
+                      <label><Dna size={14} /> {t('artifact.dataSource') || 'Data Source'}</label>
                       <p style={{ fontSize: '0.7rem', color: 'var(--accent-purple)' }}>{selectedArtifact.karma_refs.join(", ")}</p>
                     </div>
                   )}
                   {selectedArtifact.signature && (
                     <div className="detail-group">
-                      <label><Shield size={14} /> Audit Signature</label>
+                      <label><Shield size={14} /> {t('artifact.auditSignature') || 'Audit Signature'}</label>
                       <p className="signature-text">{selectedArtifact.signature}</p>
                     </div>
                   )}
 
                   {selectedArtifact.edges && selectedArtifact.edges.length > 0 && (
                     <div className="detail-group">
-                      <label><Hash size={14} /> Lineage (Provenance)</label>
+                      <label><Hash size={14} /> {t('artifact.lineage') || 'Lineage (Provenance)'}</label>
                       <div className="edge-list">
                         {selectedArtifact.edges.map(edge => (
                           <div key={edge.id} className="edge-item">

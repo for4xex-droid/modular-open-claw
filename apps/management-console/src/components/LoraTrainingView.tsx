@@ -47,11 +47,11 @@ const LoraTrainingView: React.FC = () => {
                         setIsTraining(false);
                     }
                 } else {
-                    setStatus('Error fetching status');
+                    setStatus(t('lora.errorFetchStatus') || 'Error fetching status');
                 }
             } catch (err) {
                 console.error(err);
-                setStatus('Network Error');
+                setStatus(t('lora.networkError') || 'Network Error');
             }
         };
 
@@ -67,13 +67,13 @@ const LoraTrainingView: React.FC = () => {
 
     const handleStartTraining = async () => {
         if (!datasetId) {
-            setError('Dataset ID is required');
+            setError(t('lora.datasetRequired') || 'Dataset ID is required');
             return;
         }
         
         setError(null);
         setIsTraining(true);
-        setStatus('Starting...');
+        setStatus(t('lora.starting') || 'Starting...');
         
         try {
             const res = await authenticatedFetch(`${API_BASE}/api/v1/lora/train`, {
@@ -94,10 +94,10 @@ const LoraTrainingView: React.FC = () => {
             if (res.ok) {
                 const data = await res.json();
                 setJobId(data.job_id);
-                setStatus('Pending');
+                setStatus(t('lora.pending') || 'Pending');
             } else {
                 const text = await res.text();
-                setError(text || 'Failed to start training');
+                setError(text || (t('lora.startFailed') || 'Failed to start training'));
                 setIsTraining(false);
             }
         } catch (err: unknown) {
@@ -105,7 +105,7 @@ const LoraTrainingView: React.FC = () => {
             if (err instanceof Error) {
                 setError(err.message);
             } else {
-                setError('Network Error or Unknown Failure');
+                setError(t('lora.networkError') || 'Network Error or Unknown Failure');
             }
             setIsTraining(false);
         }
@@ -131,7 +131,7 @@ const LoraTrainingView: React.FC = () => {
                 </div>
 
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '2rem', lineHeight: 1.5 }}>
-                    Configure and launch self-supervised domain adaptation. The Autotuner will optimize hyperparameters based on the target dataset.
+                    {t('lora.subtitle') || 'Configure and launch self-supervised domain adaptation. The Autotuner will optimize hyperparameters based on the target dataset.'}
                 </p>
 
                 {error && (
@@ -159,7 +159,7 @@ const LoraTrainingView: React.FC = () => {
 
                     <div className="form-group">
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            <Database size={14} /> Knowledge Dataset ID
+                            <Database size={14} /> {t('lora.datasetId') || 'Knowledge Dataset ID'}
                         </label>
                         <input 
                             type="text" 
@@ -243,7 +243,7 @@ const LoraTrainingView: React.FC = () => {
                             transition: 'all var(--speed-normal)'
                         }}
                     >
-                        {isTraining ? <><RefreshCw className="ani-spin" size={18} /> Optimizing...</> : <><Play size={18} /> Initialize Training</>}
+                        {isTraining ? <><RefreshCw className="ani-spin" size={18} /> {t('lora.optimizing') || 'Optimizing...'}</> : <><Play size={18} /> {t('lora.startTraining') || 'Initialize Training'}</>}
                     </button>
                 </div>
             </div>
@@ -251,7 +251,7 @@ const LoraTrainingView: React.FC = () => {
             {/* Right Panel: Job Status & Analytics */}
             <div className="main-panel lora-telemetry-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column' }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)', marginBottom: '1.5rem', fontSize: '1.1rem' }}>
-                    <Activity size={18} color="var(--accent-cyan)" /> Telemetry & Status
+                    <Activity size={18} color="var(--accent-cyan)" /> {t('lora.telemetry') || 'Telemetry & Status'}
                 </h3>
 
                 {!jobId ? (
@@ -280,7 +280,7 @@ const LoraTrainingView: React.FC = () => {
                                         fontWeight: 700,
                                         fontSize: '0.85rem'
                                     }}>
-                                        {status.toUpperCase()}
+                                        <span style={{ textTransform: 'uppercase' }}>{status}</span>
                                     </span>
                                 </div>
                             </div>

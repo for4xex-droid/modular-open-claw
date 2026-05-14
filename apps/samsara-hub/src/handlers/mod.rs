@@ -4,8 +4,13 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
+pub mod biome;
 pub mod federation;
+pub mod middleware;
+pub mod system;
+pub mod timeline;
 pub mod ws;
+
 pub fn verify_bearer(auth_header: &str, secret: &secrecy::SecretString) -> bool {
     use secrecy::ExposeSecret;
     use subtle::ConstantTimeEq;

@@ -72,10 +72,10 @@ class ErrorBoundary extends Component<Props, State> {
             </div>
 
             <h1 style={{ fontSize: '1.8rem', fontWeight: 800, fontFamily: "var(--font-display, 'Outfit', sans-serif)", marginBottom: '1rem', letterSpacing: '-0.02em' }}>
-              {this.props.errorTitle ?? 'Neural Sync Interrupted'}
+              {this.props.errorTitle ?? 'System Error Detected'}
             </h1>
             <p style={{ color: 'var(--white-60)', marginBottom: '2rem', fontSize: '0.95rem', lineHeight: 1.6 }}>
-              A fatal exception occurred in the neural interface. The system has initiated protective isolation to preserve data integrity.
+              A fatal exception occurred in the system. Protective isolation initiated to preserve data integrity.
             </p>
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>

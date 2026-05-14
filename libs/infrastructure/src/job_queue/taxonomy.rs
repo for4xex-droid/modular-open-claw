@@ -67,9 +67,9 @@ Constraint: Output ONLY raw JSON. No markdown blocks."#;
                 let mut taxonomy = serde_json::from_str::<KarmaClassification>(clean_json)
                     .map_err(|e| {
                         tracing::warn!(
-                            "🧬 [Taxonomy] JSON Parse Error: {}. Raw: {}",
+                            "🧬 [Taxonomy] JSON Parse Error: {}. Raw (truncated): {}",
                             e,
-                            resp.content
+                            &resp.content[..resp.content.len().min(200)]
                         );
                         AiomeError::Infrastructure {
                             reason: format!("Invalid classification format: {}", e),
@@ -77,7 +77,8 @@ Constraint: Output ONLY raw JSON. No markdown blocks."#;
                     })?;
 
                 // VULN-62: Strict domain whitelisting to prevent hallucinatory domains
-                let valid_domains = ["Technical", "Creative", "Governance", "Social", "Meta"];
+                // NOTE: "General" is the system fallback domain, must be in this list.
+                let valid_domains = ["Technical", "Creative", "Governance", "Social", "Meta", "General"];
                 if !valid_domains.contains(&taxonomy.domain.as_str()) {
                     tracing::warn!(
                         "🧬 [Taxonomy] Invalid domain returned from LLM: {}",

@@ -37,7 +37,7 @@ jest.mock('../config', () => ({
 }));
 
 jest.mock('../i18n', () => ({
-  useTranslation: () => ({ t: (key: string) => key })
+  useTranslation: () => ({ t: () => undefined })
 }));
 
 describe('VoiceStore Commerce Integration', () => {

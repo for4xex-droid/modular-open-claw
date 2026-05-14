@@ -208,3 +208,45 @@ impl QuarantineStore for MockQuarantineStore {
         Ok(vec![])
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sql_exec;
+
+    async fn setup_db() -> DatabasePool {
+        let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
+        let schema = "CREATE TABLE quarantined_assets (
+            id TEXT PRIMARY KEY,
+            asset_name TEXT,
+            image_hash TEXT,
+            reason TEXT,
+            status TEXT,
+            uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )";
+        sql_exec!(&pool, schema).unwrap();
+        pool
+    }
+
+    #[tokio::test]
+    async fn test_quarantine_flow() {
+        let pool = setup_db().await;
+        let store = UniversalQuarantineStore::new(pool);
+
+        let hash = "hash_123";
+        // 1. Initially not quarantined
+        assert!(!store.is_quarantined(hash).await.unwrap());
+
+        // 2. Quarantine asset
+        let id = store.quarantine_asset("bad_image.png", hash, AssetReason::CsamHit).await.unwrap();
+        
+        // 3. Now it is quarantined
+        assert!(store.is_quarantined(hash).await.unwrap());
+
+        // 4. Release asset
+        store.release_asset(&id).await.unwrap();
+
+        // 5. No longer quarantined
+        assert!(!store.is_quarantined(hash).await.unwrap());
+    }
+}

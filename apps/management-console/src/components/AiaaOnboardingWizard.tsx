@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import { Briefcase, Link as LinkIcon, CheckCircle, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
 import { authenticatedFetch } from '../lib/auth';
 import { API_BASE } from '../config';
-// Remove useTranslation because it was unused
+import { useTranslation } from '../i18n';
 
 interface DiscoveryData {
   clientName: string;
@@ -22,6 +22,7 @@ interface DiscoveryData {
 }
 
 export const AiaaOnboardingWizard = () => {
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const [data, setData] = useState<DiscoveryData>({
     clientName: '',
@@ -62,7 +63,7 @@ export const AiaaOnboardingWizard = () => {
       setStep(3);
     } catch (err: any) {
       console.error('Error generating checkout link:', err);
-      setError('Error generating checkout link: ' + err.message);
+      setError((t('aiaa.checkoutError') || 'Error generating checkout link') + ': ' + err.message);
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +73,7 @@ export const AiaaOnboardingWizard = () => {
     setData(prev => ({
       ...prev,
       targetTasks: prev.targetTasks.includes(task)
-        ? prev.targetTasks.filter(t => t !== task)
+        ? prev.targetTasks.filter(item => item !== task)
         : [...prev.targetTasks, task]
     }));
   };
@@ -81,7 +82,7 @@ export const AiaaOnboardingWizard = () => {
     <div className="wizard-container" style={{ padding: 'var(--space-2xl)', maxWidth: '800px', margin: '0 auto' }}>
       <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
         <Briefcase color="var(--accent-cyan)" />
-        B2B Client Onboarding
+        {t('aiaa.title') || 'B2B Client Onboarding'}
       </h1>
 
       <div className="wizard-steps" style={{ display: 'flex', gap: '1rem', marginBottom: '3rem' }}>
@@ -108,42 +109,50 @@ export const AiaaOnboardingWizard = () => {
             exit={{ opacity: 0, x: -20 }}
             className="form-group"
           >
-            <h2>1. Discovery Session</h2>
+            <h2>{t('aiaa.step1') || '1. Discovery Session'}</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-              Define the client's business and the automations they need.
+              {t('aiaa.step1Desc') || "Define the client's business and the automations they need."}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <input
                 type="text"
-                placeholder="Client / Company Name"
+                placeholder={t('aiaa.clientName') || 'Client / Company Name'}
                 value={data.clientName}
                 onChange={e => setData({ ...data, clientName: e.target.value })}
                 className="aiome-input"
               />
               <input
                 type="text"
-                placeholder="Industry (e.g. Real Estate, E-commerce)"
+                placeholder={t('aiaa.industry') || 'Industry (e.g. Real Estate, E-commerce)'}
                 value={data.industry}
                 onChange={e => setData({ ...data, industry: e.target.value })}
                 className="aiome-input"
               />
 
-              <h4>Target Automations</h4>
+              <h4>{t('aiaa.targetTasks') || 'Target Automations'}</h4>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {['Inbox Triage', 'CRM Sync', 'Invoice Extraction', 'Social Media Posting'].map(task => (
+                {([
+                  { key: 'inboxTriage', fallback: 'Inbox Triage' },
+                  { key: 'crmSync', fallback: 'CRM Sync' },
+                  { key: 'invoiceExtraction', fallback: 'Invoice Extraction' },
+                  { key: 'socialMediaPosting', fallback: 'Social Media Posting' }
+                ] as const).map(task => {
+                  const label = t(`aiaa.task.${task.key}`) || task.fallback;
+                  return (
                   <button
-                    key={task}
-                    onClick={() => toggleTask(task)}
-                    className={`chip ${data.targetTasks.includes(task) ? 'active' : ''}`}
+                    key={task.key}
+                    onClick={() => toggleTask(task.key)}
+                    className={`chip ${data.targetTasks.includes(task.key) ? 'active' : ''}`}
                     style={{
-                      border: data.targetTasks.includes(task) ? '1px solid var(--accent-cyan)' : '1px solid var(--border)',
-                      background: data.targetTasks.includes(task) ? 'rgba(0,255,255,0.1)' : 'var(--bg-secondary)'
+                      border: data.targetTasks.includes(task.key) ? '1px solid var(--accent-cyan)' : '1px solid var(--border)',
+                      background: data.targetTasks.includes(task.key) ? 'rgba(0,255,255,0.1)' : 'var(--bg-secondary)'
                     }}
                   >
-                    {task}
+                    {label}
                   </button>
-                ))}
+                  );
+                })}
               </div>
 
               <button
@@ -152,7 +161,7 @@ export const AiaaOnboardingWizard = () => {
                 disabled={!data.clientName}
                 style={{ marginTop: '2rem', alignSelf: 'flex-end' }}
               >
-                Next Step <ChevronRight size={16} />
+                {t('aiaa.nextStep') || 'Next Step'} <ChevronRight size={16} />
               </button>
             </div>
           </motion.div>
@@ -166,14 +175,14 @@ export const AiaaOnboardingWizard = () => {
             exit={{ opacity: 0, x: -20 }}
             className="form-group"
           >
-            <h2>2. Economics & ROI</h2>
+            <h2>{t('aiaa.step2') || '2. Economics & ROI'}</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-              Set up the B2B pricing model based on the estimated value provided.
+              {t('aiaa.step2Desc') || 'Set up the B2B pricing model based on the estimated value provided.'}
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
               <div>
-                <label>Estimated Hours Saved (per week)</label>
+                <label>{t('aiaa.hoursSaved') || 'Estimated Hours Saved (per week)'}</label>
                 <input
                   type="number"
                   value={data.estimatedHoursSaved}
@@ -182,7 +191,7 @@ export const AiaaOnboardingWizard = () => {
                 />
               </div>
               <div>
-                <label>Setup Fee ($)</label>
+                <label>{t('aiaa.setupFee') || 'Setup Fee ($)'}</label>
                 <input
                   type="number"
                   value={data.setupFee}
@@ -191,7 +200,7 @@ export const AiaaOnboardingWizard = () => {
                 />
               </div>
               <div>
-                <label>Monthly Retainer ($)</label>
+                <label>{t('aiaa.monthlyFee') || 'Monthly Retainer ($)'}</label>
                 <input
                   type="number"
                   value={data.monthlyFee}
@@ -203,7 +212,7 @@ export const AiaaOnboardingWizard = () => {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem' }}>
               <button className="aiome-btn-secondary" onClick={() => setStep(1)} disabled={isLoading}>
-                Back
+                {t('common.back') || 'Back'}
               </button>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -215,10 +224,10 @@ export const AiaaOnboardingWizard = () => {
                 <button className="aiome-btn-primary" onClick={generateBlueprintAndLink} disabled={isLoading}>
                   {isLoading ? (
                     <>
-                      <Loader2 size={16} className="spinner" /> Generating...
+                      <Loader2 size={16} className="spinner" /> {t('aiaa.generating') || 'Generating...'}
                     </>
                   ) : (
-                    'Generate Blueprint & Checkout Link'
+                    t('aiaa.generateLink') || 'Generate Blueprint & Checkout Link'
                   )}
                 </button>
               </div>
@@ -235,9 +244,9 @@ export const AiaaOnboardingWizard = () => {
             style={{ textAlign: 'center', padding: '3rem 0' }}
           >
             <CheckCircle color="var(--accent-green)" size={64} style={{ margin: '0 auto 1rem' }} />
-            <h2>Blueprint Ready!</h2>
+            <h2>{t('aiaa.step3') || 'Blueprint Ready!'}</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-              The Automation Blueprint has been created and securely stored. Send this link to {data.clientName} to begin their subscription.
+              {(t('aiaa.step3Desc') || 'The Automation Blueprint has been created and securely stored. Send this link to {{client}} to begin their subscription.').replace('{{client}}', data.clientName)}
             </p>
 
             <div
@@ -258,12 +267,12 @@ export const AiaaOnboardingWizard = () => {
                 className="aiome-btn-secondary"
                 onClick={() => navigator.clipboard.writeText(stripeLink)}
               >
-                Copy
+                {t('common.copy') || 'Copy'}
               </button>
             </div>
             
             <button className="aiome-btn-primary" onClick={() => setStep(1)}>
-              Create Another
+              {t('aiaa.createAnother') || 'Create Another'}
             </button>
           </motion.div>
         )}

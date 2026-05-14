@@ -162,7 +162,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                                 fontSize: '0.85rem'
                             }}
                         >
-                            Copilot Chat
+                            {t('agent.copilotChat') || 'Copilot Chat'}
                         </button>
                         <button
                             onClick={() => setActiveTab('automations')}
@@ -177,7 +177,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                                 fontSize: '0.85rem'
                             }}
                         >
-                            Automations (ROI)
+                            {t('agent.automationsTab') || 'Automations (ROI)'}
                         </button>
                     </div>
                 )}
@@ -203,7 +203,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                     </button>
                     <ProofPowerIndicator variant="compact" />
                     <TokenSavingsIndicator savedChars={sessionSavedChars} variant="compact" />
-                    <div className="stat-badge" style={{ fontSize: '0.7rem', background: 'var(--white-03)' }}>3.5B MODEL</div>
+                    <div className="stat-badge" style={{ fontSize: '0.7rem', background: 'var(--white-03)' }}>{t('agent.modelBadge') || '3.5B MODEL'}</div>
                 </div>
             </div>
 
@@ -211,34 +211,34 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', background: 'var(--black-20)' }}>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <Activity size={24} color="var(--accent-cyan)" />
-                        Scheduled Automations
+                        {t('agent.scheduledAutomations') || 'Scheduled Automations'}
                     </h2>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
                         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><Clock size={16} /> Tasks Executed</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><Clock size={16} /> {t('agent.tasksExecuted') || 'Tasks Executed'}</div>
                             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>{stats ? stats.tasksExecuted.toLocaleString() : '...'}</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Lifetime metrics</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('agent.lifetimeMetrics') || 'Lifetime metrics'}</div>
                         </div>
                         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><DollarSign size={16} /> Estimated Savings</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><DollarSign size={16} /> {t('agent.estimatedSavings') || 'Estimated Savings'}</div>
                             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-emerald)' }}>${stats ? stats.savings.toLocaleString() : '...'}</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--accent-emerald)' }}>Based on task volume</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--accent-emerald)' }}>{t('agent.basedOnVolume') || 'Based on task volume'}</div>
                         </div>
                         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><TrendingUp size={16} /> Active Blueprints</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><TrendingUp size={16} /> {t('agent.activeBlueprints') || 'Active Blueprints'}</div>
                             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-purple)' }}>{stats ? stats.activeBlueprints : '...'}</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Running flawlessly</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('agent.runningFlawlessly') || 'Running flawlessly'}</div>
                         </div>
                     </div>
 
                     <div className="glass-panel" style={{ padding: '1.5rem', flex: 1 }}>
-                        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem' }}>Active Blueprint Instances</h3>
+                        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem' }}>{t('agent.blueprintInstances') || 'Active Blueprint Instances'}</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {!stats ? (
-                                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>Loading instances...</div>
+                                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>{t('common.loading') || 'Loading instances...'}</div>
                             ) : stats.instances.length === 0 ? (
-                                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>No active blueprint instances found.</div>
+                                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>{t('agent.noBlueprintInstances') || 'No active blueprint instances found.'}</div>
                             ) : (
                                 stats.instances.map(bp => (
                                     <div key={bp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'var(--white-03)', borderRadius: 'var(--radius-md)' }}>
@@ -276,10 +276,10 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         
                         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '800px' }}>
                             {[
-                                { icon: <Sparkles size={20} color="var(--accent-cyan)" />, title: 'Write code', desc: 'Create a new React component', prompt: 'Create a new React component with Tailwind CSS.' },
-                                { icon: <Brain size={20} color="var(--accent-purple)" />, title: 'Analyze data', desc: 'Find trends in recent logs', prompt: 'Analyze the system logs from the past 24 hours and identify any anomalies.' },
-                                { icon: <Activity size={20} color="var(--accent-emerald)" />, title: 'Automate', desc: 'Schedule a daily backup task', prompt: 'Create an automation blueprint that runs a daily database backup.' },
-                                { icon: <BookOpen size={20} color="var(--accent-amber)" />, title: 'Learn', desc: 'Explain how the Hub works', prompt: 'Explain the architecture of the Samsara Hub.' }
+                                { icon: <Sparkles size={20} color="var(--accent-cyan)" />, title: t('agent.template.writeCode') || 'Write code', desc: t('agent.template.writeCodeDesc') || 'Create a new React component', prompt: 'Create a new React component with Tailwind CSS.' },
+                                { icon: <Brain size={20} color="var(--accent-purple)" />, title: t('agent.template.analyzeData') || 'Analyze data', desc: t('agent.template.analyzeDataDesc') || 'Find trends in recent logs', prompt: 'Analyze the system logs from the past 24 hours and identify any anomalies.' },
+                                { icon: <Activity size={20} color="var(--accent-emerald)" />, title: t('agent.template.automate') || 'Automate', desc: t('agent.template.automateDesc') || 'Schedule a daily backup task', prompt: 'Create an automation blueprint that runs a daily database backup.' },
+                                { icon: <BookOpen size={20} color="var(--accent-amber)" />, title: t('agent.template.learn') || 'Learn', desc: t('agent.template.learnDesc') || 'Explain how the Hub works', prompt: 'Explain the architecture of the Sync Hub.' }
                             ].map((card, idx) => (
                                 <button
                                     key={idx}
@@ -385,14 +385,14 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             {m.content && <div>{m.content}</div>}
                             {m.reasoning && (
                                 <details style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                    <summary style={{ cursor: 'pointer', fontWeight: 600 }}>🧠 Thinking Process</summary>
+                                    <summary style={{ cursor: 'pointer', fontWeight: 600 }}>{t('agent.thinkingProcess') || '🧠 Thinking Process'}</summary>
                                     <div style={{ padding: '0.5rem', background: 'var(--black-20)', borderRadius: 'var(--radius-sm)', marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}>
                                         {m.reasoning}
                                     </div>
                                 </details>
                             )}
                             {m.a2uiEnvelope && (
-                                <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'0.75rem'}}>A2UI render failed — invalid surface data</div>}>
+                                <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'0.75rem'}}>{t('error.a2uiFailed') || 'A2UI render failed — invalid surface data'}</div>}>
                                     <A2uiRenderer envelope={m.a2uiEnvelope} />
                                 </ErrorBoundary>
                             )}

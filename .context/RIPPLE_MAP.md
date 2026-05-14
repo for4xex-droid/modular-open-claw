@@ -1,5 +1,44 @@
 # 🌊 Aiome Ripple Map
 
+## Aiome Security & Stability Hardening (Zero-Panic & CWE-209)
+### 1. Artifact Store Zero-Panic Compliance
+- **変更内容**:
+    - `libs/infrastructure/src/artifact_store.rs` [MODIFY]: `get_artifact_edges` メソッド内の14箇所の `.get()` を `.try_get().unwrap_or_default()` に置換。
+- **波及効果**:
+    - SQLite / Postgres のスキーマ不整合や予期せぬマイグレーションエラー時に、ランタイムパニックが完全に排除された。
+    - API サーバー全体のプロセスダウンを防ぎ、Fail-Soft（欠損データを無視して続行）な振る舞いを保証する。
+
+### 2. CWE-209 Error Information Masking
+- **変更内容**:
+    - `apps/api-server/src/error.rs` [MODIFY]: `sanitize_aiome_error_details` によって、`anyhow::Error` や `Box<dyn std::error::Error>` などの内部エラー詳細がクライアントに漏洩しないよう保護。
+    - `apps/api-server/src/routes/watchtower.rs` [MODIFY]: LLMプロバイダエラーとLLMタイムアウトを分離し、ユーザー入力の生ダンプをログから排除（CWE-532対応）。
+- **波及効果**:
+    - デバッグモード (`cfg(debug_assertions)`) 以外では、エラー詳細はUUIDのみクライアントに返却され、実際のトレースはサーバーログにのみ記録される。情報漏洩リスクの排除。
+
+### 3. UI TypeScript Strict Boundaries
+- **変更内容**:
+    - `apps/management-console/src/components/VoiceStore.tsx` [MODIFY]: `any` を排除し `Record<string, unknown>` と `Array.isArray()` による構造検証を導入。
+    - `apps/management-console/src/components/Timeline.tsx` [MODIFY]: `TimelineEvent` インターフェースを定義し、APIレスポンスの `.ok` ガードとプロパティの `typeof` チェック、NaN-safeソートを追加。
+- **波及効果**:
+    - APIスキーマの変更やバックエンドの障害（400/500系エラー、不正フォーマットJSON）が発生しても、UIがホワイトスクリーンでクラッシュするリスク（TypeError）が解消された。
+
+## Samsara Hub Architecture Modularization (Phase 3)
+### 1. Handler Decomposition & Worker Extraction
+- **変更内容**:
+    - `apps/samsara-hub/src/main.rs` [MODIFY]: 1,222行のモノリスから全ハンドラ・ワーカー・認証ロジックを抽出し、365行のルーター定義 + 初期化コードに削減。
+    - `apps/samsara-hub/src/auth.rs` [NEW]: Ed25519 署名検証 (`verify_ed25519_signature`) を中央集権化。Base64 デコード → `VerifyingKey` 復元 → `Signature` 検証の DRY 化。3 つのハンドラから呼び出される共通関数。
+    - `apps/samsara-hub/src/workers.rs` [NEW]: `approval_worker` バックグラウンドタスク (quarantine 検証、BFT スラッシング、データ eviction) を独立モジュール化。`tokio::task::yield_now()` によるバックプレッシャー制御を維持。
+    - `apps/samsara-hub/src/handlers/biome.rs` [NEW]: Biome P2P 通信ハンドラ群 (`list_topics`, `create_topic`, `biome_relay_handler`, `biome_ws_handler`) を移行。CSAM バイナリフィルタ (`data:image/`, `data:video/`, `;base64,`) と GlassWorm サニタイズを包含。
+    - `apps/samsara-hub/src/handlers/system.rs` [NEW]: `health_handler` と `list_agents_handler` を移行。
+    - `apps/samsara-hub/src/handlers/middleware.rs` [NEW]: `auth_middleware` を抽出。RBAC ロール検証 (System/Admin/Federated) と Bearer トークンの constant-time 比較を包含。
+    - `apps/samsara-hub/src/handlers/timeline.rs` [NEW]: CRDT タイムライン同期ハンドラを移行。Automerge マージロジック + 1MB ペイロードガードを包含。
+    - `apps/samsara-hub/src/handlers/mod.rs` [MODIFY]: 新規サブモジュール (biome, middleware, system, timeline) を登録し、`verify_bearer` ヘルパーを統一的に公開。
+- **波及効果**:
+    - `main.rs` からのルート定義は全て `handlers::*` 名前空間を参照するように変更され、各ハンドラは独立した単一責任モジュールとしてテスト・メンテナンス可能になった。
+    - Ed25519 署名検証の DRY 化により、暗号コードの変更が `auth.rs` 1 ファイルのみに集約された。ポリシードリフト（ハンドラごとに異なるバリデーションロジック）のリスクが構造的に排除された。
+    - 全 10 件の既存統合テストが変更なしで PASS することを確認済み。ハンドラの再配置は外部 API 契約（HTTPルート・レスポンス形式）に影響を与えない。
+    - `biome_ws_handler` は WebSocket ハンドシェイク後に独自の認証を行うため、`middleware.rs` の `auth_middleware` は経由しない。これは意図的な設計（WebSocket エンドポイントは HTTP ミドルウェアスタックを通過しない）。
+
 ## Phase 4: Secrets Brokering (Vault Proxy Architecture)
 ### 1. Ephemeral Container Secret Isolation
 - **変更内容**:

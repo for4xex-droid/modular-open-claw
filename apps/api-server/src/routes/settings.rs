@@ -96,6 +96,7 @@ pub const ALLOWED_KEYS: &[&str] = &[
     "polar_webhook_secret",
     "lora_opt_out",
     "csam_toxicity_forbidden_words",
+    "tos_accepted",
 ];
 
 pub const ALLOWED_CATEGORIES: &[&str] = &[
@@ -110,6 +111,7 @@ pub const ALLOWED_CATEGORIES: &[&str] = &[
     "integrations",
     "feature_flags",
     "commerce",
+    "legal",
 ];
 
 pub const SECRETS: &[&str] = &[
@@ -247,7 +249,8 @@ pub async fn update_setting(
                         .job_queue
                         .get_setting_value("ollama_host")
                         .await
-                        .unwrap_or(None)
+                        .ok()
+                        .flatten()
                         .unwrap_or_else(|| state.config.ollama_host.clone());
 
                     let new_model = format!("{}-lora", base.replace(':', "-"));

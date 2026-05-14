@@ -113,9 +113,9 @@ const ExpressionPipeline: React.FC = () => {
         <div>
           <h2 style={{ fontSize: '2rem', fontWeight: 800, background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
             <Sparkles color="var(--accent-cyan)" />
-            AI Self-Expression Pipeline
+            {t('expression.title') || 'AI Self-Expression Pipeline'}
           </h2>
-          <p style={{ color: 'var(--text-muted)', marginTop: '0.25rem' }}>自律的な自己表現と感情発露の観測システム</p>
+          <p style={{ color: 'var(--text-muted)', marginTop: '0.25rem' }}>{t('expression.subtitle') || '自律的な自己表現と感情発露の観測システム'}</p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', background: 'var(--bg-glass-light)', border: '1px solid var(--border-glass)', padding: '0.5rem', borderRadius: 'var(--radius-md)', backdropFilter: 'blur(10px)' }}>
@@ -130,7 +130,7 @@ const ExpressionPipeline: React.FC = () => {
             }}
           >
             {status?.auto_expression ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-            Autonomous Mode: {status?.auto_expression ? "ON" : "OFF"}
+            {t('expression.autonomousMode') || 'Autonomous Mode'}: {status?.auto_expression ? "ON" : "OFF"}
           </button>
           
           <button 
@@ -140,7 +140,7 @@ const ExpressionPipeline: React.FC = () => {
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem', opacity: isGenerating ? 0.5 : 1 }}
           >
             {isGenerating ? <RefreshCw className="animate-spin" size={18} /> : <Sparkles size={18} />}
-            Generate Now
+            {t('expression.generate') || 'Generate Now'}
           </button>
         </div>
       </div>
@@ -160,7 +160,7 @@ const ExpressionPipeline: React.FC = () => {
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-cyan)', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.1em' }}>
               <Activity size={16} />
-              ACTIVE DELIBERATION
+              {t('expression.activeDeliberation') || 'ACTIVE DELIBERATION'}
             </div>
             
             <h3 style={{ fontSize: '1.4rem', fontWeight: 600, color: 'var(--text-primary)' }}>{t('expression.currentInsight')}</h3>
@@ -171,11 +171,11 @@ const ExpressionPipeline: React.FC = () => {
             <div style={{ paddingTop: '1rem', display: 'flex', alignItems: 'center', gap: 'var(--space-md)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <ShieldCheck size={14} color="var(--accent-emerald)" />
-                Constitutional Guard Active
+                {t('expression.guardActive') || 'Constitutional Guard Active'}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <Clock size={14} />
-                Next auto-sync in {Math.max(0, 5 - (expressions.length % 5))} cycles
+                {(t('expression.nextSync') || 'Next auto-sync in {{count}} cycles').replace('{{count}}', String(Math.max(0, 5 - (expressions.length % 5))))}
               </div>
             </div>
           </div>
@@ -208,7 +208,7 @@ const ExpressionPipeline: React.FC = () => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <h3 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <History size={18} color="var(--accent-purple)" />
-          Self-Expression Artifacts
+          {t('expression.artifacts') || 'Self-Expression Artifacts'}
         </h3>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1rem' }}>
@@ -248,7 +248,7 @@ const ExpressionPipeline: React.FC = () => {
                     ))}
                   </div>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    Reflected {expr.karma_refs.length} Karma items
+                    {(t('expression.reflectedItems') || 'Reflected {{count}} memory items').replace('{{count}}', String(expr.karma_refs.length))}
                   </span>
                 </div>
               </motion.div>

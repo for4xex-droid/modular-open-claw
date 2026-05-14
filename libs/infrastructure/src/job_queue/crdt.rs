@@ -42,10 +42,10 @@ impl CrdtOps for UniversalJobQueue {
         };
 
         if let Some(rb) = remote_blob {
-            // SEC: Protect against CRDT OOM Bomb (Size limit: 10MB)
-            if rb.len() > 10 * 1024 * 1024 {
+            // SEC: Protect against CRDT OOM Bomb (Size limit: 1MB, aligned with Samsara Hub)
+            if rb.len() > 1 * 1024 * 1024 {
                 return Err(AiomeError::SecurityViolation {
-                    reason: "CRDT remote blob exceeds maximum allowed size of 10MB".into(),
+                    reason: "CRDT remote blob exceeds maximum allowed size of 1MB".into(),
                 });
             }
 
@@ -154,7 +154,7 @@ mod tests {
     #[tokio::test]
     async fn test_crdt_sync_remote_too_large() {
         let q = setup_test_queue().await;
-        let giant_blob = vec![0u8; 10 * 1024 * 1024 + 1]; // 10MB + 1 byte
+        let giant_blob = vec![0u8; 1 * 1024 * 1024 + 1]; // 1MB + 1 byte
 
         let err = q
             .sync_timeline("hub_3", Some(&giant_blob))
@@ -162,7 +162,7 @@ mod tests {
             .unwrap_err();
         match err {
             AiomeError::SecurityViolation { reason } => {
-                assert!(reason.contains("10MB"));
+                assert!(reason.contains("1MB"));
             }
             _ => panic!("Expected SecurityViolation"),
         }

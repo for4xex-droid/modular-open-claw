@@ -18,7 +18,7 @@ describe('SystemBirth Component i18n', () => {
             jest.advanceTimersByTime(2500);
         });
 
-        // Current implementation uses "CALIBRATING NEURAL CHRONICLE..."
+        // Current implementation uses "CALIBRATING SYSTEM..."
         // Expected i18n version should use 'system.calibrating' or similar
         expect(screen.getByText('system.calibrating')).toBeInTheDocument();
         expect(screen.getByText('system.genesisProtocol')).toBeInTheDocument();

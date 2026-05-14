@@ -85,7 +85,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
             content: (
                 <div style={{ background: 'var(--white-03)', borderRadius: 'var(--radius-lg)', padding: '2rem', border: '1px solid var(--border-glass)' }}>
                     <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 700 }}>AI AGENT NAME</label>
+                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 700 }}>{t('onboarding.agentNameLabel')}</label>
                         <input
                             type="text"
                             value={aiName}
@@ -217,7 +217,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose }) =>
                                                 style={{ cursor: 'pointer', accentColor: 'var(--accent-cyan)' }}
                                             />
                                             <label htmlFor="tos-checkbox" style={{ cursor: 'pointer' }}>
-                                                {t('onboarding.agreeTo')} <a href="/terms" target="_blank" style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>Terms of Service</a> & <a href="/privacy" target="_blank" style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>Privacy Policy</a>
+                                                {t('onboarding.agreeTo')} <a href="/terms" target="_blank" style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>{t('onboarding.termsOfService')}</a> & <a href="/privacy" target="_blank" style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>{t('onboarding.privacyPolicy')}</a>
                                             </label>
                                         </div>
                                         <button

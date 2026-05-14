@@ -107,8 +107,9 @@ impl From<anyhow::Error> for AppError {
                     "anyhow::Error could not be downcast to AiomeError, wrapping as Infrastructure"
                 );
                 tracing::debug!(error = %err, "Full anyhow error chain for diagnostics");
+                // CWE-209: Generic message for client; full details logged at DEBUG above.
                 Self(AiomeError::Infrastructure {
-                    reason: format!("Unexpected application error: {}", err),
+                    reason: "An unexpected internal error occurred.".to_string(),
                 })
             }
         }
@@ -129,8 +130,9 @@ impl From<Box<dyn std::error::Error + Send + Sync>> for AppError {
                     "Box<dyn Error> could not be downcast to AiomeError, wrapping as Infrastructure"
                 );
                 tracing::debug!(error = %err, "Full Box<dyn Error> details for diagnostics");
+                // CWE-209: Generic message for client; full details logged at DEBUG above.
                 Self(AiomeError::Infrastructure {
-                    reason: format!("Unexpected dynamic error: {}", err),
+                    reason: "An unexpected internal error occurred.".to_string(),
                 })
             }
         }
@@ -237,8 +239,8 @@ mod tests {
         match &app_err.0 {
             AiomeError::Infrastructure { reason } => {
                 assert!(
-                    reason.contains("something went wrong"),
-                    "Expected original message in reason, got: {}",
+                    reason.contains("unexpected internal error"),
+                    "Expected generic error message, got: {}",
                     reason
                 );
             }
@@ -268,8 +270,8 @@ mod tests {
         match &app_err.0 {
             AiomeError::Infrastructure { reason } => {
                 assert!(
-                    reason.contains("file not found"),
-                    "Expected original message in reason, got: {}",
+                    reason.contains("unexpected internal error"),
+                    "Expected generic error message, got: {}",
                     reason
                 );
             }

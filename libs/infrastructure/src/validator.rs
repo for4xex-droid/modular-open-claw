@@ -132,7 +132,7 @@ impl DefaultConstitutionalValidator {
             Principles: {}
             Context: The Finder identified these issues: {}
             Task: Argue WHY this content might actually be acceptable or how it could be interpreted as non-violating. Be creative but logical.",
-            principles, issues
+            effective_principles, issues
         );
         let adversary_resp = self
             .provider

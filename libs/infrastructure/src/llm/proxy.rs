@@ -127,8 +127,13 @@ impl LlmProvider for ProxyLlmProvider {
             })?;
 
         if !res.status().is_success() {
+            let status = res.status();
+            // Limit error body read to 4KB to prevent log-bombing from malicious proxy
+            let error_bytes = res.bytes().await.unwrap_or_default();
+            let error_body = String::from_utf8_lossy(&error_bytes[..error_bytes.len().min(4096)]).to_string();
+            tracing::error!("🚨 [KeyProxy] Complete error: Status {}, Body: {}", status, error_body);
             return Err(AiomeError::Infrastructure {
-                reason: format!("KeyProxy returned error status: {}", res.status()),
+                reason: format!("KeyProxy returned error status: {}. Body: {}", status, error_body),
             });
         }
 
@@ -220,8 +225,13 @@ impl aiome_core::llm_provider::EmbeddingProvider for ProxyLlmProvider {
             })?;
 
         if !res.status().is_success() {
+            let status = res.status();
+            // Limit error body read to 4KB to prevent log-bombing from malicious proxy
+            let error_bytes = res.bytes().await.unwrap_or_default();
+            let error_body = String::from_utf8_lossy(&error_bytes[..error_bytes.len().min(4096)]).to_string();
+            tracing::error!("🚨 [KeyProxy] Embed error: Status {}, Body: {}", status, error_body);
             return Err(AiomeError::Infrastructure {
-                reason: format!("KeyProxy (Embed) error: {}", res.status()),
+                reason: format!("KeyProxy (Embed) error: {}. Body: {}", status, error_body),
             });
         }
 

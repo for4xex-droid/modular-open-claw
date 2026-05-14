@@ -56,9 +56,9 @@ const PromptStatsView: React.FC = () => {
             className="input"
             style={{ padding: 'var(--space-xs) var(--space-sm)', height: 'auto' }}
           >
-            <option value="7d">Last 7 Days</option>
-            <option value="30d">Last 30 Days</option>
-            <option value="90d">Last 90 Days</option>
+            <option value="7d">{t('promptStats.period7d') || 'Last 7 Days'}</option>
+            <option value="30d">{t('promptStats.period30d') || 'Last 30 Days'}</option>
+            <option value="90d">{t('promptStats.period90d') || 'Last 90 Days'}</option>
           </select>
           <button className="btn btn-secondary btn-sm" onClick={() => fetchStats()} disabled={loading}>
             <RefreshCw size={14} className={loading ? 'ani-spin' : ''} />

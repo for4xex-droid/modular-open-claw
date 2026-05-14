@@ -187,3 +187,37 @@ impl VaultBackend for UniversalVaultBackend {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sql_exec;
+
+    async fn setup_db() -> DatabasePool {
+        let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
+        let schema = "CREATE TABLE vault_keys (asset_id TEXT PRIMARY KEY, encrypted_key BLOB NOT NULL)";
+        sql_exec!(&pool, schema).unwrap();
+        pool
+    }
+
+    #[tokio::test]
+    async fn test_store_and_get_dek() {
+        let pool = setup_db().await;
+        let backend = UniversalVaultBackend::new_with_master_key(pool, vec![0u8; 32]);
+        
+        let asset_id = Uuid::new_v4();
+        let dek = vec![1, 2, 3, 4, 5];
+
+        let result = backend.get_dek(asset_id).await;
+        assert!(matches!(result, Err(AiomeError::ArtifactNotFound { .. })));
+
+        backend.store_dek(asset_id, &dek).await.unwrap();
+
+        let retrieved = backend.get_dek(asset_id).await.unwrap();
+        assert_eq!(*retrieved, dek);
+
+        backend.cache.lock().unwrap().clear();
+        let retrieved_db = backend.get_dek(asset_id).await.unwrap();
+        assert_eq!(*retrieved_db, dek);
+    }
+}

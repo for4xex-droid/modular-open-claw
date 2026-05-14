@@ -487,5 +487,5 @@ stateDiagram-v2
 
 ---
 
-*Last Updated / 最終更新: 2026-04-05*
+*Last Updated / 最終更新: 2026-05-14*
 *Curated by: Aiome Architecture Team — Inspired by [oh-my-mermaid](https://github.com/oh-my-mermaid/oh-my-mermaid) multi-perspective philosophy*

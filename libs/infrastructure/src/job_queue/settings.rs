@@ -148,6 +148,7 @@ impl SettingsOps for UniversalJobQueue {
 #[async_trait]
 impl CostOps for UniversalJobQueue {
     async fn aggregate_cost_hours(&self, hours: i64) -> Result<f64, AiomeError> {
+        let hours = hours.max(0);
         let res_opt = match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
                 let sql_modifier = format!("-{} hours", hours);
@@ -175,6 +176,7 @@ impl CostOps for UniversalJobQueue {
     }
 
     async fn aggregate_cost_days(&self, days: i64) -> Result<f64, AiomeError> {
+        let days = days.max(0);
         let res_opt = match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
                 let sql_modifier = format!("-{} days", days);
