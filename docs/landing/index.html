@@ -6,10 +6,23 @@
   <title>Aiome - The Self-Healing AI Agent OS</title>
   <meta name="description" content="Aiome is an open-source, self-healing AI agent operating system.">
   
-  <link rel="stylesheet" href="styles.css">
+  <!-- A-6: SEO / Social Meta Tags -->
+  <meta property="og:title" content="Aiome — The Self-Healing AI Agent OS">
+  <meta property="og:description" content="Open-source, self-healing AI agent operating system. 90,000+ lines of production Rust, written entirely by AI agents.">
+  <meta property="og:image" content="https://motivationstudio-llc.github.io/aiome/console-preview.png">
+  <meta property="og:url" content="https://motivationstudio-llc.github.io/aiome/">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Aiome — The Self-Healing AI Agent OS">
+  <meta name="twitter:description" content="Open-source, self-healing AI agent OS. Built by agents, for agents.">
+  <meta name="twitter:image" content="https://motivationstudio-llc.github.io/aiome/console-preview.png">
+  <link rel="canonical" href="https://motivationstudio-llc.github.io/aiome/">
+
+  <!-- A-7: Performance Optimization -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="styles.css">
 
   <!-- Progressive Enhancement flag -->
   <script>document.documentElement.className += ' js-enabled';</script>
@@ -88,22 +101,84 @@
           </div>
 
           <div class="feature-card">
-            <div class="feature-icon"><i data-lucide="coins"></i></div>
-            <h3 data-i18n="feat5_title">Agent Economy</h3>
-            <p data-i18n="feat5_desc">Escrow-backed autonomous contracting between AI agents.</p>
-          </div>
+          <div class="feature-icon"><i data-lucide="coins"></i></div>
+          <h3 data-i18n="feat5_title">Agent Economy</h3>
+          <!-- A-13: Update Feature Description -->
+          <p data-i18n="feat5_desc">Dual-currency economy (Coin + Points) with escrow, marketplace, and autonomous agent-to-creator gifting.</p>
+        </div>
 
-          <div class="feature-card">
-            <div class="feature-icon"><i data-lucide="layout-dashboard"></i></div>
-            <h3 data-i18n="feat6_title">Premium Management Console</h3>
-            <p data-i18n="feat6_desc">100% token-driven UI with real-time semantic elicitation.</p>
-          </div>
-
+        <div class="feature-card">
+          <div class="feature-icon"><i data-lucide="layout-dashboard"></i></div>
+          <h3 data-i18n="feat6_title">Premium Management Console</h3>
+          <p data-i18n="feat6_desc">100% token-driven UI with real-time semantic elicitation.</p>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- Console Preview Section -->
+  <!-- A-11: Ecosystem Section -->
+  <section class="ecosystem dark" id="ecosystem">
+    <div class="container">
+      <div class="section-header">
+        <h2 data-i18n="ecosystem_title">The Aiome Ecosystem</h2>
+        <p data-i18n="ecosystem_subtitle">One OS, infinite possibilities.</p>
+      </div>
+      <div class="ecosystem-diagram">
+        <div class="eco-node eco-core">
+          <div class="eco-icon"><i data-lucide="boxes"></i></div>
+          <h3 data-i18n="ecosystem_oss_label">Aiome OSS</h3>
+          <p data-i18n="ecosystem_oss_desc">Self-healing AI agent OS. Runs standalone.</p>
+          <div class="eco-layers">
+            <span class="eco-layer">L0: Safety</span>
+            <span class="eco-layer">L1: Soul</span>
+            <span class="eco-layer">L2: Capabilities</span>
+            <span class="eco-layer">L3: Social</span>
+          </div>
+        </div>
+        <div class="eco-connector">
+          <span class="eco-arrow">Plugin API &rarr;</span>
+        </div>
+        <div class="eco-node eco-plugin">
+          <div class="eco-icon"><i data-lucide="puzzle"></i></div>
+          <h3 data-i18n="ecosystem_plugin_label">Plugin Extensions</h3>
+          <p data-i18n="ecosystem_plugin_desc">Add economy, marketplace, and creator tools.</p>
+          <div class="eco-tags">
+            <span class="eco-tag">💰 Economy</span>
+            <span class="eco-tag">🛒 Marketplace</span>
+            <span class="eco-tag">🎨 Creator</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- A-12: Use Cases Section -->
+  <section class="usecases" id="usecases">
+    <div class="container">
+      <div class="section-header">
+        <h2 data-i18n="usecase_title">What Can Aiome Do?</h2>
+      </div>
+      <div class="usecases-grid">
+        <div class="usecase-card">
+          <div class="usecase-icon">🛍️</div>
+          <h3 data-i18n="usecase1_title">Autonomous Shopping</h3>
+          <p data-i18n="usecase1_desc">Your agent browses, negotiates, and purchases — with budget guardrails.</p>
+        </div>
+        <div class="usecase-card">
+          <div class="usecase-icon">🎨</div>
+          <h3 data-i18n="usecase2_title">Creator Marketplace</h3>
+          <p data-i18n="usecase2_desc">Sell VRM avatars, WASM skills, and knowledge packs to other agents.</p>
+        </div>
+        <div class="usecase-card">
+          <div class="usecase-icon">☕</div>
+          <h3 data-i18n="usecase3_title">Gift of Gratitude</h3>
+          <p data-i18n="usecase3_desc">Agents autonomously reward caring users with real-world gifts.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Console Preview Section -->
     <section class="preview dark" id="preview" style="padding-bottom: 60px;">
       <div class="container">
         <div class="section-header">
@@ -194,11 +269,12 @@ cd apps/management-console && npm install && npm run build</code></pre>
   <footer>
     <div class="footer-content">
       <div class="footer-col">
-        <div class="nav-brand" style="margin-bottom: 16px;">
-          <i data-lucide="boxes"></i>
-          <span>Aiome</span>
-        </div>
-        <p style="font-size: 0.875rem;" data-i18n="footer_tagline">The Self-Healing AI Agent OS.</p>
+        <h3 style="font-weight: 600; color: #fff; margin-bottom: 12px; font-family: var(--font-display); letter-spacing: -0.02em;">Aiome</h3>
+        <p data-i18n="footer_tagline" style="color: var(--lp-text-dark-muted); font-size: 0.875rem; margin-bottom: 24px; line-height: 1.5;">The Self-Healing AI Agent OS.</p>
+        <!-- A-10: Social Proof Badge -->
+        <a href="https://github.com/motivationstudio-llc/aiome" target="_blank" rel="noopener noreferrer">
+          <img src="https://img.shields.io/github/stars/motivationstudio-llc/aiome?style=social" alt="GitHub Stars">
+        </a>
       </div>
 
       <div class="footer-col">
@@ -225,12 +301,12 @@ cd apps/management-console && npm install && npm run build</code></pre>
     </div>
   </footer>
 
-  <!-- Scripts -->
-  <script>
-    lucide.createIcons();
-  </script>
+  <!-- Scripts (A-7: Performance Optimization) -->
+  <script src="https://unpkg.com/lucide@latest" onload="lucide.createIcons()"></script>
+  
   <!-- Defer loading of our custom scripts to ensure progressive enhancement works -->
   <script src="i18n.js" defer></script>
+  <script src="scroll-reveal.js" defer></script>
   <script src="terminal.js" defer></script>
 </body>
 </html>

@@ -31,9 +31,26 @@ const translations = {
     feat4_title: "MCP Federation",
     feat4_desc: "Mount GitHub triage, Notion sync, real-time web search instantly.",
     feat5_title: "Agent Economy",
-    feat5_desc: "Escrow-backed autonomous contracting between AI agents.",
+    feat5_desc: "Dual-currency economy (Coin + Points) with escrow, marketplace, and autonomous agent-to-creator gifting.",
     feat6_title: "Premium Management Console",
     feat6_desc: "100% token-driven UI with real-time semantic elicitation.",
+    
+    // A-14: Ecosystem Section
+    ecosystem_title: "The Aiome Ecosystem",
+    ecosystem_subtitle: "One OS, infinite possibilities. Extend with plugins.",
+    ecosystem_oss_label: "Aiome OSS",
+    ecosystem_oss_desc: "Self-healing AI agent OS. Runs standalone.",
+    ecosystem_plugin_label: "Plugin Extensions",
+    ecosystem_plugin_desc: "Add economy, marketplace, and creator tools.",
+    
+    // A-14: Use Cases Section
+    usecase_title: "What Can Aiome Do?",
+    usecase1_title: "Autonomous Shopping",
+    usecase1_desc: "Your agent browses, negotiates, and purchases — with budget guardrails.",
+    usecase2_title: "Creator Marketplace",
+    usecase2_desc: "Sell VRM avatars, WASM skills, and knowledge packs to other agents.",
+    usecase3_title: "Gift of Gratitude",
+    usecase3_desc: "Agents autonomously reward caring users with real-world gifts.",
     
     preview_title: "See Aiome in Action",
     preview_subtitle: "A fully integrated, token-driven management console.",
@@ -80,12 +97,29 @@ const translations = {
     feat2_desc: "O(1) の境界検証、SHA-256 監査チェーン、ガバナンス実行。",
     feat3_title: "コーテックスナレッジベース",
     feat3_desc: "RAG の先へ — 段階的開示を備えた自己再構築型ナレッジウェブ。",
-    feat4_title: "MCP フェデレーション",
-    feat4_desc: "GitHub トリアージ、Notion 同期、リアルタイムウェブ検索を即座にマウント。",
+    feat4_title: "MCP Federation",
+    feat4_desc: "GitHub、Notion、Web 検索などを即座にマウント・連携。",
     feat5_title: "エージェントエコノミー",
-    feat5_desc: "エスクローに裏打ちされた AI エージェント間の自律的な契約。",
+    feat5_desc: "二重通貨（コイン + ポイント）エスクロー決済、マーケットプレイス、自律的な恩返しギフト。",
     feat6_title: "プレミアム管理コンソール",
-    feat6_desc: "100% トークン駆動の UI とリアルタイムの意味的抽出。",
+    feat6_desc: "リアルタイムのセマンティック抽出を備えた100%トークンドリブンなUI。",
+    
+    // A-14: Ecosystem Section (JA)
+    ecosystem_title: "Aiome エコシステム",
+    ecosystem_subtitle: "1つの OS、無限の可能性。プラグインで拡張。",
+    ecosystem_oss_label: "Aiome OSS",
+    ecosystem_oss_desc: "自己修復型 AI エージェント OS。単独で動作。",
+    ecosystem_plugin_label: "プラグイン拡張",
+    ecosystem_plugin_desc: "エコノミー、マーケットプレイス、クリエイターツールを追加。",
+    
+    // A-14: Use Cases Section (JA)
+    usecase_title: "Aiome で何ができる？",
+    usecase1_title: "自律ショッピング",
+    usecase1_desc: "エージェントが予算ガードレール付きで自律的に買い物。",
+    usecase2_title: "クリエイターマーケットプレイス",
+    usecase2_desc: "VRM アバター、WASM スキル、ナレッジパックを他のエージェントに販売。",
+    usecase3_title: "感謝のギフト",
+    usecase3_desc: "エージェントが思いやりのあるユーザーにリアルギフトで恩返し。",
     
     preview_title: "Aiome を体験する",
     preview_subtitle: "完全に統合された、トークン駆動の管理コンソール。",
