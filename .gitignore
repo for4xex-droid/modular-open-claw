@@ -42,6 +42,9 @@ dist/
 /apps/management-console/dist/
 /apps/management-console/node_modules/
 /apps/management-console/src-tauri/target/
+coverage/
+playwright-report/
+test-results/
 
 # Strategic & Private documents (NEVER public)
 PITCH_DECK.md
