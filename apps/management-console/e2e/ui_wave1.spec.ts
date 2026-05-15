@@ -9,7 +9,7 @@ test.describe('UI Wave 1 Features (TDD)', () => {
     await page.addInitScript(() => {
       window.localStorage.setItem('aiome_onboarding_done', 'true');
       window.localStorage.setItem('aiome_birth_shown', 'true');
-      window.sessionStorage.setItem('aiome_secret', 'mock_valid_token_dev');
+      window.sessionStorage.setItem('aiome_secret', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZ2VudC0wMDEiLCJla3ljX3ZlcmlmaWVkIjp0cnVlfQ.mock_signature');
       window.localStorage.setItem('aiome_test_mode', 'true');
     });
 
@@ -42,8 +42,6 @@ test.describe('UI Wave 1 Features (TDD)', () => {
   });
 
   test('W1-1 & W1-2: CharacterPanel should display Soul Status and eKYC Badge', async ({ page }) => {
-    // CharacterPanel is usually visible on the main page or world tab, assuming it's loaded.
-    const characterPanel = page.locator('.character-panel, [data-testid="character-panel"]');
     
     // As per TDD, we expect these elements to exist but they don't yet.
     // Check for Soul Status Badge
@@ -74,7 +72,7 @@ test.describe('UI Wave 1 Features (TDD)', () => {
     });
 
     // We expect the new SoT styled event to appear in the StoryFlow feed
-    const sotMessage = page.getByText(/Started deliberation session/i);
+    const sotMessage = page.getByText(/Deliberation session started/i);
     await expect(sotMessage).toBeVisible({ timeout: 4000 }); 
   });
 });

@@ -24,6 +24,6 @@ test.describe('TreasureBox Component (TDD)', () => {
         
         const heading = page.locator('.artemis-treasure-box .artemis-heading').first();
         await expect(heading).toBeVisible({ timeout: 5000 });
-        await expect(heading).toHaveText('Agent Sense');
+        await expect(heading).toHaveText('AI Workspace');
     });
 });

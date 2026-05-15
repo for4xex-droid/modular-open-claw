@@ -18,7 +18,7 @@ test('Aiome 90-second Screencast', async ({ page }) => {
     window.localStorage.clear();
     window.sessionStorage.clear();
     window.localStorage.setItem('aiome_test_mode', 'true');
-    window.sessionStorage.setItem('aiome_secret', 'mock_valid_token_dev');
+    window.sessionStorage.setItem('aiome_secret', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZ2VudC0wMDEiLCJla3ljX3ZlcmlmaWVkIjp0cnVlfQ.mock_signature');
     window.localStorage.setItem('aiome_onboarding_done', 'true');
     window.localStorage.setItem('aiome_birth_shown', 'true');
   });

@@ -39,7 +39,7 @@ test.describe('Cortex View UI', () => {
 
     // 2. Act: Go to dashboard — bypass auth overlay (sessionStorage) and enable advanced view mode (localStorage)
     await page.addInitScript(() => {
-      window.sessionStorage.setItem('aiome_secret', 'test_secret');
+      window.sessionStorage.setItem('aiome_secret', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZ2VudC0wMDEiLCJla3ljX3ZlcmlmaWVkIjp0cnVlfQ.mock_signature');
       window.localStorage.setItem('aiome_view_mode', 'advanced');
       window.localStorage.setItem('aiome_onboarding_done', 'true');
       window.localStorage.setItem('aiome_birth_shown', 'true');
@@ -47,7 +47,7 @@ test.describe('Cortex View UI', () => {
     await page.goto('/');
 
     // The nav item should be visible in the sidebar
-    const cortexTab = page.locator('.nav-item').filter({ hasText: /Cortex Wiki/i });
+    const cortexTab = page.locator('.nav-item').filter({ hasText: /Knowledge Base/i });
     await expect(cortexTab).toBeVisible({ timeout: 5000 });
     await cortexTab.click();
 

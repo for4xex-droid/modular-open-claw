@@ -12,7 +12,7 @@ test.describe('Autonomous AI Economy Demo', () => {
     await page.addInitScript(() => {
       window.localStorage.setItem('aiome_onboarding_done', 'true');
       window.localStorage.setItem('aiome_birth_shown', 'true');
-      window.sessionStorage.setItem('aiome_secret', 'mock_token');
+      window.sessionStorage.setItem('aiome_secret', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZ2VudC0wMDEiLCJla3ljX3ZlcmlmaWVkIjp0cnVlfQ.mock_signature');
       window.localStorage.setItem('i18nextLng', 'en-US');
       window.localStorage.setItem('aiome_view_mode', 'advanced');
     });

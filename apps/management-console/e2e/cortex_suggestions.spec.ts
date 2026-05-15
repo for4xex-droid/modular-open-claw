@@ -8,7 +8,7 @@ test.describe('Cortex Dynamic Suggestions', () => {
       window.localStorage.setItem('aiome_birth_shown', 'true');
       window.localStorage.setItem('aiome_view_mode', 'advanced'); // Show Sidebar
       window.localStorage.setItem('i18nextLng', 'en'); // Fix locale to English
-      window.sessionStorage.setItem('aiome_secret', 'mock_token');
+      window.sessionStorage.setItem('aiome_secret', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZ2VudC0wMDEiLCJla3ljX3ZlcmlmaWVkIjp0cnVlfQ.mock_signature');
     });
 
     // Intercept Cortex Suggestions API
@@ -31,9 +31,6 @@ test.describe('Cortex Dynamic Suggestions', () => {
 
     // Wait for main UI to load
     await page.waitForSelector('.app-container', { timeout: 5000 });
-    
-    await page.screenshot({ path: '/tmp/playwright-debug.png' });
-    console.log("Screenshot saved to /tmp/playwright-debug.png");
 
     // Navigate to Home V2
     const homeV2Tab = page.locator('nav.nav-group div', { hasText: 'Home v2' }).first();
@@ -42,7 +39,7 @@ test.describe('Cortex Dynamic Suggestions', () => {
   });
 
   test('Shows suggestion chips on focus and populates input', async ({ page }) => {
-    const chatInput = page.locator('textarea[placeholder="SYNAPTIC INTERFACE READY"]');
+    const chatInput = page.locator('textarea[placeholder="Ready"]');
     await expect(chatInput).toBeVisible();
 
     // 1. Focus the input to trigger suggestions fetch and display

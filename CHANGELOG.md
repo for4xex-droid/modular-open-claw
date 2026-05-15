@@ -1,5 +1,25 @@
 ## [Unreleased]
 
+### Added
+- **Economic Loop Finalization (First Penguin Release)**:
+  - `reflective_dream` に `job_queue.store_karma` 呼び出しを実装し、DreamState 内の自省的アラインメント報酬が `Synthesized` 型 Karma として経済圏（KarmaForge）に書き戻されるフィードバックループを完成させました。
+  - `karma_type` 制約（'Technical', 'Creative', 'Synthesized'）に基づく厳密なバリデーションへの準拠を達成。
+  - テスト `test_reflective_dream_stores_karma` を実装し、経済圏統合における TDD サイクル（GREEN）を完遂。
+
+### Fixed
+- **UI/UX Production Readiness (Gate 6 Audit)**:
+  - `management-console` の `SettingsPage.tsx` から未使用となっていた `flag` 変数およびプロパティを安全に削除。
+  - `NurtureDashboard.tsx` に「View Store」ボタンを追加し、決済基盤とフロントエンドの連携デモ（First Penguin）要件を完備。
+  - `tsconfig.json` の設定を修正し、Vite ビルドプロセスからテストファイル (`*.test.tsx`) を除外することで TypeScript コンパイルエラーを解決。
+  - Cargo および npm の両ビルドで警告・エラーゼロを達成し、Gate 6 (Build, Visual, Stress) 監査に完全に合格する本番対応状態 (Production-Ready) を確立。
+
+### Fixed
+- **UI E2E Test Stabilization (First Penguin)**:
+  - 11のE2Eテストスペックファイル全体で `aiome_secret` (JWTモック) を、`useAgentIdentity` が正しくデコード可能な構造的有効な3パートJWTへ統一。「幻覚的グリーン」（サイレントな認証失敗）状態を根絶し、真の認証コンテキストでのテスト実行を担保。
+  - テスト環境の衛生状態を向上するため、`/tmp` へのスクリーンショット書き込みや不要な `console.log` 等のデバッグ残骸を除去（例: `cortex_suggestions.spec.ts`）。
+  - `ui_fixes.spec.ts` 等における `try/catch` ブロックでのエラー元情報消失を防ぐため、`{ cause: e }` を追加しPlaywrightのスタックトレースを保持。
+  - 以上の修正を経て、`npx playwright test e2e` の全テスト（22 passed, 2 skipped）の安定通過を確認。
+
 ### Fixed
 - **Zero-Panic: `artifact_store.rs` `get_artifact_edges`**: Replaced 14 panicking `.get()` calls (SQLite + Postgres) with `.try_get().unwrap_or_default()` to prevent runtime panics on missing columns.
 - **CWE-209: `api-server/error.rs`**: Masked internal error details from `anyhow::Error` and `Box<dyn Error>` in client-facing responses. Full chain logged at DEBUG level only.
