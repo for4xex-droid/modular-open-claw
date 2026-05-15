@@ -59,7 +59,6 @@ pub fn build_app(
             "/api/v1/metrics",
             get(move || std::future::ready(metrics_handle.render())),
         )
-        .route("/", get(routes::general::get_health_status))
         .route(
             "/api/v1/whisper/monologue",
             get(routes::whisper::get_monologue_history),

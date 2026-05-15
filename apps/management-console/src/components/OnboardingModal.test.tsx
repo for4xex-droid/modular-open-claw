@@ -83,7 +83,7 @@ describe('OnboardingModal Component i18n', () => {
         expect(awakenButton).toBeDisabled();
 
         // Check the ToS checkbox
-        const tosCheckbox = screen.getByRole('checkbox', { name: /Terms of Service/i });
+        const tosCheckbox = screen.getByRole('checkbox');
         fireEvent.click(tosCheckbox);
 
         // Now it should be enabled

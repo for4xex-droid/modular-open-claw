@@ -16,9 +16,9 @@ pub struct AppDataResolver {
 
 impl Default for AppDataResolver {
     fn default() -> Self {
-        // allow-anti-pattern: fatal Default impl
         Self::new()
             .unwrap_or_else(|e| panic!("Failed to resolve fallback AIOME_APP_DATA_DIR: {}", e))
+        // allow-anti-pattern: fatal Default impl
     }
 }
 

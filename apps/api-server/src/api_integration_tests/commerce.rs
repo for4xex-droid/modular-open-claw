@@ -470,9 +470,9 @@ async fn test_stripe_webhook_invoice_paid_unlocks_account() {
 
     // Set up DB tables
     let sqlite_pool = state.db_pool.get_inner().get_sqlite_pool().unwrap();
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS stripe_customers (id TEXT PRIMARY KEY, customer_id TEXT UNIQUE NOT NULL, agent_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
-    ).execute(sqlite_pool).await.unwrap();
+    // sqlx::query(
+    //     "CREATE TABLE IF NOT EXISTS stripe_customers (id TEXT PRIMARY KEY, customer_id TEXT UNIQUE NOT NULL, agent_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    // ).execute(sqlite_pool).await.unwrap();
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
     ).execute(sqlite_pool).await.unwrap();
@@ -525,9 +525,9 @@ async fn test_stripe_webhook_payment_failed_suspends_account() {
     let (server, state, _tmp) = create_test_server().await;
 
     let sqlite_pool = state.db_pool.get_inner().get_sqlite_pool().unwrap();
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS stripe_customers (id TEXT PRIMARY KEY, customer_id TEXT UNIQUE NOT NULL, agent_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
-    ).execute(sqlite_pool).await.unwrap();
+    // sqlx::query(
+    //     "CREATE TABLE IF NOT EXISTS stripe_customers (id TEXT PRIMARY KEY, customer_id TEXT UNIQUE NOT NULL, agent_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    // ).execute(sqlite_pool).await.unwrap();
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
     ).execute(sqlite_pool).await.unwrap();
@@ -627,12 +627,12 @@ async fn test_stripe_webhook_checkout_session_completed_syncs_to_nurture_ledger(
 
     // Create customers and events table for the sqlite DB
     let pool = state.db_pool.get_sqlite_pool().unwrap();
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS stripe_customers (id TEXT PRIMARY KEY, customer_id TEXT UNIQUE NOT NULL, agent_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
-    )
-    .execute(pool)
-    .await
-    .unwrap();
+    // sqlx::query(
+    //     "CREATE TABLE IF NOT EXISTS stripe_customers (id TEXT PRIMARY KEY, customer_id TEXT UNIQUE NOT NULL, agent_id TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    // )
+    // .execute(pool)
+    // .await
+    // .unwrap();
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
     )

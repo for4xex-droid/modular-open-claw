@@ -14,6 +14,8 @@ import {
     Shield, Check, X, Loader2, Plus, Share2, AlertTriangle
 } from 'lucide-react';
 import { API_BASE } from '../config';
+import { OllamaModelSelector } from './OllamaModelSelector';
+import { McpConfigManager } from './McpConfigManager';
 import { setAuthToken, authenticatedFetch, clearAuthToken } from '../lib/auth';
 import EscrowManagementView from './EscrowManagementView';
 
@@ -406,42 +408,36 @@ const SettingsPage: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <FeatureToggle 
                             label={t('settings.ffSeoPublishing', { defaultValue: 'SEO Publishing' }) as string} 
-                            flag="feature_flag.seo_publish" 
                             current={getSetting('feature_flag.seo_publish')} 
                             onUpdate={(v) => updateSetting('feature_flag.seo_publish', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.seo_publish'} 
                         />
                         <FeatureToggle 
                             label={t('settings.ffP2pFederation', { defaultValue: 'P2P Federation' }) as string} 
-                            flag="feature_flag.p2p_federation" 
                             current={getSetting('feature_flag.p2p_federation')} 
                             onUpdate={(v) => updateSetting('feature_flag.p2p_federation', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.p2p_federation'} 
                         />
                         <FeatureToggle 
                             label={t('settings.ffLoraTraining', { defaultValue: 'LoRA Training' }) as string} 
-                            flag="feature_flag.lora_training" 
                             current={getSetting('feature_flag.lora_training')} 
                             onUpdate={(v) => updateSetting('feature_flag.lora_training', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.lora_training'} 
                         />
                         <FeatureToggle 
                             label={t('settings.ffGigMarketplace', { defaultValue: 'Gig Marketplace' }) as string} 
-                            flag="feature_flag.gig_marketplace" 
                             current={getSetting('feature_flag.gig_marketplace')} 
                             onUpdate={(v) => updateSetting('feature_flag.gig_marketplace', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.gig_marketplace'} 
                         />
                         <FeatureToggle 
                             label={t('settings.ffIntentFirstSuggestion', { defaultValue: 'Intent-First Suggestion' }) as string} 
-                            flag="feature_flag.intent_first_suggestion" 
                             current={getSetting('feature_flag.intent_first_suggestion')} 
                             onUpdate={(v) => updateSetting('feature_flag.intent_first_suggestion', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.intent_first_suggestion'} 
                         />
                         <FeatureToggle 
                             label={t('settings.ffSemanticToolReviewer', { defaultValue: 'Semantic Tool Reviewer' }) as string} 
-                            flag="ENABLE_TOOL_REVIEWER" 
                             current={getSetting('ENABLE_TOOL_REVIEWER') || "true"} 
                             onUpdate={(v) => updateSetting('ENABLE_TOOL_REVIEWER', v, 'feature_flags')} 
                             saving={saving === 'ENABLE_TOOL_REVIEWER'} 
@@ -464,66 +460,7 @@ const SettingsPage: React.FC = () => {
 
 // --- Sub-Components ---
 
-const OriginManager: React.FC<{ value: string, onUpdate: (v: string) => void, saving?: boolean }> = ({ value, onUpdate, saving }) => {
-    const { t } = useTranslation();
-    const [draft, setDraft] = useState('');
-    const [error, setError] = useState('');
-    const items = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
-
-    const addOrigin = () => {
-        if (!draft.trim()) return;
-        if (items.includes(draft.trim())) {
-            setError(t('settings.originExists'));
-            return;
-        }
-        const updated = [...items, draft.trim()].join(',');
-        onUpdate(updated);
-        setDraft('');
-        setError('');
-    };
-
-    const removeOrigin = (idx: number) => {
-        const updated = items.filter((_, i) => i !== idx).join(',');
-        onUpdate(updated);
-    };
-
-    return (
-        <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.allowedOrigins')}</label>
-                {saving && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)', marginBottom: '0.6rem' }}>
-                {items.map((item, i) => (
-                    <div key={i} style={{
-                        display: 'flex', alignItems: 'center', gap: '0.4rem',
-                        background: 'var(--accent-cyan-glass)', border: '1px solid var(--accent-cyan-20)',
-                        borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.75rem',
-                        color: 'var(--accent-cyan)'
-                    }}>
-                        <span>{item}</span>
-                        <X size={12} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={() => removeOrigin(i)} />
-                    </div>
-                ))}
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                    type="text" value={draft} placeholder="https://example.com"
-                    onChange={(e) => { setDraft(e.target.value); setError(''); }}
-                    onKeyDown={(e) => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') addOrigin(); }}
-                    style={{ ...inputStyle, flex: 1 }}
-                />
-                <button onClick={addOrigin} style={{ ...testBtnStyle, padding: '0.5rem 0.8rem' }}>
-                    <Plus size={14} /> {t('settings.add')}
-                </button>
-            </div>
-            {error && <div style={{ fontSize: '0.7rem', color: 'var(--accent-rose)', marginTop: '0.4rem' }}>{error}</div>}
-            <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontStyle: 'italic' }}>
-                {t('settings.serverRestartRequired')}
-            </div>
-        </div>
-    );
-};
+import { OriginManager } from './OriginManager';
 
 const SecretUpdater: React.FC = () => {
     const { t } = useTranslation();
@@ -583,62 +520,7 @@ const SecretUpdater: React.FC = () => {
     );
 };
 
-const ToxicityConfig: React.FC<{ value: string, onUpdate: (v: string) => void, saving?: boolean }> = ({ value, onUpdate, saving }) => {
-    const { t } = useTranslation();
-    const [draft, setDraft] = useState('');
-    const items = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
-
-    const addWord = () => {
-        if (!draft.trim()) return;
-        const newWords = draft.split(',').map(s => s.trim()).filter(Boolean);
-        if (newWords.length === 0) return;
-        const updated = Array.from(new Set([...items, ...newWords])).join(',');
-        onUpdate(updated);
-        setDraft('');
-    };
-
-    const removeWord = (idx: number) => {
-        const updated = items.filter((_, i) => i !== idx).join(',');
-        onUpdate(updated);
-    };
-
-    return (
-        <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-glass)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.contentSafetyFilter', { defaultValue: 'Content Safety Filter' })}</label>
-                {saving && <Loader2 size={12} className="ani-spin" color="var(--accent-amber)" />}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>
-                {t('settings.contentSafetyDesc', { defaultValue: 'Words added here will be blocked during AI generation and Federation P2P messaging.' })}
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)', marginBottom: '0.6rem' }}>
-                {items.map((item, i) => (
-                    <div key={i} style={{
-                        display: 'flex', alignItems: 'center', gap: '0.4rem',
-                        background: 'var(--accent-rose-glass)', border: '1px solid var(--accent-rose-20)',
-                        borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.75rem',
-                        color: 'var(--accent-rose)'
-                    }}>
-                        <span>{item}</span>
-                        <X size={12} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={() => removeWord(i)} />
-                    </div>
-                ))}
-                {items.length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('settings.noBlockedWords', { defaultValue: 'No blocked words.' })}</span>}
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                    type="text" value={draft} placeholder={t('settings.enterBannedWord', { defaultValue: 'Enter a banned word...' }) as string}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') addWord(); }}
-                    style={{ ...inputStyle, flex: 1 }}
-                />
-                <button onClick={addWord} style={{ ...testBtnStyle, padding: '0.5rem 0.8rem' }}>
-                    <Plus size={14} /> {t('settings.add')}
-                </button>
-            </div>
-        </div>
-    );
-};
+import { ToxicityConfig } from './ToxicityConfig';
 
 const SettingInput: React.FC<{ label: string, value: string, placeholder?: string, onBlur: (v: string) => void, saving?: boolean, isPassword?: boolean }> = ({ label, value, placeholder, onBlur, saving, isPassword }) => {
     const [local, setLocal] = useState(value);
@@ -662,160 +544,9 @@ const SettingInput: React.FC<{ label: string, value: string, placeholder?: strin
     );
 };
 
-const OllamaModelSelector: React.FC<{ value: string, onSelect: (v: string) => void, saving?: boolean }> = ({ value, onSelect, saving }) => {
-    const { t } = useTranslation();
-    const [models, setModels] = useState<string[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+// The implementations for OllamaModelSelector and McpConfigManager have been extracted to their own files.
 
-    useEffect(() => {
-        fetchModels();
-    }, []);
-
-    const fetchModels = async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const res = await authenticatedFetch(`${API_BASE}/api/v1/ollama/models`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.models && Array.isArray(data.models)) {
-                    setModels(data.models.map((m: any) => m.name));
-                }
-            } else {
-                setError(`Failed to fetch models: ${res.status}`);
-            }
-        } catch (err: unknown) {
-            console.error("Fetch models error:", err);
-            setError(`Connection error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                <label style={{ ...labelStyle, marginBottom: 0 }}>{t('settings.ollamaModel')}</label>
-                {saving && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
-            </div>
-            <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
-                <select
-                    value={value}
-                    onChange={(e) => onSelect(e.target.value)}
-                    style={{ ...inputStyle, flex: 1, padding: '0.67rem', outline: 'none' }}
-                >
-                    <option value="" style={{ background: 'var(--bg-primary)' }}>{t('settings.ollamaPlaceholder')}</option>
-                    {models.map(m => (
-                        <option key={m} value={m} style={{ background: 'var(--bg-primary)' }}>{m}</option>
-                    ))}
-                    {!models.includes(value) && value && (
-                        <option value={value} style={{ background: 'var(--bg-primary)' }}>{value} {t('settings.current')}</option>
-                    )}
-                </select>
-                <button onClick={fetchModels} disabled={loading} title="Refresh Models" style={{ ...testBtnStyle, padding: '0.5rem 0.8rem' }}>
-                    {loading ? <Loader2 size={14} className="ani-spin" /> : t('settings.refresh')}
-                </button>
-            </div>
-            {error && <div style={{ fontSize: '0.7rem', color: 'var(--accent-rose)', marginTop: '0.4rem' }}>{error}</div>}
-        </div>
-    );
-};
-
-const McpConfigManager: React.FC = () => {
-    const { t } = useTranslation();
-    const [configJson, setConfigJson] = useState('{\n  "mcp_servers": {}\n}');
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [message, setMessage] = useState('');
-
-    useEffect(() => {
-        fetchConfig();
-    }, []);
-
-    const fetchConfig = async () => {
-        try {
-            const res = await authenticatedFetch(`${API_BASE}/api/skills/mcp/config`);
-            if (res.ok) {
-                const data = await res.json();
-                setConfigJson(JSON.stringify(data, null, 2));
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const saveConfig = async () => {
-        try {
-            setSaving(true);
-            setMessage('');
-            JSON.parse(configJson); 
-            const res = await authenticatedFetch(`${API_BASE}/api/skills/mcp/config`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: configJson
-            });
-            if (res.ok) {
-                setMessage(`✅ ${t('settings.reloadedSuccessfully', { defaultValue: 'Reloaded successfully' })}`);
-                setTimeout(() => setMessage(''), 3000);
-            } else {
-                setMessage(`❌ ${t('settings.errorSaving', { defaultValue: 'Error saving' })}`);
-            }
-        } catch (e) {
-            setMessage(`❌ ${t('settings.invalidJson', { defaultValue: 'Invalid JSON or network error' })}`);
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    return (
-        <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                <Database size={24} color="var(--accent-amber)" />
-                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.mcpArchitecture', { defaultValue: 'MCP Architecture (Analytics & Tools)' })}</h3>
-            </div>
-            {loading ? <div style={{ padding: '2rem', textAlign: 'center' }}><Loader2 className="ani-spin" size={24} color="var(--accent-amber)" /></div> : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        {t('settings.mcpDesc', { defaultValue: 'Define external MCP servers (GA4, Stripe, etc). Safe to use environment variables like $STRIPE_SECRET_KEY. Saving will restart MCP processes dynamically.' })}
-                    </div>
-                    <textarea 
-                        className="font-mono"
-                        value={configJson}
-                        onChange={e => setConfigJson(e.target.value)}
-                        style={{
-                            width: '100%', height: '200px', background: 'var(--black-50)', color: 'var(--accent-cyan)',
-                            padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)',
-                            resize: 'vertical', outline: 'none', fontSize: '0.85rem'
-                        }}
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.85rem', color: message.includes('❌') ? 'var(--accent-rose)' : 'var(--accent-emerald)', fontWeight: 600 }}>
-                            {message}
-                        </span>
-                        <button 
-                            onClick={saveConfig} 
-                            disabled={saving}
-                            className="primary-button"
-                            style={{ 
-                                padding: '0.6rem 1.2rem', background: 'var(--accent-amber)', color: 'var(--bg-primary)', 
-                                border: 'none', borderRadius: 'var(--radius-md)', fontWeight: 700, cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', gap: '0.5rem'
-                            }}
-                        >
-                            {saving ? <Loader2 size={16} className="ani-spin" /> : <Database size={16} />}
-                            {t('settings.saveSyncTools', { defaultValue: 'Save & Sync Tools' })}
-                        </button>
-                    </div>
-                </div>
-            )}
-        </section>
-    );
-};
-
-const FeatureToggle: React.FC<{ label: string, flag: string, current: string, onUpdate: (v: string) => void, saving?: boolean }> = ({ label, flag, current, onUpdate, saving }) => {
+const FeatureToggle: React.FC<{ label: string, current: string, onUpdate: (v: string) => void, saving?: boolean }> = ({ label, current, onUpdate, saving }) => {
     const isEnabled = current === "true" || current === "1";
     return (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--white-03)', padding: '0.8rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-glass)' }}>

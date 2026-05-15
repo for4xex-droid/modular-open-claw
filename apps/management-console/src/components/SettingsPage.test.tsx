@@ -1,20 +1,24 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SettingsPage from './SettingsPage';
 
+export const mockSetCharacter = jest.fn();
+export const mockSetProportion = jest.fn();
+export const mockSetMode = jest.fn();
+
 // Mock required contexts
 jest.mock('../hooks/AvatarContext', () => ({
   useAvatarCharacter: () => ({
     character: 'female',
-    setCharacter: jest.fn(),
+    setCharacter: mockSetCharacter,
     proportion: 'chibi',
-    setProportion: jest.fn()
+    setProportion: mockSetProportion
   })
 }));
 
 jest.mock('../hooks/useDisplayMode', () => ({
   useDisplayMode: () => ({
     mode: 'vrm',
-    setMode: jest.fn()
+    setMode: mockSetMode
   })
 }));
 
@@ -154,7 +158,396 @@ describe('SettingsPage Integrations', () => {
     expect(screen.getByText('settings.llmEngine')).toBeInTheDocument();
     expect(screen.getByText('settings.commerceEconomicBase')).toBeInTheDocument();
     expect(screen.getByText('settings.channelBridges')).toBeInTheDocument();
-    expect(screen.getByText('settings.securityInfrastructure')).toBeInTheDocument();
     expect(screen.getByText('settings.featureFlags')).toBeInTheDocument();
+  });
+
+  it('handles MCP Config Manager interactions', async () => {
+    // Mock the auth fetch for MCP config
+    const mockAuthFetch = require('../lib/auth').authenticatedFetch;
+    mockAuthFetch.mockImplementation(async (url: string, options: any) => {
+      if (url.includes('/api/skills/mcp/config')) {
+        if (options?.method === 'PUT') {
+          return { ok: true };
+        }
+        return { ok: true, json: async () => ({ mcp_servers: { test: 1 } }) };
+      }
+      return { ok: true, json: async () => [] };
+    });
+
+    mockViewMode = 'advanced';
+    render(<SettingsPage />);
+
+    // Wait for the appearance section to load (ensures main SettingsPage fetch is done)
+    await screen.findByText('settings.appearance');
+
+    // Wait for the MCP architecture section to load
+    const mcpHeading = await screen.findByText('settings.mcpArchitecture');
+    expect(mcpHeading).toBeInTheDocument();
+
+    // Find the textarea and simulate typing
+    const textareas = screen.getAllByRole('textbox');
+    // The MCP config textarea is the only textarea in this component currently
+    const mcpTextarea = textareas.find(ta => ta.tagName.toLowerCase() === 'textarea') as HTMLTextAreaElement;
+    expect(mcpTextarea).toBeInTheDocument();
+    
+    // It should initially fetch and display the mocked JSON
+    await waitFor(() => {
+      expect(mcpTextarea.value).toContain('"test": 1');
+    });
+
+    // Change the value
+    fireEvent.change(mcpTextarea, { target: { value: '{"mcp_servers": {"new": true}}' } });
+    expect(mcpTextarea.value).toBe('{"mcp_servers": {"new": true}}');
+
+    // Click the save button
+    const saveButton = screen.getByText('settings.saveSyncTools');
+    fireEvent.click(saveButton);
+
+    // Wait for save message
+    await screen.findByText(/settings.reloadedSuccessfully/);
+    
+    expect(mockAuthFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/skills/mcp/config'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: '{"mcp_servers": {"new": true}}'
+      })
+    );
+  });
+
+  it('handles MCP Config Manager errors (fetch and save)', async () => {
+    // Suppress console.error for this test
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    
+    const mockAuthFetch = require('../lib/auth').authenticatedFetch;
+    mockAuthFetch.mockImplementation(async (url: string, options: any) => {
+      if (url.includes('/api/skills/mcp/config')) {
+        if (options?.method === 'PUT') {
+          return { ok: false };
+        }
+        throw new Error('Fetch failed');
+      }
+      return { ok: true, json: async () => [] };
+    });
+
+    mockViewMode = 'advanced';
+    render(<SettingsPage />);
+    await screen.findByText('settings.appearance');
+
+    // Wait for the MCP architecture section
+    const mcpHeading = await screen.findByText('settings.mcpArchitecture');
+    expect(mcpHeading).toBeInTheDocument();
+
+    // Verify console.error was called for the fetch failure
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+
+    // Try saving invalid JSON
+    const textareas = screen.getAllByRole('textbox');
+    const mcpTextarea = textareas.find(ta => ta.tagName.toLowerCase() === 'textarea') as HTMLTextAreaElement;
+    
+    fireEvent.change(mcpTextarea, { target: { value: 'invalid json' } });
+    const saveButton = screen.getByText('settings.saveSyncTools');
+    fireEvent.click(saveButton);
+
+    // Expect invalid JSON error
+    expect(await screen.findByText(/settings.invalidJson/)).toBeInTheDocument();
+
+    // Now put valid json but API returns error
+    fireEvent.change(mcpTextarea, { target: { value: '{"valid": true}' } });
+    fireEvent.click(saveButton);
+
+    // Expect save error
+    expect(await screen.findByText(/settings.errorSaving/)).toBeInTheDocument();
+  });
+
+  it('handles Feature Toggle interactions', async () => {
+    // Mock fetch to return some settings
+    const mockAuthFetch = require('../lib/auth').authenticatedFetch;
+    mockAuthFetch.mockImplementation(async (url: string, options: any) => {
+      if (options?.method === 'PUT') return { ok: true };
+      return { 
+        ok: true, 
+        json: async () => [{ key: 'enable_feature_x', value: 'false', category: 'features' }] 
+      };
+    });
+
+    mockViewMode = 'advanced';
+    render(<SettingsPage />);
+    
+    // Wait for the settings to load
+    await screen.findByText('settings.featureFlags');
+    
+    // Find the checkbox for the feature flag
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes.length).toBeGreaterThan(0);
+    
+    // Click it to toggle
+    fireEvent.click(checkboxes[0]);
+    
+    // Wait for the PUT request
+    await waitFor(() => {
+      expect(mockAuthFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/settings'),
+        expect.objectContaining({
+          method: 'PUT',
+          body: expect.stringContaining('"value":"true"')
+        })
+      );
+    });
+  });
+
+  it('shows an error when saving setting fails', async () => {
+    const mockAuthFetch = require('../lib/auth').authenticatedFetch;
+    mockAuthFetch.mockImplementation(async (url: string, options: any) => {
+      if (options?.method === 'PUT' && url.includes('/api/v1/settings')) {
+        return { ok: false, text: async () => 'Database constraint violation' };
+      }
+      return { ok: true, json: async () => [] };
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText('settings.appearance');
+
+    const aiNameInput = screen.getByPlaceholderText('settings.aiNamePlaceholder');
+    fireEvent.change(aiNameInput, { target: { value: 'New Name' } });
+    fireEvent.blur(aiNameInput);
+
+    // Should show global error
+    const errorAlert = await screen.findByText(/Failed to save setting: Database constraint violation/);
+    expect(errorAlert).toBeInTheDocument();
+  });
+
+  it('handles test connection correctly', async () => {
+    const mockAuthFetch = require('../lib/auth').authenticatedFetch;
+    mockAuthFetch.mockImplementation(async (url: string, options: any) => {
+      if (!options || (options.method === 'GET')) {
+        return { ok: true, json: async () => [{ key: 'llm_api_url', value: 'http://success.com', category: 'llm' }] };
+      }
+      if (options?.method === 'POST') {
+        return { ok: true, json: async () => ({ success: true, message: 'Connection successful' }) };
+      }
+      return { ok: true, json: async () => [] };
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText('settings.appearance');
+
+    const testButtons = screen.getAllByText('settings.testLlmConnection');
+    fireEvent.click(testButtons[0]);
+    
+    // Verify test connection hit the API with correct service name
+    await waitFor(() => {
+      expect(mockAuthFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/settings/test'),
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"service":"llm"')
+        })
+      );
+    });
+  });
+
+  it('handles OllamaModelSelector fetch success and selection', async () => {
+    const mockAuthFetch = require('../lib/auth').authenticatedFetch;
+    mockAuthFetch.mockImplementation(async (url: string, options: any) => {
+      if (url.includes('/api/v1/settings') && !url.includes('/test')) {
+        return { 
+          ok: true, 
+          json: async () => [{ key: 'llm_provider', value: 'ollama', category: 'llm' }] 
+        };
+      }
+      if (url.includes('/api/v1/ollama/models')) {
+        return { 
+          ok: true, 
+          json: async () => ({ models: [{ name: 'llama3:latest' }, { name: 'mistral:7b' }] }) 
+        };
+      }
+      if (options?.method === 'PUT') return { ok: true };
+      return { ok: true, json: async () => [] };
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText('settings.appearance');
+
+    // Wait for the dropdown to populate
+    const selects = await screen.findAllByRole('combobox');
+    const select = selects[1]; 
+    
+    await waitFor(() => {
+      expect(select.children.length).toBeGreaterThanOrEqual(3);
+    });
+
+    fireEvent.change(select, { target: { value: 'llama3:latest' } });
+    
+    await waitFor(() => {
+      expect(mockAuthFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/settings'),
+        expect.objectContaining({
+          method: 'PUT',
+          body: expect.stringContaining('"value":"llama3:latest"')
+        })
+      );
+    });
+
+    const refreshBtn = screen.getByText('settings.refresh');
+    fireEvent.click(refreshBtn);
+    
+    await waitFor(() => {
+      expect(mockAuthFetch).toHaveBeenCalledWith(expect.stringContaining('/api/v1/ollama/models'));
+    });
+  });
+
+  it('handles OllamaModelSelector fetch errors', async () => {
+    const mockAuthFetch = require('../lib/auth').authenticatedFetch;
+    mockAuthFetch.mockImplementation(async (url: string, options: any) => {
+      if (url.includes('/api/v1/settings') && !url.includes('/test')) {
+        return { 
+          ok: true, 
+          json: async () => [{ key: 'llm_provider', value: 'ollama', category: 'llm' }] 
+        };
+      }
+      if (url.includes('/api/v1/ollama/models')) {
+        throw new Error('Network timeout');
+      }
+      return { ok: true, json: async () => [] };
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText('settings.appearance');
+
+    const refreshBtn = screen.getByText('settings.refresh');
+    fireEvent.click(refreshBtn);
+
+    expect(await screen.findByText(/Connection error:/)).toBeInTheDocument();
+  });
+
+  it('handles Appearance and Avatar interactions', async () => {
+    mockViewMode = 'advanced';
+    render(<SettingsPage />);
+    await screen.findByText('settings.appearance');
+
+    // Avatar Character
+    const maleBtn = screen.getByText('settings.male');
+    fireEvent.click(maleBtn);
+    expect(mockSetCharacter).toHaveBeenCalledWith('male');
+
+    // Avatar Style
+    const tallerBtn = screen.getByText('settings.modernTaller');
+    fireEvent.click(tallerBtn);
+    expect(mockSetProportion).toHaveBeenCalledWith('taller');
+
+    // Display Mode (e.g. lite)
+    const liteBtn = screen.getByText(/lite/);
+    fireEvent.click(liteBtn);
+    expect(mockSetMode).toHaveBeenCalledWith('lite');
+    
+    // Test View Mode toggle
+    const beginnerBtn = screen.getByText('settings.viewMode_beginner');
+    fireEvent.click(beginnerBtn);
+    // setViewMode is mocked inline in hooks/useViewMode mock
+  });
+
+  it('handles SecurityInfrastructure interactions (ToxicityConfig and OriginManager)', async () => {
+    const mockAuthFetch = require('../lib/auth').authenticatedFetch;
+    mockAuthFetch.mockImplementation(async (url: string, options: any) => {
+      if (!options || (options.method === 'GET' && url.includes('/api/v1/settings'))) {
+        return { 
+          ok: true, 
+          json: async () => [
+            { key: 'csam_toxicity_forbidden_words', value: 'badword1,badword2', category: 'security' },
+            { key: 'allowed_origins', value: 'http://localhost:3000', category: 'security' }
+          ] 
+        };
+      }
+      if (options?.method === 'PUT') return { ok: true };
+      return { ok: true, json: async () => [] };
+    });
+
+    mockViewMode = 'advanced';
+    render(<SettingsPage />);
+    await screen.findByText('settings.appearance');
+
+    // Wait for the Security Infrastructure section
+    expect(await screen.findByText('settings.securityInfrastructure')).toBeInTheDocument();
+
+    // ToxicityConfig: Remove a word
+    const badword1 = screen.getByText('badword1');
+    const removeIcons = badword1.parentElement?.querySelectorAll('svg');
+    if (removeIcons && removeIcons.length > 0) {
+      fireEvent.click(removeIcons[0]);
+    }
+
+    await waitFor(() => {
+      expect(mockAuthFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/settings'),
+        expect.objectContaining({
+          method: 'PUT',
+          body: expect.stringContaining('"value":"badword2"') // badword1 is removed
+        })
+      );
+    });
+
+    // ToxicityConfig: Add a word
+    const toxicityInput = screen.getByPlaceholderText('settings.enterBannedWord');
+    fireEvent.change(toxicityInput, { target: { value: 'badword3' } });
+    fireEvent.keyDown(toxicityInput, { key: 'Enter', code: 'Enter' });
+    
+    await waitFor(() => {
+      expect(mockAuthFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/settings'),
+        expect.objectContaining({
+          method: 'PUT',
+          body: expect.stringContaining('"value":"badword2,badword3"')
+        })
+      );
+    });
+
+    // OriginManager: Add an origin
+    const originInput = screen.getByPlaceholderText('https://example.com');
+    fireEvent.change(originInput, { target: { value: 'https://example.com' } });
+    const originAddBtn = originInput.nextElementSibling as HTMLElement;
+    fireEvent.click(originAddBtn);
+
+    await waitFor(() => {
+      expect(mockAuthFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/settings'),
+        expect.objectContaining({
+          method: 'PUT',
+          body: expect.stringContaining('"value":"http://localhost:3000,https://example.com"')
+        })
+      );
+    });
+
+    // SecretUpdater: Update API Secret
+    const secretInput = screen.getByPlaceholderText('settings.enterNewSecret');
+    fireEvent.change(secretInput, { target: { value: 'new-secret-123' } });
+    fireEvent.keyDown(secretInput, { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => {
+      expect(mockAuthFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/health'),
+        expect.objectContaining({
+          headers: { 'Authorization': 'Bearer new-secret-123' }
+        })
+      );
+    });
+    // SecretUpdater: Update API Secret Error
+    mockAuthFetch.mockImplementationOnce(async (url: string, options: any) => {
+      return { ok: false, status: 401 };
+    });
+    fireEvent.change(secretInput, { target: { value: 'wrong-secret' } });
+    fireEvent.keyDown(secretInput, { key: 'Enter', code: 'Enter' });
+
+    expect(await screen.findByText(/settings.authFailed/)).toBeInTheDocument();
+
+    // SecretUpdater: Update API Secret Network Error
+    mockAuthFetch.mockImplementationOnce(async (url: string, options: any) => {
+      throw new Error('Network error');
+    });
+    fireEvent.change(secretInput, { target: { value: 'network-error-secret' } });
+    fireEvent.keyDown(secretInput, { key: 'Enter', code: 'Enter' });
+
+    expect(await screen.findByText(/settings.connectionFailed/)).toBeInTheDocument();
   });
 });

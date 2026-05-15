@@ -144,6 +144,14 @@ export default function NurtureDashboard() {
           </button>
           <button
             className="secondary-button"
+            onClick={() => window.open(`https://buy.stripe.com/test_store_stub_${agentId}`, '_blank')}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem", borderColor: "var(--accent-purple)", color: "var(--accent-purple)" }}
+          >
+            <Wallet size={16} />
+            View Store
+          </button>
+          <button
+            className="secondary-button"
             onClick={() => fetchData()}
             disabled={isLoading}
             style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}

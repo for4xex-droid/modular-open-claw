@@ -532,6 +532,29 @@ impl DreamState {
                     0,
                 )
                 .await?;
+            // X-1: Dream insight → Karma write-back (経済活動→夢→学習ループ)
+            if let Err(e) = job_queue
+                .store_karma(
+                    &fail.id,
+                    "dream_reflection",
+                    &format!(
+                        "Reflected on failure of '{}' and initiated redemption remix",
+                        fail.topic
+                    ),
+                    "Synthesized",
+                    "autonomous_dream_system",
+                    Some("meta_cognition"),
+                    Some("reflective_dream"),
+                    None,
+                    false,
+                )
+                .await
+            {
+                warn!(
+                    "⚠️ [DreamState] Failed to store dream reflection karma: {}",
+                    e
+                );
+            }
             return Ok(Some(format!("Reflected on failure of '{}'", fail.topic)));
         } else {
             info!("✨ [DreamState] The past is clear. No recent failures haunt my dreams.");
@@ -1648,5 +1671,109 @@ mod tests {
         let inc = repo.fetch_incident(&id).await.unwrap().unwrap();
         assert_eq!(inc.status, IncidentStatus::WontFix);
         assert_eq!(inc.retry_count, 3);
+    }
+
+    #[tokio::test]
+    async fn test_reflective_dream_stores_karma() {
+        use crate::job_queue::UniversalJobQueue;
+        use aiome_core_contracts::traits::JobStatus;
+        use aiome_core_contracts::traits::{KarmaRegistry, TaskRegistry};
+        use std::sync::Arc;
+
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap();
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
+        );
+        let jq = Arc::new(
+            UniversalJobQueue::new(pool.clone(), None, ts)
+                .await
+                .unwrap(),
+        );
+        crate::job_queue::migrations::DbInitializer::init_db(&*jq)
+            .await
+            .unwrap();
+
+        // 1. Create a dummy job for the seed karma
+        let dummy_job_id = jq
+            .enqueue("data_processing", "dummy", "auto", None, None, None, 10)
+            .await
+            .unwrap();
+        jq.store_karma(
+            &dummy_job_id,
+            "dummy_skill",
+            "dummy_lesson",
+            "Technical",
+            "dummy_soul",
+            None,
+            None,
+            None,
+            false,
+        )
+        .await
+        .unwrap();
+
+        // 2. Create and fail another job
+        let job_id = jq
+            .enqueue(
+                "data_processing",
+                "test failure reflection",
+                "auto",
+                None,
+                None,
+                None,
+                10,
+            )
+            .await
+            .unwrap();
+        jq.update_job_status(&job_id, JobStatus::Failed)
+            .await
+            .unwrap();
+        jq.fail_job(&job_id, "test error").await.unwrap();
+
+        #[derive(Debug)]
+        struct MockLlm;
+        #[async_trait::async_trait]
+        impl aiome_core::llm_provider::LlmProvider for MockLlm {
+            fn name(&self) -> &str {
+                "mock"
+            }
+            async fn complete(
+                &self,
+                _: &str,
+                _: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                Ok(aiome_core::llm_provider::LlmResponse {
+                    content: "{}".into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    ..Default::default()
+                })
+            }
+            async fn complete_with_cache(
+                &self,
+                _: aiome_core_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+        }
+
+        let dream = DreamState::new(Arc::new(MockLlm));
+
+        let result = dream.reflective_dream(&*jq).await.unwrap();
+        assert!(result.is_some());
+
+        // Verification Protocol: Assert that store_karma was called for dream_reflection
+        let all_karma = jq.fetch_all_karma(100).await.unwrap();
+        let has_reflection = all_karma
+            .iter()
+            .any(|k| k["karma_type"] == "Synthesized" && k["skill"] == "dream_reflection");
+        assert!(
+            has_reflection,
+            "reflective_dream MUST store karma to write-back into the economic ecosystem"
+        );
     }
 }
