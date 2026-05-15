@@ -201,15 +201,7 @@
             <div class="terminal-dot dot-yellow"></div>
             <div class="terminal-dot dot-green"></div>
           </div>
-          <div class="terminal-body" id="terminal-content">
-            <!-- Static fallback for non-JS -->
-            <div class="term-line term-static"><span class="term-prompt">$</span><span class="term-cmd">git clone https://github.com/motivationstudio-llc/aiome</span></div>
-            <div class="term-line term-static"><span class="term-prompt">$</span><span class="term-cmd">cd aiome</span></div>
-            <div class="term-line term-static"><span class="term-prompt">$</span><span class="term-cmd">docker compose -f docker-compose.quickstart.yml up -d</span></div>
-            <div class="term-line term-static"><span class="term-success">✓ All services started successfully</span></div>
-            <div class="term-line term-static"><span class="term-output">→ Open http://localhost:1420</span></div>
-            <!-- Dynamic elements hidden initially by CSS if js-enabled class is present -->
-          </div>
+          <img src="quickstart-demo.svg" alt="Quickstart demo" class="terminal-svg" loading="lazy">
         </div>
         <div class="terminal-cta" id="terminal-cta">
           <span class="badge" style="display:inline-flex; font-size: 1rem; padding: 12px 24px;" data-i18n="terminal_badge">$0 / month — Self-host all features for free</span>
@@ -307,6 +299,5 @@ cd apps/management-console && npm install && npm run build</code></pre>
   <!-- Defer loading of our custom scripts to ensure progressive enhancement works -->
   <script src="i18n.js" defer></script>
   <script src="scroll-reveal.js" defer></script>
-  <script src="terminal.js" defer></script>
 </body>
 </html>
