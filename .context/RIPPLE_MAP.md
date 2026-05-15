@@ -1,5 +1,26 @@
 # 🌊 Aiome Ripple Map
 
+## Landing Page Visual & Synergy Upgrade (Phase A, B, C)
+### 1. Nurture Ecosystem Integration & Visual Overhaul
+- **変更内容**:
+    - `docs/landing/index.html` [MODIFY]: "The Aiome Ecosystem" および "Use Cases" セクションを新規追加し、Nurture プラグイン拡張との関係性（単独OS＋経済拡張）を明示。
+    - `docs/landing/styles.css` [MODIFY]: Hero セクションへのネオングラデーション、Feature カードへの `@property` アニメーションボーダー、CTA の Shimmer 効果を追加。
+    - `docs/landing/i18n.js` [MODIFY]: エコシステムや自律ショッピング等のユースケースに対応する多言語（EN/JA）キーを12個追加。
+    - `docs/landing/scroll-reveal.js` [NEW]: `IntersectionObserver` を用いた要素のフェード・スライドアニメーションを独立して実装。
+- **波及効果**:
+    - ランディングページの表現力が大幅に向上し、OSSとしてのAiomeと商用拡張であるNurtureの経済的シナジー（A2Cギフト、マーケットプレイス）がユーザーに正しく伝達されるようになった。
+    - アニメーションは標準CSS APIと軽量なJSに依存しており、外部の巨大なフロントエンドフレームワークを必要としない。
+
+### 2. Terminal Demo & Console Preview Automation
+- **変更内容**:
+    - `docs/landing/scripts/generate_cast.js` [NEW]: `asciinema` 用のキャストファイルをプログラム的に自動生成するTDDテスト・スクリプトを導入。
+    - `docs/landing/quickstart-demo.svg` [NEW]: `svg-term-cli` を用いてキャストファイルから軽量なSVGターミナルアニメーションを生成。
+    - `docs/landing/terminal.js` [DELETE]: 旧式の JavaScript ベースターミナルアニメーションを削除し、SVG アセットへ完全移行。
+    - `docs/landing/console-preview.png` [MODIFY]: モックアップ画像を実際の `management-console` (ポート1420) から取得した真の PNG スクリーンショットに置換。
+- **波ガ効果**:
+    - ターミナルアニメーションのメンテナンスがスクリプト化され、将来のコマンド変更にも TDD ベースで安全かつ即座に対応可能となった。
+    - SVG への移行により、ブラウザのメインスレッドをブロックする旧 JS コードが排除され（約80行のCSSとJSファイル1つの削減）、パフォーマンスと保守性が向上した。
+
 ## Tech Debt Remediation: Bootstrap Modularization
 ### 1. API Server Bootstrap Extraction
 - **変更内容**:

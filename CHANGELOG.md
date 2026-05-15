@@ -1,7 +1,25 @@
 ## [Unreleased]
 
+### Changed
+- **Landing Page (Phase A & B: Synergy & Visual Upgrade)**:
+  - Added "Aiome Ecosystem" and "Use Cases" sections to clearly communicate the synergy with Project Nurture's economic/plugin model.
+  - Revamped Hero section with an animated gradient mesh background and neon text gradient.
+  - Enhanced Feature cards with animated gradient borders (`@property` Stripe-inspired glow).
+  - Implemented Scroll-reveal animations for all major elements using `IntersectionObserver`.
+  - Upgraded Terminal demo using a lightweight animated SVG (`asciinema` + `svg-term-cli`), replacing obsolete JavaScript.
+  - Replaced the placeholder Console preview with an authentic high-resolution management-console screenshot.
 ### Added
-- **Economic Loop Finalization (First Penguin Release)**:
+- **Landing Page (Phase A & B)**:
+  - Added robust OG/Twitter Card meta tags for SEO and social sharing.
+  - Implemented `prefers-reduced-motion` CSS media query for WCAG 2.1 accessibility compliance.
+  - Added a shimmering CSS animation to primary CTA buttons.
+  - Added `i18n.js` keys to support new Nurture ecosystem sections in both EN and JA.
+### Removed
+- **Landing Page (Phase C: Cleanup)**:
+  - Deleted legacy `terminal.js` and obsolete CSS terminal animation classes (~80 lines).
+  - Removed outdated `js-enabled` DOM injection script.
+
+### Added
   - `reflective_dream` に `job_queue.store_karma` 呼び出しを実装し、DreamState 内の自省的アラインメント報酬が `Synthesized` 型 Karma として経済圏（KarmaForge）に書き戻されるフィードバックループを完成させました。
   - `karma_type` 制約（'Technical', 'Creative', 'Synthesized'）に基づく厳密なバリデーションへの準拠を達成。
   - テスト `test_reflective_dream_stores_karma` を実装し、経済圏統合における TDD サイクル（GREEN）を完遂。
