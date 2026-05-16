@@ -66,6 +66,7 @@ graph TB
             SYNDICATE["SmartSyndicate"]
             IMMUNE["AdaptiveImmuneSystem"]
             P2P_SAFE["P2pSanitizer (Toxicity Filter)"]
+            BUZZ["BuzzProtocol (Social Media)"]
         end
 
         subgraph "Apps"
@@ -196,7 +197,7 @@ graph TB
 | **L0: Safety** | TLA+ 形式検証、BastionGuard、Constitutional Validator | `shared`, `aiome-contracts` |
 | **L1: Soul** | 記憶、感情、人格、自己修復 | `soul`, `aiome-core-contracts` |
 | **L2: Capabilities** | LLM推論、TTS、LoRA、3Dアバター、MCP | `core`, `avatar-engine`, `infrastructure` |
-| **L3: Social** | Federation (v1.0稼働)、CRDT同期、ギルド | `samsara-hub`, `infrastructure` |
+| **L3: Social** | Federation (v1.0稼働)、CRDT同期、ギルド、Buzz Protocol | `samsara-hub`, `infrastructure` |
 
 ### Project NURTURE — 3層構造
 
@@ -726,6 +727,18 @@ classDiagram
         <<trait / aiome-core-contracts>>
         +synthesize(text, voice_id) Result~Vec<u8>~
         +synthesize_stream(text, voice_id) Result~Stream~Item=TtsStreamEvent~~
+    }
+
+    class BuzzContentGenerator {
+        <<infrastructure>>
+        +generate_draft(topic) Result~BuzzDraft~
+        +update_draft(draft_id, new_content) Result~()~
+    }
+
+    class BuzzScheduler {
+        <<infrastructure>>
+        +schedule_next_post() Result~()~
+        +approve_post(draft_id) Result~()~
     }
 
     class StripeCommerceEngine {

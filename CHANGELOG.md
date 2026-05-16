@@ -9,6 +9,18 @@
   - Upgraded Terminal demo using a lightweight animated SVG (`asciinema` + `svg-term-cli`), replacing obsolete JavaScript.
   - Replaced the placeholder Console preview with an authentic high-resolution management-console screenshot.
 ### Added
+- **Aiome X Buzz Protocol Integration**:
+  - Implemented the production-hardened `BuzzContentGenerator` and `BuzzScheduler` to manage scheduled social media content drafts via LLM integration.
+  - Resolved stubbed API logic in `routes/buzz.rs` by fully implementing `generate`, `list_pending`, `approve`, `reject`, `update_draft`, and `history` API handlers, bridging the `api-server` to the core infrastructure.
+  - Added dependency injection for `buzz_generator` and `buzz_scheduler` into the global `AppState` ensuring lifecycle consistency across the API server.
+  - Corrected task enqueueing trait implementation for Buzz drafts (`TaskRegistry::enqueue`) to align with the core job execution lifecycle.
+  - Executed TDD (Red to Green) to guarantee 200 OK responses across all buzz endpoints, verifying proper state tracking of `BuzzDraft` json serialization and state transitions (`Pending` -> `InProgress` / `Failed`).
+- **Aiome Buzz Protocol Worker Hardening**:
+  - Implemented the `BuzzWorker` background loop with robust `RwLock` poisoning recovery and daily quota enforcement for autonomous scheduled publishing.
+  - Fixed a critical content-extraction bug in the `publish` API handler to correctly parse `BuzzDraft` JSON instead of sending raw artifacts to the X API.
+  - Expanded `do_record_sns_metrics` in `EvaluationOps` and SQLite/Postgres schemas to support granular engagement metrics (`repost_count`, `quote_count`, `reply_count`, `impression_count`).
+  - Eliminated all `unwrap()` calls across the `buzz` module, strictly enforcing the Zero-Panic policy.
+  - Added comprehensive TDD suites (`buzz_worker_tdd.rs`) covering idempotency guards and LLM error propagation.
 - **Landing Page (Phase A & B)**:
   - Added robust OG/Twitter Card meta tags for SEO and social sharing.
   - Implemented `prefers-reduced-motion` CSS media query for WCAG 2.1 accessibility compliance.

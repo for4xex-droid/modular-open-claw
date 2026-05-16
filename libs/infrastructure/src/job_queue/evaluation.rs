@@ -30,6 +30,10 @@ pub trait EvaluationOps {
         likes: i64,
         comments_count: i64,
         raw_comments: Option<&str>,
+        repost_count: Option<i64>,
+        quote_count: Option<i64>,
+        reply_count: Option<i64>,
+        impression_count: Option<i64>,
     ) -> Result<(), AiomeError>;
     async fn do_fetch_pending_evaluations(
         &self,
@@ -189,6 +193,10 @@ impl EvaluationOps for UniversalJobQueue {
         likes: i64,
         comments_count: i64,
         raw_comments: Option<&str>,
+        repost_count: Option<i64>,
+        quote_count: Option<i64>,
+        reply_count: Option<i64>,
+        impression_count: Option<i64>,
     ) -> Result<(), AiomeError> {
         let engagement_rate = if views > 0 {
             (likes as f64 / views as f64) * 100.0
@@ -205,8 +213,8 @@ impl EvaluationOps for UniversalJobQueue {
             -0.5
         };
 
-        const Q_SQLITE: &str = "INSERT INTO sns_metrics_history (job_id, milestone_days, views, likes, comments_count, raw_comments_json, hard_metric_score, engagement_rate, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))";
-        const Q_PG: &str = "INSERT INTO sns_metrics_history (job_id, milestone_days, views, likes, comments_count, raw_comments_json, hard_metric_score, engagement_rate, recorded_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())";
+        const Q_SQLITE: &str = "INSERT INTO sns_metrics_history (job_id, milestone_days, views, likes, comments_count, raw_comments_json, hard_metric_score, engagement_rate, repost_count, quote_count, reply_count, impression_count, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))";
+        const Q_PG: &str = "INSERT INTO sns_metrics_history (job_id, milestone_days, views, likes, comments_count, raw_comments_json, hard_metric_score, engagement_rate, repost_count, quote_count, reply_count, impression_count, recorded_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())";
 
         crate::sql_exec!(
             &self.pool,
@@ -219,7 +227,11 @@ impl EvaluationOps for UniversalJobQueue {
             comments_count,
             raw_comments,
             hard_metric_score,
-            engagement_rate
+            engagement_rate,
+            repost_count.unwrap_or(0),
+            quote_count.unwrap_or(0),
+            reply_count.unwrap_or(0),
+            impression_count.unwrap_or(0)
         )?;
         Ok(())
     }

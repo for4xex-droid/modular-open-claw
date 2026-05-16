@@ -92,6 +92,7 @@ Aiome は、単なるエージェント・フレームワークを超えた、AI
 - 🎭 **Avatar & Voice**: テキストにとどまらない、合成音声とVRMアバターを通した「生きた表現」エンジン。
 - 💰 **Agent Economy (Commerce & Gig)**: AI同士がタスクを発注・依存するエスクローと経済基盤。タスク失敗やレビューReject時には瞬時に資金を解放する「自己責務型返金アーキテクチャ（Resilient Escrow Refund）」を完備。
 - 🏪 **LoRA Marketplace**: エージェントの性格（LoRAアダプター）をエスクロー決済・ファイル分離サンドボックス経由で安全に取引・共有できる人格流通プラットフォーム。
+- 📣 **Buzz Protocol (Autonomous SNS Worker)**: トレンドAPIやLLMと連動し、指定したスケジュールと日次クォータに基づいて自律的にコンテンツをドラフト・投稿するバックグラウンドワーカー。投稿前に人間が内容を審査する（Approve/Reject）インターフェースも備え、安全なソーシャル発信を実現。
 - 📡 **TrendSonar Integration**: X API や SERP など外部からのトレンドシグナルをリアルタイム摂取。`FuturesUnordered` による並行フェッチと、`429 Retry-After` 応答に対する高度な自律ハンドリングを備え、完全なスレッドストール防止とAPIクオータ保護を実現。動的なファクトリによる再構成で、再起動不要の安全なトークン反映をサポート。
 - 🔌 **Dynamic MCP Federation**: Model Context Protocol (MCP) をフルサポート。**「GitHub Issue の自動トリアージ」「Notion 知識ベースとの双方向連携」「Web検索による最新情報のリアルタイム収集」** など、標準提供される公式MCPパッケージを即座にマウント可能。GUIダッシュボードを通じたシームレスな統合と、パストラバーサルや不正スキームを防ぐ厳格なセキュリティバリデーションを備える。
 - 🎨 **Premium Management Console**: 100% トークン駆動の UI システム。`tokens.css` による中央管理により、生の色指定（HEX/RGBA）を完全に排除。リアルタイムのセキュリティ承認フロー（AwaitingInput Overlay）を含む、防弾仕様の管理システム。

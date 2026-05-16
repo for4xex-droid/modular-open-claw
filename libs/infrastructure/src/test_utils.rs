@@ -519,12 +519,16 @@ pub mod job_queue_mock {
         }
         async fn do_record_sns_metrics(
             &self,
-            _: &str,
-            _: i64,
-            _: i64,
-            _: i64,
-            _: i64,
-            _: Option<&str>,
+            _job_id: &str,
+            _milestone_days: i64,
+            _views: i64,
+            _likes: i64,
+            _comments_count: i64,
+            _raw_comments: Option<&str>,
+            _repost_count: Option<i64>,
+            _quote_count: Option<i64>,
+            _reply_count: Option<i64>,
+            _impression_count: Option<i64>,
         ) -> Result<(), AiomeError> {
             Ok(())
         }

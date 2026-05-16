@@ -583,6 +583,20 @@ pub fn build_app(
             axum::routing::put(routes::skill::update_mcp_config).get(routes::skill::get_mcp_config),
         )
         .nest("/api/v1/forecast", routes::forecast::router())
+        .nest(
+            "/api/v1/buzz",
+            Router::new()
+                .route("/generate", post(routes::buzz::generate))
+                .route("/pending", get(routes::buzz::list_pending))
+                .route("/approve/:id", post(routes::buzz::approve))
+                .route("/reject/:id", post(routes::buzz::reject))
+                .route("/publish/:id", post(routes::buzz::publish))
+                .route("/history", get(routes::buzz::history))
+                .route(
+                    "/draft/:id",
+                    axum::routing::patch(routes::buzz::update_draft),
+                ),
+        )
         .merge(routes::security::router())
         .layer(TimeoutLayer::new(Duration::from_secs(30)));
 

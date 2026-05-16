@@ -158,5 +158,33 @@ pub async fn spawn_background_workers(
         }
     });
 
+    // [Step 1.11] Initialize and Spawn BuzzWorker Background Loop
+    let buzz_cancel = cancel_token.clone();
+    let buzz_jq = state.job_queue.get_inner().clone();
+    let buzz_gen = state.buzz_generator.get_inner().clone();
+    let buzz_sched = state.buzz_scheduler.get_inner().clone();
+
+    tokio::spawn(async move {
+        tracing::info!("🐝 [BuzzWorker] Starting background scheduling loop...");
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
+        loop {
+            tokio::select! {
+                _ = buzz_cancel.cancelled() => {
+                    tracing::info!("🛑 [BuzzWorker] Shutting down cleanly...");
+                    break;
+                }
+                _ = interval.tick() => {
+                    if let Err(e) = infrastructure::buzz::worker::process_pending_buzz(
+                        &*buzz_jq,
+                        &*buzz_gen,
+                        &*buzz_sched,
+                    ).await {
+                        tracing::error!("🚨 [BuzzWorker] Loop error: {}", e);
+                    }
+                }
+            }
+        }
+    });
+
     Ok(())
 }

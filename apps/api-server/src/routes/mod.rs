@@ -14,6 +14,7 @@ pub mod avatar;
 pub mod biome;
 pub mod blueprint;
 pub mod bootstrap;
+pub mod buzz;
 pub mod commerce;
 pub mod commerce_webhook;
 pub mod cortex;

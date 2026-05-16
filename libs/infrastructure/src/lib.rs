@@ -87,6 +87,7 @@ mod boundary_verifier_tests;
 pub mod belief_consistency_gate;
 #[cfg(test)]
 mod belief_consistency_gate_tests;
+pub mod buzz;
 
 pub mod browser_conductor;
 pub mod db;

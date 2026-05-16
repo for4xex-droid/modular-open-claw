@@ -831,6 +831,12 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             }
             m
         },
+        buzz_generator: Component::new(Arc::new(
+            infrastructure::buzz::generator::BuzzContentGenerator::new(provider.clone()),
+        )),
+        buzz_scheduler: Component::new(Arc::new(
+            infrastructure::buzz::scheduler::BuzzScheduler::new(90, 4),
+        )),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

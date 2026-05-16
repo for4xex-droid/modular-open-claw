@@ -408,6 +408,14 @@ pub async fn assemble_app_state(
         prompt_registry: Component::new(core.prompt_registry.clone()),
         spec_provider: Component::new(core.spec_provider.clone()),
         tokens_css: core.tokens_css.clone(),
+        buzz_generator: Component::new(std::sync::Arc::new(
+            infrastructure::buzz::generator::BuzzContentGenerator::new(
+                core.router_provider.clone(),
+            ),
+        )),
+        buzz_scheduler: Component::new(std::sync::Arc::new(
+            infrastructure::buzz::scheduler::BuzzScheduler::new(90, 4),
+        )),
     };
 
     Ok(state)

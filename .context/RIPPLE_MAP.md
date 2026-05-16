@@ -1,5 +1,21 @@
 # 🌊 Aiome Ripple Map
 
+## Aiome X Buzz Protocol Integration (Phase Final)
+### 1. API Route Implementations & Dependency Injection
+- **変更内容**:
+    - `apps/api-server/src/routes/buzz.rs` [MODIFY]: `generate`, `list_pending`, `approve`, `reject`, `update_draft`, `history` の各APIハンドラを実装し、スタブ処理を完全なビジネスロジックに置き換え。`publish` APIで `BuzzDraft` JSONからテキストを抽出するよう修正し、未抽出の不具合を解消。
+    - `apps/api-server/src/router.rs` [MODIFY]: `PATCH /api/v1/buzz/draft/:id` ルートを追加登録。
+    - `apps/api-server/src/bootstrap/state_assembly.rs` [MODIFY]: `BuzzContentGenerator` および `BuzzScheduler` を `AppState` 構築時に初期化・登録する DI を実装。
+    - `apps/api-server/src/api_integration_tests/common.rs` [MODIFY]: テスト用の `AppState` での `buzz_generator` / `buzz_scheduler` 初期化引数の不整合を修正。
+    - `libs/infrastructure/src/buzz/worker.rs` [NEW/MODIFY]: 自律的バックグラウンドスケジューリングループ `BuzzWorker` を実装し、インターバル制限や日次投稿クォータを強制。`unwrap()` の完全排除と Zero-Panic ポリシーへの準拠。
+    - `libs/infrastructure/src/buzz/scheduler.rs` [MODIFY]: `RwLock` 状態管理にポイズン回復処理（`into_inner` フォールバック）を追加。SQLite へのジョブ登録時に `BuzzDraft` の Serde シリアライゼーションを適用。
+    - `libs/infrastructure/tests/buzz_worker_tdd.rs` [NEW]: TDD 用のテストスイートを追加。LLM 障害伝播、冪等性ガード、日次クォータの境界値テストを実装しパス。
+    - `libs/infrastructure/src/job_queue/evaluation.rs` [MODIFY]: `do_record_sns_metrics` を拡張し `repost_count`, `quote_count`, `reply_count`, `impression_count` に対応。
+- **波及効果**:
+    - Aiome の発信能力を司る Buzz Protocol が、フロントエンド (Management Console) と完全に連携可能になり、自律バックグラウンド投稿パイプラインが完成した。
+    - 外部 SNS (X API 等) への投稿前に意図しない JSON アーティファクトの送信が防止された。
+    - 全てのエンドポイントとバックグラウンドタスクが Zero-Panic ポリシー (unwrap排除) と `AiomeError` を介したドメインエラー伝搬に準拠し、API サーバーとしての堅牢性が維持されている。
+    - TDD (Red to Green) プロセスを通じ、テスト環境における依存注入とエッジケースのハンドリングが担保され、CI/CD における regression を防ぐ強固な基礎が完成した。
 ## Landing Page Visual & Synergy Upgrade (Phase A, B, C)
 ### 1. Nurture Ecosystem Integration & Visual Overhaul
 - **変更内容**:

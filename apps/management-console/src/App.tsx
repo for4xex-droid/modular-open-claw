@@ -58,6 +58,7 @@ const DemoView = React.lazy(() => import("./components/DemoView"));
 const CausalVisualizer = React.lazy(() => import("./components/CausalVisualizer"));
 const CortexView = React.lazy(() => import("./components/cortex/CortexView"));
 const NurtureDashboard = React.lazy(() => import("./components/commerce/NurtureDashboard"));
+const BuzzApproval = React.lazy(() => import("./components/BuzzApproval"));
 import DioramaView from "./components/diorama/DioramaView";
 const AuthOverlay = React.lazy(() => import("./components/AuthOverlay"));
 const TaskApprovalOverlay = React.lazy(() => import("./components/TaskApprovalOverlay"));
@@ -424,6 +425,14 @@ function App() {
               onClick={() => setActiveTab("seo-pulse")}
             />
           )}
+          {isVisible("buzz-approval") && (
+            <NavItem
+              icon={<Zap size={20} />}
+              label={t('nav.buzzApproval', { defaultValue: 'Buzz Protocol' }) as string}
+              active={activeTab === "buzz-approval"}
+              onClick={() => setActiveTab("buzz-approval")}
+            />
+          )}
           {isVisible("artifacts") && (
             <NavItem
               icon={<Box size={20} />}
@@ -669,6 +678,7 @@ function App() {
               {activeTab === "biome" && <BiomeDialogueView />}
               {activeTab === "store" && <VoiceStore />}
               {activeTab === "nurture" && <NurtureDashboard />}
+              {activeTab === "buzz-approval" && <BuzzApproval />}
               {activeTab === "causal" && <CausalVisualizer />}
               {activeTab === "lora" && <LoraTrainingView />}
               {activeTab === "settings" && <SettingsPage />}

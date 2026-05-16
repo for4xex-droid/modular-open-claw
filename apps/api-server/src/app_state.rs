@@ -176,6 +176,9 @@ pub struct AppState {
     pub spec_provider: Component<Arc<dyn infrastructure::spec_provider::SpecProvider>>,
     // --- HTML Report ---
     pub tokens_css: String,
+    // --- Phase Buzz ---
+    pub buzz_generator: Component<Arc<infrastructure::buzz::generator::BuzzContentGenerator>>,
+    pub buzz_scheduler: Component<Arc<infrastructure::buzz::scheduler::BuzzScheduler>>,
 }
 
 impl AppState {

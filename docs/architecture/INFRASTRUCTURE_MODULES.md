@@ -13,6 +13,7 @@
 | `auth` | OAuth 2.1 / JWT 検証 (`AuthManager`) を提供。ステートレスな認証基盤。**Phase 21** で `/api/v1/auth/authorize` 等のモックエンドポイントを実装。 | **実装完了 (Phase 8.2)** |
 | `a2ui` | LLM出力からリアクティブUIを動的にストリーミング生成する基盤（Generative UI）。型安全な `schema`、`A2uiValidator` による XSS/SSRF および深再帰(DoS)防御を提供。 | **Phase 0 完了** |
 | `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。 | 実装完了 |
+| `buzz` | SNS等への自動投稿・スケジュール管理を行う自律型ワーカーおよび生成エンジン。 | **実装・堅牢化完了** |
 | `channel_bridge` | Discord/Telegram 等の外部チャンネルとの抽象化通信層。 | 実装完了 |
 | `circuit_breaker` | 外部APIのダウンタイムを検知し、安全に遮断。 | 実装完了 |
 | `tests/common/chaos` | **ADR chaos**: `ChaosMode` と `ChaosLlmProvider` を提供するテスト専用のフォルトインジェクション基盤。本番環境に影響を与えずLLM障害（空応答、不正JSON、巨大サイズ、タイムアウト）を注入可能。 | **実装完了** |
@@ -80,7 +81,7 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-05-14 (Asia/Tokyo) - Cortex Intelligence Integration Phase AR*
+*最終更新: 2026-05-17 (Asia/Tokyo) - Buzz Protocol Integration*
 
 ## Phase 6 Integration Notes
 
