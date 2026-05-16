@@ -176,8 +176,8 @@ pub async fn spawn_background_workers(
                 _ = interval.tick() => {
                     if let Err(e) = infrastructure::buzz::worker::process_pending_buzz(
                         &*buzz_jq,
-                        &*buzz_gen,
-                        &*buzz_sched,
+                        &buzz_gen,
+                        &buzz_sched,
                     ).await {
                         tracing::error!("🚨 [BuzzWorker] Loop error: {}", e);
                     }

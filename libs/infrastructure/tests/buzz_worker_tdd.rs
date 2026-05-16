@@ -61,7 +61,7 @@ async fn test_process_pending_buzz_generates_draft_when_allowed() {
     let sched = BuzzScheduler::new(90, 4);
 
     // Initial run: no jobs in queue, should generate one draft
-    process_pending_buzz(&*jq, &*gen, &sched)
+    process_pending_buzz(&jq, &gen, &sched)
         .await
         .expect("Process failed");
 
@@ -80,7 +80,7 @@ async fn test_process_pending_buzz_generates_draft_when_allowed() {
     );
 
     // Second run immediately: should NOT generate because pending draft already exists
-    process_pending_buzz(&*jq, &*gen, &sched)
+    process_pending_buzz(&jq, &gen, &sched)
         .await
         .expect("Process failed");
     let jobs2 = jq.fetch_recent_jobs(100).await.expect("List failed");
@@ -130,7 +130,7 @@ async fn test_process_pending_buzz_propagates_llm_error() {
     let gen = Arc::new(BuzzContentGenerator::new(Arc::new(FailingLlmProvider)));
     let sched = BuzzScheduler::new(0, 10); // no interval gate, no daily limit gate
 
-    let result = process_pending_buzz(&*jq, &*gen, &sched).await;
+    let result = process_pending_buzz(&jq, &gen, &sched).await;
     assert!(
         result.is_err(),
         "LLM failure must propagate, not be swallowed"
@@ -156,12 +156,12 @@ async fn test_process_pending_buzz_skips_when_pending_exists() {
     let sched = BuzzScheduler::new(0, 10); // no restrictions
 
     // First run: generates a draft
-    process_pending_buzz(&*jq, &*gen, &sched)
+    process_pending_buzz(&jq, &gen, &sched)
         .await
         .expect("First run failed");
 
     // Draft is now Pending — second run should skip
-    process_pending_buzz(&*jq, &*gen, &sched)
+    process_pending_buzz(&jq, &gen, &sched)
         .await
         .expect("Second run failed");
 
