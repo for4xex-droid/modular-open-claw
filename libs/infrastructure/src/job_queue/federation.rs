@@ -87,21 +87,23 @@ impl FederationOps for UniversalJobQueue {
                     })?;
                 for r in rows {
                     fed_karmas.push(FederatedKarma {
-                        id: r.get("id"),
+                        id: r.try_get("id").unwrap_or_default(),
                         job_id: r.try_get("job_id").ok(),
-                        karma_type: r.get("karma_type"),
-                        related_skill: r.get("related_skill"),
-                        lesson: r.get("lesson"),
-                        weight: r.get::<i64, _>("weight") as i32,
+                        karma_type: r.try_get("karma_type").unwrap_or_default(),
+                        related_skill: r.try_get("related_skill").unwrap_or_default(),
+                        lesson: r.try_get("lesson").unwrap_or_default(),
+                        weight: r.try_get::<i64, _>("weight").unwrap_or(0) as i32,
                         soul_version_hash: r.try_get("soul_version_hash").ok(),
-                        created_at: r.get("created_at"),
+                        created_at: r.try_get("created_at").unwrap_or_default(),
                         last_applied_at: r.try_get("last_applied_at").ok(),
                         score: r
                             .try_get("weight")
                             .map(|w: i64| w as f64 / 100.0)
                             .unwrap_or(0.0),
-                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
-                        node_id: r.get("node_id"),
+                        lamport_clock: r.try_get::<i64, _>("lamport_clock").unwrap_or(0) as u64,
+                        node_id: r
+                            .try_get("node_id")
+                            .unwrap_or_else(|_| "unknown".to_string()),
                         signature: r.try_get("signature").ok(),
                         clone_origin_id: r.try_get("clone_origin_id").ok(),
                         generation: r.try_get::<i64, _>("generation").map(|g| g as u32).ok(),
@@ -119,21 +121,23 @@ impl FederationOps for UniversalJobQueue {
                     })?;
                 for r in rows {
                     fed_karmas.push(FederatedKarma {
-                        id: r.get("id"),
+                        id: r.try_get("id").unwrap_or_default(),
                         job_id: r.try_get("job_id").ok(),
-                        karma_type: r.get("karma_type"),
-                        related_skill: r.get("related_skill"),
-                        lesson: r.get("lesson"),
-                        weight: r.get::<i32, _>("weight"),
+                        karma_type: r.try_get("karma_type").unwrap_or_default(),
+                        related_skill: r.try_get("related_skill").unwrap_or_default(),
+                        lesson: r.try_get("lesson").unwrap_or_default(),
+                        weight: r.try_get::<i32, _>("weight").unwrap_or(0),
                         soul_version_hash: r.try_get("soul_version_hash").ok(),
-                        created_at: r.get("created_at"),
+                        created_at: r.try_get("created_at").unwrap_or_default(),
                         last_applied_at: r.try_get("last_applied_at").ok(),
                         score: r
                             .try_get("weight")
                             .map(|w: i32| w as f64 / 100.0)
                             .unwrap_or(0.0),
-                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
-                        node_id: r.get("node_id"),
+                        lamport_clock: r.try_get::<i64, _>("lamport_clock").unwrap_or(0) as u64,
+                        node_id: r
+                            .try_get("node_id")
+                            .unwrap_or_else(|_| "unknown".to_string()),
                         signature: r.try_get("signature").ok(),
                         clone_origin_id: r.try_get("clone_origin_id").ok(),
                         generation: r.try_get::<i32, _>("generation").map(|g| g as u32).ok(),
@@ -279,20 +283,20 @@ impl FederationOps for UniversalJobQueue {
                 })?;
                 for r in rows {
                     karmas.push(FederatedKarma {
-                        id: r.get("id"),
+                        id: r.try_get("id").unwrap_or_default(),
                         job_id: r.try_get("job_id").ok(),
-                        karma_type: r.get("karma_type"),
-                        related_skill: r.get("related_skill"),
-                        lesson: r.get("lesson"),
-                        weight: r.get::<i64, _>("weight") as i32,
+                        karma_type: r.try_get("karma_type").unwrap_or_default(),
+                        related_skill: r.try_get("related_skill").unwrap_or_default(),
+                        lesson: r.try_get("lesson").unwrap_or_default(),
+                        weight: r.try_get::<i64, _>("weight").unwrap_or(0) as i32,
                         soul_version_hash: r.try_get("soul_version_hash").ok(),
-                        created_at: r.get("created_at"),
+                        created_at: r.try_get("created_at").unwrap_or_default(),
                         last_applied_at: r.try_get("last_applied_at").ok(),
                         score: r
                             .try_get("weight")
                             .map(|w: i64| w as f64 / 100.0)
                             .unwrap_or(0.0),
-                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
+                        lamport_clock: r.try_get::<i64, _>("lamport_clock").unwrap_or(0) as u64,
                         node_id: r.try_get("node_id").unwrap_or_else(|_| "self".to_string()),
                         signature: r.try_get("signature").ok(),
                         clone_origin_id: r.try_get("clone_origin_id").ok(),
@@ -309,20 +313,20 @@ impl FederationOps for UniversalJobQueue {
                 })?;
                 for r in rows {
                     karmas.push(FederatedKarma {
-                        id: r.get("id"),
+                        id: r.try_get("id").unwrap_or_default(),
                         job_id: r.try_get("job_id").ok(),
-                        karma_type: r.get("karma_type"),
-                        related_skill: r.get("related_skill"),
-                        lesson: r.get("lesson"),
-                        weight: r.get::<i32, _>("weight"),
+                        karma_type: r.try_get("karma_type").unwrap_or_default(),
+                        related_skill: r.try_get("related_skill").unwrap_or_default(),
+                        lesson: r.try_get("lesson").unwrap_or_default(),
+                        weight: r.try_get::<i32, _>("weight").unwrap_or(0),
                         soul_version_hash: r.try_get("soul_version_hash").ok(),
-                        created_at: r.get("created_at"),
+                        created_at: r.try_get("created_at").unwrap_or_default(),
                         last_applied_at: r.try_get("last_applied_at").ok(),
                         score: r
                             .try_get("weight")
                             .map(|w: i32| w as f64 / 100.0)
                             .unwrap_or(0.0),
-                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
+                        lamport_clock: r.try_get::<i64, _>("lamport_clock").unwrap_or(0) as u64,
                         node_id: r.try_get("node_id").unwrap_or_else(|_| "self".to_string()),
                         signature: r.try_get("signature").ok(),
                         clone_origin_id: r.try_get("clone_origin_id").ok(),
@@ -344,14 +348,14 @@ impl FederationOps for UniversalJobQueue {
                 })?;
                 for r in rows {
                     rules.push(ImmuneRule {
-                        id: r.get("id"),
-                        pattern: r.get("pattern"),
-                        severity: r.get::<i32, _>("severity") as u8,
-                        action: r.get("action"),
+                        id: r.try_get("id").unwrap_or_default(),
+                        pattern: r.try_get("pattern").unwrap_or_default(),
+                        severity: r.try_get::<i32, _>("severity").unwrap_or(0) as u8,
+                        action: r.try_get("action").unwrap_or_default(),
                         approval_status: aiome_core::contracts::ApprovalState::Pending,
                         input_constraints: None,
-                        created_at: r.get("created_at"),
-                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
+                        created_at: r.try_get("created_at").unwrap_or_default(),
+                        lamport_clock: r.try_get::<i64, _>("lamport_clock").unwrap_or(0) as u64,
                         node_id: r.try_get("node_id").unwrap_or_else(|_| "self".to_string()),
                         signature: None,
                     });
@@ -365,14 +369,14 @@ impl FederationOps for UniversalJobQueue {
                 })?;
                 for r in rows {
                     rules.push(ImmuneRule {
-                        id: r.get("id"),
-                        pattern: r.get("pattern"),
-                        severity: r.get::<i32, _>("severity") as u8,
-                        action: r.get("action"),
+                        id: r.try_get("id").unwrap_or_default(),
+                        pattern: r.try_get("pattern").unwrap_or_default(),
+                        severity: r.try_get::<i32, _>("severity").unwrap_or(0) as u8,
+                        action: r.try_get("action").unwrap_or_default(),
                         approval_status: aiome_core::contracts::ApprovalState::Pending,
                         input_constraints: None,
-                        created_at: r.get("created_at"),
-                        lamport_clock: r.get::<i64, _>("lamport_clock") as u64,
+                        created_at: r.try_get("created_at").unwrap_or_default(),
+                        lamport_clock: r.try_get::<i64, _>("lamport_clock").unwrap_or(0) as u64,
                         node_id: r.try_get("node_id").unwrap_or_else(|_| "self".to_string()),
                         signature: None,
                     });
@@ -389,32 +393,20 @@ impl FederationOps for UniversalJobQueue {
         rule_ids: Vec<String>,
     ) -> Result<(), AiomeError> {
         for id in karma_ids {
-            let q = match &self.pool {
-                crate::db::DatabasePool::Sqlite(_) => format!(
-                    "UPDATE karma_logs SET is_federated = 1 WHERE id = {}",
-                    self.pool.ph(0)
-                ),
-                crate::db::DatabasePool::Postgres(_) => format!(
-                    "UPDATE karma_logs SET is_federated = 1 WHERE id = {}",
-                    self.pool.ph(0)
-                ),
-            };
+            let q = format!(
+                "UPDATE karma_logs SET is_federated = 1 WHERE id = {}",
+                self.pool.ph(0)
+            );
             crate::sql_exec!(&self.pool, &q, id).map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;
         }
 
         for id in rule_ids {
-            let q = match &self.pool {
-                crate::db::DatabasePool::Sqlite(_) => format!(
-                    "UPDATE immune_rules SET is_federated = 1 WHERE id = {}",
-                    self.pool.ph(0)
-                ),
-                crate::db::DatabasePool::Postgres(_) => format!(
-                    "UPDATE immune_rules SET is_federated = 1 WHERE id = {}",
-                    self.pool.ph(0)
-                ),
-            };
+            let q = format!(
+                "UPDATE immune_rules SET is_federated = 1 WHERE id = {}",
+                self.pool.ph(0)
+            );
             crate::sql_exec!(&self.pool, &q, id).map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;

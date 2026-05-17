@@ -35,6 +35,11 @@ const GraphView: React.FC = () => {
                     authenticatedFetch(`${API_BASE}/api/artifacts?limit=50`)
                 ]);
 
+                if (!karmaRes.ok || !artifactRes.ok) {
+                    console.error("Graph API error", { karma: karmaRes.status, artifact: artifactRes.status });
+                    return;
+                }
+
                 const karmaData = await karmaRes.json();
                 const artifacts = await artifactRes.json();
 
@@ -62,8 +67,9 @@ const GraphView: React.FC = () => {
                 })));
 
                 // 2. Add Artifact Nodes
-                setArtifactCount(artifacts.length || 0);
-                artifacts.forEach((art: any) => {
+                const safeArtifacts = Array.isArray(artifacts) ? artifacts : [];
+                setArtifactCount(safeArtifacts.length);
+                safeArtifacts.forEach((art: any) => {
                     nodes.add({
                         id: art.id,
                         label: `📦 ${art.title}`,
@@ -131,7 +137,7 @@ const GraphView: React.FC = () => {
         return () => {
             networkRef.current?.destroy();
         };
-    }, []);
+    }, [theme]);
 
     const zoomIn = () => networkRef.current?.moveTo({ scale: (networkRef.current?.getScale() || 1) * 1.2 });
     const zoomOut = () => networkRef.current?.moveTo({ scale: (networkRef.current?.getScale() || 1) / 1.2 });

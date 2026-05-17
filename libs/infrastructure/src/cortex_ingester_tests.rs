@@ -96,7 +96,7 @@ async fn test_delete_document() {
         .unwrap();
     let ingester = CortexIngester::new(provider, pool);
 
-    let res = ingester.delete_document("test-uuid").await;
+    let _res = ingester.delete_document("test-uuid").await;
     // mock db returns infrastructure errors for deleted unknown, so just assert it compiles & executes.
 }
 

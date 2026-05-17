@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand colors — aligned with console tokens.css */
+  --color-brand-bg: #0b0b0f;        /* console: --bg-primary */
+  --color-brand-surface: #0f0f18;    /* console: --bg-secondary */
+  --color-brand-cyan: #00f2ff;       /* console: --accent-cyan */
+  --color-brand-purple: #bc8cff;     /* console: --accent-purple */
+  --color-brand-rose: #ff4d94;       /* console: --accent-rose */
+  
+  /* Typography — same fonts as console */
+  --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  background-color: var(--color-brand-bg);
+  color: #f0f2f5; /* neutral-100: body text on dark bg */
+  font-family: var(--font-body);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Japanese typographic polish */
+html[lang="ja"] h1,
+html[lang="ja"] h2 {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* Focus visible for keyboard users */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--color-brand-cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

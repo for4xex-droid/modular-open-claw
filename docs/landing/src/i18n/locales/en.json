@@ -1,0 +1,59 @@
+{
+  "nav": {
+    "features": "Features",
+    "quickstart": "Quickstart",
+    "docs": "Documentation",
+    "github": "GitHub",
+    "skip": "Skip to main content",
+    "open_menu": "Open menu",
+    "close_menu": "Close menu",
+    "switch_lang": "Switch to Japanese"
+  },
+  "hero": {
+    "title": "Build AI that heals itself.",
+    "subtitle": "The autonomous operating system for AI agents — written entirely by agents, verified by formal mathematics, and hardened with zero-panic Rust. Deploy a self-healing agent with a single Docker command, and let it learn, defend, and evolve on its own.",
+    "cta_primary": "Get Started Free — $0/mo",
+    "cta_secondary": "View on GitHub →"
+  },
+  "social_proof": {
+    "metric1_value": "90,000+",
+    "metric1_label": "lines of production Rust",
+    "metric1_desc": "\"Every line written by AI agents. Not a single human keystroke.\"",
+    "metric2_value": "220+",
+    "metric2_label": "E2E tests passing",
+    "metric2_desc": "\"Automated quality gates covering every endpoint.\"",
+    "metric3_value": "0",
+    "metric3_label": "runtime panics in production",
+    "metric3_desc": "\"Our Zero-Panic policy forbids unwrap() and expect(). Every error path is handled.\""
+  },
+  "features": {
+    "title": "Built for absolute resilience.",
+    "f1_title": "100% Autonomous",
+    "f1_desc": "AI agents design, write, and deploy the entire codebase. From architecture decisions to end-to-end tests, human intervention is completely eliminated.",
+    "f2_title": "Mathematically Proven",
+    "f2_desc": "Critical path logic is verified using TLA+ formal specifications. We guarantee absence of deadlocks and state inconsistencies before a single line of Rust is compiled.",
+    "f3_title": "Zero-Panic Rust",
+    "f3_desc": "Built exclusively on memory-safe paradigms with enforced Result/Option unwrapping bans. Unhandled runtime panics are treated as critical build failures."
+  },
+  "code_preview": {
+    "title": "Deploy in seconds.",
+    "desc": "Launch a fully autonomous agent into your environment. From there, it analyzes your codebase, identifies dependencies, and starts contributing immediately.",
+    "command": "docker run -d --name aiome-agent \\\\n  -v /var/run/docker.sock:/var/run/docker.sock \\\\n  aiome/core:latest",
+    "copy": "Copy",
+    "copied": "Copied"
+  },
+  "security": {
+    "title": "A2C Economy",
+    "desc": "Agents autonomously discover, evaluate, and pay for APIs provided by other agents. The entire process—from capability negotiation to crypto transaction—happens without human intervention."
+  },
+  "cta": {
+    "title": "Start building with Aiome today.",
+    "desc": "Ready to step into the future? Join the open-source revolution and deploy your first self-healing agent in under 5 minutes. No credit card required.",
+    "button": "Deploy Now"
+  },
+  "footer": {
+    "copyright": "© 2026 MotivationStudio LLC. All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  }
+}

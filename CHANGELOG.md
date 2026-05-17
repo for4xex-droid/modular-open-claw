@@ -1,6 +1,19 @@
 ## [Unreleased]
 
 ### Added
+- **UI/UX Production Readiness (First Penguin)**:
+  - `management-console`: `AgentConsole.tsx` および `MermaidRenderer.tsx` にて、Cortex / NurtureからのMermaidグラフ出力のフォールバック処理および描画安定性を強化。
+  - `docs/landing`: First Penguin 向けプロモーション用ランディングページの Next.js/Vite ビルド環境を構築し、レガシーなファイルアセットをパージ。
+  - `docs/landing`: OGPメタデータの準備や、Next.jsビルドツールチェーン (`vite.config.ts`, `tsconfig.json`等) を追加。
+
+### Changed
+- **Zero-Panic Infrastructure Hardening**:
+  - `libs/infrastructure/src/job_queue/federation.rs`: SQLite/PostgreSQLの行データ取得におけるパニックリスク（`.unwrap()`, `.get()`）を完全に排除。`try_get(...).unwrap_or_default()` へリファクタリングし、Zero-Panic Policy を推進。
+- **Integration & AI Parse Resilience**:
+  - `libs/infrastructure/src/cortex_ingester.rs`: Nurture APIとの連携においてパーサーを強化。`<THINK>`ブロックなどのメタ推論を適切にスキップ・除外処理し、実効コンテンツのみを抽出するよう修正。
+  - `libs/infrastructure/src/skills/mod.rs`: セキュリティ制約検証ロジックから不要な `.to_lowercase()` 等のアロケーションを削除し最適化。
+
+### Added
 - **Cortex Ingestion (Phase γ: Headless Browser Fallback)**:
   - Integrated `obscura` (Tauri sidecar) as a secure fallback for `CortexIngester` to handle JavaScript-rendered SPAs when standard `reqwest` fetching fails.
   - Hardened execution via `BastionGuard` and `SafeCommandBuilder` under `SandboxProfile::BrowserAgent`, disabling filesystem writes.

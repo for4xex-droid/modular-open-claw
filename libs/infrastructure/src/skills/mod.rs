@@ -520,7 +520,6 @@ impl WasmSkillManager {
                                         return Ok(());
                                     };
                                     let final_path = canon_parent.join(file_name);
-                                    let p_str = final_path.to_string_lossy().to_lowercase();
 
                                     let mut path_allowed = final_path.starts_with(&allowed_root_for_write);
 

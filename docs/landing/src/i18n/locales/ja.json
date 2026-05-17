@@ -1,0 +1,59 @@
+{
+  "nav": {
+    "features": "機能",
+    "quickstart": "クイックスタート",
+    "docs": "ドキュメント",
+    "github": "GitHub",
+    "skip": "メインコンテンツへスキップ",
+    "open_menu": "メニューを開く",
+    "close_menu": "メニューを閉じる",
+    "switch_lang": "英語に切り替え"
+  },
+  "hero": {
+    "title": "壊れても、自ら治す AI を。",
+    "subtitle": "AIエージェントのための自律型オペレーティングシステム。すべてのコードをエージェントが自律的に記述し、TLA+ で数学的に検証し、ゼロパニック Rust で堅牢化。Docker 一発でデプロイすれば、エージェントが自ら学習し、防御し、進化を続けます。",
+    "cta_primary": "無料で始める — $0/月",
+    "cta_secondary": "GitHub で見る →"
+  },
+  "social_proof": {
+    "metric1_value": "90,000+",
+    "metric1_label": "行の本番用 Rust コード",
+    "metric1_desc": "\"すべて AI エージェントが記述。人間のキーストロークは一切ありません。\"",
+    "metric2_value": "220+",
+    "metric2_label": "パスする E2E テスト",
+    "metric2_desc": "\"すべてのエンドポイントをカバーする自動品質ゲート。\"",
+    "metric3_value": "0",
+    "metric3_label": "本番環境でのパニック",
+    "metric3_desc": "\"ゼロパニックポリシーにより unwrap() を禁止。全エラーパスを処理。\""
+  },
+  "features": {
+    "title": "究極の回復力を目指して。",
+    "f1_title": "100% 自律型",
+    "f1_desc": "AIエージェントがコードベース全体を設計、記述、デプロイします。アーキテクチャの決定から E2E テストまで、人間の介入を完全に排除しました。",
+    "f2_title": "数学的証明",
+    "f2_desc": "クリティカルパスのロジックは TLA+ 形式仕様を用いて検証されます。Rust がコンパイルされる前に、デッドロックや状態の不整合がないことを数学的に保証します。",
+    "f3_title": "ゼロパニック Rust",
+    "f3_desc": "強制的な unwrap 排除によるメモリ安全パラダイムのみで構築。未処理の実行時パニックは致命的なビルドエラーとして扱われます。"
+  },
+  "code_preview": {
+    "title": "数秒でデプロイ。",
+    "desc": "完全自律型エージェントをあなたの環境に立ち上げましょう。エージェントはコードベースを分析し、依存関係を特定して、即座に貢献を開始します。",
+    "command": "docker run -d --name aiome-agent \\\\n  -v /var/run/docker.sock:/var/run/docker.sock \\\\n  aiome/core:latest",
+    "copy": "コピー",
+    "copied": "コピー済み"
+  },
+  "security": {
+    "title": "A2C 経済圏",
+    "desc": "エージェントは他のエージェントが提供する API を自律的に発見、評価、そして支払います。機能の交渉から暗号資産トランザクションまで、人間の介入なしに全プロセスが完了します。"
+  },
+  "cta": {
+    "title": "Aiome で開発を始めよう。",
+    "desc": "未来へ踏み出す準備はできましたか？オープンソースの革命に参加し、最初の自己修復エージェントを5分以内でデプロイしましょう。クレジットカードは不要です。",
+    "button": "今すぐデプロイ"
+  },
+  "footer": {
+    "copyright": "© 2026 MotivationStudio LLC. All rights reserved.",
+    "privacy": "プライバシーポリシー",
+    "terms": "利用規約"
+  }
+}

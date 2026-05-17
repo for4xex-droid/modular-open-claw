@@ -7,6 +7,17 @@ interface MermaidRendererProps {
     className?: string;
 }
 
+/**
+ * Strip executable content from SVG to prevent XSS via user-controlled Mermaid code.
+ * Removes <script> tags and on* event handler attributes.
+ */
+function sanitizeSVG(raw: string): string {
+    return raw
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<script[\s\S]*?\/>/gi, '')
+        .replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
+}
+
 export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ code, className }) => {
     const { svg, error } = useMemo(() => {
         try {
@@ -21,7 +32,7 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ code, classNam
                 surface: 'var(--black-20)',
                 border: 'var(--border-glass)'
             });
-            return { svg: rendered, error: null };
+            return { svg: sanitizeSVG(rendered), error: null };
         } catch (err: any) {
             console.error("Mermaid parsing failed:", err);
             return { svg: null, error: err.message || 'Unknown error' };

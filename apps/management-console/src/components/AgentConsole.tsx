@@ -125,6 +125,26 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
 
     useEffect(scrollToBottom, [history, streamingText]);
 
+    // Shared ReactMarkdown component overrides (DRY: used in both history and streaming renders)
+    const markdownComponents = {
+        h1: ({node, ...props}: any) => <h1 style={{color: 'var(--accent-cyan)', fontSize: '1.5em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
+        h2: ({node, ...props}: any) => <h2 style={{color: 'var(--accent-purple)', fontSize: '1.2em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
+        h3: ({node, ...props}: any) => <h3 style={{fontSize: '1.1em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
+        a: ({node, ...props}: any) => <a style={{color: 'var(--accent-cyan)', textDecoration: 'underline'}} {...props} />,
+        code: ({node, className, children, ...props}: any) => {
+            const match = /language-(\w+)/.exec(className || '');
+            if (match && match[1] === 'mermaid') {
+                return (
+                    <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'0.8rem', padding:'1rem', border:'1px solid var(--accent-rose-30)'}}>Failed to render mermaid diagram (React error)</div>}>
+                        <MermaidRenderer code={String(children).replace(/\n$/, '')} />
+                    </ErrorBoundary>
+                );
+            }
+            return <code style={{background: 'var(--black-40)', padding: '0.2em 0.4em', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.9em'}} className={className} {...props}>{children}</code>;
+        },
+        pre: ({node, ...props}: any) => <pre style={{background: 'var(--black-60)', padding: '1em', borderRadius: 'var(--radius-md)', overflowX: 'auto', marginBottom: '1em'}} {...props} />
+    };
+
     return (
         <div className="main-panel ani-fade" style={{ height: '78vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', position: 'relative' }}>
             <ActivityFeed maxItems={5} />
@@ -388,24 +408,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             {m.content && (
                                 <ReactMarkdown
                                     rehypePlugins={[rehypeSanitize]}
-                                    components={{
-                                        h1: ({node, ...props}) => <h1 style={{color: 'var(--accent-cyan)', fontSize: '1.5em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
-                                        h2: ({node, ...props}) => <h2 style={{color: 'var(--accent-purple)', fontSize: '1.2em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
-                                        h3: ({node, ...props}) => <h3 style={{fontSize: '1.1em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
-                                        a: ({node, ...props}) => <a style={{color: 'var(--accent-cyan)', textDecoration: 'underline'}} {...props} />,
-                                        code: ({node, className, children, ...props}) => {
-                                            const match = /language-(\w+)/.exec(className || '');
-                                            if (match && match[1] === 'mermaid') {
-                                                return (
-                                                    <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'0.8rem', padding:'1rem', border:'1px solid var(--accent-rose-30)'}}>Failed to render mermaid diagram (React error)</div>}>
-                                                        <MermaidRenderer code={String(children).replace(/\n$/, '')} />
-                                                    </ErrorBoundary>
-                                                );
-                                            }
-                                            return <code style={{background: 'var(--black-40)', padding: '0.2em 0.4em', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.9em'}} className={className} {...props}>{children}</code>;
-                                        },
-                                        pre: ({node, ...props}) => <pre style={{background: 'var(--black-60)', padding: '1em', borderRadius: 'var(--radius-md)', overflowX: 'auto', marginBottom: '1em'}} {...props} />
-                                    }}
+                                    components={markdownComponents}
                                 >
                                     {m.content}
                                 </ReactMarkdown>
@@ -465,24 +468,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         }}>
                             <ReactMarkdown
                                 rehypePlugins={[rehypeSanitize]}
-                                components={{
-                                    h1: ({node, ...props}) => <h1 style={{color: 'var(--accent-cyan)', fontSize: '1.5em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
-                                    h2: ({node, ...props}) => <h2 style={{color: 'var(--accent-purple)', fontSize: '1.2em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
-                                    h3: ({node, ...props}) => <h3 style={{fontSize: '1.1em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
-                                    a: ({node, ...props}) => <a style={{color: 'var(--accent-cyan)', textDecoration: 'underline'}} {...props} />,
-                                    code: ({node, className, children, ...props}) => {
-                                        const match = /language-(\w+)/.exec(className || '');
-                                        if (match && match[1] === 'mermaid') {
-                                            return (
-                                                <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'0.8rem', padding:'1rem', border:'1px solid var(--accent-rose-30)'}}>Failed to render mermaid diagram (React error)</div>}>
-                                                    <MermaidRenderer code={String(children).replace(/\n$/, '')} />
-                                                </ErrorBoundary>
-                                            );
-                                        }
-                                        return <code style={{background: 'var(--black-40)', padding: '0.2em 0.4em', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.9em'}} className={className} {...props}>{children}</code>;
-                                    },
-                                    pre: ({node, ...props}) => <pre style={{background: 'var(--black-60)', padding: '1em', borderRadius: 'var(--radius-md)', overflowX: 'auto', marginBottom: '1em'}} {...props} />
-                                }}
+                                components={markdownComponents}
                             >
                                 {streamingText}
                             </ReactMarkdown>

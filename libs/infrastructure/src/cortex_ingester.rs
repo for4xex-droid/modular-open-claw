@@ -92,6 +92,8 @@ impl CortexIngester {
             });
         }
 
+        const MAX_BODY_BYTES: usize = 2 * 1024 * 1024; // 2MB
+
         let resp = self
             .http_client
             .get(url)
@@ -103,17 +105,27 @@ impl CortexIngester {
             })?;
 
         if let Some(len) = resp.content_length() {
-            if len > 1_048_576 * 2 {
-                // 2MB limit
+            if len > MAX_BODY_BYTES as u64 {
                 return Err(AiomeError::Infrastructure {
                     reason: "File too large. Max 2MB allowed for Cortex Ingestion.".to_string(),
                 });
             }
         }
 
-        let html = resp.text().await.map_err(|e| AiomeError::NetworkError {
+        // Read body with enforced size limit (defends against missing/lying Content-Length)
+        let bytes = resp.bytes().await.map_err(|e| AiomeError::NetworkError {
             reason: format!("Failed to read response body: {}", e),
         })?;
+        if bytes.len() > MAX_BODY_BYTES {
+            return Err(AiomeError::Infrastructure {
+                reason: format!(
+                    "Response body too large: {} bytes (max {})",
+                    bytes.len(),
+                    MAX_BODY_BYTES
+                ),
+            });
+        }
+        let html = String::from_utf8_lossy(&bytes).to_string();
 
         self.process_html_to_document(url, &html).await
     }
@@ -190,21 +202,13 @@ impl CortexIngester {
 
         let raw_md = html2md::parse_html(&clean_html);
 
-        let mut sample_for_llm = raw_md.clone();
-        if sample_for_llm.len() > 8000 {
-            sample_for_llm.truncate(8000);
-        }
+        // Take at most 8000 chars without cloning the full content
+        let sample_for_llm: String = raw_md.chars().take(8000).collect();
 
-        let title_regex =
-            TITLE_REGEX.get_or_init(
-                || match regex::Regex::new(r"(?i)<title[^>]*>(.+?)</title>") {
-                    Ok(re) => re,
-                    Err(e) => {
-                        tracing::error!("FATAL: Failed to compile HTML title regex: {}", e);
-                        std::process::exit(1);
-                    }
-                },
-            );
+        let title_regex = TITLE_REGEX.get_or_init(|| {
+            regex::Regex::new(r"(?i)<title[^>]*>(.+?)</title>")
+                .expect("Failed to compile HTML title regex") // allow-anti-pattern: static regex
+        });
         let html_title = title_regex
             .captures(&clean_html)
             .and_then(|c| c.get(1))
@@ -229,8 +233,13 @@ impl CortexIngester {
             .trim_start_matches("```")
             .trim_end_matches("```")
             .trim();
-        let metadata_val: serde_json::Value =
-            serde_json::from_str(content_json).unwrap_or_default();
+        let metadata_val: serde_json::Value = match serde_json::from_str(content_json) {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!(raw = %content_json.chars().take(200).collect::<String>(), error = %e, "LLM returned unparseable JSON for metadata extraction; using defaults");
+                serde_json::Value::default()
+            }
+        };
 
         let title = metadata_val
             .get("title")

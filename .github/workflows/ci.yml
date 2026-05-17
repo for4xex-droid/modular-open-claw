@@ -202,7 +202,7 @@ jobs:
   docs-sync:
     name: Documentation Sync Check
     runs-on: ubuntu-latest
-    # 警告のみ — CI をブロックしない
+    # ドキュメント不整合時は CI をブロック（continue-on-error: false）
     continue-on-error: false
     steps:
       - uses: actions/checkout@v4
@@ -277,7 +277,7 @@ jobs:
   semver-check:
     name: API Compatibility (semver)
     runs-on: ubuntu-latest
-    # 警告のみ — 破壊的変更を検出するが CI はブロックしない
+    # 破壊的変更を検出した場合は CI をブロック（continue-on-error: false）
     continue-on-error: false
     steps:
       - uses: actions/checkout@v4

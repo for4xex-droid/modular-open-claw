@@ -518,18 +518,24 @@ pub async fn create_checkout_session(
         return Err(AppError::forbidden("Unauthorized access to this agent"));
     }
 
-    // Defensive URL validation: only allow https:// scheme in production
+    // NOTE: AIOME_DEV_MODE is read per-request rather than from AppState.
+    // This is acceptable since std::env::var is cheap and this endpoint is low-frequency.
+    // Future: consider migrating to a boot-time flag in AppState.
     let is_dev = std::env::var("AIOME_DEV_MODE").unwrap_or_default() == "1";
 
-    let is_valid_scheme = |url: &str| -> bool {
-        if url.starts_with("https://") {
+    let is_valid_scheme = |raw_url: &str| -> bool {
+        // Use URL parser to extract scheme and host, preventing bypass via query params
+        let parsed = match url::Url::parse(raw_url) {
+            Ok(u) => u,
+            Err(_) => return false,
+        };
+        if parsed.scheme() == "https" {
             return true;
         }
-        if is_dev
-            && url.starts_with("http://")
-            && (url.contains("localhost") || url.contains("127.0.0.1"))
-        {
-            return true;
+        if is_dev && parsed.scheme() == "http" {
+            if let Some(host) = parsed.host_str() {
+                return host == "localhost" || host == "127.0.0.1";
+            }
         }
         false
     };
