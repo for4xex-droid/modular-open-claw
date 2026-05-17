@@ -60,6 +60,7 @@ aes-gcm = "0.10.3"
 governor = { version = "0.6", features = ["dashmap"] }
 ammonia = "4.1.2"
 dashmap = "5.5"
+parking_lot = "0.12"
 libc = "0.2"
 lru.workspace = true
 minijinja = "2.0"

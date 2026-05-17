@@ -24,7 +24,8 @@ export default defineConfig(async ({ mode }) => ({
         manualChunks: {
           vendor: ['react', 'react-dom'],
           ui: ['framer-motion', 'lucide-react'],
-          network: ['vis-data', 'vis-network']
+          network: ['vis-data', 'vis-network'],
+          mermaid: ['beautiful-mermaid']
         }
       }
     }

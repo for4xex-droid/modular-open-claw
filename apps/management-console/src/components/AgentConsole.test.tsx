@@ -54,6 +54,16 @@ jest.mock('../lib/auth', () => ({
   getAuthToken: jest.fn().mockReturnValue('test-token'),
 }));
 
+// Mock ReactMarkdown
+jest.mock('react-markdown', () => {
+  return ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="react-markdown-mock">{children}</div>
+  );
+});
+
+jest.mock('rehype-sanitize', () => () => {});
+
+
 describe('AgentConsole Slash Commands UI', () => {
   beforeAll(() => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
@@ -87,5 +97,36 @@ describe('AgentConsole Slash Commands UI', () => {
     expect(screen.getByText('Voice Store')).toBeInTheDocument();
     expect(screen.getByText('Treasure Box')).toBeInTheDocument();
     expect(screen.getByText('LoRA Market')).toBeInTheDocument();
+  });
+
+  it('renders AI messages using ReactMarkdown', () => {
+    // Arrange
+    // @ts-expect-error
+    jest.spyOn(require('../hooks/useAgentChat'), 'useAgentChat').mockReturnValue({
+      history: [
+        { id: '1', role: 'aiome', content: '# Hello World\nThis is a **markdown** test.', timestamp: Date.now() }
+      ],
+      input: '',
+      isTyping: false,
+      streamingText: '',
+      status: 'IDLE',
+      autoTts: false,
+      relevantKarma: null,
+      relevantKarmaData: null,
+      activeKnowledge: null,
+      setInput: jest.fn(),
+      sendMessage: jest.fn(),
+      setAutoTts: jest.fn(),
+      handleFeedback: jest.fn(),
+    });
+
+    // Act
+    render(<AgentConsole />);
+
+    // Assert
+    // If ReactMarkdown is used, we should see our mock with the data-testid
+    expect(screen.getByTestId('react-markdown-mock')).toBeInTheDocument();
+    expect(screen.getByText(/Hello World/)).toBeInTheDocument();
+    expect(screen.getByText(/This is a \*\*markdown\*\* test/)).toBeInTheDocument();
   });
 });

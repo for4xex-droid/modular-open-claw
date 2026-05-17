@@ -6,11 +6,11 @@
 
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// 射影行列のキャッシュ。次元ごとに 256 行の射影ベクトルを保持。
-static PROJECTION_CACHE: Lazy<Mutex<HashMap<usize, Arc<Vec<Vec<f64>>>>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
+static PROJECTION_CACHE: Lazy<parking_lot::Mutex<HashMap<usize, Arc<Vec<Vec<f64>>>>>> =
+    Lazy::new(|| parking_lot::Mutex::new(HashMap::new()));
 
 /// TurboQuant PolarQuant エンコーダ
 pub struct PolarQuantEncoder {
@@ -29,7 +29,7 @@ impl PolarQuantEncoder {
 
     /// 射影行列を取得（キャッシュ利用）
     pub(crate) fn get_projection_matrix(&self, dim: usize) -> Arc<Vec<Vec<f64>>> {
-        let mut cache = PROJECTION_CACHE.lock().unwrap_or_else(|e| e.into_inner());
+        let mut cache = PROJECTION_CACHE.lock();
         if let Some(matrix) = cache.get(&dim) {
             return matrix.clone();
         }

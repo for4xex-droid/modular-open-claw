@@ -120,3 +120,26 @@ async fn test_ingest_pdf() {
         _ => panic!("Expected Infrastructure error"),
     }
 }
+
+#[tokio::test]
+async fn test_ingest_url_via_obscura_security_block() {
+    let provider = Arc::new(MockLlm);
+    let pool = shared::db::DatabasePool::new_sqlite(":memory:")
+        .await
+        .unwrap();
+
+    let ingester = CortexIngester::new(provider, pool);
+
+    // Test that private/local URLs are blocked by SecurityPolicy even in the fallback
+    let res = ingester
+        .ingest_url_via_obscura("http://127.0.0.1/admin")
+        .await;
+    assert!(res.is_err());
+
+    match res.unwrap_err() {
+        AiomeError::SecurityViolation { reason } => {
+            assert!(reason.contains("Invalid or restricted URL"));
+        }
+        _ => panic!("Expected SecurityViolation"),
+    }
+}

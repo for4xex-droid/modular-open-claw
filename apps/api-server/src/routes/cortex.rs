@@ -44,7 +44,25 @@ pub async fn ingest_url_handler(
     }
 
     let ingester = state.cortex_ingester.get_inner();
-    let doc = ingester.ingest_url(&req.url).await?;
+    let doc = match ingester.ingest_url(&req.url).await {
+        Ok(doc) => doc,
+        Err(e) => {
+            // Never fall back to obscura for SecurityViolation (e.g. SSRF blocks).
+            // The URL itself is unsafe regardless of the rendering method.
+            if matches!(&e, aiome_core::error::AiomeError::SecurityViolation { .. }) {
+                return Err(e.into());
+            }
+            if state
+                .is_feature_enabled(shared::feature_flags::JS_FALLBACK_FLAG)
+                .await
+            {
+                tracing::warn!(error = ?e, "Standard ingestion failed. Falling back to obscura JS rendering.");
+                ingester.ingest_url_via_obscura(&req.url).await?
+            } else {
+                return Err(e.into());
+            }
+        }
+    };
 
     Ok((
         StatusCode::CREATED,

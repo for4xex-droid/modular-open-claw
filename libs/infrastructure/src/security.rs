@@ -70,6 +70,7 @@ impl Default for SecurityConfig {
                 "slm".to_string(),
                 "npx".to_string(),
                 "uvx".to_string(),
+                "obscura".to_string(),
             ],
             workspace_root: shared::app_data::AppDataResolver::new()
                 .map(|r| r.root().to_path_buf())

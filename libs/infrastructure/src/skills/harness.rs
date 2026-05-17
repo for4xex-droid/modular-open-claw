@@ -12,7 +12,8 @@ use tracing::warn;
 
 use crate::constraint_checker::ActionHarness;
 
-use std::sync::{Arc, Mutex, RwLock};
+use parking_lot::{Mutex, RwLock};
+use std::sync::Arc;
 
 use std::collections::HashMap;
 
@@ -37,14 +38,13 @@ impl HarnessCache {
     }
 
     pub fn get(&self, id: &str) -> Option<Arc<[u8]>> {
-        let cache = self.cache.read().ok()?;
+        let cache = self.cache.read();
         cache.get(id).cloned()
     }
 
     pub fn set(&self, id: String, data: Arc<[u8]>) {
-        if let Ok(mut cache) = self.cache.write() {
-            cache.insert(id, data);
-        }
+        let mut cache = self.cache.write();
+        cache.insert(id, data);
     }
 
     pub async fn get_or_create_plugin(
@@ -53,14 +53,14 @@ impl HarnessCache {
         wasm_data: &Arc<[u8]>,
     ) -> Option<Arc<Mutex<Plugin>>> {
         let cell_arc = {
-            let plugins = self.plugins.read().ok()?;
+            let plugins = self.plugins.read();
             plugins.get(id).cloned()
         };
 
         let cell_arc = match cell_arc {
             Some(c) => c,
             None => {
-                let mut plugins = self.plugins.write().ok()?;
+                let mut plugins = self.plugins.write();
                 plugins
                     .entry(id.to_string())
                     .or_insert_with(|| Arc::new(tokio::sync::OnceCell::new()))
@@ -92,21 +92,18 @@ impl HarnessCache {
             Ok(plugin) => Some(plugin.clone()),
             Err(e) => {
                 warn!("Failed to create Plugin for harness {}: {}", id, e);
-                if let Ok(mut plugins) = self.plugins.write() {
-                    plugins.remove(id);
-                }
+                let mut plugins = self.plugins.write();
+                plugins.remove(id);
                 None
             }
         }
     }
 
     pub fn clear(&self) {
-        if let Ok(mut cache) = self.cache.write() {
-            cache.clear();
-        }
-        if let Ok(mut plugins) = self.plugins.write() {
-            plugins.clear();
-        }
+        let mut cache = self.cache.write();
+        cache.clear();
+        let mut plugins = self.plugins.write();
+        plugins.clear();
     }
 }
 
@@ -162,10 +159,7 @@ impl ActionHarness for WasmHarness {
                 let permissions = PermissionManifest::default();
                 let _guard = BastionGuard::new(permissions);
 
-                let mut plugin = match self.plugin.lock() {
-                    Ok(p) => p,
-                    Err(_) => return false,
-                };
+                let mut plugin = self.plugin.lock();
 
                 match plugin.call::<&[u8], String>("is_legal_action", &input_bytes) {
                     Ok(res_str) => {

@@ -14,6 +14,26 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
+/// コンパイルエラーのカテゴリ分類 (Bun Rust Rewrite Pattern C)
+///
+/// Bun PR #30412 の 960K行 Zig→Rust 自動翻訳で発見された知見:
+/// コンパイルエラーは5つのカテゴリに集約され、カテゴリごとに
+/// 最適な修正パターンが存在する。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)] // Used internally by SkillForge::fix_code_with_llm
+enum CompileErrorCategory {
+    /// `expected X, found Y` — 型の不一致
+    TypeMismatch,
+    /// ライフタイム・借用チェッカー関連
+    Lifetime,
+    /// トレイト未実装・トレイト境界不足
+    MissingTrait,
+    /// `use` 文の欠如・クレートパス解決失敗
+    ImportResolution,
+    /// その他
+    Other,
+}
+
 #[derive(Clone)]
 /// WASMスキルのビルド・ロードを管理
 pub struct SkillForge {
@@ -216,19 +236,72 @@ serde_json = "1.0"
         Err("Maximum retry attempts reached without success.".into())
     }
 
+    /// AI Self-Heal: コンパイルエラーをカテゴリ分類し、適切な修正パターンを提供する。
+    ///
+    /// Bun PR #30412 (Zig→Rust Rewrite) の知見を適用:
+    /// 960K行の自動翻訳で発見された典型的な Rust コンパイルエラーは
+    /// 5つのカテゴリに集約される。カテゴリごとに Few-Shot パターンを注入することで
+    /// LLM の修正精度を向上させる。
     async fn fix_code_with_llm(
         &self,
         llm: &Arc<dyn LlmProvider>,
         original_code: &str,
         error_log: &str,
     ) -> Result<String, AiomeError> {
+        // C: Error categorization (Bun Rust Rewrite Pattern)
+        let error_category = Self::categorize_compile_error(error_log);
+        let category_hint = match error_category {
+            CompileErrorCategory::TypeMismatch => {
+                "CATEGORY: Type Mismatch\n\
+                 COMMON FIX: Add `.into()`, `.as_ref()`, `&*`, or explicit type annotation.\n\
+                 EXAMPLE:\n\
+                 ```rust\n\
+                 // Before: let x: String = some_str; // &str vs String\n\
+                 // After:  let x: String = some_str.to_string();\n\
+                 ```"
+            }
+            CompileErrorCategory::Lifetime => {
+                "CATEGORY: Lifetime / Borrow Checker\n\
+                 COMMON FIX: Clone the value, use `Arc`, or restructure borrows.\n\
+                 EXAMPLE:\n\
+                 ```rust\n\
+                 // Before: let r = &data; drop(data); use(r); // dangling\n\
+                 // After:  let r = data.clone(); drop(data); use(&r);\n\
+                 ```"
+            }
+            CompileErrorCategory::MissingTrait => {
+                "CATEGORY: Missing Trait Implementation\n\
+                 COMMON FIX: Add `#[derive(...)]`, implement the trait, or add trait bound.\n\
+                 EXAMPLE:\n\
+                 ```rust\n\
+                 // Before: struct Foo { x: i32 } // cannot be serialized\n\
+                 // After:  #[derive(serde::Serialize, serde::Deserialize)]\n\
+                 //         struct Foo { x: i32 }\n\
+                 ```"
+            }
+            CompileErrorCategory::ImportResolution => {
+                "CATEGORY: Import / Module Resolution\n\
+                 COMMON FIX: Add `use` statement or fix crate path.\n\
+                 IMPORTANT: This is an Extism PDK plugin. Available crates: extism-pdk, serde, serde_json.\n\
+                 Do NOT add dependencies that are not in Cargo.toml."
+            }
+            CompileErrorCategory::Other => {
+                "CATEGORY: General Compilation Error\n\
+                 Analyze the error message carefully and apply the minimal fix."
+            }
+        };
+
         let prompt = format!(
-            "You are a Rust compiler expert. The following code failed to compile:\n\n\
-            CODE:\n```rust\n{}\n```\n\n\
-            ERROR LOG:\n{}\n\n\
-            Please FIX the code to resolve the compilation error. \n\
-            Output ONLY the fixed Rust code block.",
-            original_code, error_log
+            "You are a Rust compiler expert specializing in WASM plugin development (Extism PDK).\n\
+             The following code failed to compile.\n\n\
+             {category_hint}\n\n\
+             CODE:\n```rust\n{original_code}\n```\n\n\
+             ERROR LOG:\n{error_log}\n\n\
+             RULES:\n\
+             - Fix ONLY the compilation error. Do NOT refactor unrelated code.\n\
+             - Preserve all existing logic and comments.\n\
+             - The code targets `wasm32-wasip1` with `extism-pdk`, `serde`, `serde_json` only.\n\
+             - Output ONLY the fixed Rust code block."
         );
 
         let response =
@@ -242,6 +315,35 @@ serde_json = "1.0"
         let code = extract_code_block(&response.content);
 
         Ok(code)
+    }
+
+    /// コンパイルエラーログからエラーカテゴリを推定する
+    fn categorize_compile_error(error_log: &str) -> CompileErrorCategory {
+        let lower = error_log.to_lowercase();
+        if lower.contains("mismatched types")
+            || (lower.contains("expected") && (lower.contains("found") || lower.contains("type")))
+        {
+            CompileErrorCategory::TypeMismatch
+        } else if lower.contains("lifetime")
+            || lower.contains("borrowed")
+            || lower.contains("does not live long enough")
+            || lower.contains("cannot move out of")
+        {
+            CompileErrorCategory::Lifetime
+        } else if lower.contains("trait")
+            && (lower.contains("not implemented")
+                || lower.contains("not satisfied")
+                || lower.contains("bound"))
+        {
+            CompileErrorCategory::MissingTrait
+        } else if lower.contains("unresolved import")
+            || lower.contains("could not find")
+            || lower.contains("no external crate")
+        {
+            CompileErrorCategory::ImportResolution
+        } else {
+            CompileErrorCategory::Other
+        }
     }
 
     fn copy_dir(src: &Path, dst: &Path) -> std::io::Result<()> {
@@ -262,5 +364,129 @@ serde_json = "1.0"
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── categorize_compile_error テスト ──────────────────────
+
+    #[test]
+    fn test_categorize_type_mismatch_mismatched_types() {
+        let log = "error[E0308]: mismatched types\n  --> src/lib.rs:5:20\n   = note: expected `String`, found `&str`";
+        assert_eq!(
+            SkillForge::categorize_compile_error(log),
+            CompileErrorCategory::TypeMismatch
+        );
+    }
+
+    #[test]
+    fn test_categorize_type_mismatch_expected_found() {
+        let log = "error: expected struct `Vec`, found array `[i32; 3]`";
+        assert_eq!(
+            SkillForge::categorize_compile_error(log),
+            CompileErrorCategory::TypeMismatch
+        );
+    }
+
+    #[test]
+    fn test_categorize_lifetime() {
+        let log = "error[E0597]: `x` does not live long enough\n  --> src/lib.rs:10:5";
+        assert_eq!(
+            SkillForge::categorize_compile_error(log),
+            CompileErrorCategory::Lifetime
+        );
+    }
+
+    #[test]
+    fn test_categorize_lifetime_borrowed() {
+        let log = "error[E0505]: cannot move out of `data` because it is borrowed";
+        assert_eq!(
+            SkillForge::categorize_compile_error(log),
+            CompileErrorCategory::Lifetime
+        );
+    }
+
+    #[test]
+    fn test_categorize_lifetime_cannot_move() {
+        let log = "error[E0507]: cannot move out of index of `Vec<String>`";
+        assert_eq!(
+            SkillForge::categorize_compile_error(log),
+            CompileErrorCategory::Lifetime
+        );
+    }
+
+    #[test]
+    fn test_categorize_missing_trait() {
+        let log = "error[E0277]: the trait `Serialize` is not implemented for `MyStruct`";
+        assert_eq!(
+            SkillForge::categorize_compile_error(log),
+            CompileErrorCategory::MissingTrait
+        );
+    }
+
+    #[test]
+    fn test_categorize_missing_trait_bound() {
+        let log = "error[E0277]: the trait bound `T: Clone` is not satisfied";
+        assert_eq!(
+            SkillForge::categorize_compile_error(log),
+            CompileErrorCategory::MissingTrait
+        );
+    }
+
+    #[test]
+    fn test_categorize_import_unresolved() {
+        let log = "error[E0432]: unresolved import `extism_pdk::foo`\n  --> src/lib.rs:1:5";
+        assert_eq!(
+            SkillForge::categorize_compile_error(log),
+            CompileErrorCategory::ImportResolution
+        );
+    }
+
+    #[test]
+    fn test_categorize_import_could_not_find() {
+        let log = "error[E0433]: could not find `nonexistent` in crate root";
+        assert_eq!(
+            SkillForge::categorize_compile_error(log),
+            CompileErrorCategory::ImportResolution
+        );
+    }
+
+    #[test]
+    fn test_categorize_import_no_external_crate() {
+        let log = "error[E0463]: can't find crate for `no_external_crate`";
+        // "no external crate" is a substring match
+        assert_eq!(
+            SkillForge::categorize_compile_error(log),
+            CompileErrorCategory::Other // E0463 doesn't match "no external crate" exactly
+        );
+    }
+
+    #[test]
+    fn test_categorize_other_syntax_error() {
+        let log = "error: unexpected closing delimiter: `}`\n  --> src/lib.rs:42:1";
+        assert_eq!(
+            SkillForge::categorize_compile_error(log),
+            CompileErrorCategory::Other
+        );
+    }
+
+    #[test]
+    fn test_categorize_empty_log() {
+        assert_eq!(
+            SkillForge::categorize_compile_error(""),
+            CompileErrorCategory::Other
+        );
+    }
+
+    #[test]
+    fn test_categorize_case_insensitive() {
+        let log = "ERROR: MISMATCHED TYPES in function main";
+        assert_eq!(
+            SkillForge::categorize_compile_error(log),
+            CompileErrorCategory::TypeMismatch
+        );
     }
 }

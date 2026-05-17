@@ -13,9 +13,12 @@ import { API_BASE } from '../config';
 import { SLASH_COMMANDS } from '../constants/slashCommands';
 import { useTranslation } from '../i18n';
 import { useAgentChat } from '../hooks/useAgentChat';
+import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 import { TokenSavingsIndicator } from './common/TokenSavingsIndicator';
 import { ProofPowerIndicator } from './common/ProofPowerIndicator';
 import ErrorBoundary from './common/ErrorBoundary';
+import { MermaidRenderer } from './MermaidRenderer';
 import { A2uiRenderer } from './A2uiRenderer';
 import { useWorkspacePersona } from '../hooks/useWorkspacePersona';
 import { Activity, Clock, DollarSign, TrendingUp } from 'lucide-react';
@@ -382,7 +385,31 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             boxShadow: 'var(--shadow-shallow)',
                             whiteSpace: 'pre-wrap'
                         }}>
-                            {m.content && <div>{m.content}</div>}
+                            {m.content && (
+                                <ReactMarkdown
+                                    rehypePlugins={[rehypeSanitize]}
+                                    components={{
+                                        h1: ({node, ...props}) => <h1 style={{color: 'var(--accent-cyan)', fontSize: '1.5em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
+                                        h2: ({node, ...props}) => <h2 style={{color: 'var(--accent-purple)', fontSize: '1.2em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
+                                        h3: ({node, ...props}) => <h3 style={{fontSize: '1.1em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
+                                        a: ({node, ...props}) => <a style={{color: 'var(--accent-cyan)', textDecoration: 'underline'}} {...props} />,
+                                        code: ({node, className, children, ...props}) => {
+                                            const match = /language-(\w+)/.exec(className || '');
+                                            if (match && match[1] === 'mermaid') {
+                                                return (
+                                                    <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'0.8rem', padding:'1rem', border:'1px solid var(--accent-rose-30)'}}>Failed to render mermaid diagram (React error)</div>}>
+                                                        <MermaidRenderer code={String(children).replace(/\n$/, '')} />
+                                                    </ErrorBoundary>
+                                                );
+                                            }
+                                            return <code style={{background: 'var(--black-40)', padding: '0.2em 0.4em', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.9em'}} className={className} {...props}>{children}</code>;
+                                        },
+                                        pre: ({node, ...props}) => <pre style={{background: 'var(--black-60)', padding: '1em', borderRadius: 'var(--radius-md)', overflowX: 'auto', marginBottom: '1em'}} {...props} />
+                                    }}
+                                >
+                                    {m.content}
+                                </ReactMarkdown>
+                            )}
                             {m.reasoning && (
                                 <details style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                     <summary style={{ cursor: 'pointer', fontWeight: 600 }}>{t('agent.thinkingProcess') || '🧠 Thinking Process'}</summary>
@@ -436,7 +463,29 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             whiteSpace: 'pre-wrap',
                             boxShadow: 'var(--shadow-shallow)'
                         }}>
-                            {streamingText}
+                            <ReactMarkdown
+                                rehypePlugins={[rehypeSanitize]}
+                                components={{
+                                    h1: ({node, ...props}) => <h1 style={{color: 'var(--accent-cyan)', fontSize: '1.5em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
+                                    h2: ({node, ...props}) => <h2 style={{color: 'var(--accent-purple)', fontSize: '1.2em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
+                                    h3: ({node, ...props}) => <h3 style={{fontSize: '1.1em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
+                                    a: ({node, ...props}) => <a style={{color: 'var(--accent-cyan)', textDecoration: 'underline'}} {...props} />,
+                                    code: ({node, className, children, ...props}) => {
+                                        const match = /language-(\w+)/.exec(className || '');
+                                        if (match && match[1] === 'mermaid') {
+                                            return (
+                                                <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'0.8rem', padding:'1rem', border:'1px solid var(--accent-rose-30)'}}>Failed to render mermaid diagram (React error)</div>}>
+                                                    <MermaidRenderer code={String(children).replace(/\n$/, '')} />
+                                                </ErrorBoundary>
+                                            );
+                                        }
+                                        return <code style={{background: 'var(--black-40)', padding: '0.2em 0.4em', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.9em'}} className={className} {...props}>{children}</code>;
+                                    },
+                                    pre: ({node, ...props}) => <pre style={{background: 'var(--black-60)', padding: '1em', borderRadius: 'var(--radius-md)', overflowX: 'auto', marginBottom: '1em'}} {...props} />
+                                }}
+                            >
+                                {streamingText}
+                            </ReactMarkdown>
                             <motion.span
                                 animate={{ opacity: [0, 1, 0] }}
                                 transition={{ duration: 0.8, repeat: Infinity }}

@@ -11,7 +11,7 @@ import { useDisplayMode } from '../hooks/useDisplayMode';
 import { useViewMode, type ViewMode } from '../hooks/useViewMode';
 import {
     Monitor, Lock, Database,
-    Shield, Check, X, Loader2, Plus, Share2, AlertTriangle
+    Shield, Check, X, Loader2, Share2, AlertTriangle
 } from 'lucide-react';
 import { API_BASE } from '../config';
 import { OllamaModelSelector } from './OllamaModelSelector';
@@ -411,6 +411,12 @@ const SettingsPage: React.FC = () => {
                             current={getSetting('feature_flag.seo_publish')} 
                             onUpdate={(v) => updateSetting('feature_flag.seo_publish', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.seo_publish'} 
+                        />
+                        <FeatureToggle 
+                            label={t('settings.ffJsFallback', { defaultValue: 'Headless Browser Fallback' }) as string} 
+                            current={getSetting('feature_flag.js_fallback')} 
+                            onUpdate={(v) => updateSetting('feature_flag.js_fallback', v, 'feature_flags')} 
+                            saving={saving === 'feature_flag.js_fallback'} 
                         />
                         <FeatureToggle 
                             label={t('settings.ffP2pFederation', { defaultValue: 'P2P Federation' }) as string} 

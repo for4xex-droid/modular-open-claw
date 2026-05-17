@@ -294,7 +294,12 @@ impl McpEndpoint {
 
     pub fn last_activity(&self) -> std::time::Instant {
         match self {
-            Self::Stdio(c) => *c.last_activity.read().unwrap_or_else(|e| e.into_inner()),
+            Self::Stdio(c) => c.last_activity.read().map(|g| *g).unwrap_or_else(|_| {
+                warn!(
+                    "⚠️ [MCP] last_activity RwLock poisoned, returning Instant::now() as fallback"
+                );
+                std::time::Instant::now()
+            }),
             Self::Http(_c) => std::time::Instant::now(), // HTTP is stateless mostly, but we could track it
         }
     }

@@ -234,6 +234,7 @@
     "polarApiKey": "Polar API キー",
     "polarWebhookSecret": "Polar Webhook シークレット",
     "ffSeoPublishing": "SEO パブリッシング",
+    "ffJsFallback": "ヘッドレスブラウザ フォールバック",
     "ffP2pFederation": "P2P フェデレーション",
     "ffLoraTraining": "LoRA トレーニング",
     "ffGigMarketplace": "Gig マーケットプレイス",

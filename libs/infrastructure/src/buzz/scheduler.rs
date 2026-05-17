@@ -1,10 +1,17 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
+
 use super::templates::BuzzTemplate;
 use std::time::Duration;
 
 pub struct BuzzScheduler {
     pub min_interval: Duration,
     pub max_daily_posts: u8,
-    pub last_template: std::sync::RwLock<Option<BuzzTemplate>>,
+    pub last_template: parking_lot::RwLock<Option<BuzzTemplate>>,
 }
 
 impl BuzzScheduler {
@@ -12,7 +19,7 @@ impl BuzzScheduler {
         Self {
             min_interval: Duration::from_secs(min_interval_mins * 60),
             max_daily_posts,
-            last_template: std::sync::RwLock::new(None),
+            last_template: parking_lot::RwLock::new(None),
         }
     }
 
@@ -33,10 +40,7 @@ impl BuzzScheduler {
     }
 
     pub fn next_template(&self) -> BuzzTemplate {
-        let guard = match self.last_template.read() {
-            Ok(g) => g,
-            Err(poisoned) => poisoned.into_inner(),
-        };
+        let guard = self.last_template.read();
         match &*guard {
             Some(BuzzTemplate::TechnicalInsight) => BuzzTemplate::CommunityQuestion,
             Some(BuzzTemplate::CommunityQuestion) => BuzzTemplate::MilestoneAnnouncement,
@@ -46,10 +50,8 @@ impl BuzzScheduler {
     }
 
     pub fn update_last_template(&self, template: BuzzTemplate) {
-        match self.last_template.write() {
-            Ok(mut guard) => *guard = Some(template),
-            Err(poisoned) => *poisoned.into_inner() = Some(template),
-        }
+        let mut guard = self.last_template.write();
+        *guard = Some(template);
     }
 }
 

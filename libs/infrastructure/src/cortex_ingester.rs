@@ -115,8 +115,71 @@ impl CortexIngester {
             reason: format!("Failed to read response body: {}", e),
         })?;
 
+        self.process_html_to_document(url, &html).await
+    }
+
+    #[tracing::instrument(skip(self), fields(url = %url))]
+    pub async fn ingest_url_via_obscura(&self, url: &str) -> Result<CortexDocument, AiomeError> {
+        let policy = SecurityPolicy::default();
+        if policy.validate_url(url).await.is_err() {
+            return Err(AiomeError::SecurityViolation {
+                reason: "Invalid or restricted URL".to_string(),
+            });
+        }
+
+        let manifest = crate::security::PermissionManifest {
+            allow_shell_execution: true,
+            allow_filesystem_write: false,
+            allow_network: true,
+            ..Default::default()
+        };
+
+        let output = crate::security::SafeCommandBuilder::new("obscura")
+            .arg("--timeout")
+            .arg("15")
+            .arg("--output-format")
+            .arg("html")
+            .arg(url)
+            .profile(aiome_core::security::SandboxProfile::BrowserAgent)
+            .build(manifest)?
+            .output()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to execute obscura: {}", e),
+            })?;
+
+        if !output.status.success() {
+            let stderr_preview = String::from_utf8_lossy(&output.stderr);
+            let stderr_safe = shared::strings::truncate_bytes_safely(&stderr_preview, 512);
+            tracing::warn!(status = %output.status, stderr = %stderr_safe, "obscura process failed");
+            return Err(AiomeError::Infrastructure {
+                reason: format!("obscura failed with status: {}", output.status),
+            });
+        }
+
+        // Guard against oversized output (4MB limit) to prevent binary response DoS
+        const MAX_OBSCURA_OUTPUT: usize = 4 * 1024 * 1024;
+        if output.stdout.len() > MAX_OBSCURA_OUTPUT {
+            return Err(AiomeError::Infrastructure {
+                reason: format!(
+                    "obscura output too large: {} bytes (max {})",
+                    output.stdout.len(),
+                    MAX_OBSCURA_OUTPUT
+                ),
+            });
+        }
+
+        let html = String::from_utf8_lossy(&output.stdout).to_string();
+        self.process_html_to_document(url, &html).await
+    }
+
+    async fn process_html_to_document(
+        &self,
+        url: &str,
+        html: &str,
+    ) -> Result<CortexDocument, AiomeError> {
         // 🛡️ [GlassWorm Shield] Strip invisible unicode before processing
-        let clean_html = shared::guardrails::strip_invisible_unicode(&html).into_owned();
+        let clean_html = shared::guardrails::strip_invisible_unicode(html).into_owned();
 
         if clean_html.trim().is_empty() {
             return Err(AiomeError::Infrastructure {

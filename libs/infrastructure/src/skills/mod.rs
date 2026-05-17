@@ -136,7 +136,7 @@ pub struct WasmSkillManager {
     vault_path: Option<PathBuf>, // Phase 3: DRM 隔離領域
     memory_limit_bytes: u64,
     timeout: Duration,
-    wasm_cache: std::sync::RwLock<HashMap<String, (Vec<u8>, SystemTime)>>,
+    wasm_cache: parking_lot::RwLock<HashMap<String, (Vec<u8>, SystemTime)>>,
     db_pool: Option<crate::db::DatabasePool>,
 }
 
@@ -157,7 +157,7 @@ impl WasmSkillManager {
             vault_path: None,
             memory_limit_bytes: 10 * 1024 * 1024, // 10MB default
             timeout: Duration::from_secs(5),      // デフォルト5秒
-            wasm_cache: std::sync::RwLock::new(HashMap::new()),
+            wasm_cache: parking_lot::RwLock::new(HashMap::new()),
             db_pool: None,
         })
     }
@@ -244,8 +244,8 @@ impl WasmSkillManager {
     /// スキルキャッシュをクリアし、最新のスキル一覧を再取得する
     pub fn hot_reload_skills(&self) -> Vec<String> {
         let skills = self.list_skills();
-        // Discovery C: Fix RwLock poisoning crash
-        let mut cache = self.wasm_cache.write().unwrap_or_else(|e| e.into_inner());
+        // B-2: parking_lot::RwLock — no poisoning possible
+        let mut cache = self.wasm_cache.write();
 
         // 存在しないスキルのキャッシュを削除
         cache.retain(|name, _| skills.contains(name));
@@ -259,8 +259,8 @@ impl WasmSkillManager {
 
     /// 特定のスキルのキャッシュのみを無効化する
     pub fn invalidate_cache(&self, skill_name: &str) {
-        // Discovery C: Fix RwLock poisoning crash
-        let mut cache = self.wasm_cache.write().unwrap_or_else(|e| e.into_inner());
+        // B-2: parking_lot::RwLock — no poisoning possible
+        let mut cache = self.wasm_cache.write();
         if cache.remove(skill_name).is_some() {
             info!(
                 "🧹 [WasmSkillManager] Invalidated cache for skill: {}",
@@ -343,7 +343,7 @@ impl WasmSkillManager {
             .unwrap_or_else(|_| SystemTime::now());
 
         let wasm_data = {
-            let cache = self.wasm_cache.read().unwrap_or_else(|e| e.into_inner());
+            let cache = self.wasm_cache.read();
             if let Some((data, cached_mtime)) = cache.get(skill_name) {
                 if *cached_mtime == current_mtime {
                     Some(data.clone())
@@ -360,7 +360,7 @@ impl WasmSkillManager {
             None => {
                 let data = std::fs::read(&wasm_path)
                     .map_err(|e| format!("Failed to read WASM {}: {}", skill_name, e))?;
-                let mut cache = self.wasm_cache.write().unwrap_or_else(|e| e.into_inner());
+                let mut cache = self.wasm_cache.write();
                 cache.insert(skill_name.to_string(), (data.clone(), current_mtime));
                 data
             }
@@ -420,14 +420,34 @@ impl WasmSkillManager {
             }
 
             // 2. Build Host Functions
+            //
+            // ── B-1: Memory Safety Contract (Bun Rust Rewrite Pattern) ──
+            // The host_exec/host_write functions use Extism's memory pointer pipeline:
+            //   1. Guest passes I64 offset → host validates via memory_handle()
+            //   2. memory_handle() returns None if offset is out-of-bounds (safe)
+            //   3. memory_str() validates UTF-8 encoding (safe)
+            //   4. Response is allocated via memory_alloc() with exact length (no overflow)
+            //
+            // When WASI P2 + Component Model becomes available, these raw pointer
+            // exchanges should be replaced with WIT-typed interfaces.
+            // ──────────────────────────────────────────────────────────────
             let host_exec_fn = Function::new(
                 "host_exec",
                 [ValType::I64],
                 [ValType::I64],
                 UserData::new(()),
                 move |plugin, inputs, outputs, _user_data| {
-                    let cmd_ptr = inputs.first().and_then(|v| v.i64()).ok_or_else(|| extism::Error::msg("Missing input parameter"))? as u64;
-                    let handle = plugin.memory_handle(cmd_ptr).ok_or_else(|| extism::Error::msg("Invalid memory handle"))?;
+                    // Step 1: Extract memory pointer — fails safely if guest sends garbage
+                    let cmd_ptr = inputs.first().and_then(|v| v.i64()).ok_or_else(|| {
+                        tracing::warn!("🛡️ [host_exec] Guest sent no input parameter");
+                        extism::Error::msg("Missing input parameter")
+                    })? as u64;
+                    // Step 2: Validate memory handle — returns Error if OOB
+                    let handle = plugin.memory_handle(cmd_ptr).ok_or_else(|| {
+                        tracing::warn!("🛡️ [host_exec] Invalid memory handle at offset {}", cmd_ptr);
+                        extism::Error::msg("Invalid memory handle")
+                    })?;
+                    // Step 3: UTF-8 validated string extraction
                     let cmd_str: String = plugin.memory_str(handle).map_err(|e: extism::Error| e)?.to_string();
                     let guard = BastionGuard::new(host_exec_permissions.clone());
                     let runtime = tokio::runtime::Handle::current();
@@ -435,6 +455,7 @@ impl WasmSkillManager {
                         guard.safe_exec(&cmd_str).await
                     });
 
+                    // Step 4: Response allocation with exact byte length
                     match res {
                         Ok(stdout_str) => {
                             let stdout_bytes = stdout_str.as_bytes();
@@ -444,6 +465,7 @@ impl WasmSkillManager {
                         },
                         Err(e) => {
                             let err_msg = format!("Bastion Guard Error: {}", e);
+                            tracing::warn!("🛡️ [host_exec] BastionGuard rejected command: {}", e);
                             let mem = plugin.memory_alloc(err_msg.len() as u64)?;
                             plugin.memory_bytes_mut(mem)?.copy_from_slice(err_msg.as_bytes());
                             outputs[0] = Val::I64(mem.offset() as i64);
@@ -462,8 +484,15 @@ impl WasmSkillManager {
                 [ValType::I64],
                 UserData::new(()),
                 move |plugin, inputs, outputs, _user_data| {
-                    let json_ptr = inputs.first().and_then(|v| v.i64()).ok_or_else(|| extism::Error::msg("Missing input parameter"))? as u64;
-                    let handle = plugin.memory_handle(json_ptr).ok_or_else(|| extism::Error::msg("Invalid memory handle for host_write"))?;
+                    // B-1: Same memory safety pipeline as host_exec
+                    let json_ptr = inputs.first().and_then(|v| v.i64()).ok_or_else(|| {
+                        tracing::warn!("🛡️ [host_write] Guest sent no input parameter");
+                        extism::Error::msg("Missing input parameter")
+                    })? as u64;
+                    let handle = plugin.memory_handle(json_ptr).ok_or_else(|| {
+                        tracing::warn!("🛡️ [host_write] Invalid memory handle at offset {}", json_ptr);
+                        extism::Error::msg("Invalid memory handle for host_write")
+                    })?;
                     let req_str = plugin.memory_str(handle).map_err(|e: extism::Error| e)?;
 
                     if !host_write_permissions.allow_filesystem_write {
