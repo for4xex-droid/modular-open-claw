@@ -1,6 +1,21 @@
 ## [Unreleased]
 
+### Added
+- **Cortex Ingestion (Phase γ: Headless Browser Fallback)**:
+  - Integrated `obscura` (Tauri sidecar) as a secure fallback for `CortexIngester` to handle JavaScript-rendered SPAs when standard `reqwest` fetching fails.
+  - Hardened execution via `BastionGuard` and `SafeCommandBuilder` under `SandboxProfile::BrowserAgent`, disabling filesystem writes.
+  - Implemented dynamic UI toggle (`feature_flag.js_fallback`) in `SettingsPage.tsx` and feature-flag gate in `api-server` `ingest_url_handler`.
+  - Registered `shell:allow-execute` capabilities in `src-tauri/capabilities/default.json` and external binaries in `tauri.conf.json`.
+- **UI:** Integrated `beautiful-mermaid` and `MermaidRenderer` component for zero-latency, token-themed SVG graph generation within AI chat blocks (Phase β: BM-1, BM-2).
+- **UI:** Integrated `react-markdown` into `AgentConsole` for rich text and code block rendering of AI responses (Phase α: BM-0).
 ### Changed
+- **WASM Infrastructure Hardening (Bun Rust Rewrite Pattern Integration)**:
+  - Migrated `WasmSkillManager.wasm_cache` and `HarnessCache` from `std::sync::RwLock`/`Mutex` to `parking_lot` equivalents, eliminating all poison-based recovery patterns (4+7 call sites).
+  - Extended `parking_lot` migration to `BuzzScheduler.last_template` (RwLock) and `PolarQuantEncoder::PROJECTION_CACHE` (static Mutex), removing 3 additional `into_inner()` poison-recovery sites.
+  - Fixed `McpEndpoint::last_activity()` to replace `into_inner()` with safe `map(|g| *g)` fallback and added `tracing::warn!` for poison detection observability.
+  - Added structured memory safety documentation and tracing to `host_exec`/`host_write` FFI boundary functions for observable failure diagnostics.
+  - Restructured `SkillForge::fix_code_with_llm` with `CompileErrorCategory` enum and category-specific Few-Shot prompts, improving AI self-heal accuracy for WASM plugin compilation errors.
+
 - **Landing Page (Phase A & B: Synergy & Visual Upgrade)**:
   - Added "Aiome Ecosystem" and "Use Cases" sections to clearly communicate the synergy with Project Nurture's economic/plugin model.
   - Revamped Hero section with an animated gradient mesh background and neon text gradient.

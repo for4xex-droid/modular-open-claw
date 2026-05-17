@@ -1,5 +1,31 @@
 # 🌊 Aiome Ripple Map
 
+## WASM Infrastructure Hardening — Bun Rust Rewrite Pattern Integration (2026-05-17)
+### 1. parking_lot 移行 (Poison-Free Lock)
+- **変更内容**:
+    - `libs/infrastructure/Cargo.toml` [MODIFY]: `parking_lot = "0.12"` 依存追加。
+    - `libs/infrastructure/src/skills/mod.rs` [MODIFY]: `WasmSkillManager.wasm_cache` を `std::sync::RwLock` → `parking_lot::RwLock` に移行。4箇所の `.unwrap_or_else(|e| e.into_inner())` ポイズンリカバリを削除。
+    - `libs/infrastructure/src/skills/harness.rs` [MODIFY]: `HarnessCache` の `cache` / `plugins` フィールドおよび `WasmHarness.plugin` を `parking_lot::{RwLock, Mutex}` に移行。7箇所の `.ok()?` / `.unwrap_or_else()` パターンを直接取得に置換。
+    - `libs/infrastructure/src/buzz/scheduler.rs` [MODIFY]: `BuzzScheduler.last_template` を `parking_lot::RwLock` に移行し、ポイズン回復処理を削除。
+    - `libs/infrastructure/src/polar_quant.rs` [MODIFY]: static な `PROJECTION_CACHE` を `parking_lot::Mutex` に移行し、ポイズン回復を排除。
+    - `apps/api-server/src/mcp/client.rs` [MODIFY]: `last_activity()` の `into_inner()` 依存を `.map(|g| *g).unwrap_or_else(...)` に修正。
+- **波及効果**:
+    - WASM プラグインキャッシュ層でのスレッドパニック後の RwLock ポイズンによるカスケード障害リスクが **構造的に排除** された。
+    - `infrastructure` モジュールおよび `api-server` から、スレッドポイズン時の `into_inner()` による静かな状態破損の引き継ぎ（Silent Corruption）リスクが排除された。
+    - `parking_lot` は OS レベルの futex を使用するため、ロック競合時のパフォーマンスも向上。
+
+### 2. Host Function FFI 境界のメモリ安全性強化
+- **変更内容**:
+    - `libs/infrastructure/src/skills/mod.rs` [MODIFY]: `host_exec` / `host_write` ホスト関数に4段階のメモリ安全性コントラクト（ポインタ抽出 → メモリハンドル検証 → UTF-8 検証 → 応答割り当て）をドキュメント化。各ステップの失敗に `tracing::warn!` を追加し、FFI 境界の静かな失敗を防止。
+- **波及効果**:
+    - WASM ゲストからの不正メモリオフセット送信時に、ログで即座に検知可能になった。将来の WASI P2 移行時の参照点として機能。
+
+### 3. SkillForge Self-Heal プロンプト構造化
+- **変更内容**:
+    - `libs/infrastructure/src/skills/forge.rs` [MODIFY]: `CompileErrorCategory` enum (TypeMismatch / Lifetime / MissingTrait / ImportResolution / Other) を追加。`categorize_compile_error()` 分類器と、カテゴリ別 Few-Shot パターン付きプロンプトを実装。
+- **波及効果**:
+    - LLM によるコンパイルエラー自己修復の精度向上。特に型不一致・ライフタイム・import 解決の3カテゴリで、ターゲットを絞った修正指示が可能になった。
+
 ## Aiome X Buzz Protocol Integration (Phase Final)
 ### 1. API Route Implementations & Dependency Injection
 - **変更内容**:
