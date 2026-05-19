@@ -36,6 +36,7 @@ pub mod proof_verifier;
 pub mod quality_gate;
 pub mod security;
 pub mod settings;
+pub mod setup;
 pub mod skill;
 pub mod soul;
 pub mod syndicate;

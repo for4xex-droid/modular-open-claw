@@ -16,7 +16,7 @@
 
 body {
   background-color: var(--color-brand-bg);
-  color: #f0f2f5; /* neutral-100: body text on dark bg */
+  color: var(--color-text, #f0f2f5); /* neutral-100: body text on dark bg */
   font-family: var(--font-body);
 }
 

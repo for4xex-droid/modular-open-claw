@@ -35,9 +35,8 @@ export function Navbar() {
       </a>
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <a href="/" className="font-display font-bold text-xl tracking-tight text-white flex items-center gap-2">
-            <img src="/favicon.svg" alt="" aria-hidden="true" className="w-7 h-7" />
-            Aiome
+          <a href="/" className="flex items-center">
+            <img src="/aiome-horizontal-white.png" alt="Aiome" className="h-8 w-auto" data-testid="navbar-logo" />
           </a>
           
           {/* Desktop nav */}

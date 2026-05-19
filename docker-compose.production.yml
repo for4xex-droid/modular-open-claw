@@ -59,9 +59,12 @@ services:
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - GEO_OPTIMIZER_URL=http://geo-optimizer:8080
       - GEO_ENABLED=${GEO_ENABLED:-true}
+      - SHADOW_CLONE_GRPC_HOST=shadow-worker
+      - SHADOW_CLONE_GRPC_PORT=50051
     depends_on:
       - key-proxy
       - ruri-embed-server
+      - shadow-worker
     volumes:
       - ./data/api:/app/data
     deploy:
@@ -145,7 +148,7 @@ services:
     # NOTE: This image is not publicly available on GHCR.
     # Build locally: docker build -t ruri-embed-server ./tools/ruri-embed-server
     # Or use any sentence-transformer compatible embedding server on port 8100.
-    image: ruri-embed-server:latest
+    image: ruri-embed-server:v1.0.0-first-penguin
     restart: always
     security_opt:
       - no-new-privileges:true
@@ -193,3 +196,38 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+
+  shadow-worker:
+    build:
+      context: .
+      dockerfile: docker/production.Dockerfile
+      args:
+        BIN_NAME: shadow-worker
+    environment:
+      - CELL_ID=${CELL_ID:-cell-0}
+      - A2A_AUTH_TOKEN=${A2A_AUTH_TOKEN}
+      - SHADOW_CLONE_GRPC_PORT=50051
+      - OXILEAN_PROOF_TIMEOUT_SECS=${OXILEAN_PROOF_TIMEOUT_SECS:-10}
+      - OXILEAN_PROOF_SEMAPHORE_PERMITS=${OXILEAN_PROOF_SEMAPHORE_PERMITS:-1}
+      - KEY_PROXY_URL=http://key-proxy:9999
+      - VAULT_SECRET=${VAULT_SECRET}
+    expose:
+      - "50051"
+    depends_on:
+      - key-proxy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    user: "1001:1001"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=:50051"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: always

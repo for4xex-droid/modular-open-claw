@@ -123,12 +123,41 @@ pub async fn token_handler(
         // Password Grant (Quickstart / Admin login)
         let provided_secret = payload
             .client_secret
+            .clone()
             .ok_or_else(|| AppError::bad_request("Missing client_secret for password grant"))?;
 
-        use secrecy::ExposeSecret;
-        let expected = state.api_server_secret.expose_secret();
+        use aiome_core_contracts::SettingsOps;
+        let admin_hash = state
+            .job_queue
+            .get_inner()
+            .get_setting_value("admin_password_hash")
+            .await
+            .ok()
+            .flatten();
 
-        if !crate::auth::verify_constant_time(provided_secret.as_bytes(), expected.as_bytes()) {
+        let mut authenticated = false;
+
+        if let Some(hash) = admin_hash {
+            use argon2::{Argon2, PasswordHash, PasswordVerifier};
+            if let Ok(parsed_hash) = PasswordHash::new(&hash) {
+                let argon2 = Argon2::default();
+                if argon2
+                    .verify_password(provided_secret.as_bytes(), &parsed_hash)
+                    .is_ok()
+                {
+                    authenticated = true;
+                }
+            }
+        } else {
+            // Fallback to .env for M2M or pre-setup modes
+            use secrecy::ExposeSecret;
+            let expected = state.api_server_secret.expose_secret();
+            if crate::auth::verify_constant_time(provided_secret.as_bytes(), expected.as_bytes()) {
+                authenticated = true;
+            }
+        }
+
+        if !authenticated {
             return Err(AppError::forbidden("Invalid admin secret"));
         }
     } else if payload.grant_type == "authorization_code" {
@@ -175,8 +204,23 @@ pub async fn token_handler(
     let now = Utc::now().timestamp() as usize;
     let exp = now + 3600; // 1 hour expiration
 
+    let mut sub = payload.client_id.unwrap_or_else(|| "admin".to_string());
+    if payload.grant_type == "password" {
+        use aiome_core_contracts::SettingsOps;
+        if let Some(email) = state
+            .job_queue
+            .get_inner()
+            .get_setting_value("admin_email")
+            .await
+            .ok()
+            .flatten()
+        {
+            sub = email;
+        }
+    }
+
     let claims = AiomeCustomClaims {
-        sub: payload.client_id.unwrap_or_else(|| "admin".to_string()),
+        sub,
         ekyc_verified: false,
         // Deterministic UUID for the local admin to pass the nil guard
         agent_id: uuid::uuid!("00000000-0000-0000-0000-000000000001"),

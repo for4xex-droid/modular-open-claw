@@ -14,6 +14,14 @@ describe('Hero Component', () => {
     expect(subtitleText).toBeInTheDocument();
   });
 
+  it('renders the aiome OGP hero logo (white-ogp)', () => {
+    render(<Hero />);
+    const logoImg = screen.getByTestId('hero-logo');
+    expect(logoImg).toBeInTheDocument();
+    expect(logoImg).toHaveAttribute('src', '/aiome-hero-white.png');
+    expect(logoImg).toHaveAttribute('alt', 'Aiome logo');
+  });
+
   it('renders call-to-action links with correct destinations', () => {
     render(<Hero />);
     

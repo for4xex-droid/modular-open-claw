@@ -366,6 +366,7 @@ pub async fn init_core_services(
                 resolver.root(),
                 None,
                 None,
+                None,
             );
             if diagnosis.mode == shared::bootstrap_detector::BootMode::Setup {
                 tracing::warn!("⚠️ [api-server] Entering Setup Mode. Using temporary secret for initialization. MUST be configured via WebUI.");

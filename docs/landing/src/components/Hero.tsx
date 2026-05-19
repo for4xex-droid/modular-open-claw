@@ -5,7 +5,7 @@ export function Hero() {
   const { t } = useTranslation();
 
   return (
-    <section className="relative pt-44 pb-36 overflow-hidden flex flex-col items-center justify-center text-center bg-brand-bg" aria-labelledby="hero-title">
+    <section className="relative pt-32 pb-24 overflow-hidden flex flex-col items-center justify-center text-center bg-brand-bg" aria-labelledby="hero-title">
       {/* Background Dot Grid */}
       <div 
         className="absolute inset-0 z-0"
@@ -19,30 +19,43 @@ export function Hero() {
       {/* Background Glows */}
       <div 
         className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full blur-[100px] pointer-events-none z-0"
-        style={{ background: 'radial-gradient(circle, rgba(0,212,255,0.15) 0%, transparent 70%)' }}
+        style={{ background: 'radial-gradient(circle, rgba(0,242,255,0.15) 0%, transparent 70%)' }}
         aria-hidden="true"
       />
       <div 
         className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] rounded-full blur-[120px] pointer-events-none z-0"
-        style={{ background: 'radial-gradient(circle, rgba(255,0,128,0.1) 0%, transparent 70%)' }}
+        style={{ background: 'radial-gradient(circle, rgba(255,77,148,0.1) 0%, transparent 70%)' }}
         aria-hidden="true"
       />
 
       <div className="container mx-auto px-4 z-10 relative">
-        <motion.img
-          src="/favicon.svg"
-          alt="Aiome logo"
-          initial={{ scale: 0.8, opacity: 0 }}
+        {/* Hero Brand Logo — OGP Inverted (white-ogp), 1200×630 */}
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.6 }}
-          className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-8 drop-shadow-[0_0_30px_rgba(134,59,255,0.4)]"
-        />
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          className="relative mx-auto mb-12 max-w-2xl md:max-w-3xl"
+        >
+          {/* Glow behind logo */}
+          <div
+            className="absolute inset-0 blur-[60px] opacity-30 pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse at center, rgba(20,83,154,0.6) 0%, transparent 70%)' }}
+            aria-hidden="true"
+          />
+          <img
+            src="/aiome-hero-white.png"
+            alt="Aiome logo"
+            className="relative w-full h-auto drop-shadow-[0_0_40px_rgba(20,83,154,0.3)]"
+            data-testid="hero-logo"
+          />
+        </motion.div>
+
         <motion.h1
           id="hero-title"
           initial={{ filter: 'blur(8px)', opacity: 0 }}
           animate={{ filter: 'blur(0px)', opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 font-display"
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 font-display"
         >
           {t('hero.title')}
         </motion.h1>
@@ -50,8 +63,8 @@ export function Hero() {
         <motion.p 
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2, duration: 0.8 }}
-          className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed"
+          transition={{ delay: 0.5, duration: 0.8 }}
+          className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed"
         >
           {t('hero.subtitle')}
         </motion.p>
@@ -59,7 +72,7 @@ export function Hero() {
         <motion.div 
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.4, duration: 0.8 }}
+          transition={{ delay: 0.7, duration: 0.8 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
           <a href="#quickstart" className="px-8 py-4 bg-brand-cyan text-black font-bold rounded-lg hover:opacity-90 transition-opacity inline-block text-center">

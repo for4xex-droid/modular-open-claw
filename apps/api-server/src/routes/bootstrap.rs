@@ -11,6 +11,7 @@
 //! これらのエンドポイントは **認証不要** でアクセスできる（セットアップ完了前に使用するため）。
 
 use crate::AppState;
+use aiome_core_contracts::SettingsOps;
 use axum::{extract::State, response::Json};
 use serde::Serialize;
 use shared::bootstrap_detector::{BootMode, BootstrapDetector};
@@ -65,7 +66,21 @@ pub async fn bootstrap_status(State(state): State<AppState>) -> Json<BootstrapSt
         || config.anthropic_api_key.is_some()
         || !config.ollama_host.is_empty();
 
-    let diagnosis = BootstrapDetector::diagnose(root, Some(api_secret_set), Some(llm_configured));
+    let admin_account_exists = state
+        .job_queue
+        .get_inner()
+        .get_setting_value("admin_password_hash")
+        .await
+        .ok()
+        .flatten()
+        .is_some();
+
+    let diagnosis = BootstrapDetector::diagnose(
+        root,
+        Some(api_secret_set),
+        Some(llm_configured),
+        Some(admin_account_exists),
+    );
 
     let mut sidecar_status = Vec::new();
     let geo_url = state.config.geo_optimizer_url.clone();

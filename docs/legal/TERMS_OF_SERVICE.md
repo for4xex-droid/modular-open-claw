@@ -1,11 +1,11 @@
-# Aiome Beta Terms of Service
+# Aiome Terms of Service (First Penguin Edition)
 
-*Last Updated: 2026-04-14*
+*Last Updated: 2026-05-18*
 
 Aiome ("The Software") is provided by motivationstudio, LLC ("We", "Us") as a dual-licensed software product.
 
-## 1. Beta Disclaimer
-The Software is currently provided in an early "Beta" phase. It is offered "AS IS" and "AS AVAILABLE" without any warranties of any kind, either express or implied. We do not guarantee that the Software will be bug-free, secure, or uninterrupted. You use the Software at your own risk.
+## 1. Early Access Disclaimer
+The Software is currently provided in an early access phase (First Penguin Edition). It is offered "AS IS" and "AS AVAILABLE" without any warranties of any kind, either express or implied. We do not guarantee that the Software will be bug-free, secure, or uninterrupted. You use the Software at your own risk.
 
 ## 2. Licensing
 By using the Software, you agree to comply with the Business Source License 1.1 (BSL-1.1), which restricts certain production uses. Please refer to the `LICENSE` file for the exact terms.
@@ -17,4 +17,4 @@ The Software may collect limited telemetry and observability metrics (such as pe
 To the maximum extent permitted by law, motivationstudio, LLC shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly, or any loss of data, use, goodwill, or other intangible losses.
 
 ---
-> **Note**: This is a scaffolded document for the Beta launch. A comprehensive legal review and full Terms of Service will be published prior to the official v1.0 release.
+> **Note**: This is a scaffolded document for the First Penguin launch. A comprehensive legal review and full Terms of Service will be published prior to the official v1.0 General Availability release.

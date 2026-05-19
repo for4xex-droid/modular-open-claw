@@ -65,6 +65,7 @@ moka = { version = "0.12.15", features = ["future"] }
 async-stripe-webhook = { version = "1.0.0-rc.5", features = ["deserialize", "full", "serialize"] }
 async-stripe-core = { version = "1.0.0-rc.5", features = ["deserialize", "full", "serialize"] }
 async-stripe-checkout = { version = "1.0.0-rc.5", features = ["deserialize", "full", "serialize"] }
+argon2 = "0.5.3"
 
 
 [features]

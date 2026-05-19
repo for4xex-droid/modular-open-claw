@@ -129,6 +129,8 @@ pub const SECRETS: &[&str] = &[
     "stripe_webhook_secret",
     "polar_api_key",
     "polar_webhook_secret",
+    "admin_password_hash",
+    "admin_email",
 ];
 
 #[utoipa::path(

@@ -13,6 +13,12 @@ describe('Navbar Component', () => {
     expect(screen.getByText('Quickstart')).toBeInTheDocument();
   });
 
+  it('renders the aiome icon logo', () => {
+    render(<Navbar />);
+    const logoImg = screen.getByTestId('navbar-logo');
+    expect(logoImg).toHaveAttribute('src', '/aiome-horizontal-white.png');
+  });
+
   it('renders external links with target=_blank and noopener', () => {
     render(<Navbar />);
     const githubLink = screen.getByText('GitHub').closest('a');

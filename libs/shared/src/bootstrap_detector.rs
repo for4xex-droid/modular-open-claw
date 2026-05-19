@@ -49,6 +49,7 @@ impl BootstrapDetector {
         app_data_root: &Path,
         api_secret_override: Option<bool>,
         llm_override: Option<bool>,
+        admin_account_exists: Option<bool>,
     ) -> BootstrapDiagnosis {
         let mut missing = Vec::new();
 
@@ -91,8 +92,8 @@ impl BootstrapDetector {
         // SOUL.md は Bootstrap Mode で自動生成するので、missing に追加しない
 
         // モード判定: LLM未設定 かつ DB未存在 ならセットアップモード
-        // LLM が設定済みなら、SOUL.md やその他の不在はフルブートで処理可能
-        let mode = if !llm_configured && !db_exists {
+        // また、DBが存在していても管理者アカウントが未作成ならセットアップモードを維持
+        let mode = if (!llm_configured && !db_exists) || !admin_account_exists.unwrap_or(true) {
             BootMode::Setup
         } else {
             BootMode::Normal
@@ -237,7 +238,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
 
         // Act
-        let result = BootstrapDetector::diagnose(tmp.path(), None, None);
+        let result = BootstrapDetector::diagnose(tmp.path(), None, None, None);
 
         // Assert
         assert_eq!(result.mode, BootMode::Setup);
@@ -262,7 +263,7 @@ mod tests {
         std::fs::write(tmp.path().join("SOUL.md"), "# My Soul").unwrap();
 
         // Act
-        let result = BootstrapDetector::diagnose(tmp.path(), None, None);
+        let result = BootstrapDetector::diagnose(tmp.path(), None, None, None);
 
         // Assert
         assert_eq!(result.mode, BootMode::Normal);
@@ -289,7 +290,7 @@ mod tests {
         std::fs::write(tmp.path().join("aiome.db"), "dummy_db").unwrap();
 
         // Act
-        let result = BootstrapDetector::diagnose(tmp.path(), None, None);
+        let result = BootstrapDetector::diagnose(tmp.path(), None, None, None);
 
         // Assert: LLM が設定済みなので Normal
         assert_eq!(result.mode, BootMode::Normal);
@@ -307,10 +308,28 @@ mod tests {
         let tmp = TempDir::new().unwrap();
 
         // Act
-        let result = BootstrapDetector::diagnose(tmp.path(), None, None);
+        let result = BootstrapDetector::diagnose(tmp.path(), None, None, None);
 
         // Assert: LLM があれば Normal (DB は boot_sequence で自動作成)
         assert_eq!(result.mode, BootMode::Normal);
+
+        // Cleanup
+        std::env::remove_var("OLLAMA_HOST");
+    }
+
+    #[test]
+    #[serial]
+    fn test_admin_account_missing_returns_setup_mode() {
+        // Arrange: LLMもDBもあるが、アカウント未作成
+        std::env::set_var("OLLAMA_HOST", "http://127.0.0.1:11434");
+        let tmp = TempDir::new().unwrap();
+        std::fs::write(tmp.path().join("aiome.db"), "dummy_db").unwrap();
+
+        // Act: admin_account_exists = Some(false)
+        let result = BootstrapDetector::diagnose(tmp.path(), None, None, Some(false));
+
+        // Assert
+        assert_eq!(result.mode, BootMode::Setup);
 
         // Cleanup
         std::env::remove_var("OLLAMA_HOST");
@@ -328,7 +347,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
 
         // Act
-        let result = BootstrapDetector::diagnose(tmp.path(), None, None);
+        let result = BootstrapDetector::diagnose(tmp.path(), None, None, None);
 
         // Assert: LLM と API_SERVER_SECRET の 2 項目が不足
         assert_eq!(result.missing_items.len(), 2);
@@ -438,7 +457,7 @@ mod tests {
         let _report = FactoryReset::execute(tmp.path()).unwrap();
 
         // Assert: Reset 後は Setup モードに戻る
-        let diagnosis = BootstrapDetector::diagnose(tmp.path(), None, None);
+        let diagnosis = BootstrapDetector::diagnose(tmp.path(), None, None, None);
         assert_eq!(diagnosis.mode, BootMode::Setup);
         assert!(!diagnosis.db_exists);
         assert!(!diagnosis.soul_exists);

@@ -15,4 +15,5 @@ pub mod biome;
 pub mod commerce;
 pub mod jobs;
 pub mod mcp;
+pub mod setup;
 pub mod system;

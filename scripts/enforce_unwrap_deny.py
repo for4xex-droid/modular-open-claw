@@ -112,6 +112,9 @@ def check_file(filepath: str) -> list:
         
         # If we are in test block but haven't entered the module body yet (e.g. annotations)
         if in_test_block and test_entry_depth != -1 and brace_depth == test_entry_depth and "{" not in code_only:
+            if code_only.strip().endswith(";"):
+                in_test_block = False
+                test_entry_depth = -1
             pass # still waiting for the module block to start
 
         # テストブロック内はスキップ

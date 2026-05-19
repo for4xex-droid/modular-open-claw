@@ -3,7 +3,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/assets/logo.png" alt="Aiome Logo" width="300">
+  <img src="docs/assets/logo/Aiomeロゴ（横長120×500）.png" alt="Aiome Logo" width="400">
 </p>
 
 <h1 align="center">Aiome</h1>

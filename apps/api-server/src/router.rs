@@ -642,6 +642,17 @@ pub fn build_app(
             get(routes::bootstrap::bootstrap_status),
         )
         .route(
+            "/api/v1/setup/init",
+            axum::routing::post(routes::setup::setup_init).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(1, std::time::Duration::from_secs(5)),
+            ),
+        )
+        .route(
             "/api/v1/bootstrap/detect-ollama",
             get(routes::bootstrap::detect_ollama),
         )

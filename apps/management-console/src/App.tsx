@@ -35,8 +35,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen
 } from "lucide-react";
-const OnboardingModal = React.lazy(() => import("./components/OnboardingModal"));
-const SystemBirth = React.lazy(() => import("./components/SystemBirth"));
+const LoginScreen = React.lazy(() => import("./components/LoginScreen"));
+const SetupWizard = React.lazy(() => import("./components/SetupWizard"));
 const HomePage = React.lazy(() => import("./components/home/HomePage"));
 const BiotopeView = React.lazy(() => import("./components/BiotopeView"));
 const Timeline = React.lazy(() => import("./components/Timeline"));
@@ -60,7 +60,6 @@ const CortexView = React.lazy(() => import("./components/cortex/CortexView"));
 const NurtureDashboard = React.lazy(() => import("./components/commerce/NurtureDashboard"));
 const BuzzApproval = React.lazy(() => import("./components/BuzzApproval"));
 import DioramaView from "./components/diorama/DioramaView";
-const AuthOverlay = React.lazy(() => import("./components/AuthOverlay"));
 const TaskApprovalOverlay = React.lazy(() => import("./components/TaskApprovalOverlay"));
 import { SoTProgressBar } from "./components/SoTProgressBar";
 import { useWorkspacePersona } from "./hooks/useWorkspacePersona";
@@ -74,15 +73,20 @@ import { AgentStats, VitalityUIEvent, Karma, SoTEvent } from "./types";
 import { useSystemVitality } from "./hooks/useSystemVitality";
 import { useViewMode } from "./hooks/useViewMode";
 import { useTokenHealth } from "./hooks/useTokenHealth";
-import { APP_VERSION } from "./config";
+import { APP_VERSION, API_BASE } from "./config";
+
+/** Valid boot mode states returned from the API normalization layer */
+type BootMode = 'Normal' | 'Setup';
+
+/** Maps lowercase backend mode strings to typed frontend values */
+const BOOT_MODE_MAP: Readonly<Record<string, BootMode>> = Object.freeze({ normal: 'Normal', setup: 'Setup' });
 
 function App() {
   const { t } = useTranslation();
   const { lang, setLang } = useLanguage();
   const [activeTab, setActiveTab] = useState("home-v2");
   const [stats, setStats] = useState<AgentStats>({ level: 1, exp: 0, resonance: 0, creativity: 0, fatigue: 0 });
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showBirth, setShowBirth] = useState(false);
+  const [bootMode, setBootMode] = useState<BootMode | null>(null);
   const [recentEvents, setRecentEvents] = useState<VitalityUIEvent[]>([]);
   const [isAuth, setIsAuth] = useState(isAuthenticated());
   const [sessionSavedChars, setSessionSavedChars] = useState(0);
@@ -98,10 +102,15 @@ function App() {
   const workspacePersona = useWorkspacePersona();
 
   useEffect(() => {
-    const isFirstVisit = localStorage.getItem("aiome_onboarding_done") !== "true";
-    if (isFirstVisit) {
-      setShowOnboarding(true);
-    }
+    fetch(`${API_BASE}/api/v1/bootstrap/status`)
+      .then(res => res.json())
+      .then(data => {
+        setBootMode(BOOT_MODE_MAP[data.mode] ?? 'Normal');
+      })
+      .catch(err => {
+        console.error("Failed to fetch bootstrap mode", err);
+        setBootMode('Normal');
+      });
   }, []);
 
   // Global event processor & stats updater
@@ -267,15 +276,52 @@ function App() {
     return advanced.includes(tab);
   };
 
+  const isBootComplete = bootMode === 'Normal' && isAuth;
+
+  // Pre-compute ambient particles (must be unconditional — Rules of Hooks)
+  const ambientParticles = useMemo(() => [...Array(6)].map((_, i) => (
+    <motion.div
+      key={i}
+      animate={{
+        x: [Math.random() * 100 + '%', Math.random() * 100 + '%'],
+        y: [Math.random() * 100 + '%', Math.random() * 100 + '%'],
+        opacity: [0.1, 0.3, 0.1],
+      }}
+      transition={{
+        duration: 20 + Math.random() * 20,
+        repeat: Infinity,
+        ease: "linear"
+      }}
+      style={{
+        position: 'absolute',
+        width: 300 + Math.random() * 200,
+        height: 300 + Math.random() * 200,
+        background: i % 2 === 0 ? 'radial-gradient(circle, var(--accent-cyan-05) 0%, transparent 70%)' : 'radial-gradient(circle, var(--accent-purple-glass) 0%, transparent 70%)',
+        borderRadius: '50%',
+        filter: 'blur(50px)'
+      }}
+    />
+  )), []);
+
   return (
     <div className="app-container">
       <AnimatePresence>
-        {!isAuth && (
-          <React.Suspense fallback={null}>
-            <AuthOverlay onAuthenticated={() => setIsAuth(true)} />
+        {bootMode === null ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-base)' }}>
+            <AiomeSkeleton height="40px" width="200px" />
+          </div>
+        ) : bootMode === 'Setup' ? (
+          <React.Suspense fallback={<div />}>
+            <SetupWizard onComplete={() => setBootMode('Normal')} />
           </React.Suspense>
-        )}
+        ) : !isAuth ? (
+          <React.Suspense fallback={<div />}>
+            <LoginScreen onAuthenticated={() => setIsAuth(true)} />
+          </React.Suspense>
+        ) : null}
       </AnimatePresence>
+
+      {isBootComplete && (<>
 
       <AnimatePresence>
         {isExpired && isAuth && (
@@ -318,29 +364,7 @@ function App() {
 
       {/* Ambient Background Particles */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-        {useMemo(() => [...Array(6)].map((_, i) => (
-          <motion.div
-            key={i}
-            animate={{
-              x: [Math.random() * 100 + '%', Math.random() * 100 + '%'],
-              y: [Math.random() * 100 + '%', Math.random() * 100 + '%'],
-              opacity: [0.1, 0.3, 0.1],
-            }}
-            transition={{
-              duration: 20 + Math.random() * 20,
-              repeat: Infinity,
-              ease: "linear"
-            }}
-            style={{
-              position: 'absolute',
-              width: 300 + Math.random() * 200,
-              height: 300 + Math.random() * 200,
-              background: i % 2 === 0 ? 'radial-gradient(circle, var(--accent-cyan-05) 0%, transparent 70%)' : 'radial-gradient(circle, var(--accent-purple-glass) 0%, transparent 70%)',
-              borderRadius: '50%',
-              filter: 'blur(50px)'
-            }}
-          />
-        )), [])}
+        {ambientParticles}
       </div>
 
       {/* Sidebar — advanced mode only */}
@@ -688,27 +712,12 @@ function App() {
         </AnimatePresence>
       </main>
 
-      <React.Suspense fallback={null}>
-        <OnboardingModal
-          isOpen={showOnboarding}
-          onClose={() => {
-            setShowOnboarding(false);
-            localStorage.setItem("aiome_onboarding_done", "true");
-            setShowBirth(true);
-          }}
-        />
 
-        {showBirth && (
-          <SystemBirth onComplete={() => {
-            setShowBirth(false);
-            localStorage.setItem("aiome_birth_shown", "true");
-          }} />
-        )}
-      </React.Suspense>
 
       <React.Suspense fallback={null}>
         <TaskApprovalOverlay />
       </React.Suspense>
+      </>)}
     </div>
   );
 }

@@ -61,6 +61,16 @@ jest.mock('./components/TaskApprovalOverlay', () => ({
   default: () => <div data-testid="task-approval-mock">mock</div>
 }));
 
+jest.mock('./components/SetupWizard', () => ({
+  __esModule: true,
+  default: () => <div data-testid="setup-wizard-mock">SetupWizard Mock</div>
+}));
+
+jest.mock('./components/LoginScreen', () => ({
+  __esModule: true,
+  default: () => <div data-testid="login-screen-mock">LoginScreen Mock</div>
+}));
+
 jest.mock('./components/BiotopeView', () => ({
   __esModule: true,
   default: () => <div data-testid="biotope-view-mock">mock</div>
@@ -96,15 +106,18 @@ describe('App - Global Token Health', () => {
         jest.clearAllMocks();
         window.fetch = jest.fn(() => Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ verified: false })
+            json: () => Promise.resolve({ mode: 'normal' })
         })) as jest.Mock;
     });
 
     afterEach(() => {
         window.fetch = originalFetch;
+        // Always restore isAuthenticated to default (true) for test isolation
+        const authModule = jest.requireMock('./lib/auth') as { isAuthenticated: jest.Mock };
+        authModule.isAuthenticated = jest.fn(() => true);
     });
 
-    it('RED: should display global token expiration alert when isExpired is true', async () => {
+    it('should display global token expiration alert when isExpired is true', async () => {
         // Arrange
         mockUseTokenHealth.mockReturnValue({
             isExpired: true,
@@ -126,7 +139,7 @@ describe('App - Global Token Health', () => {
         });
     });
 
-    it('GREEN: should not display global token expiration alert when isExpired is false', async () => {
+    it('should not display global token expiration alert when isExpired is false', async () => {
         // Arrange
         mockUseTokenHealth.mockReturnValue({
             isExpired: false,
@@ -145,5 +158,111 @@ describe('App - Global Token Health', () => {
         await act(async () => {
             await new Promise(resolve => setTimeout(resolve, 0));
         });
+    });
+
+    it('should render SetupWizard when backend returns mode: setup', async () => {
+        // Arrange
+        window.fetch = jest.fn(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ mode: 'setup' })
+        })) as jest.Mock;
+
+        mockUseTokenHealth.mockReturnValue({
+            isExpired: false,
+            lastChecked: null,
+            checkHealth: jest.fn(),
+            dismiss: jest.fn()
+        });
+
+        // Act
+        render(<App />);
+
+        // Wait to finish render
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 10));
+        });
+
+        // Assert
+        expect(screen.getByTestId('setup-wizard-mock')).toBeInTheDocument();
+    });
+
+    it('should render normal mode when backend returns mode: normal', async () => {
+        // Arrange
+        window.fetch = jest.fn(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ mode: 'normal' })
+        })) as jest.Mock;
+
+        mockUseTokenHealth.mockReturnValue({
+            isExpired: false,
+            lastChecked: null,
+            checkHealth: jest.fn(),
+            dismiss: jest.fn()
+        });
+
+        // Act
+        render(<App />);
+
+        // Wait to finish render
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 10));
+        });
+
+        // Assert
+        expect(screen.queryByTestId('setup-wizard-mock')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('login-screen-mock')).not.toBeInTheDocument();
+    });
+
+    it('should render LoginScreen when mode is normal and user is unauthenticated', async () => {
+        // Arrange: override isAuthenticated to return false
+        const authModule = jest.requireMock('./lib/auth') as { isAuthenticated: jest.Mock };
+        authModule.isAuthenticated = jest.fn(() => false);
+
+        window.fetch = jest.fn(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ mode: 'normal' })
+        })) as jest.Mock;
+
+        mockUseTokenHealth.mockReturnValue({
+            isExpired: false,
+            lastChecked: null,
+            checkHealth: jest.fn(),
+            dismiss: jest.fn()
+        });
+
+        // Act
+        render(<App />);
+
+        // Wait to finish render
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 10));
+        });
+
+        // Assert
+        expect(screen.getByTestId('login-screen-mock')).toBeInTheDocument();
+        expect(screen.queryByTestId('setup-wizard-mock')).not.toBeInTheDocument();
+    });
+
+    it('should fall back to Normal mode when bootstrap fetch fails', async () => {
+        // Arrange: simulate a network error
+        window.fetch = jest.fn(() => Promise.reject(new Error('Network error'))) as jest.Mock;
+
+        mockUseTokenHealth.mockReturnValue({
+            isExpired: false,
+            lastChecked: null,
+            checkHealth: jest.fn(),
+            dismiss: jest.fn()
+        });
+
+        // Act
+        render(<App />);
+
+        // Wait for error handler to run
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 10));
+        });
+
+        // Assert: should not be stuck on loading, and should not show SetupWizard
+        expect(screen.queryByTestId('setup-wizard-mock')).not.toBeInTheDocument();
     });
 });

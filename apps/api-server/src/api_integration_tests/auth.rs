@@ -368,3 +368,46 @@ async fn test_aegis_sentinel_integration() {
         _ => panic!("Expected AegisSentinel event, got another event"),
     }
 }
+
+#[serial]
+#[tokio::test]
+async fn test_auth_password_grant_with_argon2id() {
+    let (server, state, _tmp) = create_test_server().await;
+
+    // 1. Manually insert the argon2id hash into DB (like setup/init would)
+    use argon2::{
+        password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
+        Argon2,
+    };
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    let password_hash = argon2
+        .hash_password(b"db_secure_password", &salt)
+        .unwrap()
+        .to_string();
+
+    use aiome_core_contracts::SettingsOps;
+    state
+        .job_queue
+        .get_inner()
+        .update_setting("admin_password_hash", &password_hash, "auth", true)
+        .await
+        .unwrap();
+
+    // 2. Test login with correct DB password
+    let payload_ok = json!({
+        "grant_type": "password",
+        "client_secret": "db_secure_password"
+    });
+
+    let resp = server.post("/api/v1/auth/token").json(&payload_ok).await;
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+
+    // 3. Test login with wrong password
+    let payload_err = json!({
+        "grant_type": "password",
+        "client_secret": "wrong_password"
+    });
+    let resp = server.post("/api/v1/auth/token").json(&payload_err).await;
+    assert_eq!(resp.status_code(), axum::http::StatusCode::FORBIDDEN);
+}
