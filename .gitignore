@@ -112,3 +112,7 @@ tools/mlit-mcp/
 .abyss_vault
 
 -c/
+
+# Promo video artifacts
+promo_trailer_draft.mp4
+scripts/capture_*.js

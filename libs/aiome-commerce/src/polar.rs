@@ -134,9 +134,9 @@ impl CommerceEngine for PolarCommerceEngine {
         _escrow_id: &str,
         _recipient_id: Uuid,
     ) -> Result<(), AiomeError> {
-        // Polar doesn't have a direct release API for checkouts yet.
-        // We handle this via internal metadata updates and eventual payout.
-        Ok(())
+        Err(AiomeError::Infrastructure {
+            reason: "escrow_release not implemented for Polar API".into(),
+        })
     }
 
     async fn escrow_refund(&self, _escrow_id: &str) -> Result<(), AiomeError> {
@@ -219,7 +219,9 @@ impl CommerceEngine for PolarCommerceEngine {
         _success_url: &str,
         _cancel_url: &str,
     ) -> Result<String, AiomeError> {
-        Ok("cs_test_polar".into())
+        Err(AiomeError::Infrastructure {
+            reason: "create_checkout_session not implemented for Polar API".into(),
+        })
     }
 
     async fn create_subscription(
@@ -292,8 +294,9 @@ impl CommerceEngine for PolarCommerceEngine {
         _to_id: Uuid,
         _amount: u64,
     ) -> Result<String, AiomeError> {
-        // Polar internal transfer logic
-        Ok("tx_polar_transfer_success".to_string())
+        Err(AiomeError::Infrastructure {
+            reason: "transfer not implemented for Polar API".into(),
+        })
     }
 
     async fn deduct_generation_cost(
@@ -313,11 +316,15 @@ impl CommerceEngine for PolarCommerceEngine {
         _transaction_id: &str,
         _agent_id: Uuid,
     ) -> Result<(), AiomeError> {
-        Ok(())
+        Err(AiomeError::Infrastructure {
+            reason: "instant_refund not implemented for Polar API".into(),
+        })
     }
 
     async fn withdraw_points(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
-        Ok(())
+        Err(AiomeError::Infrastructure {
+            reason: "withdraw_points not implemented for Polar API".into(),
+        })
     }
 
     async fn get_points(

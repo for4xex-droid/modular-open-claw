@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-05-15
+> **最終更新**: 2026-05-22
 > **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
 
 ---
@@ -796,6 +796,7 @@ graph TB
         A5["container_runtime — ランタイム検出 SSOT"]
         A6["ProofVerifier — OxiLean形式検証/Sandbox"]
         A7["P2pSanitizer — Federation浄化"]
+        A8["BanGuard — アカウント BAN ガード (Fail-Closed)"]
     end
 
     subgraph "Trust Zone B (NURTURE)"
@@ -879,6 +880,7 @@ gantt
 | **外部 OSS 参考** | Open-LLM-VTuber (MIT), AIRI (MIT): 設計参考のみ、コードコピーなし | — |
 | **CSAM 対策** | OSS 側: `ImageHasher`, `ProportionsChecker` | NURTURE 側: `CsamPipeline` (3層: eKYC + PHash + BoneCheck) |
 | **決済法** | 非該当 | BSL 下で資金決済法の監視対象（未使用残高 1,000万円超時） |
+| **BANガード / 消費者保護** | `BanGuard`によるFail-Closed制御。BANアカウントからのアクセスを遮断しつつ、解約API等は例外処理（`BanExemptAuthenticated`）で保護 | 連動して商用エクスローやアセット取引等の経済活動を確実に凍結 |
 
 ---
 

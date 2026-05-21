@@ -39,6 +39,7 @@ pub async fn enqueue_coin_charge_to_nurture(
                     match http_client
                         .post(&req_url)
                         .header("Authorization", format!("Bearer {}", secret))
+                        .timeout(std::time::Duration::from_secs(30))
                         .json(&payload)
                         .send()
                         .await

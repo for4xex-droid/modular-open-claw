@@ -105,7 +105,7 @@ impl CommerceEngine for MockCommerceEngine {
                     id: escrow_id.clone(),
                     payer_id: sender_id.to_string(),
                     order_id: "mock_order".to_string(),
-                    amount: *amount as i64,
+                    amount: i64::try_from(*amount).unwrap_or(i64::MAX),
                     status: "Locked".to_string(),
                     created_at: chrono::Utc::now().to_rfc3339(),
                 });

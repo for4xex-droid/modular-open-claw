@@ -308,7 +308,8 @@ pub async fn get_logs(
     let limit = params
         .get("limit")
         .and_then(|s| s.parse::<i64>().ok())
-        .unwrap_or(100);
+        .unwrap_or(100)
+        .clamp(1, 1000);
 
     let pool = state.db_pool.get_inner().get_sqlite_pool_or_err()?;
     let rows = sqlx::query_as::<_, LogEntryResponse>(

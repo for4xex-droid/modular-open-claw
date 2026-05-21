@@ -133,13 +133,27 @@ pub async fn list_market(
 pub async fn publish_listing(
     State(state): State<AppState>,
     auth: crate::auth::Authenticated,
-    Json(req): Json<PublishListingRequest>,
+    Json(mut req): Json<PublishListingRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let marketplace = state.lora_marketplace.as_opt().ok_or_else(|| {
         aiome_core::error::AiomeError::Infrastructure {
             reason: "LoRA Marketplace not enabled".into(),
         }
     })?;
+
+    // 🛡️ [GlassWorm Shield] Sanitize text fields
+    req.title = shared::guardrails::strip_invisible_unicode(&req.title).into_owned();
+    req.description = shared::guardrails::strip_invisible_unicode(&req.description).into_owned();
+    req.model_family = shared::guardrails::strip_invisible_unicode(&req.model_family).into_owned();
+    req.base_model = shared::guardrails::strip_invisible_unicode(&req.base_model).into_owned();
+    req.adapter_path = shared::guardrails::strip_invisible_unicode(&req.adapter_path).into_owned();
+
+    // Input validation: price must be greater than zero
+    if req.price_coins == 0 {
+        return Err(AppError::bad_request(
+            "price_coins must be greater than zero. Use a dedicated free-distribution flow for free adapters.",
+        ));
+    }
 
     let listing = LoraListing {
         id: Uuid::new_v4(),
@@ -302,7 +316,4 @@ pub async fn my_listings(
 
     let listings = marketplace.list_listings(filter).await?;
     Ok(Json(listings))
-}
-pub fn dummy() {
-    let _ = 1_u32.clamp(0, 10);
 }

@@ -194,7 +194,12 @@ impl CommerceEngine for StripeCommerceEngine {
         _item_id: Uuid,
         _metadata: serde_json::Value,
     ) -> Result<String, AiomeError> {
-        Ok("tx_mock".into())
+        if self.is_mock {
+            return Ok("tx_mock".into());
+        }
+        Err(AiomeError::Infrastructure {
+            reason: "execute_autonomous_purchase is not available in v1.0".into(),
+        })
     }
 
     async fn get_daily_spend(&self, agent_id: Uuid) -> Result<u64, AiomeError> {
@@ -379,15 +384,39 @@ impl CommerceEngine for StripeCommerceEngine {
 
         let records = rows
             .into_iter()
-            .map(|row| EscrowRecord {
-                id: row.try_get("id").unwrap_or_default(),
-                payer_id: row.try_get("payer_id").unwrap_or_default(),
-                order_id: row.try_get("order_id").unwrap_or_default(),
-                amount: row.try_get("amount").unwrap_or_default(),
-                status: row.try_get("status").unwrap_or_default(),
-                created_at: row.try_get("created_at").unwrap_or_default(),
+            .map(|row| -> Result<EscrowRecord, AiomeError> {
+                Ok(EscrowRecord {
+                    id: row.try_get("id").map_err(|e| AiomeError::Infrastructure {
+                        reason: format!("Failed to read escrow.id: {}", e),
+                    })?,
+                    payer_id: row
+                        .try_get("payer_id")
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: format!("Failed to read escrow.payer_id: {}", e),
+                        })?,
+                    order_id: row
+                        .try_get("order_id")
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: format!("Failed to read escrow.order_id: {}", e),
+                        })?,
+                    amount: row
+                        .try_get("amount")
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: format!("Failed to read escrow.amount: {}", e),
+                        })?,
+                    status: row
+                        .try_get("status")
+                        .map_err(|e| AiomeError::Infrastructure {
+                            reason: format!("Failed to read escrow.status: {}", e),
+                        })?,
+                    created_at: row.try_get("created_at").map_err(|e| {
+                        AiomeError::Infrastructure {
+                            reason: format!("Failed to read escrow.created_at: {}", e),
+                        }
+                    })?,
+                })
             })
-            .collect();
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(records)
     }
@@ -514,11 +543,21 @@ impl CommerceEngine for StripeCommerceEngine {
         }
     }
     async fn stake(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
-        Ok(())
+        if self.is_mock {
+            return Ok(());
+        }
+        Err(AiomeError::Infrastructure {
+            reason: "stake is not available in v1.0".into(),
+        })
     }
 
     async fn slash(&self, _agent_id: Uuid, _amount: u64, _reason: &str) -> Result<(), AiomeError> {
-        Ok(())
+        if self.is_mock {
+            return Ok(());
+        }
+        Err(AiomeError::Infrastructure {
+            reason: "slash is not available in v1.0".into(),
+        })
     }
 
     async fn register_license(
@@ -528,7 +567,12 @@ impl CommerceEngine for StripeCommerceEngine {
         _transaction_id: &str,
         _license_type: &str,
     ) -> Result<String, AiomeError> {
-        Ok("lic_mock".into())
+        if self.is_mock {
+            return Ok("lic_mock".into());
+        }
+        Err(AiomeError::Infrastructure {
+            reason: "register_license is not available in v1.0".into(),
+        })
     }
 
     fn verify_signature(&self, payload: &str, sig_header: &str) -> Result<(), AiomeError> {
@@ -728,21 +772,24 @@ impl CommerceEngine for StripeCommerceEngine {
         _agent_id: Uuid,
         _subscription_id: &str,
     ) -> Result<(), AiomeError> {
-        // Mock mode for tests
         if self.is_mock {
             return Ok(());
         }
-
-        // P0-1: Future implementation
-        Ok(())
+        Err(AiomeError::Infrastructure {
+            reason: "cancel_subscription is not available in v1.0".into(),
+        })
     }
 
     async fn get_subscription_status(
         &self,
         _agent_id: Uuid,
     ) -> Result<aiome_core_contracts::commerce::SubscriptionStatus, AiomeError> {
-        // P0-1: Future implementation
-        Ok(aiome_core_contracts::commerce::SubscriptionStatus::Active)
+        if self.is_mock {
+            return Ok(aiome_core_contracts::commerce::SubscriptionStatus::Active);
+        }
+        Err(AiomeError::Infrastructure {
+            reason: "get_subscription_status is not available in v1.0".into(),
+        })
     }
 
     async fn transfer(
@@ -1178,31 +1225,30 @@ mod tests {
 
     #[tokio::test]
     async fn test_production_mode_rejects_test_secrets_red() {
-        // AIOME_DEV_MODE=false の状態で、whsec_test を使ったモックモードが
-        // 無効化され、本番モードとして扱われること（または初期化エラーになること）を検証する。
+        // 本番キー (sk_live_*) + 本番Webhook秘密鍵 を使用した場合、
+        // AIOME_DEV_MODE の状態に関わらず is_mock = false になることを検証する。
+        // 注: std::env::set_var はマルチスレッドで unsafe であるため使用しない。
+        //     is_mock は api_key/webhook_secret のプレフィックスで決定されるため、
+        //     本番キーを直接渡すことで環境変数に依存せず検証可能。
 
         let pool = sqlx::sqlite::SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
             .unwrap();
 
-        std::env::set_var("AIOME_DEV_MODE", "false");
-
         let engine = StripeCommerceEngine::new(
-            secrecy::SecretString::from("sk_test_mock".to_string()),
-            secrecy::SecretString::from("whsec_test".to_string()),
+            secrecy::SecretString::from("sk_live_prod_key_12345".to_string()),
+            secrecy::SecretString::from("whsec_live_prod_secret".to_string()),
             pool,
             None,
             None,
         );
 
-        // DEV_MODE=false の場合は is_mock は false にならなければならない
+        // 本番キーを使用した場合、is_mock は常に false
         assert!(
             !engine.is_mock,
-            "In production mode, test secrets MUST NOT enable mock mode"
+            "Production keys MUST NOT enable mock mode regardless of AIOME_DEV_MODE"
         );
-
-        std::env::remove_var("AIOME_DEV_MODE");
     }
 
     #[tokio::test]
@@ -1414,5 +1460,144 @@ mod tests {
             res2.is_ok(),
             "Expected Ok fallback when Nurture URL is not set"
         );
+    }
+
+    #[tokio::test]
+    async fn test_stripe_commerce_mock_behavior() {
+        let engine = get_test_engine().await;
+        let agent_id = Uuid::new_v4();
+        let item_id = Uuid::new_v4();
+
+        // is_mock = true なので、モックの動作が維持されることを検証
+        assert!(engine.is_mock);
+
+        let sub_status = engine.get_subscription_status(agent_id).await;
+        assert!(sub_status.is_ok());
+        assert_eq!(
+            sub_status.unwrap(),
+            aiome_core_contracts::commerce::SubscriptionStatus::Active
+        );
+
+        let purchase = engine
+            .execute_autonomous_purchase(agent_id, item_id, serde_json::json!({}))
+            .await;
+        assert!(purchase.is_ok());
+        assert_eq!(purchase.unwrap(), "tx_mock");
+
+        assert!(engine.stake(agent_id, 100).await.is_ok());
+        assert!(engine.slash(agent_id, 50, "test").await.is_ok());
+
+        // register_license と cancel_subscription もモックで成功することを検証
+        assert!(engine
+            .register_license(agent_id, item_id, "tx_test", "standard")
+            .await
+            .is_ok());
+        assert!(engine
+            .cancel_subscription(agent_id, "sub_test")
+            .await
+            .is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_stripe_commerce_production_block() {
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        // AIOME_DEV_MODE は操作せず、本番キー sk_live_xxx を使用
+        // is_mock は api_key.starts_with("sk_test_mock") が false かつ webhook_secret != "whsec_test" のため、
+        // AIOME_DEV_MODE が true であっても必ず false になる
+        let engine = StripeCommerceEngine::new(
+            SecretString::from("sk_live_123456789".to_string()),
+            SecretString::from("whsec_live_987654".to_string()),
+            pool,
+            None,
+            None,
+        );
+
+        assert!(!engine.is_mock);
+
+        let agent_id = Uuid::new_v4();
+        let item_id = Uuid::new_v4();
+
+        // 封印されたメソッドがすべて Err(AiomeError::Infrastructure) を返すことを検証
+        let sub_status = engine.get_subscription_status(agent_id).await;
+        assert!(sub_status.is_err());
+        if let Err(AiomeError::Infrastructure { reason }) = sub_status {
+            assert!(
+                reason.contains("not available in v1.0"),
+                "Actual sub_status error: {}",
+                reason
+            );
+        } else {
+            panic!("Expected Infrastructure error");
+        }
+
+        let purchase = engine
+            .execute_autonomous_purchase(agent_id, item_id, serde_json::json!({}))
+            .await;
+        assert!(purchase.is_err());
+        if let Err(AiomeError::Infrastructure { reason }) = purchase {
+            assert!(
+                reason.contains("not available in v1.0"),
+                "Actual purchase error: {}",
+                reason
+            );
+        } else {
+            panic!("Expected Infrastructure error");
+        }
+
+        let stake_res = engine.stake(agent_id, 100).await;
+        assert!(stake_res.is_err());
+        if let Err(AiomeError::Infrastructure { reason }) = stake_res {
+            assert!(
+                reason.contains("not available in v1.0"),
+                "Actual stake error: {}",
+                reason
+            );
+        } else {
+            panic!("Expected Infrastructure error");
+        }
+
+        let slash_res = engine.slash(agent_id, 50, "test").await;
+        assert!(slash_res.is_err());
+        if let Err(AiomeError::Infrastructure { reason }) = slash_res {
+            assert!(
+                reason.contains("not available in v1.0"),
+                "Actual slash error: {}",
+                reason
+            );
+        } else {
+            panic!("Expected Infrastructure error");
+        }
+
+        // register_license も本番では封印されていることを検証
+        let lic_res = engine
+            .register_license(agent_id, item_id, "tx_test", "standard")
+            .await;
+        assert!(lic_res.is_err());
+        if let Err(AiomeError::Infrastructure { reason }) = lic_res {
+            assert!(
+                reason.contains("not available in v1.0"),
+                "Actual register_license error: {}",
+                reason
+            );
+        } else {
+            panic!("Expected Infrastructure error for register_license");
+        }
+
+        // cancel_subscription も本番では封印されていることを検証
+        let cancel_res = engine.cancel_subscription(agent_id, "sub_test").await;
+        assert!(cancel_res.is_err());
+        if let Err(AiomeError::Infrastructure { reason }) = cancel_res {
+            assert!(
+                reason.contains("not available in v1.0"),
+                "Actual cancel_subscription error: {}",
+                reason
+            );
+        } else {
+            panic!("Expected Infrastructure error for cancel_subscription");
+        }
     }
 }

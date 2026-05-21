@@ -176,6 +176,11 @@ pub async fn withdraw_points(
             "eKYC verification required to withdraw",
         ));
     }
+    if req.amount == 0 {
+        return Err(AppError::bad_request(
+            "Withdrawal amount must be greater than zero",
+        ));
+    }
     let engine = state.commerce_engine.as_opt().ok_or_else(|| {
         aiome_core::error::AiomeError::Infrastructure {
             reason: "Commerce Engine not enabled".into(),
@@ -207,6 +212,14 @@ pub async fn transfer(
     if !auth.ekyc_verified {
         return Err(AppError::forbidden(
             "eKYC verification required to transfer funds",
+        ));
+    }
+    if req.from_id == req.to_id {
+        return Err(AppError::bad_request("Cannot transfer funds to yourself"));
+    }
+    if req.amount == 0 {
+        return Err(AppError::bad_request(
+            "Transfer amount must be greater than zero",
         ));
     }
     let engine = state.commerce_engine.as_opt().ok_or_else(|| {
@@ -341,7 +354,7 @@ pub async fn create_subscription(
 /// [POST] /api/v1/commerce/subscription/cancel
 pub async fn cancel_subscription(
     State(state): State<AppState>,
-    auth: crate::auth::Authenticated,
+    auth: crate::auth::BanExemptAuthenticated,
     Json(req): Json<CancelSubscriptionRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     // SEC-2: RBAC ownership check — prevent IDOR attacks (Reflexion C-1 fix)

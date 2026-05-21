@@ -93,6 +93,18 @@ pub async fn ingest_text_handler(
     _auth: crate::auth::Authenticated,
     Json(req): Json<IngestTextReq>,
 ) -> Result<impl IntoResponse, crate::error::AppError> {
+    // Size limits: title 1KB, content 512KB
+    if req.title.len() > 1024 {
+        return Err(crate::error::AppError::bad_request(
+            "Title too long (max 1KB)",
+        ));
+    }
+    if req.content.len() > 524_288 {
+        return Err(crate::error::AppError::bad_request(
+            "Content too long (max 512KB)",
+        ));
+    }
+
     let ingester = state.cortex_ingester.get_inner();
     let doc = ingester.ingest_text(&req.title, &req.content).await?;
 
@@ -286,6 +298,13 @@ pub async fn query_handler(
     _auth: crate::auth::Authenticated,
     Json(req): Json<QueryReq>,
 ) -> Result<impl IntoResponse, crate::error::AppError> {
+    // Size limit: question 8KB (prevent token exhaustion)
+    if req.question.len() > 8192 {
+        return Err(crate::error::AppError::bad_request(
+            "Question too long (max 8KB)",
+        ));
+    }
+
     let engine = state.cortex_query.get_inner();
 
     let file_back = req.file_back.unwrap_or(false);

@@ -49,6 +49,7 @@ use infrastructure::audit_logger::AsyncAuditLogger;
 use infrastructure::auth::AuthManager;
 use infrastructure::belief_consistency_gate::BeliefConsistencyGate;
 use infrastructure::circuit_breaker::CircuitBreaker;
+use infrastructure::compliance::ban_store::BanStore;
 use infrastructure::compliance::quarantine::QuarantineStore;
 use infrastructure::memory_crystallizer::MemoryCrystallizer;
 use infrastructure::slo_engine::SloEngine;
@@ -137,6 +138,7 @@ pub struct CoreServicesResult {
     pub ekyc_engine: Arc<dyn aiome_core_contracts::ekyc::EkycEngine>,
     pub ekyc_session_store: Arc<dyn aiome_core_contracts::ekyc::EkycSessionStore>,
     pub quarantine_store: Arc<dyn infrastructure::compliance::quarantine::QuarantineStore>,
+    pub ban_store: Arc<dyn infrastructure::compliance::ban_store::BanStore>,
     pub auth_manager: Arc<dyn infrastructure::auth::AuthManager>,
     pub soul_store: Arc<infrastructure::soul_store::UniversalSoulStore>,
     pub soul_pipeline: Arc<
@@ -678,6 +680,12 @@ pub async fn init_core_services(
         let store = infrastructure::compliance::quarantine::UniversalQuarantineStore::new(pool);
         Arc::new(store) as Arc<dyn infrastructure::compliance::quarantine::QuarantineStore>
     };
+    let ban_store = {
+        let pool = db_pool.clone();
+        let store = infrastructure::compliance::ban_store::UniversalBanStore::new(pool);
+        store.init().await?;
+        Arc::new(store) as Arc<dyn infrastructure::compliance::ban_store::BanStore>
+    };
     let auth_manager = {
         match std::env::var("JWT_PRIVATE_KEY_B64") {
             Ok(key_b64) => {
@@ -1064,6 +1072,7 @@ pub async fn init_core_services(
         ekyc_engine,
         ekyc_session_store,
         quarantine_store,
+        ban_store,
         auth_manager,
         soul_store,
         soul_pipeline,

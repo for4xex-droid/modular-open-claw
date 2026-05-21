@@ -645,6 +645,9 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         quarantine_store: Component::new(Arc::new(
             infrastructure::compliance::quarantine::MockQuarantineStore,
         )),
+        ban_store: Component::new(Arc::new(
+            infrastructure::compliance::ban_store::MockBanStore::new(),
+        )),
         auth_manager: Component::new(Arc::new(infrastructure::auth::MockAuthManager::new())),
         system_agent_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
         voice_drm: Component::new(voice_drm.clone()),

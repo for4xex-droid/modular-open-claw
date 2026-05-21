@@ -1,5 +1,51 @@
 # 🌊 Aiome Ripple Map
 
+## Commerce Layer Deep Hardening (2026-05-22)
+### 1. Stripe Commerce 本番封印 & Gift/Splitter 入力バリデーション
+- **変更内容**:
+    - `libs/aiome-commerce/src/stripe.rs` [MODIFY]: 本番モード（`is_mock = false`）において `cancel_subscription`, `get_subscription_status`, `execute_autonomous_purchase`, `stake`, `slash`, `register_license` の6メソッドを `Err(AiomeError::Infrastructure)` で封印。テスト内の `std::env::set_var` を本番キープレフィックスパターンに安全化。
+    - `libs/aiome-commerce/src/gift.rs` [MODIFY]: `validate_gift_policy` に NaN/Infinity/負数/ゼロ金額ガードを追加。
+    - `libs/aiome-commerce/src/splitter.rs` [MODIFY]: `split_revenue` に負数 `total_amount` のバリデーションを追加。
+    - `libs/aiome-commerce/src/polar.rs` [MODIFY]: 未実装メソッド5箇所のハードコード `Ok(...)` を `Err(Infrastructure)` に変更。
+    - `libs/aiome-commerce/src/mock.rs` [MODIFY]: `list_escrows` の unsafe キャスト `*amount as i64` を `i64::try_from().unwrap_or(i64::MAX)` に安全化。
+    - `libs/aiome-commerce/src/x402.rs` [MODIFY]: ハードコード秘密鍵を `#[cfg(any(test, debug_assertions))]` で隔離。
+    - `libs/aiome-commerce/src/checkout.rs` [MODIFY]: 金額パース失敗時のサイレント0フォールバックを警告ログ付きに変更。
+    - `apps/api-server/src/routes/commerce.rs` [MODIFY]: `transfer` に自己送金防止、`withdraw_points` にゼロ金額拒否を追加。
+- **波及効果**:
+    - v1.0 リリースにおいて未完成の商用メソッドが誤って成功レスポンスを返し、偽のトランザクション記録を生成するリスクを構造的に排除。
+    - NaN/Infinity/負数などの不正な金額入力が経済エンジンに到達する経路を完全に遮断。
+
+### 2. Cortex 入力サイズガード
+- **変更内容**:
+    - `apps/api-server/src/routes/cortex.rs` [MODIFY]: `ingest_text_handler` に title 1KB / content 512KB の上限バリデーションを追加。`query_handler` に question 8KB の上限を追加。
+- **波及効果**:
+    - 巨大ペイロードによるトークン枯渇攻撃（Token Exhaustion）やメモリ消費攻撃を API レイヤーで防止。
+
+## Compliance Automation & Account Ban Guard Integration (2026-05-20)
+### 1. UniversalBanStore & Database Schema Auto-Initialization
+- **変更内容**:
+    - `libs/infrastructure/src/compliance/ban_store.rs` [NEW]: `BanStore` トレイト、および SQLite/PostgreSQL 対応の `UniversalBanStore` を実装。起動時に BAN 管理用のテーブル `nurture_bans` (SQLite / Postgres) を自己修復かつ冪等に自動作成するロジックを統合。テスト用の `MockBanStore` も実装。
+- **波及効果**:
+    - アカウント BAN 管理が DB レベルで永続化され、起動と同時にテーブルスキーマが自動初期化されるため、手動マイグレーション漏れによる SQL エラーを防止する。
+
+### 2. AppState DI Integration & Boot Sequence
+- **変更内容**:
+    - `apps/api-server/src/app_state.rs` [MODIFY]: `AppState` に `ban_store: Arc<dyn BanStore>` を統合。
+    - `apps/api-server/src/bootstrap/mod.rs` [MODIFY]: 起動シーケンスの `init_database` 内で `UniversalBanStore` の自動スキーマ初期化を実行。
+    - `apps/api-server/src/bootstrap/state_assembly.rs` [MODIFY]: `AppState` 構築時に `BanStore` を DI 注入。
+- **波及効果**:
+    - システム全体で `AppState` を介して一貫した `BanStore` インスタンスへアクセス可能になり、コンポーネント間の疎結合性を維持しながら認証層で高速な検証が行えるようになった。
+
+### 3. BanGuard & BanExemptAuthenticated Extractor
+- **変更内容**:
+    - `apps/api-server/src/auth.rs` [MODIFY]: 認証エクストラクタ `Authenticated` において、JWT デコード後に `ban_store.is_banned()` を検証し、BANされている場合は `403 Forbidden` を返却するガードロジックを実装。DB 障害などの予期せぬエラー時は **Fail-Closed 原則** に基づき `503 Service Unavailable` を返却するよう設計。
+    - `apps/api-server/src/auth.rs` [NEW]: 消費者保護要件に適合するため、BANされたユーザーでも例外的にアクセスを許可する `BanExemptAuthenticated` エクストラクタを新設。
+    - `apps/api-server/src/routes/commerce.rs` [MODIFY]: サブスクリプション解約 API `cancel_subscription` の認証抽出処理を `Authenticated` から `BanExemptAuthenticated` に置換。
+- **波及効果**:
+    - アカウント BAN 中の不正アクセスや悪意ある操作が API の最前面で遮断される堅牢な防御壁が完成。
+    - 同時に、BAN 中であっても解約手続きを行える例外経路を確保したことで、消費者保護規制（GDPR / 加盟店規約）に完全適合。
+    - DB 接続障害時にリクエストが通過する脆弱性（Fail-Open）を完全に防ぐ Fail-Closed 設計を徹底。
+
 ## WASM Infrastructure Hardening — Bun Rust Rewrite Pattern Integration (2026-05-17)
 ### 1. parking_lot 移行 (Poison-Free Lock)
 - **変更内容**:

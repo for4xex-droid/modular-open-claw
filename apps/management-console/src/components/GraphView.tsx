@@ -144,7 +144,7 @@ const GraphView: React.FC = () => {
     const fit = () => networkRef.current?.fit();
 
     return (
-        <div className="main-panel ani-fade" style={{ height: '78vh', display: 'flex', flexDirection: 'column', padding: 0, position: 'relative' }}>
+        <div className="main-panel ani-fade" style={{ display: 'flex', flexDirection: 'column', padding: 0, position: 'relative', flex: 1, minHeight: 0 }}>
             <div className="panel-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-glass)', zIndex: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <GitMerge size={20} color="var(--accent-cyan)" />

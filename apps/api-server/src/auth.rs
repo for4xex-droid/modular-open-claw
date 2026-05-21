@@ -14,7 +14,7 @@ use axum::{
 };
 use secrecy::ExposeSecret;
 use subtle::ConstantTimeEq;
-use tracing::warn;
+use tracing::{error, warn};
 
 /// Marker type: Used as an extractor argument in handlers to enforce authentication.
 /// Requires `AppState` as the Router state type.
@@ -63,7 +63,95 @@ impl FromRequestParts<crate::AppState> for Authenticated {
                     );
                 }
 
+                // 🚫 BAN Guard (Phase 1.3A - Fail-Closed Enforcement)
+                match state.ban_store.is_banned(&claims.agent_id).await {
+                    Ok(true) => {
+                        warn!(
+                            "🚫 [Auth] Blocked banned agent request: {}",
+                            claims.agent_id
+                        );
+                        return Err((
+                            StatusCode::FORBIDDEN,
+                            "Agent account has been suspended for compliance violations",
+                        )
+                            .into_response());
+                    }
+                    Err(e) => {
+                        error!("🚨 [Auth] BanStore error (Fail-Closed triggered): {}", e);
+                        return Err((
+                            StatusCode::SERVICE_UNAVAILABLE,
+                            "Compliance check failed temporarily, please retry",
+                        )
+                            .into_response());
+                    }
+                    Ok(false) => {} // Proceed
+                }
+
                 Ok(Authenticated {
+                    agent_id: claims.agent_id,
+                    ekyc_verified: claims.ekyc_verified,
+                    roles: claims.roles,
+                })
+            }
+            Err(e) => {
+                warn!("⛔ [Auth] JWT validation failed: {}", e);
+                let mut resp = (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
+                use axum::http::HeaderValue;
+                resp.headers_mut()
+                    .insert("X-Token-Expired", HeaderValue::from_static("true"));
+                Err(resp)
+            }
+        }
+    }
+}
+
+/// BANチェックを免除される認証エクストラクタ。
+/// BANされたユーザーでも、解約などの一部の操作のみを許可するために使用する。
+pub struct BanExemptAuthenticated {
+    pub agent_id: uuid::Uuid,
+    pub ekyc_verified: bool,
+    pub roles: Vec<shared::auth::Role>,
+}
+
+#[async_trait]
+impl FromRequestParts<crate::AppState> for BanExemptAuthenticated {
+    type Rejection = Response;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &crate::AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let auth_header = parts
+            .headers
+            .get(AUTHORIZATION)
+            .and_then(|h| h.to_str().ok())
+            .unwrap_or_default();
+
+        if !auth_header.starts_with("Bearer ") {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                "Missing or malformed Bearer token",
+            )
+                .into_response());
+        }
+
+        let token = auth_header.trim_start_matches("Bearer ");
+
+        match state.auth_manager.validate_token(token).await {
+            Ok(claims) => {
+                if claims.agent_id == uuid::Uuid::nil() {
+                    // SEC: PII protection - don't log raw 'sub' (consistent with Authenticated)
+                    let sub_hash = &claims.sub.chars().take(8).collect::<String>();
+                    warn!(
+                        "🛡️ [Auth/BanExempt] Blocked request with nil agent_id for sub: {}...",
+                        sub_hash
+                    );
+                    return Err(
+                        (StatusCode::FORBIDDEN, "agent_id (UUID) is required").into_response()
+                    );
+                }
+
+                Ok(BanExemptAuthenticated {
                     agent_id: claims.agent_id,
                     ekyc_verified: claims.ekyc_verified,
                     roles: claims.roles,

@@ -13,6 +13,7 @@ pub mod agent;
 pub mod auth;
 pub mod biome;
 pub mod commerce;
+pub mod compliance;
 pub mod jobs;
 pub mod mcp;
 pub mod setup;

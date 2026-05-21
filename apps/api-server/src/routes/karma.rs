@@ -276,9 +276,19 @@ pub async fn get_immune_rules_handler(
 )]
 pub async fn add_immune_rule_handler(
     State(state): State<AppState>,
-    _auth: crate::auth::Authenticated,
+    auth: crate::auth::Authenticated,
     Json(mut rule): Json<ImmuneRule>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    // RBAC: Admin or System role required for immune rule mutations
+    if !auth
+        .roles
+        .iter()
+        .any(|r| matches!(r, shared::auth::Role::Admin | shared::auth::Role::System))
+    {
+        return Err(AppError::forbidden(
+            "Admin or System role required to manage immune rules",
+        ));
+    }
     // 🛡️ [GlassWorm Shield] Sanitize text fields deeply
     rule.id = shared::guardrails::strip_invisible_unicode(&rule.id).into_owned();
     rule.pattern = shared::guardrails::strip_invisible_unicode(&rule.pattern).into_owned();
@@ -318,9 +328,19 @@ pub async fn add_immune_rule_handler(
 )]
 pub async fn delete_immune_rule_handler(
     State(state): State<AppState>,
-    _auth: crate::auth::Authenticated,
+    auth: crate::auth::Authenticated,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    // RBAC: Admin or System role required for immune rule mutations
+    if !auth
+        .roles
+        .iter()
+        .any(|r| matches!(r, shared::auth::Role::Admin | shared::auth::Role::System))
+    {
+        return Err(AppError::forbidden(
+            "Admin or System role required to manage immune rules",
+        ));
+    }
     state.job_queue.delete_immune_rule(&id).await?;
 
     Ok(Json(serde_json::json!({"status": "success"})))

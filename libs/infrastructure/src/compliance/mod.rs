@@ -7,8 +7,11 @@
 
 /// 音声 CSAM ハッシュ (知覚ハッシュ)
 pub mod audio_hasher;
+/// アカウントBANおよびガバナンス
+pub mod ban_store;
 /// アセット検疫 (CSAM/Compliance)
 pub mod quarantine;
 
 pub use audio_hasher::AudioHasher;
+pub use ban_store::{BanRecord, BanStore, MockBanStore, UniversalBanStore};
 pub use quarantine::{AssetReason, QuarantineStore, UniversalQuarantineStore};

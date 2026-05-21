@@ -31,10 +31,17 @@ pub struct X402Client {
 
 impl X402Client {
     pub fn new(rpc_url: String, budget_cap: U256) -> Result<Self> {
-        // [重要: 秘密鍵保護] keyring クレートにより OS Keychain からプライベートキーを即時・安全に取得
-        // NOTE: Mocked for Phase 1b
+        // [重要: 秘密鍵保護]
+        // テスト/デバッグビルドではモックキーを使用
+        // 本番ビルドでは keyring クレートにより OS Keychain から取得（未実装のためエラー）
+        #[cfg(any(test, debug_assertions))]
         let private_key_hex =
             "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".to_string();
+
+        #[cfg(not(any(test, debug_assertions)))]
+        return Err(anyhow::anyhow!(
+            "X402Client private key management not implemented for production. Use OS Keychain integration."
+        ));
 
         let signer =
             PrivateKeySigner::from_str(&private_key_hex).context("Invalid private key format")?;

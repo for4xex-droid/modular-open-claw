@@ -136,7 +136,7 @@ const CausalVisualizer: React.FC = () => {
     };
 
     return (
-        <div className="main-panel ani-fade" style={{ height: '82vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="main-panel ani-fade" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minHeight: 0 }}>
             <div className="panel-header" style={{ flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <GitBranch size={20} color="var(--accent-cyan)" />

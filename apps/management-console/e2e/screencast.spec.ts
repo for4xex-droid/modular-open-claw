@@ -5,6 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 import { test, expect } from '@playwright/test';
+import { bypassAuth } from './helpers/auth-bypass';
 
 // Enable video recording for this specific screencast "test"
 test.use({ 
@@ -14,14 +15,7 @@ test.use({
 
 test('Aiome 90-second Screencast', async ({ page }) => {
   // Setup: Clear storage to simulate first-time visit, but we'll bypass onboarding for the screencast
-  await page.addInitScript(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-    window.localStorage.setItem('aiome_test_mode', 'true');
-    window.sessionStorage.setItem('aiome_secret', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZ2VudC0wMDEiLCJla3ljX3ZlcmlmaWVkIjp0cnVlfQ.mock_signature');
-    window.localStorage.setItem('aiome_onboarding_done', 'true');
-    window.localStorage.setItem('aiome_birth_shown', 'true');
-  });
+  await bypassAuth(page);
 
   // Scene 1: Dashboard
   await page.goto('/');

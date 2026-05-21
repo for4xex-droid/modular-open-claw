@@ -49,7 +49,13 @@ pub async fn handle_checkout_completed<'a>(
                     let amount = object["amount_total"]
                         .as_i64()
                         .or_else(|| i64::try_from(asset_manifest.price_coins).ok())
-                        .unwrap_or(0);
+                        .unwrap_or_else(|| {
+                            warn!(
+                                "⚠️ [StripeWebhook] No amount_total or price_coins for event {}. Defaulting to 0.",
+                                event_id
+                            );
+                            0
+                        });
                     if amount > 0 {
                         if let Err(e) = aiome_commerce::splitter::RevenueSplitter::split_revenue(
                             &mut *tx,

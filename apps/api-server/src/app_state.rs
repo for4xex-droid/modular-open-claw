@@ -13,6 +13,7 @@ use aiome_core_contracts::ekyc::EkycEngine;
 use infrastructure::audit_logger::AsyncAuditLogger;
 use infrastructure::auth::AuthManager;
 use infrastructure::circuit_breaker::CircuitBreaker;
+use infrastructure::compliance::ban_store::BanStore;
 use infrastructure::compliance::quarantine::QuarantineStore;
 use infrastructure::context_engine::ContextEngine;
 use infrastructure::job_queue::UniversalJobQueue;
@@ -109,6 +110,7 @@ pub struct AppState {
     pub ekyc_engine: Component<Arc<dyn EkycEngine>>,
     pub ekyc_session_store: Component<Arc<dyn EkycSessionStore>>,
     pub quarantine_store: Component<Arc<dyn QuarantineStore>>,
+    pub ban_store: Component<Arc<dyn BanStore>>,
     pub auth_manager: Component<Arc<dyn AuthManager>>,
     pub system_agent_id: uuid::Uuid,
     pub voice_drm: Component<Arc<VoiceCoreDrm>>,

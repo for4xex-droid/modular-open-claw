@@ -147,6 +147,12 @@ code, pre, kbd, samp, .font-mono {
   gap: var(--space-xl);
   z-index: 10;
   box-shadow: 10px 0 30px var(--black-40);
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .brand {
@@ -233,11 +239,14 @@ code, pre, kbd, samp, .font-mono {
 /* Main Content Area */
 .main-content {
   flex: 1;
+  min-height: 0;          /* 追加: flex child のはみ出し防止 */
   padding: 1.25rem 1.5rem;
   overflow-y: auto;
   position: relative;
   scrollbar-gutter: stable;
   z-index: 5;
+  display: flex;           /* 追加: 子パネルの flex 制御 */
+  flex-direction: column;  /* 追加 */
 }
 
 .header {
@@ -475,11 +484,27 @@ code, pre, kbd, samp, .font-mono {
 }
 
 /* Sidebar Collapse Styles */
+.sidebar.closed {
+  width: 80px;
+  padding: var(--space-lg) var(--space-xs);
+}
+.sidebar.closed .brand span {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
 .sidebar.closed .nav-item span {
-  display: none;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 .sidebar.closed .nav-group h4 {
-  display: none;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 .sidebar.closed .nav-item {
   justify-content: center;
@@ -487,4 +512,116 @@ code, pre, kbd, samp, .font-mono {
 }
 .sidebar.closed .nav-item::before {
   display: none;
+}
+.sidebar.closed .sidebar-nav-container {
+  overflow-y: hidden;
+}
+.sidebar.closed .brand {
+  justify-content: center;
+}
+.sidebar.closed .sidebar-toggle-container {
+  justify-content: center;
+}
+
+/* --- Sidebar Brand --- */
+.brand {
+  justify-content: flex-start;  /* 既存の .brand に追記 */
+}
+
+/* --- Sidebar Toggle Container --- */
+.sidebar-toggle-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+/* --- Scrollable Nav Container --- */
+.sidebar-nav-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  margin-right: calc(-1 * var(--space-md));
+  padding-right: var(--space-md);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 4%,
+    black 96%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 4%,
+    black 96%,
+    transparent 100%
+  );
+}
+
+.sidebar-nav-container::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-nav-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-nav-container::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+  transition: background 0.3s;
+}
+.sidebar-nav-container:hover::-webkit-scrollbar-thumb {
+  background: var(--white-15);
+}
+.sidebar-nav-container::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan-50);
+}
+
+/* --- Nav Item span / Brand span transition (opened state) --- */
+.sidebar .nav-item span,
+.sidebar .brand span {
+  white-space: nowrap;
+  transition: opacity var(--speed-normal) var(--timing-soft),
+              width var(--speed-normal) var(--timing-soft);
+  opacity: 1;
+  overflow: hidden;
+}
+
+/* --- Sidebar Footer --- */
+.sidebar-footer {
+  padding: 1rem;
+  background: var(--white-03);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+/* --- Language Buttons --- */
+.lang-btn {
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--white-10);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+.lang-btn.active {
+  border-color: var(--accent-cyan);
+  background: var(--accent-cyan-10);
+  color: var(--accent-cyan);
 }

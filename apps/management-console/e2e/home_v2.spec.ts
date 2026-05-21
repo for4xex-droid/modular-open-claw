@@ -5,15 +5,10 @@
  * Licensed under the Business Source License 1.1.
  */
 import { test, expect } from '@playwright/test';
+import { bypassAuth } from './helpers/auth-bypass';
 
 test('Home V2 (Beta) Layout Loads Correctly', async ({ page }) => {
-  await page.addInitScript(() => {
-    window.localStorage.setItem('aiome_onboarding_done', 'true');
-    window.localStorage.setItem('aiome_birth_shown', 'true');
-    window.sessionStorage.setItem('aiome_secret', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZ2VudC0wMDEiLCJla3ljX3ZlcmlmaWVkIjp0cnVlfQ.mock_signature');
-    window.localStorage.setItem('i18nextLng', 'en-US');
-    window.localStorage.setItem('aiome_view_mode', 'advanced');
-  });
+  await bypassAuth(page);
 
   await page.goto('/');
 
@@ -45,13 +40,7 @@ test('Home V2 (Beta) Layout Loads Correctly', async ({ page }) => {
 });
 
 test('Interactive Avatar Viewer Modal opens and closes', async ({ page }) => {
-  await page.addInitScript(() => {
-    window.localStorage.setItem('aiome_onboarding_done', 'true');
-    window.localStorage.setItem('aiome_birth_shown', 'true');
-    window.sessionStorage.setItem('aiome_secret', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZ2VudC0wMDEiLCJla3ljX3ZlcmlmaWVkIjp0cnVlfQ.mock_signature');
-    window.localStorage.setItem('i18nextLng', 'en-US');
-    window.localStorage.setItem('aiome_view_mode', 'advanced');
-  });
+  await bypassAuth(page);
 
   await page.goto('/');
 

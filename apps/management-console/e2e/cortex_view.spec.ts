@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { bypassAuth } from './helpers/auth-bypass';
 
 test.describe('Cortex View UI', () => {
   test('has a navigation tab, loads wiki articles and sanitizes markdown', async ({ page }) => {
@@ -38,12 +39,7 @@ test.describe('Cortex View UI', () => {
     });
 
     // 2. Act: Go to dashboard — bypass auth overlay (sessionStorage) and enable advanced view mode (localStorage)
-    await page.addInitScript(() => {
-      window.sessionStorage.setItem('aiome_secret', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZ2VudC0wMDEiLCJla3ljX3ZlcmlmaWVkIjp0cnVlfQ.mock_signature');
-      window.localStorage.setItem('aiome_view_mode', 'advanced');
-      window.localStorage.setItem('aiome_onboarding_done', 'true');
-      window.localStorage.setItem('aiome_birth_shown', 'true');
-    });
+    await bypassAuth(page);
     await page.goto('/');
 
     // The nav item should be visible in the sidebar

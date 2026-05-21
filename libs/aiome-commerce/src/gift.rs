@@ -150,6 +150,16 @@ impl GiftEngine for TremendousGiftEngine {
         agent_id: Uuid,
         amount_usd: f64,
     ) -> Result<(), AiomeError> {
+        // 0. 入力サニタイズ: NaN, Infinity, ゼロ, 負数を拒否
+        if !amount_usd.is_finite() || amount_usd <= 0.0 {
+            return Err(AiomeError::SecurityViolation {
+                reason: format!(
+                    "Invalid gift amount: {}. Must be a positive finite number.",
+                    amount_usd
+                ),
+            });
+        }
+
         let context = self.get_policy_context(agent_id).await?;
 
         // 1. 個別ギフト上限チェック ($5.0)
@@ -296,6 +306,44 @@ mod tests {
         }
     }
 
+    #[tokio::test]
+    async fn test_validate_gift_policy_rejects_nan() {
+        let engine = setup_test_engine().await;
+        let result = engine.validate_gift_policy(Uuid::new_v4(), f64::NAN).await;
+        assert!(result.is_err());
+        if let Err(AiomeError::SecurityViolation { reason }) = result {
+            assert!(reason.contains("Invalid gift amount"));
+        } else {
+            panic!("Expected SecurityViolation for NaN but got {:?}", result);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_validate_gift_policy_rejects_negative() {
+        let engine = setup_test_engine().await;
+        let result = engine.validate_gift_policy(Uuid::new_v4(), -1.0).await;
+        assert!(result.is_err());
+        if let Err(AiomeError::SecurityViolation { reason }) = result {
+            assert!(reason.contains("Invalid gift amount"));
+        } else {
+            panic!(
+                "Expected SecurityViolation for negative but got {:?}",
+                result
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_validate_gift_policy_rejects_zero() {
+        let engine = setup_test_engine().await;
+        let result = engine.validate_gift_policy(Uuid::new_v4(), 0.0).await;
+        assert!(result.is_err());
+        if let Err(AiomeError::SecurityViolation { reason }) = result {
+            assert!(reason.contains("Invalid gift amount"));
+        } else {
+            panic!("Expected SecurityViolation for zero but got {:?}", result);
+        }
+    }
     #[tokio::test]
     async fn test_sandbox_url_selection() {
         // sandbox=true の場合は testflight URL になることを確認

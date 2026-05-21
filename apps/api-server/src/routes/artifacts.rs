@@ -55,7 +55,7 @@ pub async fn list_artifacts_handler(
             _ => None,
         });
 
-    let limit = params.limit.unwrap_or(50);
+    let limit = params.limit.unwrap_or(50).clamp(1, 200);
 
     let artifacts = if let Some(query) = params.q {
         state

@@ -2,16 +2,12 @@
  * Aiome - UI Wave 1 (TDD RED Phase)
  */
 import { test, expect } from '@playwright/test';
+import { bypassAuth } from './helpers/auth-bypass';
 
 test.describe('UI Wave 1 Features (TDD)', () => {
   test.beforeEach(async ({ page }) => {
     // Setup Mock Auth and clear state
-    await page.addInitScript(() => {
-      window.localStorage.setItem('aiome_onboarding_done', 'true');
-      window.localStorage.setItem('aiome_birth_shown', 'true');
-      window.sessionStorage.setItem('aiome_secret', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZ2VudC0wMDEiLCJla3ljX3ZlcmlmaWVkIjp0cnVlfQ.mock_signature');
-      window.localStorage.setItem('aiome_test_mode', 'true');
-    });
+    await bypassAuth(page);
 
     // Mock the Soul Status API
     await page.route('**/api/v1/soul/status', async route => {

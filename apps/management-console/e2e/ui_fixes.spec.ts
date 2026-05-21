@@ -5,19 +5,13 @@
  * Licensed under the Business Source License 1.1.
  */
 import { test, expect } from '@playwright/test';
+import { bypassAuth } from './helpers/auth-bypass';
 
 test.describe('UI Endpoint Fixes (TDD)', () => {
 
   test.beforeEach(async ({ page }) => {
     // Setup Auth and skip onboarding/birth
-    await page.addInitScript(() => {
-      window.localStorage.setItem('aiome_onboarding_done', 'true');
-      window.localStorage.setItem('aiome_birth_shown', 'true');
-      window.sessionStorage.setItem('aiome_secret', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZ2VudC0wMDEiLCJla3ljX3ZlcmlmaWVkIjp0cnVlfQ.mock_signature');
-      window.localStorage.setItem('aiome_view_mode', 'advanced');
-      window.localStorage.setItem('i18nextLng', 'en-US');
-      window.localStorage.setItem('aiome_test_mode', 'true');
-    });
+    await bypassAuth(page);
     await page.goto('/');
   });
 

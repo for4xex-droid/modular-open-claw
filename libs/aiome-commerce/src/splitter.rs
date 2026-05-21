@@ -21,6 +21,12 @@ impl RevenueSplitter {
         creator_id: Uuid,
         platform_fee_pct: f64,
     ) -> Result<(), AiomeError> {
+        // 入力バリデーション: 金額が0以上であること
+        if total_amount < 0 {
+            return Err(AiomeError::Infrastructure {
+                reason: format!("total_amount must be non-negative, got {}", total_amount),
+            });
+        }
         // 入力バリデーション: 0.0〜1.0 の範囲 + NaN/Infinity 防御
         if !(0.0..=1.0).contains(&platform_fee_pct) {
             return Err(AiomeError::Infrastructure {
@@ -131,5 +137,50 @@ mod tests {
         assert_eq!(splits[1].0, "platform".to_string());
         assert_eq!(splits[1].1, "platform");
         assert_eq!(splits[1].2, 150); // 1000 * 0.15
+    }
+
+    #[tokio::test]
+    async fn test_split_revenue_rejects_negative_amount() {
+        let pool = setup_db().await;
+        let mut tx = pool.begin().await.unwrap();
+        let result =
+            RevenueSplitter::split_revenue(&mut tx, "neg_tx", -100, Uuid::new_v4(), 0.15).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("non-negative"),
+            "Expected non-negative error, got: {}",
+            err_msg
+        );
+    }
+
+    #[tokio::test]
+    async fn test_split_revenue_rejects_nan_fee() {
+        let pool = setup_db().await;
+        let mut tx = pool.begin().await.unwrap();
+        let result =
+            RevenueSplitter::split_revenue(&mut tx, "nan_tx", 1000, Uuid::new_v4(), f64::NAN).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("between 0.0 and 1.0"),
+            "Expected range error for NaN, got: {}",
+            err_msg
+        );
+    }
+
+    #[tokio::test]
+    async fn test_split_revenue_rejects_excessive_fee() {
+        let pool = setup_db().await;
+        let mut tx = pool.begin().await.unwrap();
+        let result =
+            RevenueSplitter::split_revenue(&mut tx, "big_tx", 1000, Uuid::new_v4(), 1.5).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("between 0.0 and 1.0"),
+            "Expected range error for 1.5, got: {}",
+            err_msg
+        );
     }
 }

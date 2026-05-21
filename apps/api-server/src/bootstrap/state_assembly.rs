@@ -130,6 +130,7 @@ pub async fn assemble_app_state(
         ekyc_engine: Component::new(core.ekyc_engine.clone()),
         ekyc_session_store: Component::new(core.ekyc_session_store.clone()),
         quarantine_store: Component::new(core.quarantine_store.clone()),
+        ban_store: Component::new(core.ban_store.clone()),
         auth_manager: Component::new(core.auth_manager.clone()),
         system_agent_id: db.system_agent_id,
         voice_drm: Component::new(core.voice_drm.clone()),

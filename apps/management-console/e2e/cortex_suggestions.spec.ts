@@ -1,15 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { bypassAuth } from './helpers/auth-bypass';
 
 test.describe('Cortex Dynamic Suggestions', () => {
   test.beforeEach(async ({ page }) => {
     // Authenticate and bypass onboarding
-    await page.addInitScript(() => {
-      window.localStorage.setItem('aiome_onboarding_done', 'true');
-      window.localStorage.setItem('aiome_birth_shown', 'true');
-      window.localStorage.setItem('aiome_view_mode', 'advanced'); // Show Sidebar
-      window.localStorage.setItem('i18nextLng', 'en'); // Fix locale to English
-      window.sessionStorage.setItem('aiome_secret', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZ2VudC0wMDEiLCJla3ljX3ZlcmlmaWVkIjp0cnVlfQ.mock_signature');
-    });
+    await bypassAuth(page);
 
     // Intercept Cortex Suggestions API
     await page.route('**/api/v1/cortex/suggestions', async (route) => {

@@ -1,15 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { bypassAuth } from './helpers/auth-bypass';
 
 test('debug sot event', async ({ page }) => {
   page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
   page.on('pageerror', err => console.log('BROWSER ERROR:', err.message));
 
-  await page.addInitScript(() => {
-    window.localStorage.setItem('aiome_onboarding_done', 'true');
-    window.localStorage.setItem('aiome_birth_shown', 'true');
-    window.sessionStorage.setItem('aiome_secret', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZ2VudC0wMDEiLCJla3ljX3ZlcmlmaWVkIjp0cnVlfQ.mock_signature');
-    window.localStorage.setItem('aiome_test_mode', 'true');
-  });
+  await bypassAuth(page);
 
   await page.goto('/');
 

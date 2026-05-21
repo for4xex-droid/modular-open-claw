@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation, useLanguage } from "./i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -92,6 +92,16 @@ function App() {
   const [sessionSavedChars, setSessionSavedChars] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const seenTokenEventsRef = React.useRef(new Set<number>());
+  const navContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = navContainerRef.current;
+    if (!container) return;
+    const activeEl = container.querySelector('.nav-item.active');
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [activeTab]);
 
   const { events: vitalityEvents, lastEvent, connectionStatus, toggleConnection, lastPingMs } = useSystemVitality();
 
@@ -368,22 +378,23 @@ function App() {
       </div>
 
       {/* Sidebar — advanced mode only */}
-      {viewMode === 'advanced' && <aside className={`sidebar ${isSidebarOpen ? '' : 'closed'}`} style={{ width: isSidebarOpen ? 'var(--layout-sidebar-width)' : '80px', transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)', padding: isSidebarOpen ? 'var(--space-lg) var(--space-md)' : 'var(--space-lg) var(--space-xs)' }}>
-        <div className="brand" style={{ justifyContent: isSidebarOpen ? 'flex-start' : 'center' }}>
+      {viewMode === 'advanced' && <aside className={`sidebar ${isSidebarOpen ? '' : 'closed'}`}>
+        <div className="brand">
           <BrainCircuit size={28} color="var(--accent-cyan)" />
-          {isSidebarOpen && <span>Aiome</span>}
+          <span>Aiome</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: isSidebarOpen ? 'flex-end' : 'center', marginBottom: '0.5rem' }}>
+        <div className="sidebar-toggle-container">
           <button 
+            className="sidebar-toggle-btn"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
             title="Toggle Sidebar"
           >
             {isSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
           </button>
         </div>
 
-        <nav className="nav-group">
+        <div className="sidebar-nav-container" ref={navContainerRef}>
+          <nav className="nav-group">
           <h4>{t('nav.section.synergyHub')}</h4>
           {isVisible("home-v2") && (
             <NavItem
@@ -574,57 +585,42 @@ function App() {
             />
           )}
         </nav>
-
-        <div style={{ marginTop: 'auto', padding: '1rem', background: 'var(--white-03)', borderRadius: '12px', fontSize: '0.8rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>{t('sidebar.samsaraTier')}</span>
-            <span style={{ color: 'var(--accent-purple)' }}>{t('sidebar.level')} {stats.level}</span>
-          </div>
-          <div style={{ height: '4px', background: 'var(--white-10)', borderRadius: '2px', overflow: 'hidden' }}>
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${(stats.exp % 1000) / 10}%` }}
-              style={{ height: '100%', background: 'var(--accent-purple)' }}
-            />
-          </div>
-          <div style={{ marginTop: '0.5rem', textAlign: 'center', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-            AIOME {APP_VERSION}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem', marginTop: '0.75rem' }}>
-            <button
-              onClick={() => setLang('en')}
-              style={{
-                padding: '0.3rem 0.6rem',
-                borderRadius: '6px',
-                border: lang === 'en' ? '1px solid var(--accent-cyan)' : '1px solid var(--white-10)',
-                background: lang === 'en' ? 'var(--accent-cyan-10)' : 'transparent',
-                color: lang === 'en' ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                cursor: 'pointer',
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                transition: 'all 0.2s'
-              }}
-            >
-              🇺🇸 {t('language.en')}
-            </button>
-            <button
-              onClick={() => setLang('ja')}
-              style={{
-                padding: '0.3rem 0.6rem',
-                borderRadius: '6px',
-                border: lang === 'ja' ? '1px solid var(--accent-cyan)' : '1px solid var(--white-10)',
-                background: lang === 'ja' ? 'var(--accent-cyan-10)' : 'transparent',
-                color: lang === 'ja' ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                cursor: 'pointer',
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                transition: 'all 0.2s'
-              }}
-            >
-              🇯🇵 {t('language.ja')}
-            </button>
-          </div>
         </div>
+
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <motion.div
+              className="sidebar-footer"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>{t('sidebar.samsaraTier')}</span>
+                <span style={{ color: 'var(--accent-purple)' }}>{t('sidebar.level')} {stats.level}</span>
+              </div>
+              <div style={{ height: '4px', background: 'var(--white-10)', borderRadius: '2px', overflow: 'hidden' }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(stats.exp % 1000) / 10}%` }}
+                  style={{ height: '100%', background: 'var(--accent-purple)' }}
+                />
+              </div>
+              <div style={{ marginTop: '0.5rem', textAlign: 'center', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                AIOME {APP_VERSION}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem', marginTop: '0.75rem' }}>
+                <button className={`lang-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => setLang('en')}>
+                  🇺🇸 {t('language.en')}
+                </button>
+                <button className={`lang-btn ${lang === 'ja' ? 'active' : ''}`} onClick={() => setLang('ja')}>
+                  🇯🇵 {t('language.ja')}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </aside>}
 
       {/* Main Content */}

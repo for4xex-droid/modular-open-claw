@@ -59,6 +59,13 @@ export default defineConfig({
         RUST_LOG: 'info',
         CELL_ID: 'cell_001',
       }
+    },
+    {
+      command: 'npm run dev -- --port 5174',
+      url: 'http://localhost:5174',
+      reuseExistingServer: !process.env.CI,
+      cwd: '../../docs/landing',
+      timeout: 30 * 1000,
     }
   ],
 });

@@ -1,12 +1,45 @@
 ## [Unreleased]
 
 ### Added
+- **Compliance Automation & Account Ban Guard Integration (First Penguin)**:
+  - SQLite/PostgreSQLのマルチDBに完全対応し、起動時の自動スキーマ作成（自己修復スキーマ初期化ロジック）を内包した `UniversalBanStore` およびテスト用の `MockBanStore` を新規実装。
+  - `AppState` に `BanStore` コンポーネントを統合し、`api-server` の起動シーケンス (`bootstrap/mod.rs` および `bootstrap/state_assembly.rs`) で自動的に初期化されるよう構築。
+  - 認証エクストラクタ `Authenticated` (`FromRequestParts`) にて JWT デコード後に `ban_store.is_banned()` を検証する BAN ガードを実装。BAN中アカウントを `403 Forbidden` で確実に遮断。DB障害などの異常時は **Fail-Closed 原則** に基づき `503 Service Unavailable` で安全に閉鎖。
+  - サブスクリプション解約（`cancel_subscription`）エンドポイントなどの消費者保護関連 API が、BANされたユーザーからでも例外的に利用できるよう、BANチェックをスキップする `BanExemptAuthenticated` エクストラクタを新設し適用。
+  - 正常系 (Positive)、障害注入 (Negative - BAN検出)、DB障害 Fail-Closed シミュレーション、および消費者保護の例外ルートを網羅した高精度な TDD 統合テスト（`compliance.rs`）を実装し、100% GREEN を達成。
+
+- **Stripe Commerce Security Hardening (First Penguin)**:
+  - StripeCommerceEngineのスタブメソッドである `get_subscription_status`, `execute_autonomous_purchase`, `stake`, `slash`, `register_license`, `cancel_subscription` の6つのメソッドにおいて、本番稼働時（`is_mock = false`）に偽のトランザクション成功を引き起こさないよう、明示的にエラー（`AiomeError::Infrastructure`）を返す安全ガードを実装。
+  - テスト環境やデモ環境での動作互換性を維持するため、`is_mock = true`（開発・モックモード）の場合には従来のシミュレーション動作を維持するガード条件を完備。
+  - TDD（テスト駆動開発）を用いて、本番封印とモック動作を確実に検証する高精度なユニットテスト群を追加。Negative Test（障害注入）を通じた検証プロトコルを実行し、完全な遮断能力を実証。
+- **Commerce Layer Deep Hardening (/reflexion x4)**:
+  - `stripe.rs`: `list_escrows` の `unwrap_or_default()` チェーン（6箇所）を `map_err` + `?` によるエラー伝搬に置換し、DB列データ破損時のサイレント障害を根絶。テスト内の `std::env::set_var`（スレッド安全性違反）を本番キープレフィックスパターンに置換。
+  - `polar.rs`: 未実装メソッド5箇所（`transfer`, `escrow_release`, `instant_refund`, `withdraw_points`, `create_checkout_session`）のハードコード成功 `Ok(...)` を明示的 `Err(Infrastructure)` に変更。
+  - `mock.rs`: `list_escrows` 内の `*amount as i64`（unsafe キャスト）を `i64::try_from().unwrap_or(i64::MAX)` に安全化。
+  - `gift.rs`: `validate_gift_policy` に NaN/Infinity/負数/ゼロ金額ガードを追加。
+  - `x402.rs`: ハードコード秘密鍵を `#[cfg(any(test, debug_assertions))]` で隔離し、本番ビルドからの漏洩を防止。
+  - `splitter.rs`: 負数 `total_amount` の入力バリデーションを追加。
+  - `relay.rs`: Nurture API へのコインチャージ HTTP リレーに30秒タイムアウトを追加。
+  - `checkout.rs`: 金額パース失敗時のサイレント0フォールバックを警告ログ付きに変更。
+  - `commerce.rs` (APIルート): `transfer` エンドポイントに自己送金防止チェックとゼロ金額拒否を追加。`withdraw_points` にゼロ金額拒否を追加。
+
 - **UI/UX Production Readiness (First Penguin)**:
   - `management-console`: `AgentConsole.tsx` および `MermaidRenderer.tsx` にて、Cortex / NurtureからのMermaidグラフ出力のフォールバック処理および描画安定性を強化。
   - `docs/landing`: First Penguin 向けプロモーション用ランディングページの Next.js/Vite ビルド環境を構築し、レガシーなファイルアセットをパージ。
   - `docs/landing`: OGPメタデータの準備や、Next.jsビルドツールチェーン (`vite.config.ts`, `tsconfig.json`等) を追加。
-
+- **Promo Video Automation (First Penguin)**:
+  - `e2e/promo-clips.spec.ts` を新設し、14シーン（SetupWizard から各種コンソール画面、LPスクロールまで）のモック化された全自動録画スクリプト（Phase 3）を実装。
+  - 認証基盤を `sessionStorage` 注入とモック化を統合した共通の `bypassAuth` ヘルパーへリファクタリングし、9つの既存E2Eテストファイルへ適用完了。
+  - 過去の動画収録用レガシースクリプト（`capture_lp.js`, `capture_uis.js`等）をリポジトリからパージし、技術的負債を解消。
 ### Changed
+- **Promo Video Automation & Stream Mock Realism (First Penguin)**:
+  - `e2e/promo-clips.spec.ts`: `Clip 3: Agent Console` のチャットストリーミングAPIのモック応答を、フロントエンドのカスタムSSE（Server-Sent Events）パーサー規格（`event: text`, `event: done`, `\r` 改行）に完全追従する形式へ修正。
+  - `e2e/promo-clips.spec.ts`: AIの応答吹き出し内にマークダウンメッセージ（リストや強調）が美しく表示され、ローディングスピナーが正常に終了することを検証する厳格なアサーションを追加。AIの応答沈黙バグを解消し、完璧なデモ動画アセット（`video.webm`）の再収録を完了。
+- **UIレイアウトの堅牢化とウィンドウスクロールの全廃（ゼロ・ウィンドウスクロールポリシー）**:
+  - `App.tsx` のインラインレイアウトスタイルを完全にパージし、`App.css` に新設したCSSクラス群に集約。
+  - `AgentConsole.tsx`, `CausalVisualizer.tsx`, `GraphView.tsx` の主要パネルにおける脆弱な `vh` 固定高さを全廃し、`flex: 1` および `minHeight: 0` によるViewport追従型コンテナへ移行。
+  - サイドバーナビゲーションコンテナ（`.sidebar-nav-container`）を導入し、ネガティブマージンを適用することで、ウィンドウ全体のスクロールを発生させずサイドバー内だけで自然にスクロールが完結するよう修正。
+  - `App.tsx` に `useRef` と `useEffect` を組み合わせたアクティブメニューの自動スクロール同期処理を実装し、ページ遷移や Playwright による自動操作時にも常にアクティブメニューがViewport中央に吸着するよう改善。
 - **Zero-Panic Infrastructure Hardening**:
   - `libs/infrastructure/src/job_queue/federation.rs`: SQLite/PostgreSQLの行データ取得におけるパニックリスク（`.unwrap()`, `.get()`）を完全に排除。`try_get(...).unwrap_or_default()` へリファクタリングし、Zero-Panic Policy を推進。
 - **Integration & AI Parse Resilience**:
