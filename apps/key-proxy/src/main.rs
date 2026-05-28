@@ -73,6 +73,8 @@ pub(crate) struct AppState {
     pub(crate) caller_quotas: Arc<HashMap<String, u64>>,
     pub(crate) wp_api_url: Option<String>,
     pub(crate) wp_api_token: Option<Arc<SecretString>>,
+    pub(crate) gemini_model: String,
+    pub(crate) gemini_embed_model: String,
 }
 
 #[tokio::main]
@@ -161,6 +163,14 @@ async fn main() -> anyhow::Result<()> {
         QuotaState::default()
     };
 
+    let gemini_model = env::var("GEMINI_MODEL").unwrap_or_else(|_| "gemini-2.0-flash".to_string());
+    let gemini_embed_model =
+        env::var("GEMINI_EMBED_MODEL").unwrap_or_else(|_| "text-embedding-004".to_string());
+    info!(
+        "🤖 [KeyProxy] Models loaded at boot: complete={}, embed={}",
+        gemini_model, gemini_embed_model
+    );
+
     let state = AppState {
         gemini_key: Arc::new(SecretString::from(gemini_key)),
         vault_secret: Arc::new(SecretString::from(vault_secret)),
@@ -195,6 +205,8 @@ async fn main() -> anyhow::Result<()> {
         caller_quotas: Arc::new(quotas),
         wp_api_url,
         wp_api_token: wp_api_token.map(|t| Arc::new(SecretString::from(t))),
+        gemini_model,
+        gemini_embed_model,
     };
 
     let app = Router::new()
@@ -357,7 +369,7 @@ pub(crate) async fn handle_llm_complete(
         return status.into_response();
     }
 
-    let gemini_model = env::var("GEMINI_MODEL").unwrap_or_else(|_| "gemini-2.0-flash".to_string());
+    let gemini_model = &state.gemini_model;
     let url = match payload.endpoint.as_str() {
         "gemini" => format!(
             "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
@@ -421,7 +433,7 @@ pub(crate) async fn handle_llm_complete(
                                 target: "key_proxy::metrics",
                                 tokens = tokens,
                                 cost_usd = cost_usd,
-                                model = %gemini_model,
+                                model = %state.gemini_model,
                                 "💰 [KeyProxy] Cost metric recorded"
                             );
                         }
@@ -473,8 +485,7 @@ pub(crate) async fn handle_llm_embed(
         return status.into_response();
     }
 
-    let embed_model =
-        env::var("GEMINI_EMBED_MODEL").unwrap_or_else(|_| "text-embedding-004".to_string());
+    let embed_model = &state.gemini_embed_model;
     let url = match payload.endpoint.as_str() {
         "gemini-embed" => format!(
             "https://generativelanguage.googleapis.com/v1beta/models/{}:embedContent",
@@ -503,21 +514,31 @@ pub(crate) async fn handle_llm_embed(
     match res {
         Ok(resp) => {
             if resp.status().is_success() {
-                let body: serde_json::Value = resp.json().await.unwrap_or_default();
-                let emb = body["embedding"]["values"].as_array();
-                if let Some(values) = emb {
-                    let vec: Vec<f32> = values
-                        .iter()
-                        .map(|v| v.as_f64().unwrap_or(0.0) as f32)
-                        .collect();
-                    let response_time_ms = start_time.elapsed().as_millis() as u64;
-                    Json(EmbedResponse {
-                        embedding: vec,
-                        response_time_ms: Some(response_time_ms),
-                    })
-                    .into_response()
-                } else {
-                    (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error").into_response()
+                match resp.json::<serde_json::Value>().await {
+                    Ok(body) => {
+                        let emb = body["embedding"]["values"].as_array();
+                        if let Some(values) = emb {
+                            let vec: Vec<f32> = values
+                                .iter()
+                                .filter_map(|v| v.as_f64().map(|f| f as f32))
+                                .collect();
+                            let response_time_ms = start_time.elapsed().as_millis() as u64;
+                            Json(EmbedResponse {
+                                embedding: vec,
+                                response_time_ms: Some(response_time_ms),
+                            })
+                            .into_response()
+                        } else {
+                            error!("❌ [KeyProxy] Embed response missing 'embedding.values' field");
+                            (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error")
+                                .into_response()
+                        }
+                    }
+                    Err(e) => {
+                        error!("❌ [KeyProxy] Failed to parse embed response: {:?}", e);
+                        (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error")
+                            .into_response()
+                    }
                 }
             } else {
                 error!("❌ [KeyProxy] Upstream error: {}", resp.status());
@@ -546,7 +567,7 @@ pub(crate) async fn handle_llm_stream(
         return status.into_response();
     }
 
-    let gemini_model = env::var("GEMINI_MODEL").unwrap_or_else(|_| "gemini-2.0-flash".to_string());
+    let gemini_model = &state.gemini_model;
     let url = match payload.endpoint.as_str() {
         "gemini" => format!(
             "https://generativelanguage.googleapis.com/v1beta/models/{}:streamGenerateContent?alt=sse",

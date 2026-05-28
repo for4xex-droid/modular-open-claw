@@ -149,6 +149,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 return Ok(body.balance);
             }
         }
+        tracing::warn!("⚠️ [Billing] Nurture URL not configured or non-success response. Returning zero balance for agent.");
         Ok(0)
     }
 
@@ -186,20 +187,28 @@ impl CommerceEngine for StripeCommerceEngine {
                     });
                 }
                 Ok(res) => {
-                    tracing::warn!(
-                        "⚠️ [Billing] validate_activity got unexpected status {} for agent {}. Allowing (fail-open).",
-                        res.status(),
+                    let status = res.status();
+                    tracing::error!(
+                        "🚨 [Billing] validate_activity got unexpected status {} for agent {}. Blocking (fail-closed).",
+                        status,
                         agent_id
                     );
-                    return Ok(());
+                    return Err(AiomeError::Infrastructure {
+                        reason: format!(
+                            "Billing validation failed with unexpected status: {}",
+                            status
+                        ),
+                    });
                 }
                 Err(e) => {
                     tracing::error!(
-                        "❌ [Billing] validate_activity network error for agent {}: {}. Allowing (fail-open).",
+                        "❌ [Billing] validate_activity network error for agent {}: {}. Blocking (fail-closed).",
                         agent_id,
                         e
                     );
-                    return Ok(());
+                    return Err(AiomeError::Infrastructure {
+                        reason: format!("Billing validation network error: {}", e),
+                    });
                 }
             }
         }
@@ -260,7 +269,16 @@ impl CommerceEngine for StripeCommerceEngine {
                         }
                     } else {
                         let status = resp.status();
-                        let text = resp.text().await.unwrap_or_default();
+                        let text = match resp.text().await {
+                            Ok(t) => t,
+                            Err(e) => {
+                                tracing::warn!(
+                                    "⚠️ [Billing] Failed to read error response body: {:?}",
+                                    e
+                                );
+                                String::new()
+                            }
+                        };
                         return Err(AiomeError::Infrastructure {
                             reason: format!(
                                 "Nurture purchase S2S failed with status [{}]: {}",
@@ -310,6 +328,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 return Ok(body.spent_today);
             }
         }
+        tracing::warn!("⚠️ [Billing] Nurture URL not configured or non-success response. Returning zero daily spend.");
         Ok(0)
     }
 
@@ -341,6 +360,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 return Ok(body.daily_limit);
             }
         }
+        tracing::warn!("⚠️ [Billing] Nurture URL not configured or non-success response. Returning default daily limit (100).");
         Ok(100)
     }
 
@@ -958,7 +978,13 @@ impl CommerceEngine for StripeCommerceEngine {
                 return Ok(body.transaction_id);
             } else {
                 let status = res.status();
-                let text = res.text().await.unwrap_or_default();
+                let text = match res.text().await {
+                    Ok(t) => t,
+                    Err(e) => {
+                        tracing::warn!("⚠️ [Billing] Failed to read transfer error body: {:?}", e);
+                        String::new()
+                    }
+                };
                 return Err(AiomeError::Infrastructure {
                     reason: format!("Transfer failed ({}): {}", status, text),
                 });
@@ -1012,7 +1038,16 @@ impl CommerceEngine for StripeCommerceEngine {
                 }
                 Ok(res) => {
                     let status = res.status();
-                    let text = res.text().await.unwrap_or_default();
+                    let text = match res.text().await {
+                        Ok(t) => t,
+                        Err(e) => {
+                            tracing::warn!(
+                                "⚠️ [Billing] Failed to read error response body: {:?}",
+                                e
+                            );
+                            String::new()
+                        }
+                    };
                     tracing::error!(
                         "🚨 [StripeCommerceEngine] Failed to deduct generation cost from Nurture -> {}: {}",
                         status,
@@ -1073,7 +1108,13 @@ impl CommerceEngine for StripeCommerceEngine {
                 return Ok(());
             } else {
                 let status = res.status();
-                let text = res.text().await.unwrap_or_default();
+                let text = match res.text().await {
+                    Ok(t) => t,
+                    Err(e) => {
+                        tracing::warn!("⚠️ [Billing] Failed to read error response body: {:?}", e);
+                        String::new()
+                    }
+                };
                 return Err(AiomeError::Infrastructure {
                     reason: format!("Instant refund failed ({}): {}", status, text),
                 });
@@ -1112,7 +1153,13 @@ impl CommerceEngine for StripeCommerceEngine {
                 return Ok(());
             } else {
                 let status = res.status();
-                let text = res.text().await.unwrap_or_default();
+                let text = match res.text().await {
+                    Ok(t) => t,
+                    Err(e) => {
+                        tracing::warn!("⚠️ [Billing] Failed to read error response body: {:?}", e);
+                        String::new()
+                    }
+                };
                 return Err(AiomeError::Infrastructure {
                     reason: format!("Withdraw points failed ({}): {}", status, text),
                 });
@@ -1152,7 +1199,13 @@ impl CommerceEngine for StripeCommerceEngine {
                 return Ok(body);
             } else {
                 let status = res.status();
-                let text = res.text().await.unwrap_or_default();
+                let text = match res.text().await {
+                    Ok(t) => t,
+                    Err(e) => {
+                        tracing::warn!("⚠️ [Billing] Failed to read error response body: {:?}", e);
+                        String::new()
+                    }
+                };
                 return Err(AiomeError::Infrastructure {
                     reason: format!("Get points failed ({}): {}", status, text),
                 });
@@ -1203,7 +1256,13 @@ impl CommerceEngine for StripeCommerceEngine {
                 return Ok(body);
             } else {
                 let status = res.status();
-                let text = res.text().await.unwrap_or_default();
+                let text = match res.text().await {
+                    Ok(t) => t,
+                    Err(e) => {
+                        tracing::warn!("⚠️ [Billing] Failed to read error response body: {:?}", e);
+                        String::new()
+                    }
+                };
                 return Err(AiomeError::Infrastructure {
                     reason: format!("Get history failed ({}): {}", status, text),
                 });
@@ -1787,6 +1846,23 @@ mod tests {
 
         let res = engine.validate_activity(agent_id, "test_action", 100).await;
         assert!(res.is_err(), "Expected Err for 402 response");
+
+        mock_server.reset().await;
+
+        // 2.5 Unexpected status -> Err (Fail-Closed)
+        Mock::given(method("POST"))
+            .and(path("/internal/validate-activity"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("Internal error"))
+            .mount(&mock_server)
+            .await;
+
+        let res_500 = engine.validate_activity(agent_id, "test_action", 100).await;
+        assert!(
+            res_500.is_err(),
+            "Expected Err for 500 response (fail-closed)"
+        );
+
+        mock_server.reset().await;
 
         // 3. Fallback when nurture_url is None
         let pool2 = SqlitePoolOptions::new()

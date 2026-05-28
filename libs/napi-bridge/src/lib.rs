@@ -284,49 +284,16 @@ pub async fn immune_check_tool(tool_name: String, params: String) -> Result<Tool
     // catch obvious dangerous patterns quickly using cached RegExp instances
     static DANGEROUS_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
     let patterns = DANGEROUS_PATTERNS.get_or_init(|| {
+        // These are static literal patterns — Regex::new cannot fail on them.
+        // Using expect() instead of process::exit() to preserve backtraces if
+        // a future refactor introduces a malformed pattern.
         vec![
-            match Regex::new(r"(?i)rm\s+-rf") {
-                Ok(r) => r,
-                Err(e) => {
-                    tracing::error!("Regex err: {}", e);
-                    std::process::exit(1)
-                }
-            },
-            match Regex::new(r"(?i)chmod\s+777") {
-                Ok(r) => r,
-                Err(e) => {
-                    tracing::error!("Regex err: {}", e);
-                    std::process::exit(1)
-                }
-            },
-            match Regex::new(r"(?i)cat\s+/etc/shadow") {
-                Ok(r) => r,
-                Err(e) => {
-                    tracing::error!("Regex err: {}", e);
-                    std::process::exit(1)
-                }
-            },
-            match Regex::new(r"(?i)shutdown") {
-                Ok(r) => r,
-                Err(e) => {
-                    tracing::error!("Regex err: {}", e);
-                    std::process::exit(1)
-                }
-            },
-            match Regex::new(r"(?i)reboot") {
-                Ok(r) => r,
-                Err(e) => {
-                    tracing::error!("Regex err: {}", e);
-                    std::process::exit(1)
-                }
-            },
-            match Regex::new(r#"(?i)":\s*".*";"#) {
-                Ok(r) => r,
-                Err(e) => {
-                    tracing::error!("Regex err: {}", e);
-                    std::process::exit(1)
-                }
-            },
+            Regex::new(r"(?i)rm\s+-rf").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
+            Regex::new(r"(?i)chmod\s+777").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
+            Regex::new(r"(?i)cat\s+/etc/shadow").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
+            Regex::new(r"(?i)shutdown").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
+            Regex::new(r"(?i)reboot").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
+            Regex::new(r#"(?i)":\s*".*";"#).expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
         ]
     });
 

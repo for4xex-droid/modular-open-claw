@@ -661,7 +661,11 @@ impl ArtifactStore for UniversalArtifactStore {
                     }
                 })?;
                 rows.into_iter()
-                    .map(|r| (r.get::<String, _>("id"), r.get::<Vec<u8>, _>("embedding")))
+                    .filter_map(|r| {
+                        let id: String = r.try_get("id").ok()?;
+                        let emb: Vec<u8> = r.try_get("embedding").ok()?;
+                        Some((id, emb))
+                    })
                     .collect::<Vec<_>>()
             }
             DatabasePool::Postgres(p) => {
@@ -679,7 +683,11 @@ impl ArtifactStore for UniversalArtifactStore {
                     }
                 })?;
                 rows.into_iter()
-                    .map(|r| (r.get::<String, _>("id"), r.get::<Vec<u8>, _>("embedding")))
+                    .filter_map(|r| {
+                        let id: String = r.try_get("id").ok()?;
+                        let emb: Vec<u8> = r.try_get("embedding").ok()?;
+                        Some((id, emb))
+                    })
                     .collect::<Vec<_>>()
             }
         };

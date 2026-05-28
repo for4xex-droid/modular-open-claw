@@ -443,7 +443,7 @@ const ArtifactVault = () => {
         .search-box input {
           background: transparent;
           border: none;
-          color: white;
+          color: var(--text-primary);
           width: 100%;
           outline: none;
         }
@@ -512,7 +512,7 @@ const ArtifactVault = () => {
         .card-title {
           font-size: 1.1rem;
           margin: 0 0 1rem;
-          color: white;
+          color: var(--text-primary);
           line-height: 1.4;
         }
         .card-meta {
@@ -544,7 +544,7 @@ const ArtifactVault = () => {
           bottom: 10px;
           right: -25px;
           background: var(--accent-rose);
-          color: white;
+          color: var(--white-100);
           font-size: 0.6rem;
           padding: 0.2rem 2rem;
           transform: rotate(-45deg);
@@ -647,7 +647,7 @@ const ArtifactVault = () => {
         }
         .file-name {
           font-weight: 500;
-          color: white;
+          color: var(--text-primary);
         }
         .file-size {
           font-size: 0.75rem;

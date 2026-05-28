@@ -1,6 +1,35 @@
 ## [Unreleased]
 
 ### Added
+- **commerce_helpers リダイレクトURL検証の堅牢化と純粋関数化**:
+  - `apps/api-server/src/routes/commerce_helpers.rs` で、環境変数に依存しないテスト容易性の高い純粋関数 `validate_redirect_url_with_config` を新設し、8つの堅牢な単体テスト（サブドメイン一致、localhost 開発モード、プロモードにおける fail-closed ガード）を追加。
+- **key-proxy モデル設定の起動時キャッシュ化**:
+  - `apps/key-proxy/src/main.rs` において、`GEMINI_MODEL` および `GEMINI_EMBED_MODEL` の設定値を起動時に一度だけロードして `AppState` に格納するようにし、各ハンドラでの頻繁な `env::var` 呼び出しを排除。
+
+### Fixed
+- **key-proxy 埋め込みレスポンスのエラーハンドリング堅牢化**:
+  - `apps/key-proxy/src/main.rs` 内の `handle_llm_embed` にて、レスポンスの JSON パースエラーや `embedding.values` 不在時にパニックを回避し、適切に `INTERNAL_SERVER_ERROR` を返すよう安全ガードを実装。
+- **Stripe Commerce 決済エンジンの Fail-Closed 安全化**:
+  - `libs/aiome-commerce/src/stripe.rs` にて、Stripe レスポンスが予想外のステータスコードを返した際に `Fail-Closed`（安全側に閉じる）として処理し、エラーログの読み取り失敗時にも警告ログを残しつつ安全にエラーを伝搬するように改善。モックサーバーを用いた検証テストも追加。
+- **Artifact Store データベース行パニックの排除 (Zero-Panic)**:
+  - `libs/infrastructure/src/artifact_store.rs` の `search_artifacts_semantic` において、SQLite/Postgres の行データ取得でパニックの危険性がある `.get()` 呼び出しを `.try_get().ok()` と `filter_map` に置換し、データベースの列破損や欠損に対する安全性を向上。
+- **Job Queue Swarm 秘密鍵のメモリ安全ゼロ化 (Zeroize)**:
+  - `libs/infrastructure/src/job_queue/swarm.rs` の UniversalJobQueue 実装内において、秘密鍵のバイト配列（`[u8; 32]`）をメモリ上に残さないよう、`zeroize::Zeroizing<[u8; 32]>` でラップしてメモリの安全なゼロ化を保証するよう改善。
+- **Voice Vault DRM 監査コンプライアンスの強化**:
+  - `libs/infrastructure/src/security/abyss_voice_vault.rs` の `fetch_decryption_key` にて、復号キーアクセスの監査ログに `agent_id` を付加し、トレーサビリティを向上。
+- **NAPI-Bridge 正規表現初期化パニック時のバックトレース保持**:
+  - `libs/napi-bridge/src/lib.rs` の `immune_check_tool` における危険な正規表現の静的初期化で、パース失敗時に `std::process::exit(1)` を呼び出していた箇所を `.expect()` に置換し、冗長なボイラープレート（約33行）を削除しつつ、将来のバグ発生時にバックトレースを保持できるように改善。
+- **管理者用ミドルウェア PII 漏洩抑止 (CWE-532/CWE-209)**:
+  - `apps/api-server/src/auth.rs` の `admin_only_middleware` 内のエラー警告ログにて、一般ユーザーの PII (Personally Identifiable Information) の流出を抑止するため、`claims.sub` を先頭8文字に切り捨てて出力するよう修正。
+- **Management Console UIカラーテーマの CSS 変数準拠**:
+  - `apps/management-console/src/components/ArtifactVault.tsx` でハードコードされていた `color: white` を、CSS変数トークン `var(--text-primary)` および `var(--white-100)` に置換し、ダークモード等のカラーテーマ規約に完全準拠。
+- **Management Console API フィールド名ミスマッチの修正**:
+  - `apps/management-console/src/components/VoiceStore.tsx` において、コイン残高の API レスポンス解析で `data?.coins` となっていた箇所を、実際の API 仕様である `data?.balance` に修正し、残高が正しく反映されないバグを解消。
+
+### Changed
+- **Settings API 開発モード設計意図コメントの追加**:
+  - `apps/api-server/src/routes/settings.rs` の `test_connection` エンドポイントにて、`AIOME_DEV_MODE` を AppState ではなく `std::env::var` で直接評価している理由（実行時のキルスイッチ機能の担保など）を詳細に説明するインライン設計コメントを追加。
+
 - **Nurture Bridge シナジー拡張 (P2-5S)**:
   - `Project-Nurture/libs/nurture-bridge/src/lib.rs` で Aiome 側の自律進化・対話コア構造体である `EvolutionOps`, `KarmaTaxonomy`, `KarmaClassification`, `SamsaraEvent`, `AgentEvolver`, `AutonomousBiomeEngine`, `AutonomousConfig`, `BiomeMessage` の re-export モジュールを実装。これにより、両プロジェクト間の自律・経済連携のための型契約が完全に強化。
 - **key-proxy Telemetry & Cost Metrics 強化 (P2-3)**:

@@ -350,9 +350,11 @@ pub async fn admin_only_middleware(
             {
                 Ok(next.run(req).await)
             } else {
+                // SEC: PII protection — truncate sub (consistent with other middleware)
+                let sub_hash = &claims.sub.chars().take(8).collect::<String>();
                 warn!(
-                    "⛔ [Auth] Access denied: Admin or System role required for sub: {}",
-                    claims.sub
+                    "⛔ [Auth] Access denied: Admin or System role required for sub: {}...",
+                    sub_hash
                 );
                 Err(StatusCode::FORBIDDEN)
             }

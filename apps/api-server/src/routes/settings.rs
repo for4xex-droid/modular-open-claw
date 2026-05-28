@@ -299,7 +299,11 @@ pub async fn test_connection(
     _auth: Authenticated,
     Json(payload): Json<TestConnectionRequest>,
 ) -> Result<Json<TestConnectionResponse>, AppError> {
-    // Only allow test_connection when explicitly enabled via AIOME_DEV_MODE (Perfect Plan mitigation)
+    // Double-gate safety: This handler only exists in debug builds (#[cfg(debug_assertions)]).
+    // The env::var check acts as an additional runtime kill-switch, ensuring test_connection
+    // is disabled by default even in dev builds. This is intentionally NOT read from AppState
+    // because: (1) The route is compiled out in release, and (2) we want operators to be able
+    // to toggle it without restarting the server.
     if std::env::var("AIOME_DEV_MODE").unwrap_or_default() != "1" {
         return Err(AppError::not_found(
             "Test connection is disabled in production",

@@ -223,7 +223,7 @@ impl SwarmOps for UniversalJobQueue {
                     reason: "Corrupt node key (invalid length)".to_string(),
                 });
             }
-            let mut key_arr = [0u8; 32];
+            let mut key_arr = zeroize::Zeroizing::new([0u8; 32]);
             key_arr.copy_from_slice(&priv_bytes);
             let signing_key = SigningKey::from_bytes(&key_arr);
             let signature = signing_key.sign(payload.as_bytes());

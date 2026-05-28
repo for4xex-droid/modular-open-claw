@@ -1,5 +1,68 @@
 # 🌊 Aiome Ripple Map
 
+## Aiome システム堅牢化 & リフレクション対策 (2026-05-29)
+
+### 1. リダイレクトURL検証の純粋関数化および TDD 強化
+- **変更内容**:
+    - `apps/api-server/src/routes/commerce_helpers.rs` [MODIFY]: `validate_redirect_url_with_config` を新設し、環境変数に依存しないテスト構造へ移行。8つの堅牢なユニットテスト（サブドメイン一致、localhost 開発モード、プロモードにおける fail-closed ガード）を追加。
+- **波及効果**:
+    - リダイレクト検証処理のテスト容易性が向上し、本番環境でのドメイン設定漏れ（ALLOWED_ORIGINS 未設定）によるサイレントなセキュリティ脆弱性（オープンリダイレクタ）が確実に防止される。
+
+### 2. key-proxy 起動時の設定キャッシュおよびパニック防止
+- **変更内容**:
+    - `apps/key-proxy/src/main.rs` [MODIFY]: `GEMINI_MODEL`, `GEMINI_EMBED_MODEL` の起動時ロードと `AppState` へのキャッシュ化を実装。また、`handle_llm_embed` での上流エラー処理を改善し、JSON パースエラーや `embedding.values` 欠損時のパニックを防止。
+- **波及効果**:
+    - リクエストごとの頻繁な環境変数読み込みアロケーションが排除され、パフォーマンスが向上。また、プロバイダ側の不正応答による `key-proxy` プロセスの予期せぬクラッシュが根絶された。
+
+### 3. Stripe 決済エンジンの Fail-Closed 安全化
+- **変更内容**:
+    - `libs/aiome-commerce/src/stripe.rs` [MODIFY]: 予期しない HTTP ステータスコード（500等）が返された際、安全側に閉じる Fail-Closed 原則に基づき、`AiomeError::Infrastructure` を返すよう堅牢化。
+- **波及効果**:
+    - 上流の決済サーバーの障害や不正応答時に、誤ってトランザクションを成功とみなす偽陽性リスクが排除された。
+
+### 4. Artifact Store における Zero-Panic 対策の深度化
+- **変更内容**:
+    - `libs/infrastructure/src/artifact_store.rs` [MODIFY]: `search_artifacts_semantic` メソッドにおいて、データベース行からのパニックを伴う `.get()` 呼び出しを `.try_get().ok()` と `filter_map` に置換。
+- **波及効果**:
+    - データベース列の破損や欠損が生じた際のカスケードパニックを防止し、システム全体の耐障害性が向上。
+
+### 5. Swarm 秘密鍵のメモリ安全ゼロ化 (Zeroize)
+- **変更内容**:
+    - `libs/infrastructure/src/job_queue/swarm.rs` [MODIFY]: SwarmOps 署名処理内で秘密鍵（ノードキー）のバイト配列を `zeroize::Zeroizing` にて保護。
+- **波及効果**:
+    - メモリ上に残存した秘密鍵が別の脆弱性を介してリークするリスク（CWE-312/CWE-14）を排除。
+
+### 6. Abyss Voice Vault における DRM 監査の強化
+- **変更内容**:
+    - `libs/infrastructure/src/security/abyss_voice_vault.rs` [MODIFY]: 復号キーアクセス時の監査ログに `agent_id` を付加。
+- **波及効果**:
+    - 誰が復号キーを要求したかのトレーサビリティが確保され、DRM およびアクセス監査のコンプライアンスが大幅に向上。
+
+### 7. napi-bridge での std::process::exit(1) の排除
+- **変更内容**:
+    - `libs/napi-bridge/src/lib.rs` [MODIFY]: 正規表現の静的初期化における `std::process::exit(1)` を `.expect()` に置換。約33行のボイラープレートをパージ。
+- **波及効果**:
+    - パースエラー発生時にプロセスのサイレントダウンを防ぎ、バックトレースを適切に吐き出してデバッグを容易にするとともに、コードの保守性が飛躍的に向上。
+
+### 8. admin_only_middleware での PII (CWE-532) 漏洩防止
+- **変更内容**:
+    - `apps/api-server/src/auth.rs` [MODIFY]: `admin_only_middleware` で拒否されたユーザーのログ出力時に `claims.sub` を先頭8文字に切り捨て処理。
+- **波及効果**:
+    - 認証エラーログを介した一般ユーザーの個人識別情報 (PII) の不要な流出を防止し、プライバシー規制への準拠を強化。
+
+### 9. ArtifactVault / VoiceStore フロントエンドの品質向上
+- **変更内容**:
+    - `apps/management-console/src/components/ArtifactVault.tsx` [MODIFY]: ハードコードされた `color: white` を CSS 変数トークン `var(--text-primary)`, `var(--white-100)` に置換。
+    - `apps/management-console/src/components/VoiceStore.tsx` [MODIFY]: コイン残高 API 解析のフィールド名ミスマッチ（`coins` → `balance`）を修正。
+- **波及効果**:
+    - ダークモード等のカラーテーマ規約への完全準拠と、残高表示機能が正しくロードされない重大なバグを修正。
+
+### 10. Settings API 開発モード設計意図コメントの追加
+- **変更内容**:
+    - `apps/api-server/src/routes/settings.rs` [MODIFY]: 開発モードでのみ有効な `test_connection` への詳細な設計コメントをインラインで追加。
+- **波及効果**:
+    - 開発モード用のキルスイッチ機構としての `std::env::var("AIOME_DEV_MODE")` 直接利用意図が明文化され、将来の不要なリファクタリングによる先祖返りを防止。
+
 ## Aiome + Nurture v1.5/Round 7 シナジー拡張 & 自律委譲 (2026-05-29)
 
 ### 1. Nurture Bridge の再エクスポートによる契約共通化 (P2-5S)

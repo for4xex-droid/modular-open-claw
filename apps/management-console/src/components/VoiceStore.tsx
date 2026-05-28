@@ -68,7 +68,7 @@ export default function VoiceStore() {
       const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/balance/${agentId}`);
       if (res.ok) {
         const data = await res.json();
-        setBalance(typeof data?.coins === 'number' ? data.coins : 0);
+        setBalance(typeof data?.balance === 'number' ? data.balance : 0);
       } else {
         setBalance(0);
       }

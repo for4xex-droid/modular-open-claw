@@ -82,6 +82,7 @@ impl VoiceKeyVault for AbyssVoiceVault {
         // 2. キーの取得 (Backend)
         let key = self.backend.get_dek(asset_id).await?;
         tracing::info!(
+            agent_id = %agent_id,
             asset_id = %asset_id,
             "🔓 [AuditLog] Decryption key accessed"
         );
