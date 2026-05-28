@@ -75,7 +75,7 @@ tiktoken-rs = "0.5.8"
 unwrap_used = "deny"
 
 [workspace.dependencies.wasmtime]
-version = "43.0.1"
+version = "44.0.2"
 
 [workspace.dependencies.wasmtime-wasi]
-version = "43.0.1"
+version = "44.0.2"

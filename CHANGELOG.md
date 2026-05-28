@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+- **wasmtime/wasmtime-wasi 44.0.2 へのアップグレードによる CVE 解消 (RUSTSEC-2026-0149)**:
+  - ワークスペースの `wasmtime` および `wasmtime-wasi` を `43.0.1` から `44.0.2` にアップグレードし、`WASI path_open(TRUNCATE)` を介して `FilePerms::WRITE` の制限をバイパスできる深刻な脆弱性（RUSTSEC-2026-0149、CVSS 7.5）を本質的に解消。これにより、`cargo audit` スキャンが完全にクリーンになり、pre-push ゲートのブロックをクリア。
+
 ### Added
 - **commerce_helpers リダイレクトURL検証の堅牢化と純粋関数化**:
   - `apps/api-server/src/routes/commerce_helpers.rs` で、環境変数に依存しないテスト容易性の高い純粋関数 `validate_redirect_url_with_config` を新設し、8つの堅牢な単体テスト（サブドメイン一致、localhost 開発モード、プロモードにおける fail-closed ガード）を追加。
