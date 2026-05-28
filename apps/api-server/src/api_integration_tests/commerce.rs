@@ -1006,3 +1006,132 @@ async fn test_commerce_price_id_dynamic_replacement() {
     let json_cs = resp_cs.json::<serde_json::Value>();
     assert_eq!(json_cs["url"], "cs_test_overwritten");
 }
+
+#[serial]
+#[tokio::test]
+async fn test_subscription_create_rejects_empty_plan_id() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = "Bearer mock_valid_token_ekyctest_user".to_string();
+
+    // Empty plan_id
+    let resp_empty = server
+        .post("/api/v1/commerce/subscription/create")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({
+            "agent_id": "00000000-0000-0000-0000-000000000001",
+            "plan_id": ""
+        }))
+        .await;
+    assert_eq!(resp_empty.status_code(), StatusCode::BAD_REQUEST);
+
+    // Whitespace-only plan_id
+    let resp_ws = server
+        .post("/api/v1/commerce/subscription/create")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({
+            "agent_id": "00000000-0000-0000-0000-000000000001",
+            "plan_id": "   "
+        }))
+        .await;
+    assert_eq!(resp_ws.status_code(), StatusCode::BAD_REQUEST);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_checkout_session_rejects_empty_price_id() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let resp = server
+        .post("/api/v1/commerce/checkout-session/create")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({
+            "agent_id": "00000000-0000-0000-0000-000000000001",
+            "price_id": "",
+            "success_url": "https://example.com/success",
+            "cancel_url": "https://example.com/cancel"
+        }))
+        .await;
+    assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_subscription_cancel_rejects_empty_subscription_id() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = "Bearer mock_valid_token_ekyctest_user".to_string();
+
+    let resp = server
+        .post("/api/v1/commerce/subscription/cancel")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({
+            "agent_id": "00000000-0000-0000-0000-000000000001",
+            "subscription_id": ""
+        }))
+        .await;
+    assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
+}
+
+#[serial]
+#[tokio::test]
+async fn test_customer_portal_session_success() {
+    std::env::set_var("ALLOWED_ORIGINS", "https://example.com");
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = "Bearer mock_valid_token_ekyctest_user".to_string();
+
+    let resp = server
+        .post("/api/v1/commerce/customer-portal/create")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({
+            "agent_id": "00000000-0000-0000-0000-000000000001",
+            "return_url": "https://example.com/portal-return"
+        }))
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+    let json_resp = resp.json::<serde_json::Value>();
+    assert!(json_resp["url"].as_str().is_some());
+    std::env::remove_var("ALLOWED_ORIGINS");
+}
+
+#[serial]
+#[tokio::test]
+async fn test_customer_portal_session_idor_rejection() {
+    std::env::set_var("ALLOWED_ORIGINS", "https://example.com");
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = "Bearer mock_valid_token_ekyctest_user".to_string();
+
+    // 別のエージェントID（所有権不一致によるIDOR防止）
+    let resp = server
+        .post("/api/v1/commerce/customer-portal/create")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({
+            "agent_id": "00000000-0000-0000-0000-000000000002",
+            "return_url": "https://example.com/portal-return"
+        }))
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::FORBIDDEN);
+    std::env::remove_var("ALLOWED_ORIGINS");
+}
+
+#[serial]
+#[tokio::test]
+async fn test_customer_portal_session_invalid_return_url() {
+    std::env::set_var("ALLOWED_ORIGINS", "https://example.com");
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = "Bearer mock_valid_token_ekyctest_user".to_string();
+
+    // 未許可のドメイン（Phishing対策ホワイトリストで拒否）
+    let resp = server
+        .post("/api/v1/commerce/customer-portal/create")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&json!({
+            "agent_id": "00000000-0000-0000-0000-000000000001",
+            "return_url": "https://phishing-site.com/malicious"
+        }))
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
+    std::env::remove_var("ALLOWED_ORIGINS");
+}

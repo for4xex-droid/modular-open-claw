@@ -1,5 +1,29 @@
 # 🌊 Aiome Ripple Map
 
+## Stripe Customer Portal 統合 (P1-1) (2026-05-29)
+### 1. CommerceEngine トレイト拡張と 8つの implementor への stub/mock 追加
+- **変更内容**:
+    - `libs/aiome-contracts/src/commerce.rs` [MODIFY]: `create_portal_session` トレイトメソッドを追加。
+    - `libs/aiome-commerce/src/stripe.rs` [MODIFY]: `CreateBillingPortalSession` を用いて、日本語ロケール (`locale(Ja)`) に完全ローカライズされたポータルURLの作成を実装。
+    - `libs/aiome-commerce/src/polar.rs` [MODIFY]: `create_portal_session` スタブ (エラー返却) を追加。
+    - `libs/aiome-commerce/src/mock.rs` [MODIFY]: `create_portal_session` モック (固定のテストURL返却) を追加。
+    - `apps/aiome-node/src/main.rs` [MODIFY]: `StubCommerceEngine` に `create_portal_session` スタブを追加。
+    - `apps/api-server/src/api_integration_tests/common.rs` [MODIFY]: `MockCommerceEngine` に `create_portal_session` モックを追加。
+    - `libs/infrastructure/src/lora_marketplace.rs` [MODIFY]: `MockCommerceEngineForMarketplace` に `create_portal_session` スタブを追加。
+    - `libs/infrastructure/tests/browser_red_team_tdd.rs` [MODIFY]: `MockCommerceEngine` に `create_portal_session` スタブを追加。
+    - `Project-Nurture/libs/nurture-infra/src/economy/bridge.rs` [MODIFY]: `NurtureCommerceBridge` に `create_portal_session` スタブを追加。
+- **波及効果**:
+    - クロスリポジトリ間で Aiome と Project-Nurture の型整合性が保たれ、コンパイル不整合（ビルド破壊）を完全に防止した安全なトレイト拡張を実現。
+
+### 2. API エンドポイントとドメインホワイトリストセキュリティ検証
+- **変更内容**:
+    - `apps/api-server/src/routes/commerce.rs` [MODIFY]: `/api/v1/commerce/customer-portal/create` エンドポイントハンドラを追加。IDOR防止（`agent_id` 所有権検証）、`ALLOWED_ORIGINS` ドメインホワイトリストによる return_url 検証（フィッシング防止）の SEC-2 セキュリティ要件を完全実装。
+    - `apps/api-server/src/router.rs` [MODIFY]: ルート `/api/v1/commerce/customer-portal/create` を登録し、5秒のレート制限を適用。
+    - `apps/api-server/src/api_integration_tests/commerce.rs` [MODIFY]: 正常系、IDOR防止拒否、未許可ドメイン拒否を検証する3つの TDD 統合テストを追加。
+- **波及効果**:
+    - ユーザーが自分自身で Stripe サブスクリプション管理を行える安全なポータル導線が完成。
+    - ホワイトリストドメイン検証の導入により、悪意ある return_url へのリダイレクト（オープンリダイレクタ・フィッシング攻撃）を完全に遮断。
+
 ## Commerce Layer Deep Hardening (2026-05-22)
 ### 1. Stripe Commerce 本番封印 & Gift/Splitter 入力バリデーション
 - **変更内容**:

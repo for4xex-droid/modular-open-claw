@@ -205,6 +205,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ) -> Result<Vec<TransactionRecord>, AiomeError> {
                 Self::err()
             }
+            async fn create_portal_session(
+                &self,
+                _agent_id: Uuid,
+                _return_url: &str,
+            ) -> Result<String, AiomeError> {
+                Self::err()
+            }
         }
 
         struct BasicValidator;

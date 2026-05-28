@@ -1150,6 +1150,49 @@ impl CommerceEngine for StripeCommerceEngine {
 
         Ok(vec![])
     }
+
+    async fn create_portal_session(
+        &self,
+        agent_id: Uuid,
+        return_url: &str,
+    ) -> Result<String, AiomeError> {
+        if self.is_mock {
+            return Ok("https://example.com/portal-session-mock".to_string());
+        }
+
+        let customer_id: Option<(String,)> =
+            sqlx::query_as("SELECT customer_id FROM stripe_customers WHERE agent_id = ?")
+                .bind(agent_id.to_string())
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("DB lookup failed for customer: {}", e),
+                })?;
+
+        let Some((customer_id_str,)) = customer_id else {
+            return Err(AiomeError::NotFound {
+                reason: format!("Stripe customer not found for agent: {}", agent_id),
+            });
+        };
+
+        let cust_id = customer_id_str
+            .parse::<stripe_core::CustomerId>()
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Invalid customer ID format: {}", e),
+            })?;
+
+        let session = stripe_billing::billing_portal_session::CreateBillingPortalSession::new()
+            .customer(cust_id)
+            .return_url(return_url)
+            .locale(stripe_billing::BillingPortalSessionLocale::Ja)
+            .send(&self.client)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Stripe billing portal session creation failed: {}", e),
+            })?;
+
+        Ok(session.url)
+    }
 }
 
 #[cfg(test)]

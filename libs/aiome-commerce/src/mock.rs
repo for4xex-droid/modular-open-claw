@@ -278,13 +278,20 @@ impl CommerceEngine for MockCommerceEngine {
             conversion_rate_bps: 10000,
         })
     }
-
     async fn get_transaction_history(
         &self,
         _agent_id: Uuid,
         _limit: u32,
     ) -> Result<Vec<aiome_core_contracts::commerce::TransactionRecord>, AiomeError> {
         Ok(Vec::new())
+    }
+
+    async fn create_portal_session(
+        &self,
+        _agent_id: Uuid,
+        _return_url: &str,
+    ) -> Result<String, AiomeError> {
+        Ok("https://example.com/portal-session-mock".to_string())
     }
 }
 

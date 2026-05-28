@@ -191,6 +191,14 @@ impl CommerceEngine for MockCommerceEngine {
     ) -> Result<Vec<TransactionRecord>, AiomeError> {
         Ok(vec![])
     }
+
+    async fn create_portal_session(
+        &self,
+        _agent_id: Uuid,
+        _return_url: &str,
+    ) -> Result<String, AiomeError> {
+        Ok("mock_portal_url".to_string())
+    }
 }
 
 #[tokio::test]

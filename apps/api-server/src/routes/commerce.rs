@@ -314,12 +314,25 @@ pub struct CancelSubscriptionRequest {
     pub subscription_id: String,
 }
 
+/// Resolves a plan/price alias to the actual Stripe Price ID.
+/// If the alias matches `"price_gold_monthly"` and `STRIPE_PRICE_SUBSCRIPTION_MONTHLY`
+/// is configured via environment, uses the configured value. Otherwise returns the input as-is.
+fn resolve_price_id<'a>(alias: &'a str, configured: Option<&'a str>) -> &'a str {
+    if alias == "price_gold_monthly" {
+        configured.unwrap_or(alias)
+    } else {
+        alias
+    }
+}
+
 /// [POST] /api/v1/commerce/subscription/create
 pub async fn create_subscription(
     State(state): State<AppState>,
     auth: crate::auth::Authenticated,
     Json(req): Json<CreateSubscriptionRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    // SEC-2: Authentication is enforced by the Authenticated extractor.
+    // RBAC: Check agent_id ownership — prevent IDOR attacks
     if req.agent_id != auth.agent_id {
         return Err(AppError::forbidden("Unauthorized access to this agent"));
     }
@@ -334,20 +347,20 @@ pub async fn create_subscription(
         ));
     }
 
+    if req.plan_id.trim().is_empty() {
+        return Err(AppError::bad_request("plan_id must not be empty"));
+    }
+
     let engine = state.commerce_engine.as_opt().ok_or_else(|| {
         aiome_core::error::AiomeError::Infrastructure {
             reason: "Commerce Engine not enabled".into(),
         }
     })?;
 
-    let plan_id = if req.plan_id == "price_gold_monthly" {
-        state
-            .stripe_price_subscription_monthly
-            .as_deref()
-            .unwrap_or("price_gold_monthly")
-    } else {
-        &req.plan_id
-    };
+    let plan_id = resolve_price_id(
+        &req.plan_id,
+        state.stripe_price_subscription_monthly.as_deref(),
+    );
 
     let sub_id = engine.create_subscription(req.agent_id, plan_id).await?;
     Ok((
@@ -379,6 +392,10 @@ pub async fn cancel_subscription(
         return Err(AppError::forbidden(
             "eKYC verification is required to cancel subscriptions",
         ));
+    }
+
+    if req.subscription_id.trim().is_empty() {
+        return Err(AppError::bad_request("subscription_id must not be empty"));
     }
 
     let engine = state.commerce_engine.as_opt().ok_or_else(|| {
@@ -534,6 +551,8 @@ pub async fn create_checkout_session(
         req.agent_id
     );
 
+    // SEC-2: Authentication is enforced by the Authenticated extractor.
+    // RBAC: Check agent_id ownership — prevent IDOR attacks
     if req.agent_id != auth.agent_id {
         return Err(AppError::forbidden("Unauthorized access to this agent"));
     }
@@ -566,24 +585,145 @@ pub async fn create_checkout_session(
         ));
     }
 
+    if req.price_id.trim().is_empty() {
+        return Err(AppError::bad_request("price_id must not be empty"));
+    }
+
     let engine = state.commerce_engine.as_opt().ok_or_else(|| {
         aiome_core::error::AiomeError::Infrastructure {
             reason: "Commerce Engine not enabled".into(),
         }
     })?;
 
-    let price_id = if req.price_id == "price_gold_monthly" {
-        state
-            .stripe_price_subscription_monthly
-            .as_deref()
-            .unwrap_or("price_gold_monthly")
-    } else {
-        &req.price_id
-    };
+    let price_id = resolve_price_id(
+        &req.price_id,
+        state.stripe_price_subscription_monthly.as_deref(),
+    );
 
     let url = engine
         .create_checkout_session(req.agent_id, price_id, &req.success_url, &req.cancel_url)
         .await?;
 
     Ok(Json(CreateCheckoutSessionResponse { url }))
+}
+
+#[derive(Debug, serde::Deserialize, utoipa::ToSchema)]
+pub struct CreatePortalSessionRequest {
+    pub agent_id: Uuid,
+    pub return_url: String,
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct CreatePortalSessionResponse {
+    pub url: String,
+}
+
+/// Stripe Customer Portal セッションを作成し、ポータル URL を返却する
+#[utoipa::path(
+    post,
+    path = "/api/v1/commerce/customer-portal/create",
+    request_body = CreatePortalSessionRequest,
+    responses(
+        (status = 200, description = "Portal session created", body = CreatePortalSessionResponse),
+        (status = 400, description = "Bad request"),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("api_key" = []))
+)]
+#[tracing::instrument(skip_all, fields(path = "/api/v1/commerce/customer-portal/create"))]
+pub async fn create_portal_session(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+    Json(req): Json<CreatePortalSessionRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    tracing::info!(
+        "🛒 [Commerce] Customer Portal session create for agent: {}",
+        req.agent_id
+    );
+
+    // SEC-2: Authentication check via Authenticated extractor + IDOR protection
+    if req.agent_id != auth.agent_id {
+        return Err(AppError::forbidden("Unauthorized access to this agent"));
+    }
+
+    // Input Validation: return_url
+    if req.return_url.trim().is_empty() {
+        return Err(AppError::bad_request("return_url must not be empty"));
+    }
+
+    // URL scheme validation (Phishing protection)
+    let is_dev = std::env::var("AIOME_DEV_MODE").unwrap_or_default() == "1";
+    let is_valid_url = |raw_url: &str| -> bool {
+        let parsed = match url::Url::parse(raw_url) {
+            Ok(u) => u,
+            Err(_) => return false,
+        };
+
+        // 1. Scheme Validation
+        if parsed.scheme() != "https" {
+            if is_dev && parsed.scheme() == "http" {
+                if let Some(host) = parsed.host_str() {
+                    if host == "localhost" || host == "127.0.0.1" {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // 2. Whitelist Domain Validation (ALLOWED_ORIGINS)
+        if let Ok(origins_str) = std::env::var("ALLOWED_ORIGINS") {
+            let allowed_hosts: Vec<String> = origins_str
+                .split(',')
+                .map(|s| s.trim())
+                .filter_map(|s| url::Url::parse(s).ok())
+                .filter_map(|u| u.host_str().map(|h| h.to_lowercase()))
+                .collect();
+
+            if let Some(host) = parsed.host_str() {
+                let host_lower = host.to_lowercase();
+                return allowed_hosts.iter().any(|allowed| {
+                    host_lower == *allowed || host_lower.ends_with(&format!(".{}", allowed))
+                });
+            }
+        } else {
+            if is_dev {
+                return true;
+            }
+        }
+
+        false
+    };
+
+    if !is_valid_url(&req.return_url) {
+        return Err(AppError::bad_request(
+            "return_url must use a whitelisted https:// domain (or localhost in dev mode)",
+        ));
+    }
+
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Commerce Engine not enabled".into(),
+        }
+    })?;
+
+    let url = engine
+        .create_portal_session(req.agent_id, &req.return_url)
+        .await?;
+
+    // SSE Broadcast
+    if let Some(sender) = state.event_sender.as_opt() {
+        let _ = sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
+            event_type: "portal_session.created".to_string(),
+            agent_id: req.agent_id,
+            amount: 0,
+            currency: "jpy".to_string(),
+            description: format!("Agent {} opened customer portal", req.agent_id),
+        });
+        metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "portal_session.created").increment(1);
+    }
+
+    Ok(Json(CreatePortalSessionResponse { url }))
 }

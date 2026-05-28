@@ -1,6 +1,13 @@
 ## [Unreleased]
 
 ### Added
+- **Stripe Customer Portal 統合 (P1-1)**:
+  - `CommerceEngine` トレイトに `create_portal_session` メソッドを追加し、Stripe、Polar、Mock、Stub を含む 8つの実装箇所に stub/mock を追加（クロスリポジトリで Project-Nurture も同期）。
+  - Stripe では `CreateBillingPortalSession` を用いて、日本語ロケール (`locale(Ja)`) に完全ローカライズされたポータルURLの作成を実装。
+  - `/api/v1/commerce/customer-portal/create` エンドポイントを新設。JWT認証の適用と、IDOR防止（`agent_id` 所有権検証）、`ALLOWED_ORIGINS` ドメインホワイトリストによる return_url 検証（フィッシング防止）の SEC-2 セキュリティ要件を完全実装。
+  - ポータル作成成功時に SSE ブロードキャスト (`portal_session.created`) の送信を追加。
+  - 正常系、IDOR防止拒否、未許可ドメイン拒否を網羅した高精度な TDD 統合テスト（正常系＋異常系）を実装し、100% GREEN を達成。
+
 - **Provider-Aware Dynamic Cost Calculation & Billing (First Penguin)**:
   - `libs/infrastructure/src/llm/dynamic.rs` に `calculate_cost_coins` ユーティリティ関数を新規実装。LLM プロバイダーやモデルの料金体系に基づき、消費されたトークン（プロンプト/補完トークン）に応じた消費コイン数を正確に計算します。
   - トークン数がメタデータから得られない場合は、文字数ベースのフォールバック推定値（入力文字数 / 3, 返答文字数 / 2）を自動適用する強固なセーフガードを完備。

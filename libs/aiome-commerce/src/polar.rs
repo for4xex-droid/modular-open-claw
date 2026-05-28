@@ -345,6 +345,16 @@ impl CommerceEngine for PolarCommerceEngine {
             reason: "get_transaction_history not implemented for Polar API".into(),
         })
     }
+
+    async fn create_portal_session(
+        &self,
+        _agent_id: Uuid,
+        _return_url: &str,
+    ) -> Result<String, AiomeError> {
+        Err(AiomeError::Infrastructure {
+            reason: "create_portal_session not implemented for Polar API".into(),
+        })
+    }
 }
 
 #[cfg(test)]

@@ -133,6 +133,13 @@ pub trait CommerceEngine: Send + Sync {
         agent_id: Uuid,
         limit: u32,
     ) -> Result<Vec<TransactionRecord>, AiomeError>;
+
+    /// Stripe Customer Portal のセッションを作成し、ポータル URL を返す
+    async fn create_portal_session(
+        &self,
+        agent_id: Uuid,
+        return_url: &str,
+    ) -> Result<String, AiomeError>;
 }
 
 /// クリエイターのポイント（Karma）残高

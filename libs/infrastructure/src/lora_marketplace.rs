@@ -879,6 +879,14 @@ mod tests {
         ) -> Result<Vec<aiome_core_contracts::commerce::TransactionRecord>, AiomeError> {
             Ok(vec![])
         }
+
+        async fn create_portal_session(
+            &self,
+            _agent_id: Uuid,
+            _return_url: &str,
+        ) -> Result<String, AiomeError> {
+            Ok("mock_portal_url".into())
+        }
     }
 
     async fn setup_marketplace(tmp: &tempfile::TempDir) -> (UniversalLoraMarketplace, PathBuf) {

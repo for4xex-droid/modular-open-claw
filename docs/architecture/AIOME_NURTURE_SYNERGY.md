@@ -684,6 +684,7 @@ classDiagram
         +transfer(from_id, to_id, amount) Result~String~
         +deduct_generation_cost(agent_id, asset_id, amount, generation_type) Result~()~
         +create_checkout_session(agent_id, price_id, success_url, cancel_url) Result~String~
+        +create_portal_session(agent_id, return_url) Result~String~
     }
 
     class GiftEngine {

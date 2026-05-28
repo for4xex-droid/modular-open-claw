@@ -311,6 +311,14 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
     {
         Ok(vec![])
     }
+
+    async fn create_portal_session(
+        &self,
+        _agent_id: uuid::Uuid,
+        _return_url: &str,
+    ) -> Result<String, aiome_core::error::AiomeError> {
+        Ok("https://example.com/portal-session-mock".to_string())
+    }
 }
 
 #[derive(Debug)]
