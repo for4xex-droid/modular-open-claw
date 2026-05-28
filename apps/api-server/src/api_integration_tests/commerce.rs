@@ -967,6 +967,7 @@ async fn test_commerce_price_id_dynamic_replacement() {
         "STRIPE_PRICE_SUBSCRIPTION_MONTHLY",
         "price_test_overwrite_99999",
     );
+    std::env::set_var("ALLOWED_ORIGINS", "https://localhost");
     let (server, _state, _tmp) = create_test_server().await;
     std::env::remove_var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY");
 
@@ -1005,6 +1006,7 @@ async fn test_commerce_price_id_dynamic_replacement() {
     assert_eq!(resp_cs.status_code(), StatusCode::OK);
     let json_cs = resp_cs.json::<serde_json::Value>();
     assert_eq!(json_cs["url"], "cs_test_overwritten");
+    std::env::remove_var("ALLOWED_ORIGINS");
 }
 
 #[serial]

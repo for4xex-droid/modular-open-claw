@@ -128,6 +128,9 @@ pub fn build_app(
                     .rate_limit(1, std::time::Duration::from_secs(5)), // 1 create per 5s
             ),
         )
+        .route("/api/v1/admin/ban", post(routes::admin::create_ban))
+        .route("/api/v1/admin/unban", post(routes::admin::remove_ban))
+        .route("/api/v1/admin/bans", get(routes::admin::list_bans))
         .route(
             "/api/v1/commerce/subscription/create",
             axum::routing::post(routes::commerce::create_subscription).route_layer(

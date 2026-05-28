@@ -54,6 +54,7 @@ const LoraTrainingView = React.lazy(() => import("./components/LoraTrainingView"
 const BiomeDialogueView = React.lazy(() => import("./components/BiomeDialogueView"));
 const VoiceStore = React.lazy(() => import("./components/VoiceStore"));
 const McpDashboard = React.lazy(() => import("./components/McpDashboard"));
+const BanDashboard = React.lazy(() => import("./components/BanDashboard"));
 const DemoView = React.lazy(() => import("./components/DemoView"));
 const CausalVisualizer = React.lazy(() => import("./components/CausalVisualizer"));
 const CortexView = React.lazy(() => import("./components/cortex/CortexView"));
@@ -279,7 +280,7 @@ function App() {
   const isVisible = (tab: string) => {
     const beginner = ['home-v2', 'agent', 'artifacts', 'settings'];
     const intermediate = [...beginner, 'dashboard', 'demo', 'cortex', 'vault', 'store', 'nurture', 'mcp-dashboard', 'seo-pulse'];
-    const advanced = [...intermediate, 'karma', 'graph', 'causal', 'biome', 'audit', 'prompt-stats', 'immune', 'lora', 'expressions'];
+    const advanced = [...intermediate, 'karma', 'graph', 'causal', 'biome', 'audit', 'prompt-stats', 'immune', 'lora', 'expressions', 'ban-dashboard'];
     
     if (viewMode === 'beginner') return beginner.includes(tab);
     if (viewMode === 'intermediate') return intermediate.includes(tab);
@@ -520,6 +521,14 @@ function App() {
 
         <nav className="nav-group">
           <h4>{t('nav.section.control')}</h4>
+          {isVisible("ban-dashboard") && (
+            <NavItem
+              icon={<Shield size={20} />}
+              label="Compliance (BAN)"
+              active={activeTab === "ban-dashboard"}
+              onClick={() => setActiveTab("ban-dashboard")}
+            />
+          )}
           {isVisible("immune") && (
             <NavItem
               icon={<Shield size={20} />}
@@ -648,6 +657,7 @@ function App() {
             {activeTab === "expressions" && t('page.expressions')}
             {activeTab === "biome" && t('page.biomeLab')}
             {activeTab === "store" && t('page.voiceStore')}
+            {activeTab === "ban-dashboard" && "Governance & BAN Dashboard"}
             {activeTab === "nurture" && (t('page.nurtureEconomy', { defaultValue: 'Nurture Economy' }) as string)}
             {activeTab === "causal" && t('page.causalTrace')}
             {activeTab === "lora" && t('page.loraAutotuner')}
@@ -697,6 +707,7 @@ function App() {
               {activeTab === "expressions" && <ExpressionPipeline />}
               {activeTab === "biome" && <BiomeDialogueView />}
               {activeTab === "store" && <VoiceStore />}
+              {activeTab === "ban-dashboard" && <BanDashboard />}
               {activeTab === "nurture" && <NurtureDashboard />}
               {activeTab === "buzz-approval" && <BuzzApproval />}
               {activeTab === "causal" && <CausalVisualizer />}

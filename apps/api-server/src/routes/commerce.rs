@@ -560,28 +560,11 @@ pub async fn create_checkout_session(
     // NOTE: AIOME_DEV_MODE is read per-request rather than from AppState.
     // This is acceptable since std::env::var is cheap and this endpoint is low-frequency.
     // Future: consider migrating to a boot-time flag in AppState.
-    let is_dev = std::env::var("AIOME_DEV_MODE").unwrap_or_default() == "1";
-
-    let is_valid_scheme = |raw_url: &str| -> bool {
-        // Use URL parser to extract scheme and host, preventing bypass via query params
-        let parsed = match url::Url::parse(raw_url) {
-            Ok(u) => u,
-            Err(_) => return false,
-        };
-        if parsed.scheme() == "https" {
-            return true;
-        }
-        if is_dev && parsed.scheme() == "http" {
-            if let Some(host) = parsed.host_str() {
-                return host == "localhost" || host == "127.0.0.1";
-            }
-        }
-        false
-    };
-
-    if !is_valid_scheme(&req.success_url) || !is_valid_scheme(&req.cancel_url) {
+    if !super::commerce_helpers::validate_redirect_url(&req.success_url)
+        || !super::commerce_helpers::validate_redirect_url(&req.cancel_url)
+    {
         return Err(AppError::bad_request(
-            "success_url and cancel_url must use https:// scheme (http://localhost allowed in dev mode)",
+            "success_url and cancel_url must use a whitelisted https:// domain (or localhost in dev mode)",
         ));
     }
 
@@ -653,51 +636,7 @@ pub async fn create_portal_session(
         return Err(AppError::bad_request("return_url must not be empty"));
     }
 
-    // URL scheme validation (Phishing protection)
-    let is_dev = std::env::var("AIOME_DEV_MODE").unwrap_or_default() == "1";
-    let is_valid_url = |raw_url: &str| -> bool {
-        let parsed = match url::Url::parse(raw_url) {
-            Ok(u) => u,
-            Err(_) => return false,
-        };
-
-        // 1. Scheme Validation
-        if parsed.scheme() != "https" {
-            if is_dev && parsed.scheme() == "http" {
-                if let Some(host) = parsed.host_str() {
-                    if host == "localhost" || host == "127.0.0.1" {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        // 2. Whitelist Domain Validation (ALLOWED_ORIGINS)
-        if let Ok(origins_str) = std::env::var("ALLOWED_ORIGINS") {
-            let allowed_hosts: Vec<String> = origins_str
-                .split(',')
-                .map(|s| s.trim())
-                .filter_map(|s| url::Url::parse(s).ok())
-                .filter_map(|u| u.host_str().map(|h| h.to_lowercase()))
-                .collect();
-
-            if let Some(host) = parsed.host_str() {
-                let host_lower = host.to_lowercase();
-                return allowed_hosts.iter().any(|allowed| {
-                    host_lower == *allowed || host_lower.ends_with(&format!(".{}", allowed))
-                });
-            }
-        } else {
-            if is_dev {
-                return true;
-            }
-        }
-
-        false
-    };
-
-    if !is_valid_url(&req.return_url) {
+    if !super::commerce_helpers::validate_redirect_url(&req.return_url) {
         return Err(AppError::bad_request(
             "return_url must use a whitelisted https:// domain (or localhost in dev mode)",
         ));

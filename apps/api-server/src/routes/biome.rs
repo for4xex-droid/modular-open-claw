@@ -8,6 +8,7 @@
 use crate::error::AppError;
 use crate::AppState;
 use aiome_core::traits::SettingsOps;
+use aiome_core_contracts::JobQueue;
 use axum::{
     extract::State,
     http::StatusCode,
@@ -307,15 +308,27 @@ pub async fn send_message(
         return Err(AppError::bad_request(e.to_string()));
     }
 
+    let clock = state
+        .job_queue
+        .tick_local_clock()
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?;
+
+    let payload_to_sign = format!("{}:{}:{}", state.system_agent_id, req.topic_id, clock);
+    let signature = state
+        .job_queue
+        .sign_swarm_payload(&payload_to_sign)
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?;
+
     let payload = aiome_core::biome::BiomeMessage {
         topic_id: req.topic_id.clone(),
         sender_pubkey: state.system_agent_id.to_string(),
         recipient_pubkey: req.recipient_pubkey.clone(),
         content: req.content,
-        // MVP: Hardcoded defaults until full Federation crypto is implemented
         karma_root_cid: "cid_local_relay".to_string(),
-        signature: "unsigned_local_relay".to_string(),
-        lamport_clock: 0,
+        signature,
+        lamport_clock: clock,
         timestamp: chrono::Utc::now().to_rfc3339(),
         encryption: "none".to_string(),
     };

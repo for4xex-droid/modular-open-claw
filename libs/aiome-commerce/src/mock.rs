@@ -182,7 +182,7 @@ impl CommerceEngine for MockCommerceEngine {
         _success_url: &str,
         _cancel_url: &str,
     ) -> Result<String, AiomeError> {
-        Ok("cs_test_mock".into())
+        Ok("https://example.com/checkout-session-mock".into())
     }
 
     async fn create_subscription(
@@ -404,5 +404,28 @@ mod tests {
             .deduct_generation_cost(agent_id, None, 2000, "video_generation")
             .await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_mock_checkout_session() {
+        let engine = MockCommerceEngine::new();
+        let agent_id = Uuid::new_v4();
+        let price_id = "price_gold_monthly";
+        let success_url = "https://example.com/success";
+        let cancel_url = "https://example.com/cancel";
+
+        let checkout_url = engine
+            .create_checkout_session(agent_id, price_id, success_url, cancel_url)
+            .await
+            .unwrap();
+
+        let parsed = url::Url::parse(&checkout_url);
+        assert!(
+            parsed.is_ok(),
+            "Checkout session url should be a valid URL. Found: {}",
+            checkout_url
+        );
+        let u = parsed.unwrap();
+        assert_eq!(u.scheme(), "https");
     }
 }

@@ -6,6 +6,7 @@
  */
 
 pub mod a2ui;
+pub mod admin;
 pub mod agent;
 pub mod artifacts;
 pub mod audit;
@@ -16,6 +17,7 @@ pub mod blueprint;
 pub mod bootstrap;
 pub mod buzz;
 pub mod commerce;
+pub(crate) mod commerce_helpers;
 pub mod commerce_webhook;
 pub mod cortex;
 #[cfg(any(debug_assertions, feature = "demo"))]

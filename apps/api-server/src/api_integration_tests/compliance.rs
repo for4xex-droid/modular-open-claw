@@ -171,3 +171,60 @@ async fn test_compliance_exempt_cancellation() {
 
     assert_eq!(response_cancel.status_code(), StatusCode::OK);
 }
+
+#[tokio::test]
+async fn test_compliance_ban_management_api() {
+    let (server, _state, _tmp) = create_test_server().await;
+
+    let admin_bearer = "Bearer mock_valid_token_admin".to_string();
+    let user_bearer = "Bearer mock_valid_token_test_user".to_string();
+    let target_agent_id = uuid::Uuid::new_v4();
+
+    // 1. 一般ユーザーによる不正アクセス拒否の検証 (403 Forbidden)
+    let resp_deny = server
+        .post("/api/v1/admin/ban")
+        .add_header("Authorization", user_bearer)
+        .json(&json!({
+            "agent_id": target_agent_id,
+            "reason": "Policy violation",
+            "severity": "HIGH"
+        }))
+        .await;
+    assert_eq!(resp_deny.status_code(), StatusCode::FORBIDDEN);
+
+    // 2. 管理者によるBAN登録 (Expected: 200 OK)
+    let resp_ban = server
+        .post("/api/v1/admin/ban")
+        .add_header("Authorization", admin_bearer.clone())
+        .json(&json!({
+            "agent_id": target_agent_id,
+            "reason": "CSAM Violations",
+            "severity": "CRITICAL"
+        }))
+        .await;
+    assert_eq!(resp_ban.status_code(), StatusCode::OK);
+
+    // 3. BANリスト取得と検証 (Expected: 200 OK)
+    let resp_list = server
+        .get("/api/v1/admin/bans")
+        .add_header("Authorization", admin_bearer.clone())
+        .await;
+    assert_eq!(resp_list.status_code(), StatusCode::OK);
+
+    let list_json = resp_list.json::<serde_json::Value>();
+    let bans_array = list_json.as_array().expect("Should be a JSON array");
+    let found = bans_array
+        .iter()
+        .any(|b| b["actor_id"].as_str() == Some(&target_agent_id.to_string()));
+    assert!(found, "Target agent should be in the ban list");
+
+    // 4. 管理者によるBAN解除 (Expected: 200 OK)
+    let resp_unban = server
+        .post("/api/v1/admin/unban")
+        .add_header("Authorization", admin_bearer)
+        .json(&json!({
+            "agent_id": target_agent_id
+        }))
+        .await;
+    assert_eq!(resp_unban.status_code(), StatusCode::OK);
+}
