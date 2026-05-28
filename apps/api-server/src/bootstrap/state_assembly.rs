@@ -417,6 +417,10 @@ pub async fn assemble_app_state(
         buzz_scheduler: Component::new(std::sync::Arc::new(
             infrastructure::buzz::scheduler::BuzzScheduler::new(90, 4),
         )),
+        stripe_price_subscription_monthly: preflight
+            .secrets
+            .stripe_price_subscription_monthly
+            .clone(),
     };
 
     Ok(state)

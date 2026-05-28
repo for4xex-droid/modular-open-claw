@@ -100,6 +100,7 @@ pub struct BootSecrets {
     pub search_key: Option<String>,
     pub x_token: Option<String>,
     pub tts_openai_key: Option<String>,
+    pub stripe_price_subscription_monthly: Option<String>,
 }
 
 pub struct DatabaseResult {

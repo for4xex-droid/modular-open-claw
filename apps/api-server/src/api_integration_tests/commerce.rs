@@ -753,3 +753,256 @@ async fn test_stripe_webhook_checkout_session_completed_syncs_to_nurture_ledger(
         _ => panic!("Expected CommerceEvent event, got another event"),
     }
 }
+
+#[serial]
+#[tokio::test]
+async fn test_stripe_webhook_subscription_deleted_suspends_account() {
+    let (server, state, _tmp) = create_test_server().await;
+
+    let sqlite_pool = state.db_pool.get_inner().get_sqlite_pool().unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    ).execute(sqlite_pool).await.unwrap();
+
+    let agent_id = "agent-deleted-123";
+    let customer_id = "cus_deleted123";
+    sqlx::query("INSERT INTO stripe_customers (id, customer_id, agent_id) VALUES ('2', ?, ?)")
+        .bind(customer_id)
+        .bind(agent_id)
+        .execute(sqlite_pool)
+        .await
+        .unwrap();
+
+    let payload = serde_json::json!({
+        "id": "evt_sub_del_123",
+        "type": "customer.subscription.deleted",
+        "data": {
+            "object": {
+                "customer": customer_id,
+                "subscription": "sub_del_123"
+            }
+        }
+    });
+
+    let resp = server
+        .post("/api/v1/commerce/webhook")
+        .add_header("stripe-signature", "dummy_sig")
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+
+    use aiome_core::traits::SettingsOps;
+    let setting_key = format!("agency.{}.mcp_suspended", agent_id);
+    let setting = state
+        .job_queue
+        .get_inner()
+        .get_setting_value(&setting_key)
+        .await
+        .unwrap();
+    assert_eq!(setting.as_deref(), Some("true"));
+}
+
+#[serial]
+#[tokio::test]
+async fn test_stripe_webhook_subscription_updated_past_due_suspends_account() {
+    let (server, state, _tmp) = create_test_server().await;
+
+    let sqlite_pool = state.db_pool.get_inner().get_sqlite_pool().unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    ).execute(sqlite_pool).await.unwrap();
+
+    let agent_id = "agent-updated-123";
+    let customer_id = "cus_updated123";
+    sqlx::query("INSERT INTO stripe_customers (id, customer_id, agent_id) VALUES ('3', ?, ?)")
+        .bind(customer_id)
+        .bind(agent_id)
+        .execute(sqlite_pool)
+        .await
+        .unwrap();
+
+    let payload = serde_json::json!({
+        "id": "evt_sub_upd_123",
+        "type": "customer.subscription.updated",
+        "data": {
+            "object": {
+                "customer": customer_id,
+                "subscription": "sub_upd_123",
+                "status": "past_due"
+            }
+        }
+    });
+
+    let resp = server
+        .post("/api/v1/commerce/webhook")
+        .add_header("stripe-signature", "dummy_sig")
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+
+    use aiome_core::traits::SettingsOps;
+    let setting_key = format!("agency.{}.mcp_suspended", agent_id);
+    let setting = state
+        .job_queue
+        .get_inner()
+        .get_setting_value(&setting_key)
+        .await
+        .unwrap();
+    assert_eq!(setting.as_deref(), Some("true"));
+}
+
+#[serial]
+#[tokio::test]
+async fn test_stripe_webhook_dispute_created_suspends_account() {
+    let (server, state, _tmp) = create_test_server().await;
+
+    let sqlite_pool = state.db_pool.get_inner().get_sqlite_pool().unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);"
+    ).execute(sqlite_pool).await.unwrap();
+
+    let agent_id = "00000000-0000-0000-0000-000000000999";
+    let payload = serde_json::json!({
+        "id": "evt_dispute_123",
+        "type": "charge.dispute.created",
+        "data": {
+            "object": {
+                "id": "dp_123",
+                "metadata": {
+                    "agent_id": agent_id
+                }
+            }
+        }
+    });
+
+    let mut rx = state.event_sender.get_inner().subscribe();
+
+    let resp = server
+        .post("/api/v1/commerce/webhook")
+        .add_header("stripe-signature", "dummy_sig")
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+
+    use aiome_core::traits::SettingsOps;
+    let setting_key = format!("agency.{}.mcp_suspended", agent_id);
+    let setting = state
+        .job_queue
+        .get_inner()
+        .get_setting_value(&setting_key)
+        .await
+        .unwrap();
+    assert_eq!(setting.as_deref(), Some("true"));
+
+    // Verify SSE Broadcast for dispute
+    let event = tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv())
+        .await
+        .expect("Timeout waiting for dispute CommerceEvent")
+        .expect("Failed to receive event");
+
+    match event {
+        aiome_core_contracts::events::CoreEvent::CommerceEvent {
+            event_type,
+            agent_id: ev_agent_id,
+            description,
+            ..
+        } => {
+            assert_eq!(event_type, "dispute_received");
+            assert_eq!(ev_agent_id.to_string(), agent_id);
+            assert!(description.contains("evt_dispute_123"));
+        }
+        _ => panic!("Expected CommerceEvent for dispute, got another event"),
+    }
+}
+
+#[serial]
+#[tokio::test]
+async fn test_preflight_production_mode_rejects_missing_price_id() {
+    std::env::set_var("STRIPE_TEST_MODE", "false");
+    std::env::remove_var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY");
+
+    let result = crate::bootstrap::preflight::init_env_and_preflight().await;
+
+    std::env::set_var("STRIPE_TEST_MODE", "true");
+
+    assert!(
+        result.is_err(),
+        "Preflight must reject startup in production mode if STRIPE_PRICE_SUBSCRIPTION_MONTHLY is not set"
+    );
+
+    let err_str = result.err().unwrap().to_string();
+    assert!(
+        err_str.contains("STRIPE_PRICE_SUBSCRIPTION_MONTHLY must be set in production mode")
+            || err_str.contains("must be set in production"),
+        "Actual preflight error: {}",
+        err_str
+    );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_commerce_price_id_env_loading() {
+    std::env::set_var(
+        "STRIPE_PRICE_SUBSCRIPTION_MONTHLY",
+        "price_test_overwrite_12345",
+    );
+
+    let (_server, state, _tmp) = create_test_server().await;
+
+    std::env::remove_var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY");
+
+    assert_eq!(
+        state.stripe_price_subscription_monthly.as_deref(),
+        Some("price_test_overwrite_12345")
+    );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_commerce_price_id_dynamic_replacement() {
+    std::env::set_var(
+        "STRIPE_PRICE_SUBSCRIPTION_MONTHLY",
+        "price_test_overwrite_99999",
+    );
+    let (server, _state, _tmp) = create_test_server().await;
+    std::env::remove_var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY");
+
+    let bearer = "Bearer mock_valid_token_ekyctest_user".to_string();
+
+    // 1. Create Subscription: plan_id "price_gold_monthly" should be dynamically replaced
+    let payload = serde_json::json!({
+        "agent_id": "00000000-0000-0000-0000-000000000001",
+        "plan_id": "price_gold_monthly"
+    });
+
+    let resp = server
+        .post("/api/v1/commerce/subscription/create")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+    let json = resp.json::<serde_json::Value>();
+    assert_eq!(json["subscription_id"], "sub_mock_overwritten");
+
+    // 2. Create Checkout Session: price_id "price_gold_monthly" should be dynamically replaced
+    let payload_cs = serde_json::json!({
+        "agent_id": "00000000-0000-0000-0000-000000000001",
+        "price_id": "price_gold_monthly",
+        "success_url": "https://localhost/success",
+        "cancel_url": "https://localhost/cancel"
+    });
+
+    let resp_cs = server
+        .post("/api/v1/commerce/checkout-session/create")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload_cs)
+        .await;
+
+    assert_eq!(resp_cs.status_code(), StatusCode::OK);
+    let json_cs = resp_cs.json::<serde_json::Value>();
+    assert_eq!(json_cs["url"], "cs_test_overwritten");
+}

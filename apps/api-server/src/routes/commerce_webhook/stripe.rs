@@ -170,6 +170,46 @@ pub async fn stripe_webhook(
         let subscription_id = object["subscription"].as_str().unwrap_or_default();
         pending_suspend_agent =
             handle_invoice_payment_failed(&mut tx, customer_id, subscription_id).await?;
+    } else if event_type == "customer.subscription.deleted" {
+        let object = &event_val["data"]["object"];
+        let customer_id = object["customer"].as_str().unwrap_or_default();
+        let subscription_id = object["id"].as_str().unwrap_or_default();
+        pending_suspend_agent =
+            handle_invoice_payment_failed(&mut tx, customer_id, subscription_id).await?;
+    } else if event_type == "customer.subscription.updated" {
+        let object = &event_val["data"]["object"];
+        let customer_id = object["customer"].as_str().unwrap_or_default();
+        let subscription_id = object["id"].as_str().unwrap_or_default();
+        let status = object["status"].as_str().unwrap_or_default();
+        if status == "active" || status == "trialing" {
+            pending_unlock_agent =
+                handle_invoice_paid(&mut tx, customer_id, subscription_id).await?;
+        } else if status == "past_due" || status == "unpaid" || status == "canceled" {
+            pending_suspend_agent =
+                handle_invoice_payment_failed(&mut tx, customer_id, subscription_id).await?;
+        }
+    } else if event_type == "charge.dispute.created" {
+        let object = &event_val["data"]["object"];
+        let agent_id_str = object["metadata"]["agent_id"]
+            .as_str()
+            .or_else(|| object["payment_intent"]["metadata"]["agent_id"].as_str())
+            .unwrap_or_default();
+        if !agent_id_str.is_empty() {
+            error!(
+                "🚨 [StripeWebhook] DISPUTE CREATED for Agent {} (Chargeback)!",
+                agent_id_str
+            );
+            pending_suspend_agent = Some(agent_id_str.to_string());
+        } else {
+            warn!("⚠️ [StripeWebhook] charge.dispute.created event missing agent_id metadata.");
+        }
+    } else if event_type == "checkout.session.expired" {
+        let object = &event_val["data"]["object"];
+        let session_id = object["id"].as_str().unwrap_or_default();
+        info!(
+            "ℹ️ [StripeWebhook] Checkout session expired: {}",
+            session_id
+        );
     } else {
         info!("ℹ️ [StripeWebhook] Unhandled event type: {}", event_type);
     }
@@ -211,25 +251,46 @@ pub async fn stripe_webhook(
             }
         }
     }
-    if let Some(agent_id_str) = pending_suspend_agent {
-        match uuid::Uuid::parse_str(&agent_id_str) {
-            Ok(agent_id) => {
+    if let Some(ref agent_id_str) = pending_suspend_agent {
+        if event_type != "charge.dispute.created" {
+            match uuid::Uuid::parse_str(agent_id_str) {
+                Ok(agent_id) => {
+                    if let Some(sender) = state.event_sender.as_opt() {
+                        let _ =
+                            sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
+                                event_type: "invoice.payment_failed".to_string(),
+                                agent_id,
+                                amount: 0,
+                                currency: "jpy".to_string(),
+                                description: format!("Stripe event ID: {}", event_id),
+                            });
+                        metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "invoice.payment_failed").increment(1);
+                    }
+                }
+                Err(e) => {
+                    error!(
+                        "❌ [StripeWebhook] Failed to parse agent_id UUID '{}': {}",
+                        agent_id_str, e
+                    );
+                }
+            }
+        }
+    }
+
+    // 📢 Broadcast dispute events to SSE
+    if event_type == "charge.dispute.created" {
+        if let Some(ref agent_id_str) = pending_suspend_agent {
+            if let Ok(agent_id) = uuid::Uuid::parse_str(agent_id_str) {
                 if let Some(sender) = state.event_sender.as_opt() {
                     let _ = sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
-                        event_type: "invoice.payment_failed".to_string(),
+                        event_type: "dispute_received".to_string(),
                         agent_id,
                         amount: 0,
                         currency: "jpy".to_string(),
                         description: format!("Stripe event ID: {}", event_id),
                     });
-                    metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "invoice.payment_failed").increment(1);
+                    metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "charge.dispute.created").increment(1);
                 }
-            }
-            Err(e) => {
-                error!(
-                    "❌ [StripeWebhook] Failed to parse agent_id UUID '{}': {}",
-                    agent_id_str, e
-                );
             }
         }
     }

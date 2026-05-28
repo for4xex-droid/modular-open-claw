@@ -181,6 +181,8 @@ pub struct AppState {
     // --- Phase Buzz ---
     pub buzz_generator: Component<Arc<infrastructure::buzz::generator::BuzzContentGenerator>>,
     pub buzz_scheduler: Component<Arc<infrastructure::buzz::scheduler::BuzzScheduler>>,
+    // --- Stripe Production Config ---
+    pub stripe_price_subscription_monthly: Option<String>,
 }
 
 impl AppState {

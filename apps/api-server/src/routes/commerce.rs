@@ -340,9 +340,16 @@ pub async fn create_subscription(
         }
     })?;
 
-    let sub_id = engine
-        .create_subscription(req.agent_id, &req.plan_id)
-        .await?;
+    let plan_id = if req.plan_id == "price_gold_monthly" {
+        state
+            .stripe_price_subscription_monthly
+            .as_deref()
+            .unwrap_or("price_gold_monthly")
+    } else {
+        &req.plan_id
+    };
+
+    let sub_id = engine.create_subscription(req.agent_id, plan_id).await?;
     Ok((
         StatusCode::OK,
         Json(SubscriptionResponse {
@@ -565,13 +572,17 @@ pub async fn create_checkout_session(
         }
     })?;
 
+    let price_id = if req.price_id == "price_gold_monthly" {
+        state
+            .stripe_price_subscription_monthly
+            .as_deref()
+            .unwrap_or("price_gold_monthly")
+    } else {
+        &req.price_id
+    };
+
     let url = engine
-        .create_checkout_session(
-            req.agent_id,
-            &req.price_id,
-            &req.success_url,
-            &req.cancel_url,
-        )
+        .create_checkout_session(req.agent_id, price_id, &req.success_url, &req.cancel_url)
         .await?;
 
     Ok(Json(CreateCheckoutSessionResponse { url }))

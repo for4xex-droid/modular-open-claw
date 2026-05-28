@@ -191,18 +191,24 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
     async fn create_checkout_session(
         &self,
         _agent_id: uuid::Uuid,
-        _price_id: &str,
+        price_id: &str,
         _success_url: &str,
         _cancel_url: &str,
     ) -> Result<String, aiome_core::error::AiomeError> {
+        if price_id == "price_test_overwrite_99999" {
+            return Ok("cs_test_overwritten".into());
+        }
         Ok("cs_test_mock".into())
     }
 
     async fn create_subscription(
         &self,
         _agent_id: uuid::Uuid,
-        _plan_id: &str,
+        plan_id: &str,
     ) -> Result<String, aiome_core::error::AiomeError> {
+        if plan_id == "price_test_overwrite_99999" {
+            return Ok("sub_mock_overwritten".into());
+        }
         Ok("sub_mock_123".into())
     }
 
@@ -840,6 +846,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         buzz_scheduler: Component::new(Arc::new(
             infrastructure::buzz::scheduler::BuzzScheduler::new(90, 4),
         )),
+        stripe_price_subscription_monthly: std::env::var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY").ok(),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

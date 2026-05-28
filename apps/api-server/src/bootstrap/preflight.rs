@@ -80,9 +80,27 @@ pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
     }
 
     // 0. Initialize Metrics EXPORTER (Q-5)
-    let metrics_handle = metrics_exporter_prometheus::PrometheusBuilder::new()
+    let metrics_handle = match metrics_exporter_prometheus::PrometheusBuilder::new()
         .install_recorder()
-        .map_err(|e| anyhow::anyhow!("Failed to install Prometheus recorder: {}", e))?;
+    {
+        Ok(handle) => handle,
+        Err(e) => {
+            let err_str = e.to_string();
+            if err_str.contains("already initialized")
+                || err_str.contains("attempted to set a recorder")
+            {
+                tracing::warn!("📊 Prometheus Metrics already initialized. Reusing via build_recorder fallback.");
+                let recorder =
+                    metrics_exporter_prometheus::PrometheusBuilder::new().build_recorder();
+                recorder.handle()
+            } else {
+                return Err(anyhow::anyhow!(
+                    "Failed to install Prometheus recorder: {}",
+                    e
+                ));
+            }
+        }
+    };
     tracing::info!("📊 Prometheus Metrics initialized at /api/v1/metrics");
 
     let health_monitor = shared::health::HealthMonitor::new();
@@ -104,6 +122,17 @@ pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
     // === Secret Pre-load (Step 0 / Step 1-0 / Step 1-1) ===
     let stripe_key_raw = std::env::var("STRIPE_API_KEY").ok();
     shared::security::scrub_env("STRIPE_API_KEY");
+
+    let is_test_mode = std::env::var("STRIPE_TEST_MODE")
+        .map(|v| v.to_lowercase() == "true" || v == "1")
+        .unwrap_or(true);
+    let stripe_price_sub_monthly = std::env::var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY").ok();
+
+    if !is_test_mode && stripe_key_raw.is_some() && stripe_price_sub_monthly.is_none() {
+        return Err(anyhow::anyhow!(
+            "STRIPE_PRICE_SUBSCRIPTION_MONTHLY must be set in production mode"
+        ));
+    }
 
     let nurture_secret_raw = std::env::var("NURTURE_INTERNAL_SECRET").ok();
     shared::security::scrub_env("NURTURE_INTERNAL_SECRET");
@@ -220,6 +249,7 @@ pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
         search_key: env_search_key,
         x_token: env_x_token,
         tts_openai_key: tts_openai_api_key_raw,
+        stripe_price_subscription_monthly: stripe_price_sub_monthly,
     };
 
     Ok(PreflightResult {
