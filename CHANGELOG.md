@@ -1,6 +1,13 @@
 ## [Unreleased]
 
 ### Added
+- **Provider-Aware Dynamic Cost Calculation & Billing (First Penguin)**:
+  - `libs/infrastructure/src/llm/dynamic.rs` に `calculate_cost_coins` ユーティリティ関数を新規実装。LLM プロバイダーやモデルの料金体系に基づき、消費されたトークン（プロンプト/補完トークン）に応じた消費コイン数を正確に計算します。
+  - トークン数がメタデータから得られない場合は、文字数ベースのフォールバック推定値（入力文字数 / 3, 返答文字数 / 2）を自動適用する強固なセーフガードを完備。
+- **Non-Blocking Background Cost Deduction (First Penguin)**:
+  - `apps/api-server/src/agent_engine.rs` および `apps/api-server/src/stream.rs` において、`tokio::spawn` を用いて非ブロッキングでバックグラウンド課金処理を実行する仕組みを導入。これにより、データベース/APIへの課金リクエストが LLM 推論やクライアントストリーミングをブロッキングするのを防止し、レスポンスの即時性を劇的に向上。
+  - プロバイダーが Ollama やローカルLLMである場合は、課金処理を自動的にバイパスし、無償で利用可能とする仕様を安全に実装。
+
 - **Compliance Automation & Account Ban Guard Integration (First Penguin)**:
   - SQLite/PostgreSQLのマルチDBに完全対応し、起動時の自動スキーマ作成（自己修復スキーマ初期化ロジック）を内包した `UniversalBanStore` およびテスト用の `MockBanStore` を新規実装。
   - `AppState` に `BanStore` コンポーネントを統合し、`api-server` の起動シーケンス (`bootstrap/mod.rs` および `bootstrap/state_assembly.rs`) で自動的に初期化されるよう構築。

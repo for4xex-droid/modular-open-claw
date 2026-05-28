@@ -1085,6 +1085,16 @@ pub fn calculate_cost_usd(model: &str, token_in: Option<i64>, token_out: Option<
     (input_tokens * input_rate / 1_000_000.0) + (output_tokens * output_rate / 1_000_000.0)
 }
 
+pub fn calculate_cost_coins(model: &str, token_in: Option<i64>, token_out: Option<i64>) -> u64 {
+    let cost_usd = calculate_cost_usd(model, token_in, token_out);
+    if !cost_usd.is_finite() || cost_usd <= 0.0 {
+        0
+    } else {
+        let coins = (cost_usd * 1000.0).ceil() as u64;
+        coins.max(1)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1134,5 +1144,32 @@ mod tests {
             calculate_cost_usd("", Some(1_000_000), Some(1_000_000)),
             0.0
         );
+    }
+
+    #[test]
+    fn test_calculate_cost_coins() {
+        // gpt-4o: $5.0 input, $15.0 output -> 20.0 USD for 1M each -> 20,000 Coins
+        assert_eq!(
+            calculate_cost_coins("gpt-4o", Some(1_000_000), Some(1_000_000)),
+            20000
+        );
+        // gemini-2.5-flash: $0.15 input, $0.60 output -> 0.75 USD for 1M each -> 750 Coins
+        assert_eq!(
+            calculate_cost_coins("gemini-2.5-flash", Some(1_000_000), Some(1_000_000)),
+            750
+        );
+        // Edge case: Minimum 1 coin on micro cost
+        assert_eq!(
+            calculate_cost_coins("gemini-2.5-flash", Some(1), Some(1)),
+            1
+        );
+        // Unknown model or zero tokens
+        assert_eq!(
+            calculate_cost_coins("ollama-local", Some(1000), Some(1000)),
+            0
+        );
+        assert_eq!(calculate_cost_coins("gpt-4o", None, None), 0);
+        // Edge case: Negative tokens should be clamped to 0 (via calculate_cost_usd .max(0))
+        assert_eq!(calculate_cost_coins("gpt-4o", Some(-100), Some(-100)), 0);
     }
 }

@@ -180,6 +180,14 @@ pub enum SubscriptionStatus {
     PastDue,
     /// 未登録
     None,
+    /// トライアル期間中
+    Trialing,
+    /// 未払い（全リトライ失敗後）
+    Unpaid,
+    /// 初回決済未完了
+    Incomplete,
+    /// 初回決済の期限切れ
+    IncompleteExpired,
 }
 
 /// 経済コンテキスト

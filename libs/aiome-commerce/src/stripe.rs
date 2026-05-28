@@ -24,6 +24,24 @@ pub struct StripeCommerceEngine {
     oxp_score_provider: Option<std::sync::Arc<std::sync::atomic::AtomicU32>>,
 }
 
+fn map_stripe_status(
+    status: stripe_billing::SubscriptionStatus,
+) -> aiome_core_contracts::commerce::SubscriptionStatus {
+    use aiome_core_contracts::commerce::SubscriptionStatus as TargetStatus;
+    use stripe_billing::SubscriptionStatus as StripeStatus;
+
+    match status {
+        StripeStatus::Active => TargetStatus::Active,
+        StripeStatus::Canceled => TargetStatus::Cancelled,
+        StripeStatus::PastDue => TargetStatus::PastDue,
+        StripeStatus::Trialing => TargetStatus::Trialing,
+        StripeStatus::Unpaid => TargetStatus::Unpaid,
+        StripeStatus::Incomplete => TargetStatus::Incomplete,
+        StripeStatus::IncompleteExpired => TargetStatus::IncompleteExpired,
+        _ => TargetStatus::None,
+    }
+}
+
 impl StripeCommerceEngine {
     pub fn new(
         api_key: SecretString,
@@ -691,7 +709,6 @@ impl CommerceEngine for StripeCommerceEngine {
             return Ok("sub_mock_stripe".to_string());
         }
 
-        // P0-1: Create or Get Stripe Customer
         // Retrieve existing customer from registry table stripe_customers
         let existing_customer: Option<(String,)> =
             sqlx::query_as("SELECT customer_id FROM stripe_customers WHERE agent_id = ?")
@@ -766,30 +783,73 @@ impl CommerceEngine for StripeCommerceEngine {
             }),
         }
     }
-
     async fn cancel_subscription(
         &self,
         _agent_id: Uuid,
-        _subscription_id: &str,
+        subscription_id: &str,
     ) -> Result<(), AiomeError> {
         if self.is_mock {
             return Ok(());
         }
-        Err(AiomeError::Infrastructure {
-            reason: "cancel_subscription is not available in v1.0".into(),
-        })
+
+        let sub_id = subscription_id
+            .parse::<stripe_billing::SubscriptionId>()
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Invalid subscription ID format: {}", e),
+            })?;
+
+        stripe_billing::subscription::CancelSubscription::new(sub_id)
+            .send(&self.client)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Stripe cancel subscription failed: {}", e),
+            })?;
+
+        tracing::info!("✅ [Stripe] Subscription cancelled: {}", subscription_id);
+        Ok(())
     }
 
     async fn get_subscription_status(
         &self,
-        _agent_id: Uuid,
+        agent_id: Uuid,
     ) -> Result<aiome_core_contracts::commerce::SubscriptionStatus, AiomeError> {
         if self.is_mock {
             return Ok(aiome_core_contracts::commerce::SubscriptionStatus::Active);
         }
-        Err(AiomeError::Infrastructure {
-            reason: "get_subscription_status is not available in v1.0".into(),
-        })
+
+        let customer_id: Option<(String,)> =
+            sqlx::query_as("SELECT customer_id FROM stripe_customers WHERE agent_id = ?")
+                .bind(agent_id.to_string())
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("DB lookup failed for customer: {}", e),
+                })?;
+
+        let Some((customer_id_str,)) = customer_id else {
+            return Ok(aiome_core_contracts::commerce::SubscriptionStatus::None);
+        };
+
+        let cust_id = customer_id_str
+            .parse::<stripe_core::CustomerId>()
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Invalid customer ID format: {}", e),
+            })?;
+        let list_params = stripe_billing::subscription::ListSubscription::new().customer(cust_id);
+
+        let list_res =
+            list_params
+                .send(&self.client)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Stripe list subscriptions failed: {}", e),
+                })?;
+
+        if let Some(sub) = list_res.data.first() {
+            Ok(map_stripe_status(sub.status.clone()))
+        } else {
+            Ok(aiome_core_contracts::commerce::SubscriptionStatus::None)
+        }
     }
 
     async fn transfer(
@@ -1223,6 +1283,189 @@ mod tests {
         // TDD としては、まず「Stripe 連携に必要な情報が不足している場合にエラーを返す」テストを書くのが安全。
     }
 
+    #[test]
+    fn test_stripe_subscription_status_mapping() {
+        use super::map_stripe_status;
+        use aiome_core_contracts::commerce::SubscriptionStatus;
+        use stripe_billing::SubscriptionStatus as StripeStatus;
+
+        assert_eq!(
+            map_stripe_status(StripeStatus::Active),
+            SubscriptionStatus::Active
+        );
+        assert_eq!(
+            map_stripe_status(StripeStatus::Canceled),
+            SubscriptionStatus::Cancelled
+        );
+        assert_eq!(
+            map_stripe_status(StripeStatus::PastDue),
+            SubscriptionStatus::PastDue
+        );
+        assert_eq!(
+            map_stripe_status(StripeStatus::Trialing),
+            SubscriptionStatus::Trialing
+        );
+        assert_eq!(
+            map_stripe_status(StripeStatus::Unpaid),
+            SubscriptionStatus::Unpaid
+        );
+        assert_eq!(
+            map_stripe_status(StripeStatus::Incomplete),
+            SubscriptionStatus::Incomplete
+        );
+        assert_eq!(
+            map_stripe_status(StripeStatus::IncompleteExpired),
+            SubscriptionStatus::IncompleteExpired
+        );
+        assert_eq!(
+            map_stripe_status(StripeStatus::Paused),
+            SubscriptionStatus::None
+        );
+    }
+
+    #[tokio::test]
+    async fn test_stripe_cancel_subscription_mock() {
+        let engine = get_test_engine().await;
+        let agent_id = Uuid::new_v4();
+        let result = engine.cancel_subscription(agent_id, "sub_mock").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_stripe_get_subscription_status_mock() {
+        let engine = get_test_engine().await;
+        let agent_id = Uuid::new_v4();
+        let status = engine.get_subscription_status(agent_id).await;
+        assert!(status.is_ok());
+        assert_eq!(
+            status.unwrap(),
+            aiome_core_contracts::commerce::SubscriptionStatus::Active
+        );
+    }
+
+    #[tokio::test]
+    async fn test_stripe_cancel_subscription_live_error() {
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        let engine = StripeCommerceEngine::new(
+            SecretString::from("sk_live_invalidkey".to_string()), // gitleaks:allow
+            SecretString::from("whsec_live_dummy".to_string()),
+            pool,
+            None,
+            None,
+        );
+
+        let agent_id = Uuid::new_v4();
+        let result = engine.cancel_subscription(agent_id, "sub_dummy").await;
+        assert!(result.is_err());
+        if let Err(AiomeError::Infrastructure { reason }) = result {
+            assert!(
+                reason.contains("Invalid API Key")
+                    || reason.contains("status code: 401")
+                    || reason.contains("unauthorized")
+                    || reason.contains("Stripe cancel subscription failed"),
+                "Actual error reason: {}",
+                reason
+            );
+        } else {
+            panic!("Expected infrastructure error from invalid API key");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_subscription_real_test_key() {
+        // STRIPE_API_KEY を環境変数から取得
+        let api_key = match std::env::var("STRIPE_API_KEY") {
+            Ok(key) if key.starts_with("sk_test_") && key != "sk_test_mock" => key,
+            _ => {
+                tracing::warn!("⚠️ [Stripe E2E] STRIPE_API_KEY not set or is mock key. Skipping real Stripe API test.");
+                return;
+            }
+        };
+
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        // テスト用のテーブル作成
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS stripe_customers (
+                id TEXT PRIMARY KEY,
+                customer_id TEXT UNIQUE NOT NULL,
+                agent_id TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // Stripe API 実通信を行うエンジンを構築
+        let engine = StripeCommerceEngine::new(
+            SecretString::from(api_key),
+            SecretString::from("whsec_dummy_for_real_test".to_string()),
+            pool,
+            None,
+            None,
+        );
+
+        assert!(!engine.is_mock, "Must be in real mode for Stripe API test");
+
+        let agent_id = Uuid::new_v4();
+        // stripe_customers テーブルに何もない状態から create_subscription を呼び出し、
+        // Customer UPSERT (Stripe Customer 作成 + DBへのマージ) をトリガーする。
+        // ※ Stripe のプラン（Price ID）はダッシュボードで設定されているもの、
+        //    または何らかのモックID（存在しないプランを指定すると Stripe 側が 400 Bad Request を返す）。
+        //    Customer UPSERT 自体が動くかどうかを見たいので、存在しない plan_id を指定して
+        //    「Stripe Customer は作成されるが、Stripe Sub 側でエラーになる」という期待する失敗ルート、
+        //    あるいは有効な plan_id であれば成功ルートを検証する。
+        // ここでは、まず Customer 作成 (UPSERT) が成功することを確認するため、
+        // create_subscription 内部の Customer 作成フェーズを通過させます。
+        let result = engine
+            .create_subscription(agent_id, "price_nonexistent_plan")
+            .await;
+
+        // DB に顧客データが登録されたことを検証する (Customer UPSERT の成功)
+        let saved_customer: Option<(String, String)> =
+            sqlx::query_as("SELECT customer_id, agent_id FROM stripe_customers WHERE agent_id = ?")
+                .bind(agent_id.to_string())
+                .fetch_optional(&engine.pool)
+                .await
+                .unwrap();
+
+        if saved_customer.is_none() {
+            // もし顧客データが保存されておらず、且つエラーが 401 Unauthorized (Invalid API Key) の場合は、
+            // 実際の Stripe API に到達したことを意味するため、E2E 検証としてはパスとみなします。
+            if let Err(AiomeError::Infrastructure { reason }) = &result {
+                if reason.contains("Invalid API Key") || reason.contains("status code: 401") {
+                    tracing::info!("✅ [Stripe E2E] Successfully reached Stripe API, but key is invalid (401). E2E path verified.");
+                    return;
+                }
+            }
+            panic!(
+                "Customer UPSERT should create a Stripe customer and save it to the DB even if subscription fails later. Actual subscription result: {:?}",
+                result
+            );
+        }
+
+        let (customer_id, saved_agent_id) = saved_customer.unwrap();
+        assert!(
+            customer_id.starts_with("cus_"),
+            "Stripe Customer ID must start with 'cus_'"
+        );
+        assert_eq!(saved_agent_id, agent_id.to_string());
+
+        // プランが存在しないため、subscription 自体は 400 Bad Request (Stripe API Error) になるはず
+        assert!(
+            result.is_err(),
+            "Subscription creation should fail on nonexistent plan but customer must persist"
+        );
+    }
+
     #[tokio::test]
     async fn test_production_mode_rejects_test_secrets_red() {
         // 本番キー (sk_live_*) + 本番Webhook秘密鍵 を使用した場合、
@@ -1237,8 +1480,8 @@ mod tests {
             .unwrap();
 
         let engine = StripeCommerceEngine::new(
-            secrecy::SecretString::from("sk_live_prod_key_12345".to_string()),
-            secrecy::SecretString::from("whsec_live_prod_secret".to_string()),
+            secrecy::SecretString::from("sk_live_prod_key_12345".to_string()), // gitleaks:allow
+            secrecy::SecretString::from("whsec_live_prod_secret".to_string()), // gitleaks:allow
             pool,
             None,
             None,
@@ -1509,8 +1752,8 @@ mod tests {
         // is_mock は api_key.starts_with("sk_test_mock") が false かつ webhook_secret != "whsec_test" のため、
         // AIOME_DEV_MODE が true であっても必ず false になる
         let engine = StripeCommerceEngine::new(
-            SecretString::from("sk_live_123456789".to_string()),
-            SecretString::from("whsec_live_987654".to_string()),
+            SecretString::from("sk_live_123456789".to_string()), // gitleaks:allow
+            SecretString::from("whsec_live_987654".to_string()), // gitleaks:allow
             pool,
             None,
             None,
@@ -1520,19 +1763,6 @@ mod tests {
 
         let agent_id = Uuid::new_v4();
         let item_id = Uuid::new_v4();
-
-        // 封印されたメソッドがすべて Err(AiomeError::Infrastructure) を返すことを検証
-        let sub_status = engine.get_subscription_status(agent_id).await;
-        assert!(sub_status.is_err());
-        if let Err(AiomeError::Infrastructure { reason }) = sub_status {
-            assert!(
-                reason.contains("not available in v1.0"),
-                "Actual sub_status error: {}",
-                reason
-            );
-        } else {
-            panic!("Expected Infrastructure error");
-        }
 
         let purchase = engine
             .execute_autonomous_purchase(agent_id, item_id, serde_json::json!({}))
@@ -1585,19 +1815,6 @@ mod tests {
             );
         } else {
             panic!("Expected Infrastructure error for register_license");
-        }
-
-        // cancel_subscription も本番では封印されていることを検証
-        let cancel_res = engine.cancel_subscription(agent_id, "sub_test").await;
-        assert!(cancel_res.is_err());
-        if let Err(AiomeError::Infrastructure { reason }) = cancel_res {
-            assert!(
-                reason.contains("not available in v1.0"),
-                "Actual cancel_subscription error: {}",
-                reason
-            );
-        } else {
-            panic!("Expected Infrastructure error for cancel_subscription");
         }
     }
 }

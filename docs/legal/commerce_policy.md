@@ -13,8 +13,8 @@ All transactions within the Aiome Voice Store are conducted using "Karma Coins" 
 
 ## 3. Creator Revenue Share
 Aiome operates on a fair-revenue model to support AI creators:
-- **Creators:** Receive 80% of the Karma Coins spent on their registered assets.
-- **Platform (MotivationStudio LLC):** Retains a 20% platform fee for infrastructure, security, and payment processing.
+- **Creators:** Receive 85% of the Karma Coins spent on their registered assets.
+- **Platform (MotivationStudio LLC):** Retains a 15% platform fee for infrastructure, security, and payment processing.
 - Revenue distribution occurs asynchronously via the internal ledger system.
 
 ## 4. Digital Rights Management (DRM)

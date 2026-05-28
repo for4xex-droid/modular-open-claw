@@ -22,6 +22,7 @@
 | `fallback_router` | プライマリLLM障害時に自動で代替LLMへフェイルオーバーするルーティング基盤。 | **実装完了** |
 | `gig_engine` | AI間ギグ・エコノミープトコル実装。不変のゲートウェイによる自律受発注とエスクロー決済。 | **Phase 20 完了** |
 | `compliance` | eKYC (Stripe Identity) と SQLite アセット検疫DB (Quarantine) の統合。`GET /api/v1/audit/quarantine` および `POST /api/v1/audit/quarantine/{id}/release` (検疫強制リリースAPI)を開通し、フロントエンドUI統合完了。 | **Phase 2A-3 完了** |
+| `ban_store` | `BanStore` トレイト、`UniversalBanStore`、および `MockBanStore` を提供。不正なアクターやトークンの一元的な禁止リスト管理とリアルタイム検疫機能を提供。 | **Phase Compliance-1 完了** |
 | `cognitive_sentinel`| 感情が極端な鬱状態などに陥った場合に検知し、自律的に回復イベントを発火させる防御層。**Phase 55** でジョブ失敗率（60%以上）に基づく Panic State 防御を追加。 | **Phase 55 完了** |
 | ~~`concept_manager`~~ | AIが獲得した概念（Concepts）をベクターDBで管理。（`llm/utils.rs` への機能委譲によりSunset完了） | **Sunset済** |
 | `constraint_checker` | AgentRx における行動制約の検証エンジン。**Phase 55** で出力サイズ制限とエコー攻撃検知を追加。 | **Phase 55 完了** |

@@ -178,6 +178,9 @@ impl AgentEngine {
         let mut turn = 0;
         let max_turns = 15;
         let mut final_reply = String::from("...");
+        let mut total_token_in: i64 = 0;
+        let mut total_token_out: i64 = 0;
+        let mut has_token_metadata = false;
         let chat_execution_id = format!("chat_exec_{}", uuid::Uuid::new_v4());
         let mut total_steps = 0;
 
@@ -220,6 +223,21 @@ impl AgentEngine {
             {
                 Ok(Ok(resp)) => {
                     let mut reply = resp.content.trim().to_string();
+                    if let Some(ref m) = resp.metadata {
+                        if let Some(t_in) =
+                            m.get("prompt_tokens").and_then(|v| v.parse::<i64>().ok())
+                        {
+                            total_token_in += t_in;
+                            has_token_metadata = true;
+                        }
+                        if let Some(t_out) = m
+                            .get("completion_tokens")
+                            .and_then(|v| v.parse::<i64>().ok())
+                        {
+                            total_token_out += t_out;
+                            has_token_metadata = true;
+                        }
+                    }
                     let (clean_reply, reasoning) = extract_thinking_process(&reply);
                     let mut meta = None;
                     if let Some(r) = reasoning {
@@ -285,28 +303,68 @@ impl AgentEngine {
         // P1 & P2: Provider-Aware Generation Cost Deduction for Autonomous Mode
         // Guard: Only bill if LLM actually generated a real reply (not the initial placeholder "...").
         if final_reply != "..." && !final_reply.is_empty() {
-            if let Some(engine) = state.commerce_engine.as_opt() {
+            if let Some(engine) = state.commerce_engine.as_opt().cloned() {
                 let provider_name = provider.name().to_lowercase();
                 if !provider_name.contains("ollama") && !provider_name.contains("local") {
                     let agent_id_for_billing = state.system_agent_id;
-                    let cost = std::cmp::max(1, final_reply.len() as u64 / 100);
+                    let state_clone = state.clone();
+                    let final_reply_len = final_reply.len();
+                    // フォールバック推定: system_instructions + 元のユーザープロンプトの合計長を使用
+                    let full_input_len = instructions.len() + prompt.len();
 
-                    if let Err(e) = engine
-                        .deduct_generation_cost(
-                            agent_id_for_billing,
-                            None,
-                            cost,
-                            "autonomous_inference",
-                        )
-                        .await
-                    {
-                        error!(
-                            "🚨 [Billing] Failed to deduct generation cost from Agent {}: {:?}",
-                            agent_id_for_billing, e
+                    tokio::spawn(async move {
+                        // DBまたは環境変数からLLMモデル名を取得
+                        let model_name = state_clone
+                            .job_queue
+                            .get_inner()
+                            .get_setting_value("llm_model")
+                            .await
+                            .ok()
+                            .flatten()
+                            .or_else(|| std::env::var("LLM_MODEL").ok())
+                            .unwrap_or_else(|| "gpt-4o".to_string());
+
+                        // メタデータからトークン数が得られた場合はそれを使用、
+                        // なければ文字数ベースの推定値にフォールバック
+                        let token_in = if has_token_metadata && total_token_in > 0 {
+                            total_token_in
+                        } else {
+                            (full_input_len as i64 / 3).max(1)
+                        };
+                        let token_out = if has_token_metadata && total_token_out > 0 {
+                            total_token_out
+                        } else {
+                            (final_reply_len as i64 / 2).max(1)
+                        };
+
+                        let cost = infrastructure::llm::dynamic::calculate_cost_coins(
+                            &model_name,
+                            Some(token_in),
+                            Some(token_out),
                         );
-                    } else {
-                        tracing::info!("💳 [Billing] Deducted {} coins for autonomous_inference (Provider: {})", cost, provider_name);
-                    }
+
+                        if cost > 0 {
+                            if let Err(e) = engine
+                                .deduct_generation_cost(
+                                    agent_id_for_billing,
+                                    None,
+                                    cost,
+                                    "autonomous_inference",
+                                )
+                                .await
+                            {
+                                error!(
+                                    "🚨 [Billing] Failed to deduct generation cost from Agent {}: {:?}",
+                                    agent_id_for_billing, e
+                                );
+                            } else {
+                                tracing::info!(
+                                    "💳 [Billing] Deducted {} coins for autonomous_inference (Model: {}, Tokens In/Out: {}/{})",
+                                    cost, model_name, token_in, token_out
+                                );
+                            }
+                        }
+                    });
                 } else {
                     tracing::debug!(
                         "🆓 [Billing Bypass] Local model ({}) used. No cost deducted.",

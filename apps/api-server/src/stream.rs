@@ -458,17 +458,52 @@ pub async fn trigger_agent_chat_stream(
         // P1 & P2: Provider-Aware Generation Cost Deduction
         // Guard: Only bill if the LLM actually generated output.
         if !full_reply_for_storage.is_empty() {
-            if let Some(engine) = state.commerce_engine.as_opt() {
+            if let Some(engine) = state.commerce_engine.as_opt().cloned() {
                 let provider_name = provider.name().to_lowercase();
                 if !provider_name.contains("ollama") && !provider_name.contains("local") {
-                    let agent_id_for_billing = state.job_queue.get_system_agent_id().await.unwrap_or(uuid::Uuid::nil());
-                    let cost = std::cmp::max(1, full_reply_for_storage.len() as u64 / 100);
+                    let state_clone = state.clone();
+                    let full_reply_len = full_reply_for_storage.len();
+                    // フォールバック推定: system_instructions + history + user_prompt の合計長を使用
+                    // （original_prompt だけだとシステム指示とコンテキスト分が欠落し、10x〜100x 過小評価になる）
+                    let full_input_len = system_instructions.len()
+                        + current_history.iter().map(|h| h.len()).sum::<usize>()
+                        + original_prompt.len();
 
-                    if let Err(e) = engine.deduct_generation_cost(agent_id_for_billing, None, cost, "text_generation").await {
-                        tracing::error!("🚨 [Billing] Failed to deduct generation cost from Agent {}: {:?}", agent_id_for_billing, e);
-                    } else {
-                        tracing::info!("💳 [Billing] Deducted {} coins for text_generation inference (Provider: {})", cost, provider_name);
-                    }
+                    tokio::spawn(async move {
+                        let agent_id_for_billing = state_clone.system_agent_id;
+
+                        // DBまたは環境変数からLLMモデル名を取得
+                        let model_name = state_clone
+                            .job_queue
+                            .get_inner()
+                            .get_setting_value("llm_model")
+                            .await
+                            .ok()
+                            .flatten()
+                            .or_else(|| std::env::var("LLM_MODEL").ok())
+                            .unwrap_or_else(|| "gpt-4o".to_string());
+
+                        // ストリームではメタデータがないため、フォールバックの文字数ベース推定を使用
+                        let token_in = (full_input_len as i64 / 3).max(1);
+                        let token_out = (full_reply_len as i64 / 2).max(1);
+
+                        let cost = infrastructure::llm::dynamic::calculate_cost_coins(
+                            &model_name,
+                            Some(token_in),
+                            Some(token_out),
+                        );
+
+                        if cost > 0 {
+                            if let Err(e) = engine.deduct_generation_cost(agent_id_for_billing, None, cost, "text_generation").await {
+                                tracing::error!("🚨 [Billing] Failed to deduct generation cost from Agent {}: {:?}", agent_id_for_billing, e);
+                            } else {
+                                tracing::info!(
+                                    "💳 [Billing] Deducted {} coins for text_generation inference (Model: {}, Tokens In/Out: {}/{})",
+                                    cost, model_name, token_in, token_out
+                                );
+                            }
+                        }
+                    });
                 } else {
                     tracing::debug!("🆓 [Billing Bypass] Local model ({}) used. No cost deducted.", provider.name());
                 }
