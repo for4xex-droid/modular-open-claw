@@ -1,5 +1,28 @@
 # 🌊 Aiome Ripple Map
 
+## Aiome + Nurture v1.5/Round 7 シナジー拡張 & 自律委譲 (2026-05-29)
+
+### 1. Nurture Bridge の再エクスポートによる契約共通化 (P2-5S)
+- **変更内容**:
+    - `Project-Nurture/libs/nurture-bridge/src/lib.rs` [MODIFY]: Aiome コア構造体群（`EvolutionOps`, `KarmaTaxonomy`, `KarmaClassification`, `SamsaraEvent`, `AgentEvolver`, `AutonomousBiomeEngine`, `AutonomousConfig`, `BiomeMessage`）の re-export を実装。
+- **波及効果**:
+    - Aiome の自律進化機能と Nurture の決済・監査機能が、単一 of ブリッジモジュールを介してシームレスに結合可能となり、依存性のスパゲッティ化を防止。
+
+### 2. key-proxy 観測性＆コストテレメトリの強化 (P2-3)
+- **変更内容**:
+    - `apps/key-proxy/src/main.rs` [MODIFY]: 全 7 ハンドラへ `#[tracing::instrument]` の付与、プロバイダー別トークン料金メトリクス計算、caller レート比率の観測、`EmbedResponse` に `response_time_ms` の追加。
+- **波及効果**:
+    - 課金プロキシ層での消費量およびパフォーマンスの可観測性が最大化され、異常なトークン消費や応答遅延の早期検知が可能となった。
+
+### 3. 自律購買 (execute_autonomous_purchase) の Nurture S2S 委譲 & エラーハンドリング極限硬化 (P2-4 / /reflexion)
+- **変更内容**:
+    - `libs/aiome-commerce/src/stripe.rs` [MODIFY]: Stripe 本番封印解除、`execute_autonomous_purchase` 内で Nurture の S2S エンドポイントへ OXP 署名付き HTTP リクエストの委譲処理を実装。さらにセルフレビュー（Reflexion）に基づき、S2S レスポンスの JSON デシリアライズ失敗時の即時 `return Err` を厳密に実装。
+    - `Project-Nurture/apps/nurture-api/src/routes/internal.rs` [NEW]: `/internal/purchase` エンドポイントを新設し、OxiLean Proof 証明書検証を組み込み、エスクロー処理を委譲。
+    - `Project-Nurture/apps/nurture-api/tests/internal_routes_test.rs` [NEW]: `/internal/purchase` の正常・異常系を TDD 検証するテストを追加。
+- **波及効果**:
+    - 自律的エージェントによる購買トランザクションが、セキュリティ境界を超えて Nurture の決済基盤へ安全に委譲され、トランザクションの追跡性と安全性が統合された。
+    - エラー発生時の曖昧なフォールスルーが根絶され、システム監視能力が飛躍的に向上。
+
 ## Stripe Customer Portal 統合 (P1-1) (2026-05-29)
 ### 1. CommerceEngine トレイト拡張と 8つの implementor への stub/mock 追加
 - **変更内容**:

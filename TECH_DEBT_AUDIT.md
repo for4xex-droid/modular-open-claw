@@ -49,11 +49,12 @@ Aiome は 137k LOC, 90+ モジュールの大規模プロジェクトであり�
 | # | 修正内容 | ファイル | 効果 | Status |
 |---|---|---|---|---|
 | **QW-1** | `.env.example` の不足キー追加 | `.env.example` | 新規 onboarding の完全自動化 | — |
-| **QW-2** | `ArtifactVault.tsx:742` の `rgba(0,0,0,0.5)` を `var(--shadow-heavy)` に置換 | `ArtifactVault.tsx:742` | U-002 トークン違反の解消 | — |
-| **QW-3** | `samsara-hub/src/main.rs:71` の `unwrap()` を `map_err` + `?` に変換 | `samsara-hub/src/main.rs:71` | Zero-Panic Policy 準拠 | — |
-| **QW-4** | [NEW] `AiaaOnboardingWizard.tsx:149` の `rgba(0,255,255,0.1)` を CSS 変数に置換 | `AiaaOnboardingWizard.tsx:149` | U-002 トークン違反 | — |
-| **QW-5** | [NEW] `A2uiRenderer.tsx:205` の `rgba(0,0,0,0.5)` を CSS 変数に置換 | `A2uiRenderer.tsx:205` | U-002 トークン違反 | — |
-| **QW-6** | [NEW] `docs/api-server.md:16,51` の `bootstrap.rs` 参照を `bootstrap/` に更新 | `docs/api-server.md` | Documentation drift 解消 | — |
+| **QW-2** | `ArtifactVault.tsx:742` の `rgba(0,0,0,0.5)` を `var(--shadow-heavy)` に置換 | `ArtifactVault.tsx:742` | U-002 トークン違反の解消 | `[RESOLVED]` |
+| **QW-3** | `samsara-hub/src/main.rs:71` の `unwrap()` を `map_err` + `?` に変換 | `samsara-hub/src/main.rs:71` | Zero-Panic Policy 準拠 | `[RESOLVED]` |
+| **QW-4** | [NEW] `AiaaOnboardingWizard.tsx:149` の `rgba(0,255,255,0.1)` を CSS 変数に置換 | `AiaaOnboardingWizard.tsx:149` | U-002 トークン違反 | `[RESOLVED]` |
+| **QW-5** | [NEW] `A2uiRenderer.tsx:205` の `rgba(0,0,0,0.5)` を CSS 変数に置換 | `A2uiRenderer.tsx:205` | U-002 トークン違反 | `[RESOLVED]` |
+| **QW-6** | [NEW] `docs/api-server.md:16,51` の `bootstrap.rs` 参照を `bootstrap/` に更新 | `docs/api-server.md` | Documentation drift 解消 | `[RESOLVED]` |
+
 
 ---
 
@@ -172,9 +173,10 @@ Aiome は 137k LOC, 90+ モジュールの大規模プロジェクトであり�
 |---|---|---|---|---|
 | ⚪ | `AvatarViewerModal.tsx` | 87, 112 | `cssVar()` フォールバック引数。**問題なし**。 | ✅ |
 | ⚪ | `CausalVisualizer.tsx` | 119 | `cssVar()` フォールバック。**問題なし**。 | ✅ |
-| 🟡 | `ArtifactVault.tsx` | 742 | `rgba(0,0,0,0.5)` — ハードコード。 | — |
-| 🟡 | `AiaaOnboardingWizard.tsx` | 149 | [NEW] `rgba(0,255,255,0.1)` — ハードコード。 | — |
-| 🟡 | `A2uiRenderer.tsx` | 205 | [NEW] `rgba(0,0,0,0.5)` — ハードコード。 | — |
+| 🟡 | `ArtifactVault.tsx` | 742 | `rgba(0,0,0,0.5)` — ハードコード。 | `[RESOLVED]` |
+| 🟡 | `AiaaOnboardingWizard.tsx` | 149 | [NEW] `rgba(0,255,255,0.1)` — ハードコード。 | `[RESOLVED]` |
+| 🟡 | `A2uiRenderer.tsx` | 205 | [NEW] `rgba(0,0,0,0.5)` — ハードコード。 | `[RESOLVED]` |
+
 
 ---
 

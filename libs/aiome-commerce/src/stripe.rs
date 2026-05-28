@@ -208,15 +208,77 @@ impl CommerceEngine for StripeCommerceEngine {
 
     async fn execute_autonomous_purchase(
         &self,
-        _agent_id: Uuid,
-        _item_id: Uuid,
+        agent_id: Uuid,
+        item_id: Uuid,
         _metadata: serde_json::Value,
     ) -> Result<String, AiomeError> {
         if self.is_mock {
             return Ok("tx_mock".into());
         }
+
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!("{}/internal/purchase", url);
+            let payload = serde_json::json!({
+                "buyer": agent_id,
+                "item_id": item_id,
+                "idempotency_key": format!("auto_{}_{}", agent_id, item_id),
+            });
+
+            let mut req = client
+                .post(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .json(&payload)
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("x-oxilean-proof-certificate", cert_header);
+            }
+
+            let res = req.send().await;
+            match res {
+                Ok(resp) => {
+                    if resp.status().is_success() {
+                        #[derive(serde::Deserialize)]
+                        struct LocalPurchaseResponse {
+                            transaction_id: String,
+                        }
+
+                        match resp.json::<LocalPurchaseResponse>().await {
+                            Ok(body) => return Ok(body.transaction_id),
+                            Err(e) => {
+                                return Err(AiomeError::Infrastructure {
+                                    reason: format!(
+                                        "Failed to deserialize Nurture purchase response: {:?}",
+                                        e
+                                    ),
+                                })
+                            }
+                        }
+                    } else {
+                        let status = resp.status();
+                        let text = resp.text().await.unwrap_or_default();
+                        return Err(AiomeError::Infrastructure {
+                            reason: format!(
+                                "Nurture purchase S2S failed with status [{}]: {}",
+                                status, text
+                            ),
+                        });
+                    }
+                }
+                Err(e) => {
+                    return Err(AiomeError::Infrastructure {
+                        reason: format!("Nurture purchase S2S request failed: {:?}", e),
+                    });
+                }
+            }
+        }
+
         Err(AiomeError::Infrastructure {
-            reason: "execute_autonomous_purchase is not available in v1.0".into(),
+            reason: "Nurture S2S URL not configured".into(),
         })
     }
 
@@ -1813,7 +1875,7 @@ mod tests {
         assert!(purchase.is_err());
         if let Err(AiomeError::Infrastructure { reason }) = purchase {
             assert!(
-                reason.contains("not available in v1.0"),
+                reason.contains("Nurture S2S URL not configured"),
                 "Actual purchase error: {}",
                 reason
             );

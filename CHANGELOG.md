@@ -1,6 +1,25 @@
 ## [Unreleased]
 
 ### Added
+- **Nurture Bridge シナジー拡張 (P2-5S)**:
+  - `Project-Nurture/libs/nurture-bridge/src/lib.rs` で Aiome 側の自律進化・対話コア構造体である `EvolutionOps`, `KarmaTaxonomy`, `KarmaClassification`, `SamsaraEvent`, `AgentEvolver`, `AutonomousBiomeEngine`, `AutonomousConfig`, `BiomeMessage` の re-export モジュールを実装。これにより、両プロジェクト間の自律・経済連携のための型契約が完全に強化。
+- **key-proxy Telemetry & Cost Metrics 強化 (P2-3)**:
+  - `apps/key-proxy/src/main.rs` 内の全 7 ハンドラに `#[tracing::instrument]` を適用し、トークン価格メタデータに基づいたプロバイダー別リアルタイムコストの正確なログ出力を追加。
+  - レート制限スパン内に `caller` 別の利用比率を記録するレート統計ログを追加。
+  - `EmbedResponse` に `response_time_ms` テレメトリを新規追加し、ストリーミング応答における Time to Response も完全可観測化。
+- **execute_autonomous_purchase -> Nurture S2S 委譲 (P2-4)**:
+  - **Project-Nurture 側**: `nurture-api` に OxiLean 証明書検証およびエスクローバイパスオプション（`use_escrow: Some(false)`）を備えた `/internal/purchase` S2S 購買APIエンドポイントを新設。
+  - **Aiome 側**: `libs/aiome-commerce/src/stripe.rs` の封印を解き、`execute_autonomous_purchase` メソッドから Nurture 側の `/internal/purchase` S2S API を安全にキックする委譲処理を実装。
+- **SECURITY_WHITEPAPER.md セキュリティ防御の追加 (P2-7)**:
+  - `docs/specs/SECURITY_WHITEPAPER.md` に「1.9. Open Redirect Prevention (オープンリダイレクタの防止)」のセクションを新設し、ホワイトリスト検証によるセキュアなリダイレクト防御設計を記録。
+
+### Fixed
+- **Stripe Commerce エラーハンドリングの極限硬化 (/reflexion)**:
+  - `libs/aiome-commerce/src/stripe.rs` の `execute_autonomous_purchase` において、Nurture S2S レスポンスのデシリアライズ失敗（`LocalPurchaseResponse` パース失敗）時に、曖昧なフォールスルーを避けて明示的に `AiomeError::Infrastructure` エラーを即座に `return Err` するロジックを追加し、安全性を 100% 化。
+- **TECH_DEBT_AUDIT 陳腐化修正 (P2-6)**:
+  - `TECH_DEBT_AUDIT.md` で解決済みの技術的負債項目（QW-2 〜 QW-6 および Dimension 12 CSSハードコード）を `[RESOLVED]` に更新。
+
+### Added
 - **Stripe Customer Portal 統合 (P1-1)**:
   - `CommerceEngine` トレイトに `create_portal_session` メソッドを追加し、Stripe、Polar、Mock、Stub を含む 8つの実装箇所に stub/mock を追加（クロスリポジトリで Project-Nurture も同期）。
   - Stripe では `CreateBillingPortalSession` を用いて、日本語ロケール (`locale(Ja)`) に完全ローカライズされたポータルURLの作成を実装。

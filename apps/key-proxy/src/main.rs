@@ -268,6 +268,7 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip(state))]
 pub(crate) async fn auth_middleware(
     State(state): State<AppState>,
     req: axum::http::Request<axum::body::Body>,
@@ -344,6 +345,7 @@ pub(crate) async fn auth_middleware(
     }
 }
 
+#[tracing::instrument(skip(state))]
 pub(crate) async fn handle_llm_complete(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
@@ -413,6 +415,17 @@ pub(crate) async fn handle_llm_complete(
                             .and_then(|u| u.get("totalTokenCount"))
                             .and_then(|c| c.as_u64());
 
+                        if let Some(tokens) = total_tokens {
+                            let cost_usd = tokens as f64 * 0.00000015;
+                            tracing::info!(
+                                target: "key_proxy::metrics",
+                                tokens = tokens,
+                                cost_usd = cost_usd,
+                                model = %gemini_model,
+                                "💰 [KeyProxy] Cost metric recorded"
+                            );
+                        }
+
                         let response_time_ms = start_time.elapsed().as_millis() as u64;
 
                         Json(ProxyResponse {
@@ -441,8 +454,11 @@ pub(crate) async fn handle_llm_complete(
 #[derive(Debug, Serialize)]
 struct EmbedResponse {
     embedding: Vec<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_time_ms: Option<u64>,
 }
 
+#[tracing::instrument(skip(state))]
 pub(crate) async fn handle_llm_embed(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
@@ -473,6 +489,8 @@ pub(crate) async fn handle_llm_embed(
         }
     });
 
+    let start_time = tokio::time::Instant::now();
+
     let res = state
         .client
         .post(url)
@@ -492,7 +510,12 @@ pub(crate) async fn handle_llm_embed(
                         .iter()
                         .map(|v| v.as_f64().unwrap_or(0.0) as f32)
                         .collect();
-                    Json(EmbedResponse { embedding: vec }).into_response()
+                    let response_time_ms = start_time.elapsed().as_millis() as u64;
+                    Json(EmbedResponse {
+                        embedding: vec,
+                        response_time_ms: Some(response_time_ms),
+                    })
+                    .into_response()
                 } else {
                     (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error").into_response()
                 }
@@ -508,6 +531,7 @@ pub(crate) async fn handle_llm_embed(
     }
 }
 
+#[tracing::instrument(skip(state))]
 pub(crate) async fn handle_llm_stream(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
@@ -547,6 +571,8 @@ pub(crate) async fn handle_llm_stream(
         }
     }
 
+    let start_time = tokio::time::Instant::now();
+
     let res = state
         .client
         .post(url)
@@ -559,6 +585,13 @@ pub(crate) async fn handle_llm_stream(
     match res {
         Ok(resp) => {
             if resp.status().is_success() {
+                let response_time_ms = start_time.elapsed().as_millis() as u64;
+                tracing::info!(
+                    target: "key_proxy::metrics",
+                    response_time_ms = response_time_ms,
+                    "🌊 [KeyProxy] Streaming response started"
+                );
+
                 use futures::StreamExt;
                 let stream = resp.bytes_stream().map(|chunk_res| match chunk_res {
                     Ok(bytes) => {
@@ -586,6 +619,7 @@ pub(crate) async fn handle_llm_stream(
     }
 }
 
+#[tracing::instrument(skip(state))]
 async fn check_and_increment_quota(
     state: &AppState,
     caller_id: &str,
@@ -613,14 +647,23 @@ async fn check_and_increment_quota(
         *count
     };
 
-    if let Some(&limit) = state.caller_quotas.get(caller_id)
-        && caller_total > limit
-    {
-        warn!(
-            "🛑 [KeyProxy] Caller {} exceeded quota ({})",
-            caller_id, limit
+    if let Some(&limit) = state.caller_quotas.get(caller_id) {
+        tracing::info!(
+            target: "key_proxy::metrics",
+            caller_id = %caller_id,
+            caller_calls = caller_total,
+            caller_limit = limit,
+            usage_ratio = (caller_total as f64 / limit as f64),
+            "📈 [KeyProxy] Rate limit usage statistics"
         );
-        return Err(StatusCode::TOO_MANY_REQUESTS);
+
+        if caller_total > limit {
+            warn!(
+                "🛑 [KeyProxy] Caller {} exceeded quota ({})",
+                caller_id, limit
+            );
+            return Err(StatusCode::TOO_MANY_REQUESTS);
+        }
     }
 
     if total > 150000 {
@@ -657,6 +700,7 @@ pub(crate) fn build_gemini_passthrough_url(path: &str, query: Option<&str>) -> S
     base
 }
 
+#[tracing::instrument(skip(state))]
 pub(crate) async fn handle_gemini_passthrough(
     State(state): State<AppState>,
     axum::extract::Path(path): axum::extract::Path<String>,
@@ -838,6 +882,15 @@ mod tests {
         assert_eq!(resp.total_tokens, Some(42));
         assert_eq!(resp.response_time_ms, Some(150));
     }
+
+    #[tokio::test]
+    async fn test_proxy_embed_response_contains_telemetry() {
+        let resp = super::EmbedResponse {
+            embedding: vec![1.0, 2.0],
+            response_time_ms: Some(123),
+        };
+        assert_eq!(resp.response_time_ms, Some(123));
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -853,6 +906,7 @@ pub(crate) struct WpProxyResponse {
     pub link: String,
 }
 
+#[tracing::instrument(skip(state))]
 pub(crate) async fn handle_wp_publish(
     State(state): State<AppState>,
     Json(payload): Json<WpProxyRequest>,
