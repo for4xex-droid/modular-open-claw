@@ -404,14 +404,14 @@ pub(crate) mod tests {
         is_skill_whitelisted(name)
     }
 
-    async fn setup_mock_state() -> AppState {
-        let (_, state, _) = crate::api_integration_tests::create_test_server().await;
-        state
+    async fn setup_mock_state() -> (AppState, tempfile::TempDir) {
+        let (_, state, tmp_dir) = crate::api_integration_tests::create_test_server().await;
+        (state, tmp_dir)
     }
 
     #[tokio::test]
     async fn test_mcp_evaluate_security_and_hookchain() {
-        let mut state = setup_mock_state().await;
+        let (mut state, _guard) = setup_mock_state().await;
         let chain = HookChain::new();
         state.hook_chain = Component::new(Arc::new(chain));
 

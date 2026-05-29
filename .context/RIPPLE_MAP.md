@@ -1,5 +1,21 @@
 # 🌊 Aiome Ripple Map
 
+## WASM 脆弱性対応およびテスト用 TempDir ライフタイムの修正 (2026-05-29)
+
+### 1. wasmtime 依存関係のアップグレード (RUSTSEC-2026-0149 回避)
+- **変更内容**:
+    - `Cargo.toml` & `Cargo.lock` [MODIFY]: WASM 実行サンドボックスである `wasmtime-wasi` などの関連 crate を CVE 回避のため `v44.0.2` へアップグレード。
+- **波及効果**:
+    - 深刻な脆弱性（RUSTSEC-2026-0149: Out-of-bounds Read/Write 等）が排除され、`cargo audit` 監査を 0 件の脆弱性でパス。プロダクション環境における悪意ある WASM プラグインからのホストエスケープリスクが根本的に根絶された。
+
+### 2. テスト用 TempDir ライフタイム即時破棄の修正 (Flaky Test 対策)
+- **変更内容**:
+    - `apps/api-server/src/tool_call_router.rs` [MODIFY]
+    - `apps/api-server/src/mcp/server.rs` [MODIFY]
+    - テスト用の `setup_mock_state()` のシグネチャを `(AppState, tempfile::TempDir)` を返すように拡張。呼び出し側のテストで `_guard` パターンによって一時ディレクトリをテストのスコープ終了まで保持するよう修正。
+- **波及効果**:
+    - 一時ディレクトリが即時破棄され SQLite DB ファイルが直ちに削除される競合バグが修正され、テストが極めて安定化。不定期な DB 接続エラー（Flaky Test）が根絶された。
+
 ## Aiome システム堅牢化 & リフレクション対策 (2026-05-29)
 
 ### 1. リダイレクトURL検証の純粋関数化および TDD 強化
