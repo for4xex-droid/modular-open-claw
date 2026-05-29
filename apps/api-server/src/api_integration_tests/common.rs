@@ -439,6 +439,8 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
 
     // Set WORKSPACE_DIR to tmp_dir for security sandbox consistency (S-4 fix)
     std::env::set_var("WORKSPACE_DIR", tmp_dir.path().to_str().unwrap());
+    // Set AIOME_DEV_MODE to 1 for integration tests to allow localhost / test redirect URLs
+    std::env::set_var("AIOME_DEV_MODE", "1");
 
     let pool = infrastructure::db::DatabasePool::new_sqlite(&format!(
         "sqlite://{}",
