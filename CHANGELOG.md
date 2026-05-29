@@ -1,6 +1,8 @@
 ## [Unreleased]
 
 ### Fixed
+- **テスト環境での `AIOME_DEV_MODE` 強制による checkout/portal 統合テストの安定化**:
+  - `apps/api-server/src/api_integration_tests/common.rs` の `create_test_server` 内で `AIOME_DEV_MODE` を強制的に `"1"` に設定するように修正。これにより、他のテスト実行スレッドに影響されて環境変数がリークし、リダイレクト URL 検証が Fail-closed（すべて拒否）で落ちる Flaky Test（不安定なテスト）問題を解決。
 - **wasmtime/wasmtime-wasi 44.0.2 へのアップグレードによる CVE 解消 (RUSTSEC-2026-0149)**:
   - ワークスペースの `wasmtime` および `wasmtime-wasi` を `43.0.1` から `44.0.2` にアップグレードし、`WASI path_open(TRUNCATE)` を介して `FilePerms::WRITE` の制限をバイパスできる深刻な脆弱性（RUSTSEC-2026-0149、CVSS 7.5）を本質的に解消。これにより、`cargo audit` スキャンが完全にクリーンになり、pre-push ゲートのブロックをクリア。
 
