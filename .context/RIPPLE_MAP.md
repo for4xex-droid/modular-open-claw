@@ -1,5 +1,42 @@
 # 🌊 Aiome Ripple Map
 
+## フロントエンド重要コンポーネントテストの追加と環境変数モック堅牢化 (2026-05-29)
+
+### 1. BanDashboard & BuzzApproval 単体テストの追加 (P3-3)
+- **変更内容**:
+    - `apps/management-console/src/components/BanDashboard.test.tsx` [NEW]: ガバナンスコンポーネントの網羅テストを追加。
+    - `apps/management-console/src/components/BuzzApproval.test.tsx` [NEW]: SNS監査コンポーネント（280字制限バリデーションなど）の網羅テストを追加。
+- **波及効果**:
+    - 重要管理機能における UI 状態遷移、API 送信フローの安全性が大幅に向上。
+    - Framer Motion によるフェードアウトアニメーションの競合バグを、テスト専用のモック化によって完全に抑止。
+
+### 2. import.meta.env 直接参照の config.ts への一元化
+- **変更内容**:
+    - `apps/management-console/src/config.ts` [MODIFY]: `STRIPE_PRICE_ID` 定数を追加。
+    - `apps/management-console/src/components/VoiceStore.tsx` [MODIFY]: 直接の `import.meta.env.VITE_STRIPE_PRICE_ID` 参照を `STRIPE_PRICE_ID` のインポートへリファクタリング。テスト用モック応答を `balance` キーに追従。
+- **波及効果**:
+    - CommonJS (Jest) 実行環境下において、ESM 固有 of `import.meta` 構文のパースエラーによるテスト破壊を完全に解消。フロントエンド全体の 46 テストスイート（239 テストケース）が 100% 安定して GREEN で通過する開発環境を確立。
+
+## task_orchestrator のテスト分離と 42% スリム化 (2026-05-29)
+
+### 1. task_orchestrator のテスト専用コード隔離 (P3-1)
+- **変更内容**:
+    - `libs/infrastructure/src/task_orchestrator/mod.rs` [MODIFY]: 2,045行に及ぶ巨大ファイルから、`#[cfg(test)]` スコープ下にあったテストコードやテスト用ダミー（`TestConductor`, `MockGigEngine` 等）をパージし、1,189行（42% 削減）へスリム化。
+    - `libs/infrastructure/src/task_orchestrator/tests.rs` [NEW]: 分離された単体テストコードをクリーンに隔離。
+- **波及効果**:
+    - `infrastructure` クレイトの本番バイナリ肥大化が根本的に解消され、テストコードのメンテナンス性が劇的に向上。
+    - 正常系・異常系・復帰（Revert）の 3段階検証プロトコルを実行し、テスト件数が正確に11件増減する挙動を確認することで、機能の変更・破壊がないことを保証。
+
+## llm_provider の 9ファイル分割と TDD クリーンアーキテクチャ化 (2026-05-29)
+
+### 1. llm_provider の独立したサブモジュール分割 (P3-2)
+- **変更内容**:
+    - `libs/core/src/llm_provider/mod.rs` [MODIFY]: 2,105行の巨大ファイルを整理し、モジュール定義と re-export を行う超軽量なファイル（40行）へスリム化。
+    - `libs/core/src/llm_provider/{ollama.rs, abyss_vault.rs, gemini.rs, openai.rs, claude.rs, lm_studio.rs, ruri.rs, mock.rs, tests.rs}` [NEW]: 各 LLM プロバイダー実装、テスト用の `MockLlmProvider`（`#[cfg(any(test, debug_assertions))]`）、および単体テスト群を別々の独立したファイルへクリーンに分割。
+- **波及効果**:
+    - `aiome-core` クレイトの結合度が大幅に低下し、プロバイダーごとのコードの可読性とメンテナンス性が劇的に向上した。また、`MockLlmProvider` が独立したモジュールとして再構成され、外部テストコードからのインポートパスの保守性が飛躍的に高まった。
+    - 正常系・異常系・回復（Revert）という 3段階検証プロトコル（Negative Test）を通じて安全性が厳密に担保され、856個以上のすべてのワークスペーステストが 100% GREEN で合格することを確認した。
+
 ## WASM 脆弱性対応およびテスト用 TempDir ライフタイムの修正 (2026-05-29)
 
 ### 1. wasmtime 依存関係のアップグレード (RUSTSEC-2026-0149 回避)

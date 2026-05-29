@@ -8,6 +8,7 @@ import { APIResolver } from "./lib/api_resolver";
 
 export let API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.DEV ? "http://localhost:3015" : window.location.origin);
 export const APP_VERSION = import.meta.env.VITE_APP_VERSION || "v1.0.2";
+export const STRIPE_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID || "price_gold_monthly";
 
 /**
  * [Milestone 3] UI Dynamic Discovery

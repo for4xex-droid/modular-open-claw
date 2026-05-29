@@ -7,7 +7,7 @@ import { useAgentIdentity } from '../hooks/useAgentIdentity';
 jest.mock('../lib/auth', () => ({
   authenticatedFetch: jest.fn().mockImplementation((url: string) => {
     if (url.includes('/api/v1/commerce/balance/123e4567-e89b-12d3-a456-426614174000')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ coins: 1000 }) });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ balance: 1000 }) });
     }
     if (url.includes('/api/v1/voice/list')) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve([

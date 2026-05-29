@@ -7,7 +7,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ShoppingCart, Volume2, ShieldCheck, Crown } from "lucide-react";
-import { API_BASE } from "../config";
+import { API_BASE, STRIPE_PRICE_ID } from "../config";
 import { authenticatedFetch } from "../lib/auth";
 import { useTranslation } from '../i18n';
 import { useAgentIdentity } from '../hooks/useAgentIdentity';
@@ -145,7 +145,7 @@ export default function VoiceStore() {
         },
         body: JSON.stringify({
           agent_id: agentId,
-          price_id: (import.meta.env.VITE_STRIPE_PRICE_ID as string) || "price_gold_monthly",
+          price_id: STRIPE_PRICE_ID,
           success_url: window.location.href,
           cancel_url: window.location.href
         })
