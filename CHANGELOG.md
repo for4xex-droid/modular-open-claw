@@ -1,7 +1,30 @@
 ## [Unreleased]
 
+### Added
+- **docker-compose 環境変数の整合化と production との整合性確立 (B-5)**:
+  - `docker-compose.nurture.yml` および `docker-compose.cell.yml` の `api-server-pro` / `api-server` および `nurture-api` サービスに `SHADOW_CLONE_GRPC_HOST`、`SHADOW_CLONE_GRPC_PORT`、`A2A_AUTH_TOKEN` を追加。本番環境との構成のブレを解消。
+- **デプロイ・運用ガイドに Ollama/XTTS/Shadow Worker の Docker 接続要件を明記 (D-5)**:
+  - `docs/guides/OPERATIONS_MANUAL.md` に、Docker 内部からホストマシン上の Ollama や XTTS、Shadow Worker などの gRPC サービスへ接続する際のホスト名（`host.docker.internal`）解決方法とトラブルシューティング行、およびプロダクションチェックリスト項目を追加。
+- **nurture-bridge L2 トレイトの再エクスポートによる結合度強化 (E-1)**:
+  - `Project-Nurture/libs/nurture-bridge/src/lib.rs` で、Aiome の L2 サービスである `LoraEngine` および `TtsProvider` トレイトを再エクスポート。Nurture 拡張モジュールから直接 L2 の能力を型安全に扱えるように統合。
+- **Nurture S2S `/internal/lora-train` ルートの追加 (E-2)**:
+  - `Project-Nurture/apps/nurture-api` に `/internal/lora-train` エンドポイントを実装。OxiLean 証明書で保護され、検証済みのリクエストを `UniversalJobQueue` にエンキューする S2S ルートを追加。
+  - テスト環境でのマイグレーション競合を解決するため、ジョブキュー用 SQLite プールを完全に分離する TDD テスト強化を実施。
+
 ### Changed
-- **フロントエンド重要ガバナンス＆SNS監査コンポーネントの TDD テスト追加 (P3-3)**:
+- **CI Frontend ユニットテストギャップの解消 (P3-CI)**:
+  - `.github/workflows/ci.yml` [MODIFY]: `frontend` ジョブに `npm test` ステップを新規追加。CI パイプライン上でフロントエンドのユニットテストが常時実行・検証されるよう改善。
+- **Frontend テスト 5個の TDD 新規追加 (P3-3)**:
+  - `apps/management-console/src/lib/auth.test.ts` [NEW]: セキュリティクリティカルな認証トークン管理 `auth.ts` の包括的なユニットテストを追加（FormData 時の Content-Type 自動除外などのエッジケースを含む）。
+  - `apps/management-console/src/components/McpConfigManager.test.tsx` [NEW]: 設定情報の取得、不正 JSON バリデーション、保存のライフサイクルを検証するテストを追加。
+  - `apps/management-console/src/components/SoTProgressBar.test.tsx` [NEW]: Society of Thought (SoT) セッションの逆順パースステートマシンおよびディスミスタイマー進行のテストを追加。
+  - `apps/management-console/src/components/BiotopeView.test.tsx` [NEW]: Biome ステータスメーターの描画、および接続状態に応じたハートビート変化のテストを追加。
+  - `apps/management-console/src/components/Timeline.test.tsx` [NEW]: イベントマージおよび created_at 降順ソートの非同期レンダリングテストを追加。
+- **key-proxy `main.rs` の 6ファイル分割と TDD スリム化 (P3-5)**:
+  - `apps/key-proxy/src/main.rs` (1,008行) からドメイン境界に沿って設定（`config.rs`）、認証ミドルウェア（`auth.rs`）、クォータ制限（`quota.rs`）、ハンドラー群（`handlers/llm.rs`, `handlers/passthrough.rs`, `handlers/wordpress.rs`）へときれいに分割。
+  - `main.rs` から `mod tests;` として `tests.rs` を正式マッピングし、これまでビルド対象外になっていたデッドコードテスト（health_check 等）を main.rs からマージした全9テストとして復活・完全合格化。
+  - 全9件のテスト合格（Positive）➔ 認証ミドルウェア障害注入による1件の正確なテスト失敗（Negative）➔ 元の安全な条件判定への修復（Positive 100%復帰）という3段階の検証プロトコルを完全にパス。
+- **フロントエンド重要ガバナンス＆SNS監査コンポーネントの TDD テスト追加 (P3-3 - P2補足)**:
   - `apps/management-console/src/components/BanDashboard.test.tsx` [NEW]: マウント時の BAN リスト取得、UUID/理由フィルタリング検索、新規 BAN 発行 POST リクエスト、Unban 解除処理を網羅する Jest テストを追加。
   - `apps/management-console/src/components/BuzzApproval.test.tsx` [NEW]: ドラフト一覧取得、詳細プレビュー、280文字文字数制限の厳密な `disabled` バリデーション、承認＆X投稿の Sequential API リクエスト、却下、新規自動生成処理を網密に検証する Jest テストを追加。
   - `apps/management-console/src/components/VoiceStore.tsx` [MODIFY] & `config.ts` [MODIFY]: Jest 実行環境で CommonJS のパースエラーを引き起こしていた `import.meta.env` の直接参照を `config.ts` からのインポート参照へと一元化リファクタリング。テスト用モック API の balance キーのミスマッチも修正し、フロントエンドの全 46 テストスイート（239 テストケース）の 100% GREEN 完全パスを確立。

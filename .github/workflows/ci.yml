@@ -117,6 +117,8 @@ jobs:
         run: npm audit signatures || true
       - name: Typecheck
         run: npm run lint
+      - name: Run Unit Tests
+        run: npm test
       - name: Build
         run: npm run build
 

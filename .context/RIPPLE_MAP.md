@@ -1,4 +1,55 @@
-# 🌊 Aiome Ripple Map
+## docker-compose 環境変数の全ファイル整合化およびホスト接続要件のドキュメント追記 (B-5 / D-5) (2026-05-31)
+
+### 1. docker-compose.nurture.yml / docker-compose.cell.yml への SHADOW_CLONE 関連環境変数および A2A_AUTH_TOKEN の追加 (B-5)
+- **変更内容**:
+    - `docker-compose.nurture.yml` [MODIFY]: `api-server-pro` (L27付近) および `nurture-api` (L65付近) の environment に `SHADOW_CLONE_GRPC_HOST`、`SHADOW_CLONE_GRPC_PORT`、`A2A_AUTH_TOKEN` を追加。
+    - `docker-compose.cell.yml` [MODIFY]: `api-server` (L33付近) および `nurture-api` (L87付近) の environment に同様の `SHADOW_CLONE_GRPC_HOST`、`SHADOW_CLONE_GRPC_PORT`、`A2A_AUTH_TOKEN` を追加。
+- **波及効果**:
+    - 本番用の `docker-compose.production.yml` との間で発生していた構成ドリフト（環境変数の漏れ）を完全に解消。
+    - デフォルト値を `localhost` に設定したため、同一 Compose ファイル内に shadow-worker サービスが存在しない開発・セル環境でも Docker 内の DNS 解決でエラーが発生しない安全な設計を担保。
+
+### 2. OPERATIONS_MANUAL.md への Docker 環境での Ollama / XTTS / Shadow Worker ホスト要件追記 (D-5)
+- **変更内容**:
+    - `docs/guides/OPERATIONS_MANUAL.md` [MODIFY]: `Troubleshooting` テーブルに行を追加し、Docker 内部から localhost へ接続した際のエラー原因と `host.docker.internal` を用いた解決策を提示。
+    - `docs/guides/OPERATIONS_MANUAL.md` [MODIFY]: `Production Deployment Checklist` に、Ollama Docker 接続、extra_hosts 設定、XTTS や Shadow Worker 利用時の確認事項を追加。
+- **波及効果**:
+    - 運用・デプロイ担当者が直面しやすい「Docker 内からホストマシン上の Ollama / XTTS に接続できない」という典型的なトラブル（Connection Refused）に対する予防策がマニュアル化され、デプロイ摩擦が大幅に低減。
+
+## Aiome + Nurture シナジー強化 & `/internal/lora-train` S2S 統合 (2026-05-31)
+
+### 1. nurture-bridge L2 トレイトの再エクスポートによる能力統合の強化 (E-1)
+- **変更内容**:
+    - `Project-Nurture/libs/nurture-bridge/src/lib.rs` [MODIFY]: Aiome コアの L2 サービス境界を表現するトレイト `LoraEngine` および `TtsProvider` の re-export を実装（`traits` サブモジュール内）。
+- **波及効果**:
+    - Nurture 経済拡張側から直接 Aiome の L2 抽象クラスを参照できるようになり、型契約の共有が一段と進み、不必要な循環依存や車輪の再開発を完全に防止。
+
+### 2. nurture-api の `/internal/lora-train` S2S エンドポイント実装 (E-2)
+- **変更内容**:
+    - `Project-Nurture/apps/nurture-api/src/routes/internal.rs` [MODIFY]: OxiLean Proof 認証保護下に `/internal/lora-train` POST エンドポイントを追加。
+    - `Project-Nurture/apps/nurture-api/src/routes/internal.rs` [NEW/MODIFY]: ジョブキュー（`UniversalJobQueue`）に `"lora-train"` というジョブカテゴリで、`base_model`, `dataset_id`, `params` を安全にエンキューするハンドラ `internal_lora_train` を実装。
+    - `Project-Nurture/apps/nurture-api/tests/internal_routes_test.rs` [NEW]: `test_internal_api_lora_train` を TDD に則り RED ➔ GREEN テストとして追加。
+    - テスト用 DB とジョブキュー用 DB（SQLite）のスキーマ衝突を防ぐため、テスト用 SQLite プールを完全に分離（`test_jobs.db`）するようテスト設定を堅牢化。
+- **波及効果**:
+    - S2S（Server-to-Server）経由での安全な LoRA 訓練ジョブのエンキューパイプラインが完成。
+    - 同一 SQLite DB 内で Nurture と Aiome のテーブルスキーマ衝突が起きないようにテスト設計が独立され、今後も Flaky エラーのない安定したテスト環境を保証。
+
+## key-proxy main.rs の 6ファイル分割と TDD スリム化 (2026-05-30)
+
+### 1. key-proxy のモジュール分割 (P3-5)
+- **変更内容**:
+    - `apps/key-proxy/src/main.rs` [MODIFY]: 1,008行の巨大なファイルを整理し、約80行の軽量なエントリーポイント・ルーティングファイルにスリム化。
+    - `apps/key-proxy/src/config.rs` [NEW]: `AppState`, `QuotaState`, `ProxyRequest` 等の構造体定義や設定キャッシュを移行。
+    - `apps/key-proxy/src/auth.rs` [NEW]: Ephemeral 認証ミドルウェア (`auth_middleware`) を移行。
+    - `apps/key-proxy/src/quota.rs` [NEW]: クォータ制限とデータベース持久化 (`check_and_increment_quota`) を移行。
+    - `apps/key-proxy/src/handlers/mod.rs` [NEW]: ハンドラーモジュールの集約定義。
+    - `apps/key-proxy/src/handlers/llm.rs` [NEW]: LLM 関連ハンドラー群 (`handle_llm_complete` 等) を移行。
+    - `apps/key-proxy/src/handlers/passthrough.rs` [NEW]: Gemini パススルーハンドラー群を移行。
+    - `apps/key-proxy/src/handlers/wordpress.rs` [NEW]: WordPress 投稿ハンドラー群を移行。
+    - `apps/key-proxy/src/tests.rs` [MODIFY]: `main.rs` に書かれていたインラインテスト群を移行・マージし、かつこれまでビルド対象外になっていたデッドコードテストを復活。
+- **波及効果**:
+    - `key-proxy` アプリケーションの結合度が極限まで低下し、各ハンドラーの単一責任原則 (SRP) と可読性が劇的に向上。
+    - インラインテストと隔離されていた `tests.rs` が正常にモジュールマッピングされ、これまで実行されていなかった health_check や unauthorized 系の4つのテストを含む全9テストが常時コンパイル・実行される環境を確立。
+    - 正常系・異常系・回復（Revert）の 3段階検証プロトコルを完全にパスし、機能の欠損や破壊がないことを完全担保。
 
 ## フロントエンド重要コンポーネントテストの追加と環境変数モック堅牢化 (2026-05-29)
 

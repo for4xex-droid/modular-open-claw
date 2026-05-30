@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-05-22
+> **最終更新**: 2026-05-31
 > **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
 
 ---
@@ -264,6 +264,7 @@ graph LR
 | `economy/karma_immune_filter.rs` | `aiome_core::contracts::KarmaEntry` |
 | `sidecar/clone_manager.rs` | `aiome_core::contracts::KarmaEntry`, `aiome_core::traits::JobQueue` |
 | `mock_job_queue.rs` | `infrastructure::job_queue::UniversalJobQueue`, `aiome_core::contracts::*` |
+| `nurture-bridge/src/lib.rs` | `aiome_core_contracts::traits::{LoraEngine, TtsProvider, JobQueue}`, `aiome_core_contracts::commerce::*` |
 
 ---
 
@@ -515,6 +516,30 @@ sequenceDiagram
         OAuth-->>API: 200 OK { access_token }
         API->>API: enable_oauth_provider(provider, access_token)
         API-->>User: 302 Redirect to Management Console
+    end
+```
+
+### 5.8 S2S LoRA 訓練ジョブのエンキューフロー
+
+```mermaid
+sequenceDiagram
+    participant API as ApiServer (Aiome)
+    participant NAPI as nurture-api /internal/lora-train
+    participant Auth as require_oxp_certificate (Middleware)
+    participant Queue as UniversalJobQueue (nurture-bridge)
+    participant DB as SQLite (test_jobs.db)
+
+    API->>NAPI: POST /internal/lora-train {base_model, dataset_id, params}
+    NAPI->>Auth: 有効な OxiLean 署名証明書の検証
+    alt 検証失敗 (スコープ < 900 or 期限切れ)
+        Auth-->>API: 403 Forbidden
+    else 検証成功
+        Auth-->>NAPI: パス
+        NAPI->>Queue: enqueue("lora-train", base_model, dataset_id, params, ...)
+        Queue->>DB: INSERT INTO jobs (status='pending', category='lora-train', ...)
+        DB-->>Queue: OK
+        Queue-->>NAPI: job_id
+        NAPI-->>API: 202 Accepted { job_id }
     end
 ```
 
@@ -906,7 +931,8 @@ gantt
 | `commerce-protocol` | 26 | `Transaction<S>`, `CommodityKind`, `Offer`, `SaleMode`, `EconomicActor`, `ReputationScore` |
 | `nurture-core` | 15 | `AiomeCoin`, `CreatorPoints`, `EconomyLedger`, `EconomyPolicy`, `SurpriseEngine` |
 | `nurture-infra` | 40+ | `NurtureCommerceBridge`, `EconomyInterceptor`, `DrmEngine`, `CsamPipeline`, `VramArbiter`, `CloneManager` |
-| `nurture-api` | 15+ | `NurturePlugin`, `McpAuth`, MCP ツール群 (`search`, `buy`, `gift`, `wallet`, `sandbox_exec`) |
+| `nurture-bridge` | 20+ | `LoraEngine` / `TtsProvider` (re-exports), `UniversalJobQueue`, `AdaptiveImmuneSystem` |
+| `nurture-api` | 15+ | `NurturePlugin`, `McpAuth`, `/internal/lora-train` (S2S), MCP ツール群 (`search`, `buy`, `gift`, `wallet`, `sandbox_exec`) |
 
 ---
 

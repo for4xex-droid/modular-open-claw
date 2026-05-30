@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
 **Version:** 3.1  
-**Last Updated:** 2026-05-08
+**Last Updated:** 2026-05-31
 
 ---
 
@@ -191,6 +191,9 @@ RUST_LOG=info cargo run -p api-server
 | Settings画面が開かない | 401エラー | ブラウザタブをリフレッシュして再認証 |
 | Ollamaモデル選択不可 | 認証切れ or Ollama未起動 | `ollama serve` を確認、ブラウザリロード |
 | 日本語入力でテキストが消えない | IMEバグ (修正済み) | 最新版にアップデート |
+| `Ollama connection refused` (Docker) | Docker 内部から localhost:11434 に接続試行 | `OLLAMA_BASE_URL=http://host.docker.internal:11434` を設定し、`extra_hosts` に `host.docker.internal:host-gateway` を追加 |
+| XTTS 音声合成エラー | XTTS サーバー未起動 or エンドポイント不一致 | `XTTS_ENDPOINT` (デフォルト: `http://localhost:18020`) と `XTTS_SPEAKER` を `.env` で確認 |
+| Shadow Worker 接続失敗 | gRPC ホストが解決不能 | `SHADOW_CLONE_GRPC_HOST` / `SHADOW_CLONE_GRPC_PORT` を確認。Docker 環境では shadow-worker サービスが必要 |
 
 ---
 
@@ -207,6 +210,10 @@ RUST_LOG=info cargo run -p api-server
 - [ ] ブラウザで `http://localhost:3015` にアクセスし動作確認
 - [ ] 起動ログに 🚨 エラーがないことを確認
 - [ ] `TTS_PROVIDER` が正しく設定されているか確認
+- [ ] Docker 環境: `OLLAMA_BASE_URL` が `http://host.docker.internal:11434` に設定されているか確認
+- [ ] Docker 環境: `extra_hosts` に `host.docker.internal:host-gateway` が含まれているか確認
+- [ ] XTTS 利用時: `XTTS_ENDPOINT` と `XTTS_SPEAKER` が `.env` に設定されているか確認
+- [ ] Shadow Worker 利用時: `SHADOW_CLONE_GRPC_HOST` / `SHADOW_CLONE_GRPC_PORT` が設定されているか確認
 - [ ] `main.rs` の初期化フローでシークレットの Zeroize が実行されているかログで確認
 
 ### 9. local Embedding Server (ruri-v3) の起動

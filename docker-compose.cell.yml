@@ -31,6 +31,9 @@ services:
       - NURTURE_API_URL=http://nurture-api:3020
       - NURTURE_INTERNAL_SECRET=${NURTURE_INTERNAL_SECRET}
       - MCP_ALLOW_LOCALHOST=${MCP_ALLOW_LOCALHOST:-false}
+      - SHADOW_CLONE_GRPC_HOST=${SHADOW_CLONE_GRPC_HOST:-localhost}
+      - SHADOW_CLONE_GRPC_PORT=${SHADOW_CLONE_GRPC_PORT:-50051}
+      - A2A_AUTH_TOKEN=${A2A_AUTH_TOKEN}
     depends_on: [key-proxy]
     volumes:
       - ./data/${CELL_ID:-cell-0}/api:/app/data
@@ -85,6 +88,9 @@ services:
       - AIOME_API_URL=http://api-server:3015
       - NURTURE_INTERNAL_SECRET=${NURTURE_INTERNAL_SECRET}
       - NURTURE_BIND_ADDR=0.0.0.0
+      - SHADOW_CLONE_GRPC_HOST=${SHADOW_CLONE_GRPC_HOST:-localhost}
+      - SHADOW_CLONE_GRPC_PORT=${SHADOW_CLONE_GRPC_PORT:-50051}
+      - A2A_AUTH_TOKEN=${A2A_AUTH_TOKEN}
     volumes:
       - ./data/${CELL_ID:-cell-0}/nurture:/app/data
     depends_on: [api-server]
