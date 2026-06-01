@@ -9,7 +9,8 @@
 <h1 align="center">Aiome</h1>
 <p align="center">
   <strong>The Self-Healing AI Agent OS</strong><br>
-  <em>Written entirely by AI agents. 90,000+ lines of production Rust.</em><br><br>
+  <em>Written entirely by AI agents. 261,198+ lines of production Rust.</em><br><br>
+  <a href="https://aiome.dev"><strong>aiome.dev (Official Website)</strong></a><br><br>
   <strong>An Autonomous Operating System built by AI, for AI to operate and evolve safely.</strong>
 </p>
 
@@ -18,6 +19,7 @@
   <img src="https://img.shields.io/badge/Rust-1.85%2B-orange.svg" alt="Rust 1.85+">
   <img src="https://img.shields.io/badge/TLA%2B-Verified-0052cc.svg" alt="TLA+ Verified">
   <a href="https://github.com/motivationstudio-llc/aiome"><img src="https://img.shields.io/badge/Built%20by-Agents-blueviolet" alt="Built by Agents"></a>
+  <a href="https://aiome.dev"><img src="https://img.shields.io/badge/Website-aiome.dev-00f2ff.svg" alt="Website"></a>
 </p>
 
 ---

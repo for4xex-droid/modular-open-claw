@@ -1,6 +1,86 @@
 ## [Unreleased]
 
 ### Added
+- **バイアウト（M&A）戦略行動計画書のモジュール構造化および TDD 整合性検証の完了**:
+  - `brain` ディレクトリ内の巨大なバイアウト戦略行動計画書 (`buyout_strategy.md` 945行 / 95 KB) を、対象読者および経営・技術・法務のドメイン境界に基づいて 4 つのマークダウン仕様書（`executive_summary.md`, `technical_asset_inventory.md`, `business_plan.md`, `verification_log.md`）へと完全に分割・モジュール構造化。
+  - `verify_split.py` [NEW] (TDD検証スクリプト) を作成し、元の文書からの文言、詳細な数値、アスキーアートテーブルの漏れが「0行」（100% カバレッジ）であることを厳格に自動検証。
+  - 各ドキュメントの最上部に、他の3つのドキュメントに瞬時にジャンプできるナビゲーションリンクを敷設し、相互参照構造を強化。
+- **README / ドキュメントの技術的整合性同期 (Documentation Sync)**:
+  - `README.md` & `README_en.md` [MODIFY]: M&A デューデリジェンス（DD）に向けた事実の正確性を担保するため、古い Rust 規模記述（"90,000+ lines of production Rust"）を、現在の精密な実測コードベースサイズである **「261,198+ lines of production Rust」** へと完全に同期・修正。
+
+### Added
+- **ランディングページ (LP) ユーザー獲得パイプラインの TDD 実装 & ビジュアル・パフォーマンス最適化 (v5 最終)**:
+  - `docs/landing/index.html` [MODIFY]: canonical URL の追加、`SoftwareApplication` の JSON-LD 構造化データの追加、および将来のアクセス解析用 Plausible スクリプトタグをコメントアウトで先行搭載。
+  - `docs/landing/public/robots.txt` [NEW] & `sitemap.xml` [NEW]: 主要パス (`/`, `/privacy`, `/terms`, `/tokushoho`) をカバーするクローラー向け検索エンジン最適化 (SEO) 基盤を新設。
+  - `docs/landing/src/components/Hero.tsx` [MODIFY]: ヒーロー画像の読み込みパフォーマンス向上のため、`fetchPriority="high"` および `loading="eager"` 属性を適用し、Largest Contentful Paint (LCP) の最適化を実現。
+  - `docs/landing/public/ogp.png` [REPLACE]: 自律的に活動するダークなサイバーコンセプトを反映した、1200x630px のプレミアムダークテーマ OGP 画像を `generate_image` で再生成し置換。
+  - `docs/landing/src/i18n/locales/en.json` & `ja.json` [MODIFY]: メール Waitlist 収集フォーム用の多言語翻訳キーを追加。さらに、XSignalProbe の読込専用設計と整合させるため、`pro_f7` と `step8` の文言を「トレンド分析・コンテンツ最適化」へと修正し法的・事実の正確性を確保。フッターの特商法 i18n 欠損 (`footer.tokushoho`) も解消。
+  - `docs/landing/src/components/LiveDemo.tsx` [MODIFY]: step8 のテキスト修正に合わせ、アイコンを lucide-react の `TrendingUp` に修正し、脈動 (pulse) アニメーションを無効化。
+  - `docs/landing/src/components/Showcase.tsx` [MODIFY]: モック画像 3 枚の PNG 参照を WebP に変更。
+  - `public/*.webp` [NEW]: `cwebp` ツールを用いて、Showcase 画像 3 枚を高圧縮な WebP 形式に変換しマウント（PNG 比約 85% のファイルサイズ削減、ページの初期ロード時間の極小化）。
+  - `docs/landing/src/components/CTA.tsx` [MODIFY]: 既存のデプロイボタンを残しつつ、Formspree 連携機能（`YOUR_FORM_ID` プレースホルダー搭載）、GDPR 同意チェックボックス、および送信成功時のステートアニメーションをシームレスに結合したプレミアムなメール waitlist 収集フォームを実装。
+  - `docs/landing/src/components/Footer.tsx` [MODIFY]: lucide-react の `Github`（deprecated 警告・将来のマイグレーション注意コメント付き）と、自社製インライン SVG による X (Twitter) の SNS アイコンリンクを右側に追加したレスポンシブフッターへ改修。
+  - `docs/landing/src/components/CTA.test.tsx` [MODIFY] & `Footer.test.tsx` [MODIFY]: Waitlist フォームや SNS リンクのレンダリング・インタラクションを検証するアサーションテストを追加。
+  - `README.md` & `README_en.md` [MODIFY]: 公式サイト `https://aiome.dev` への直感的なリンクと Website バッジを最上部およびメタデータ部に追加（Documentation Sync）。
+
+### Fixed
+- **TypeScript ビルドエラーの修正**:
+  - `docs/landing/src/App.test.tsx` [MODIFY]: location オブジェクト復元時の TypeScript 型キャスト違反エラーを、`any` キャストを用いて解消。
+  - `docs/landing/src/components/LegalLayout.tsx` [MODIFY]: `verbatimModuleSyntax` 制限に適合させるため、`ReactNode` を `import type { ReactNode }` の型専用インポートへと修正。
+  - **Verification**: `npm test -- --run` 全 30 件完全合格（RED ➔ GREEN ➔ Negative Test（GDPRチェックボックス除去による意図的なテスト失敗検知）➔ Revert の3段階検証プロトコル完遂）。さらに `npm run build` が完全に成功（Vite ビルド PASS）することを確認。
+
+### Added
+- **SQLite データベース・オンラインバックアップ戦略の実装 (Phase C-3)**:
+  - `libs/shared/src/db.rs` [MODIFY]: `DatabasePool` 構造体に `backup(&self, destination_path: &str) -> Result<(), AiomeError>` メソッドを追加。SQLite 稼働時は `VACUUM INTO` を直接 `sqlx` 経由で実行し、トランザクションの整合性を保ちながら非破壊オンラインコピーを作成するロジックを実装。PostgreSQL 稼働時は非サポートのエラーを優雅に返却する安全なフェイルセーフを確立。
+  - `libs/shared/src/db.rs` [MODIFY]: バックアップ成功を検証する正常系 `test_sqlite_backup_success` と、存在しないディレクトリを対象にエラーハンドリングが機能するかを検証する異常系 `test_sqlite_backup_to_invalid_path` のユニットテストを追加。
+  - **Verification**: RED（未実装エラー） ➔ GREEN（VACUUM INTO 実装完了） ➔ Negative Test（無効パスへの強制障害注入による unable to open database エラーの確実な検知・アサート） ➔ Revert の3段階検証プロトコルを完全完遂。
+
+### Fixed
+- **DiscordNotifier SSRF 保護修正 (/reflexion)**:
+  - `libs/infrastructure/src/alerts/mod.rs` [MODIFY]: `reqwest::Client::new()` による孤立 HTTP クライアント使用を廃止し、`aiome_core::http::get_http_client()` グローバルクライアントに統一。SSRF 保護（リダイレクトブロック）と TCP 接続プールを適用。リクエスト単位タイムアウト (10秒) を追加し永久ブロックリスク排除。`client` フィールド削除による Unit struct 化。`Debug` trait 実装を追加し AlertManager との一貫性確保。
+
+### Improved
+- **法務ガバナンステストの CI 安定化 (/reflexion)**:
+  - `apps/api-server/tests/legal_governance_tests.rs` [MODIFY]: `CARGO_MANIFEST_DIR` ベースの安全なパス解決を導入し、CI 環境でのカレントディレクトリ依存を排除。`read_legal_doc()` ヘルパー関数でファイル読み込みロジックを DRY 化。キーワード検証にタプル `(keyword, description)` 形式を採用しアサーションメッセージの診断性を向上。隣接テスト `deployment_config_tests.rs` とパターン完全統一。
+
+### Added
+- **VoiceStore コマース経済圏・管理ポータル処理の DRY リファクタリング (Phase C-2)**:
+  - `apps/management-console/src/components/VoiceStore.tsx` [MODIFY]: Stripe のチェックアウトセッション作成（`handleRecharge`）およびポータルセッション作成（`handleManageSubscription`）に存在していた計約60行の重複した直接の API 通信 fetch 処理を完全に排除。共通の決済管理フック `useCheckoutSession` を用いて一元的にカプセル化（DRY）。
+  - `apps/management-console/src/hooks/useCheckoutSession.ts` [MODIFY]: 共通の決済フックを拡張し、Customer Portal 生成処理（`handlePortal`、`isPortalLoading`）を統合。Stripe Billing Portal への安全な遷移と、二重処理・エラー伝搬制御をカプセル化。
+  - `apps/management-console/src/hooks/useCheckoutSession.test.ts` [MODIFY]: 新設した `handlePortal` 関数およびポータルローディング・エラー制御ライフサイクルを検証する結合アサーションテストを 2 件新規追加。
+  - **Verification**: handlePortal 未定義による Jest 起動失敗（RED）➔ フック実装によるテスト合格（GREEN）➔ 状態遷移アサーション確認の 3段階検証を完遂。フロントエンド全体の 278 の全テストケースが 100% グリーン（PASS）で合格。
+
+- **ランディングページ (LP) における軽量ルーティングおよび法務ドキュメント表示の TDD 実装 (Phase B-2)**:
+  - `docs/landing/src/App.tsx` [MODIFY]: `window.location.pathname` に基づく超軽量かつ高速なパスルーティングを新設。`/privacy`、`/terms`、`/tokushoho` へのアクセス時に対応する法務文書ページを美しく描画する条件付きレンダリング処理を実装。
+  - `docs/landing/src/components/LegalLayout.tsx` [NEW]: ダークテーマと高度なグラスモーフィズムを適用し、戻るボタンや更新日表示、スクロール領域 of Viewport 追従を完備した最高品質の法務レイアウトコンポーネントを実装。
+  - `docs/landing/src/components/LegalPages.tsx` [NEW]: `TERMS_OF_SERVICE.md`、`PRIVACY_POLICY.md`、`TOKUSHOHO.md` の日本語正式表記コンテンツを、上記 `LegalLayout` の上に完璧にマークアップした React ページコンポーネント群を新設。
+  - `docs/landing/src/components/Footer.tsx` [MODIFY]: フッターに `/tokushoho` への直感的なリンクを追加。
+  - `docs/landing/src/App.test.tsx` [NEW]: ルーティング機能（`/` で Hero 表示、`/privacy` や `/terms` や `/tokushoho` で各法務ドキュメント表示かつHeroの自動非表示）を厳密にアサートする単体・統合テストを 4 件新規実装。
+  - `docs/landing/src/components/Pricing.test.tsx` [MODIFY] & `CodePreview.test.tsx` [MODIFY]: 最新の多言語翻訳（`en.json`, `ja.json`）および最新の Docker Compose コマンド表記との間で発生していたレガシーなアサーションの不整合を修正し、テストスイート全体の 100% 健全性を復帰。
+  - **Verification**: RED ➔ GREEN ➔ Negative Test（App.tsx の `/privacy` パスルーティング条件の破壊による意図的なテスト失敗検知）➔ Revert の 3段階検証プロトコルを完全完遂。ランディングページ全体の全 28 テストケース完全合格。
+
+- **特定商取引法に基づく表記 (TOKUSHOHO.md) の TDD 実装 (Phase B-1)**:
+  - `docs/legal/TOKUSHOHO.md` [NEW]: 日本の特定商取引法に基づく表記に準拠した公式日本語文書を新規作成。販売業者（motivationstudio, LLC）、運営責任者、所在地免責、連絡先メールアドレス、販売価格、お支払方法、引渡時期、返品・キャンセルポリシーを網羅。
+  - `apps/api-server/tests/legal_governance_tests.rs` [MODIFY]: `test_tokushoho_contains_mandatory_clauses` を追加し、`TOKUSHOHO.md` に対する必須リーガルキーワード（特定商取引法、販売業者、運営責任者、所在地、メールアドレス、販売価格、支払方法、引渡時期、返品）の自動ガバナンスアサートを構築.
+  - **Verification**: RED ➔ GREEN ➔ Negative Test（特定商取引法キーワード除去による意図的なテスト失敗およびメールアドレスすり抜けの誤検知排除）➔ Revert の 3段階検証プロトコルを完全完遂。
+
+- **本番用 Discord アラート通知パイプライン (DiscordNotifier) の TDD 実装 (Phase C-4)**:
+  - `libs/infrastructure/src/alerts/mod.rs` [MODIFY]: `AlertNotifier` トレイトを実装した `DiscordNotifier` 構造体を新規追加。環境変数 `DISCORD_WEBHOOK_URL` から送信先を取得し、グローバル HTTP クライアント (`aiome_core::http::get_http_client()`) を用いて Discord Webhook API へカラー（Info: 緑, Warning: 黄, Critical: 赤）付きの Embeds 構造を持つ JSON ペイロードを非同期で HTTP POST 送信する堅牢なフェイルセーフ通知処理を実装。
+  - `libs/infrastructure/src/alerts/tests.rs` [MODIFY]: `wiremock` と `serial_test` を用いた正常系（モック204応答）、環境変数未設定時のフェイルセーフ（早期Okリターン）、およびサーバーエラー時の異常系（500エラー障害注入）の3つのテストケースを新規追加。環境変数操作の並列競合を防ぐ直列実行（`#[serial_test::serial]`）制御を適用し、100% GREEN パスを実証。
+  - `.env.example` [MODIFY]: アラート通知先となる `DISCORD_WEBHOOK_URL` のテンプレート設定項目を追記。
+
+
+### Added
+- **フロントエンド：Stripe 決済ファネルの強化と402エラーインターセプト (TDD)**:
+  - `apps/management-console/src/lib/auth.ts` [MODIFY]: `authenticatedFetch` を拡張し、API サーバーから `402 Payment Required` レスポンスを受け取った際にカスタムイベント `stripe-402-payment-required` を自動的にディスパッチするインターセプターを実装。
+  - `apps/management-console/src/lib/auth.test.ts` [MODIFY]: 402レスポンス時にカスタムイベントが正しく発行されるかを検証するユニットテストを追加 (RED → GREEN)。
+  - `apps/management-console/src/lib/navigation.ts` [NEW]: JSDOM テスト環境における Location オブジェクトのモック制約を安全にバイパスするため、モック可能な `redirect` ユーティリティを抽出。
+  - `apps/management-console/src/hooks/useCheckoutSession.ts` [NEW]: Stripeのチェックアウトセッションを作成・管理し、ユーザーを決済画面に遷移させる共通カスタムフックを実装。
+  - `apps/management-console/src/hooks/useCheckoutSession.test.ts` [NEW]: モック化されたナビゲーションとフェッチを検証するフックの単体テストを追加。
+  - `apps/management-console/src/components/commerce/ProUpgradeModal.tsx` [NEW]: 402エラーイベントをフックして自動的に表示される、Glassmorphism を適用した美しくプレミアムな Pro アップグレードモーダル UI を実装。
+  - `apps/management-console/src/components/commerce/ProUpgradeModal.test.tsx` [NEW]: モーダルのマウント、402イベントによる開閉、アップグレードボタンのチェックアウト呼び出しを網羅するテストを追加。
+  - `apps/management-console/src/components/commerce/NurtureDashboard.tsx` [MODIFY]: スタブ化されていた Stripe `price_id` を設定値 of `STRIPE_PRICE_ID` に修正し、`useCheckoutSession` フックへ移行。
+
 - **ライセンスコンプライアンスの強化と12ファイルへの著作権ヘッダー付与**:
   - `libs/infrastructure/tests/buzz_worker_tdd.rs` [MODIFY]
   - `libs/infrastructure/src/buzz/worker.rs` [MODIFY]
