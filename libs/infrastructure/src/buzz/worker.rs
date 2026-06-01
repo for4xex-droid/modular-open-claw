@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
+
 use super::generator::BuzzContentGenerator;
 use super::scheduler::BuzzScheduler;
 use aiome_core::error::AiomeError;

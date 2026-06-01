@@ -158,3 +158,28 @@ fn td_grafana_error_rate_panel() {
         "TDD RED: Grafana dashboard missing Error Rate panel"
     );
 }
+
+#[test]
+fn test_pro_gating_requirements() {
+    let error_rs = workspace_root().join("libs/aiome-contracts/src/error.rs");
+    let error_content = fs::read_to_string(error_rs).unwrap_or_default();
+    assert!(
+        error_content.contains("PaymentRequired"),
+        "TDD RED: AiomeError is missing PaymentRequired variant"
+    );
+
+    let auth_rs = workspace_root().join("apps/api-server/src/auth.rs");
+    let auth_content = fs::read_to_string(auth_rs).unwrap_or_default();
+    assert!(
+        auth_content.contains("pub struct ProAuthenticated"),
+        "TDD RED: ProAuthenticated struct is missing in auth.rs"
+    );
+
+    // 各ハンドラの ProAuthenticated ゲート適用の検証
+    let lora_market_rs = workspace_root().join("apps/api-server/src/routes/lora_market.rs");
+    let lora_content = fs::read_to_string(lora_market_rs).unwrap_or_default();
+    assert!(
+        lora_content.contains("auth: crate::auth::ProAuthenticated"),
+        "TDD RED: publish_listing or purchase_listing is not protected by ProAuthenticated"
+    );
+}

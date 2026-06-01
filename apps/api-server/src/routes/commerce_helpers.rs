@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
+
 /// URL リダイレクト先のバリデーション
 ///
 /// `is_dev_mode`: ブート時に評価済みの開発モードフラグ

@@ -42,7 +42,7 @@ pub struct AddMemberRequest {
 )]
 pub async fn create_guild(
     State(state): State<AppState>,
-    auth: crate::auth::Authenticated,
+    auth: crate::auth::ProAuthenticated,
     Json(req): Json<CreateGuildRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let store = state.syndicate_store.as_opt().ok_or_else(|| {

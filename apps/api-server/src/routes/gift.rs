@@ -48,7 +48,7 @@ pub struct GiftPolicyResponse {
 )]
 pub async fn send_gift(
     State(state): State<AppState>,
-    auth: crate::auth::Authenticated,
+    auth: crate::auth::ProAuthenticated,
     axum::extract::Path(agent_id): axum::extract::Path<Uuid>,
     Json(mut req): Json<GiftRequest>,
 ) -> Result<impl IntoResponse, AppError> {

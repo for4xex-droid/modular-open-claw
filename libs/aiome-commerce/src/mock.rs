@@ -17,12 +17,25 @@ use std::sync::Arc;
 
 /// OSS 版向けのモック経済エンジン
 #[cfg(any(test, debug_assertions))]
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct MockCommerceEngine {
     /// エージェント別の残高
     balances: Arc<DashMap<Uuid, u64>>,
     /// エスクロー（保留中）の金額 (sender_id, amount)
     escrows: Arc<DashMap<String, (Uuid, u64)>>,
+    /// テスト用オーバーライド
+    pub subscription_override: Arc<std::sync::atomic::AtomicU8>,
+}
+
+#[cfg(any(test, debug_assertions))]
+impl Default for MockCommerceEngine {
+    fn default() -> Self {
+        Self {
+            balances: Arc::new(DashMap::new()),
+            escrows: Arc::new(DashMap::new()),
+            subscription_override: Arc::new(std::sync::atomic::AtomicU8::new(0)),
+        }
+    }
 }
 
 #[cfg(any(test, debug_assertions))]
@@ -46,6 +59,11 @@ impl CommerceEngine for MockCommerceEngine {
         _activity_type: &str,
         amount: u64,
     ) -> Result<(), AiomeError> {
+        if agent_id.to_string() == "00000000-0000-0000-0000-fa1100000000" {
+            return Err(AiomeError::Infrastructure {
+                reason: "Insufficient funds".into(),
+            });
+        }
         let balance = self.get_balance(agent_id).await?;
         if balance < amount {
             return Err(AiomeError::Infrastructure {
@@ -203,9 +221,42 @@ impl CommerceEngine for MockCommerceEngine {
 
     async fn get_subscription_status(
         &self,
-        _agent_id: Uuid,
+        agent_id: Uuid,
     ) -> Result<aiome_core::commerce::SubscriptionStatus, AiomeError> {
-        Ok(aiome_core::commerce::SubscriptionStatus::Active)
+        let val = self
+            .subscription_override
+            .load(std::sync::atomic::Ordering::Relaxed);
+        if val == 0 {
+            // Default to UUID-based routing for Pro gating integration tests
+            let id_str = agent_id.to_string();
+            Ok(match id_str.as_str() {
+                "00000000-0000-0000-0000-000000000002" => {
+                    aiome_core::commerce::SubscriptionStatus::None
+                }
+                "00000000-0000-0000-0000-000000000003" => {
+                    aiome_core::commerce::SubscriptionStatus::Trialing
+                }
+                "00000000-0000-0000-0000-000000000004" => {
+                    aiome_core::commerce::SubscriptionStatus::PastDue
+                }
+                "00000000-0000-0000-0000-000000000005" => {
+                    aiome_core::commerce::SubscriptionStatus::Cancelled
+                }
+                "00000000-0000-0000-0000-000000000006" => {
+                    aiome_core::commerce::SubscriptionStatus::Unpaid
+                }
+                _ => aiome_core::commerce::SubscriptionStatus::Active,
+            })
+        } else {
+            Ok(match val {
+                1 => aiome_core::commerce::SubscriptionStatus::None,
+                2 => aiome_core::commerce::SubscriptionStatus::Trialing,
+                3 => aiome_core::commerce::SubscriptionStatus::PastDue,
+                4 => aiome_core::commerce::SubscriptionStatus::Cancelled,
+                5 => aiome_core::commerce::SubscriptionStatus::Unpaid,
+                _ => aiome_core::commerce::SubscriptionStatus::Active,
+            })
+        }
     }
 
     async fn transfer(

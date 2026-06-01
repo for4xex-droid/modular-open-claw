@@ -125,6 +125,9 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 101 | **Non-Deterministic UI Renders**| **`Math.random()` usage in React render paths causing hydration mismatches** | 🟡 Mid | **Deterministic ID-based hashing substitution (Reflexion Phase 1)** |
 | 102 | **Third-Party Key Exfiltration** | **Billing Keys (GEMINI) injected into ephemeral containers** | 🔴 High | **Vault Proxy Pattern / Brokered Credentials (Phase 4 Brokering)** |
 | 103 | **Proxy Double Fault** | **Dummy Header (x-goog-api-key) leaked upstream causing 401s** | 🔴 High | **Active Header Sanitization before Proxy Forwarding** |
+| 104 | **Proxy / Hardware Hijacking** | **Unauthorized client-side device/sensor access** | 🔴 High | **Permissions-Policy header enforcing strict feature isolation at Caddy level (CI Asserted) (Phase E)** |
+| 105 | **Polar Webhook Replay** | **Duplicate or tampered commerce events triggering phantom license grants** | 🔴 High | **Idempotent Webhook Engine using `polar_webhook_events` tracking & atomic DB transaction boundary (Phase E / P-1)** |
+| 106 | **OOM Alert Spike (Notification DoS)** | **Alert storms during high-load/OOM leading to system starvation** | 🟡 Mid | **AlertManager Memory Cache Eviction & 60s Debounce cache (Phase E / A-3)** |
 
 ## 3. Defense Architecture
 
@@ -249,4 +252,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 For SEO integrations like WordPress, Aiome avoids direct API token injection into the main server. Instead, `key-proxy` exposes a bespoke `/api/v1/wp/publish` endpoint that handles authentication with upstream servers and acts as a semantic boundary, ensuring payloads (e.g. `status` fields) conform to strict whitelists before execution, neutralizing parameter manipulation attacks entirely.
 
 ---
-*最終更新: 2026-05-18 (Zero-Panic Policy Hardening & Federation Resilience)*
+*最終更新: 2026-06-01 (Polar Webhook Idempotency & Alert Pipeline & Caddy Headers)*

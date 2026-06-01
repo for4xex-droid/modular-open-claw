@@ -482,6 +482,19 @@ mod tests {
         crate::sql_exec!(
             &db_pool,
             r#"
+            CREATE TABLE polar_webhook_events (
+                event_id TEXT PRIMARY KEY,
+                event_type TEXT NOT NULL,
+                metadata TEXT,
+                processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            "#
+        )
+        .unwrap();
+
+        crate::sql_exec!(
+            &db_pool,
+            r#"
             CREATE TABLE licenses (
                 id TEXT PRIMARY KEY,
                 agent_id TEXT NOT NULL,

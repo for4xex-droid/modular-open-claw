@@ -94,6 +94,18 @@ impl AppError {
             },
         })
     }
+
+    /// Payment Required (402 Payment Required)
+    pub fn payment_required(reason: impl Into<String>) -> Self {
+        let reason = reason.into();
+        Self(AiomeError::PaymentRequired {
+            reason: if reason.is_empty() {
+                "Subscription required".to_string()
+            } else {
+                reason
+            },
+        })
+    }
 }
 
 impl From<anyhow::Error> for AppError {
@@ -335,10 +347,25 @@ mod tests {
     }
 
     #[test]
+    fn test_into_response_payment_required() {
+        let err = AppError::payment_required("trial expired");
+        let response = err.into_response();
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::PAYMENT_REQUIRED,
+            "Expected 402 Payment Required"
+        );
+    }
+
+    #[test]
     fn test_helper_methods_produce_correct_variants() {
         assert!(matches!(
             AppError::unauthorized("no token").0,
             AiomeError::Unauthorized { .. }
+        ));
+        assert!(matches!(
+            AppError::payment_required("required").0,
+            AiomeError::PaymentRequired { .. }
         ));
         assert!(matches!(
             AppError::forbidden("access denied").0,
@@ -388,6 +415,12 @@ mod tests {
             assert_eq!(reason, "Unauthorized");
         } else {
             panic!("Expected Unauthorized variant");
+        }
+
+        if let AiomeError::PaymentRequired { reason } = AppError::payment_required("").0 {
+            assert_eq!(reason, "Subscription required");
+        } else {
+            panic!("Expected PaymentRequired variant");
         }
     }
 

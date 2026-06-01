@@ -8,7 +8,7 @@ export function CodePreview() {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
-  const rawCommand = "docker run -d --name aiome-agent \\\n  -v /var/run/docker.sock:/var/run/docker.sock \\\n  aiome/core:latest";
+  const rawCommand = "git clone https://github.com/motivationstudio-llc/aiome\ncd aiome\ndocker compose -f docker-compose.quickstart.yml up -d";
 
   // Cleanup timer on unmount to prevent setState on unmounted component
   useEffect(() => {
@@ -72,9 +72,9 @@ export function CodePreview() {
             <div className="p-6 overflow-x-auto">
               <pre className="text-sm font-mono text-gray-300 leading-relaxed">
                 <code>
-                  <span className="text-brand-rose">docker</span> run -d --name aiome-agent \
-                  <br />  -v /var/run/docker.sock:/var/run/docker.sock \
-                  <br />  aiome/core:latest
+                  <span className="text-brand-rose">git</span> clone https://github.com/motivationstudio-llc/aiome
+                  <br /><span className="text-brand-rose">cd</span> aiome
+                  <br /><span className="text-brand-rose">docker compose</span> -f docker-compose.quickstart.yml up -d
                 </code>
               </pre>
             </div>

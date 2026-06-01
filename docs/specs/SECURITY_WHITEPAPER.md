@@ -1,6 +1,6 @@
 # Aiome: セキュリティ仕様書 (Security Whitepaper)
 
-**最終更新日: 2026-05-15**
+**最終更新日: 2026-06-01**
 
 ## 0. はじめに
 Aiome は、自律型 AI が直面する特有のセキュリティ脅威から、お客様の資産（APIクォータ、機密データ、稼働ログ）を守り抜くために設計されています。
@@ -28,8 +28,8 @@ LLM（プランナー）が生成した複数ステップから成る「行動�
 ## 1.6. Commerce Security & Webhook Resilience (決済とイベントの保護)
 決済システムとの連携においては、金融トランザクションの完全性とサーバーの可用性を同時に担保するアーキテクチャが求められます。
 
-*   **Idempotency Early Rejection (冪等性の早期検証)**: Stripe 等からの Webhook 受信時、ペイロード全体をパース・デシリアライズする前に、イベントIDに基づく冪等性チェックを O(1) で実行します。これにより、悪意あるリプレイ攻撃やネットワーク遅延による重複イベントの実行を最上位レイヤーで遮断し、二重決済処理を防止します。
-*   **Parse-What-You-Need (構造的デシリアライズ耐性)**: 外部決済サービスの API バージョンアップに伴う予期せぬ JSON 構造の変更によってシステム全体がパニックを起こすのを防ぐため、Webhook のデシリアライズ処理には不要なフィールドを無視する（`#[serde(ignore)]` 等）スワローレイヤーを設計しています。これにより、決済の疎結合な強靭性 (Resilience) が維持されます。
+*   **Idempotency Early Rejection (冪等性の早期検証)**: Stripe および Polar 等からの Webhook 受信時、ペイロード全体をパース・デシリアライズする前に、イベントIDに基づく冪等性チェックを O(1) で実行します。特に Polar Webhook では、`polar_webhook_events` テーブルを用いた二重処理防止メカニズムを実装し、Stripe と同様のトランザクション境界でライセンス付与やサブスクリプション状態のライフサイクル管理を行います。これにより、悪意あるリプレイ攻撃や重複イベントの実行を最上位レイヤーで遮断し、二重決済や不正ライセンス付与を完全に防止します。
+*   **Parse-What-You-Need (構造的デシリアライズ耐性)**: 外部決済サービスの API バージョンアップに伴う予期せぬ JSON 構造 of 変更によってシステム全体がパニックを起こすのを防ぐため、Webhook のデシリアライズ処理には不要なフィールドを無視する（`#[serde(ignore)]` 等）スワローレイヤーを設計しています。これにより、決済の疎結合な強靭性 (Resilience) が維持されます。
 *   **ADR-009 Karma Generation Path (経済整合性の保護)**: 決済トランザクション完了時に付与される「Karma」は、直接データベースの台帳(Ledger)を操作することをアーキテクチャレベルで禁止し、必ず `Webhook -> AgentHook -> KarmaForge` の一方向イベントフローを経由するよう強制（ADR-009）しています。これにより、未決済の状態で Karma のみが不正に生成される「ゴーストステート」を物理的に遮断します。
 
 ## 1.7. Data Flow & Boundary Defense (Taint Tracking Paradigm)
@@ -103,6 +103,7 @@ Aiome は連邦学習（Federation）機能を備えていますが、この通�
 *   **非特権（Rootless）実行**: Aiome は root 権限を一切必要としません。最小限の権限を持つ `aiome` ユーザーで動作し、コンテナ・エスケープ攻撃のリスクを最小化します。
 *   **読み取り専用ファイルシステムへの対応**: 書き込み可能領域を最小限（ログとDBのみ）に限定し、ルートファイルシステムを読み取り専用でマウント可能な設計にしています。これにより、マルウェアの永続化を物理的に阻止します。
 *   **ホストデーモンへの非直接アクセス**: AI がタスク委譲のために Docker を操作する際は、直接 UNIX ソケットを叩くのではなく、Native Tool 経由で制限された入力のみを受け付ける設計になっています。
+*   **Caddy プロキシセキュリティヘッダー完備 (Permissions-Policy による機能隔離)**: 本番用 Caddy プロキシテンプレートにおいて、自動 SSL/TLS 証明書管理に加え、HSTS (Strict-Transport-Security)、CSP、X-Frame-Options、Referrer-Policy、そして `Permissions-Policy` ヘッダーを導入。これにより、カメラ、マイク、GPS などの不要なハードウェアデバイス機能への無許可アクセスをインフラ層で完全に遮断し、ブラウザを介したハードウェアハイジャックリスクを無効化しています。これらのヘッダーの存在は、CI 上で毎ビルド自動テスト（`deployment_config_tests.rs`）により恒久的にアサートされ、回帰を防止します。
 *   **Safe Frontend Runtime (TypeScript Strict Boundaries)**: TypeScript の `any` トラップによる意図しない型パニック（例外補足時の `undefined.message` アクセス違反など）を根絶するため、例外捕捉レイヤーにて `catch (err: unknown)` および `instanceof Error` ガードを全般的に義務化しています。これにより、API や外部ライブラリからの予期せぬ挙動に対しても、管理コンソール画面がクラッシュ（ホワイトアウト）せず、安全な退避状態（Graceful Degradation）を維持します。
 *   **UI State Structural Integrity**: 予期せぬ API レスポンス（例: 配列の代わりにオブジェクトや文字列が返るなど）に起因するサイレントな TypeError や画面のフリーズを防ぐため、フロントエンドの主要な状態管理層（AgentConsole, ArtifactVault 等）において `Array.isArray()` による厳格な構造的バリデーションを義務付けています。
 
@@ -121,4 +122,4 @@ Aiome は連邦学習（Federation）機能を備えていますが、この通�
 Aiome のセキュリティは、「隠すこと」ではなく「破られない構造を作ること」に重点を置いています。たとえ内部ソースコードが公開されたとしても、数学的・物理的、強固なカオス耐性、そして OS アーキテクチャ上の制約によって、お客様の API キーやデータの完全性は守られ続けます。
 
 ---
-*最終更新: 2026-05-15 (Asia/Tokyo) - Reflexion Pass: scrub_env() reference updated, §1.7/§1.8 order corrected, CJK typo fixed*
+*最終更新: 2026-06-01 (Asia/Tokyo) - Polar Webhook Idempotency, Caddy Permissions-Policy, Alert Pipeline debouncer*

@@ -38,7 +38,7 @@
   "code_preview": {
     "title": "Deploy in seconds.",
     "desc": "Launch a fully autonomous agent into your environment. From there, it analyzes your codebase, identifies dependencies, and starts contributing immediately.",
-    "command": "docker run -d --name aiome-agent \\\\n  -v /var/run/docker.sock:/var/run/docker.sock \\\\n  aiome/core:latest",
+    "command": "git clone https://github.com/motivationstudio-llc/aiome\ncd aiome\ndocker compose -f docker-compose.quickstart.yml up -d",
     "copy": "Copy",
     "copied": "Copied"
   },
@@ -55,5 +55,51 @@
     "copyright": "© 2026 MotivationStudio LLC. All rights reserved.",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service"
+  },
+  "pricing": {
+    "title": "Flexible Pricing Plans",
+    "subtitle": "Choose the plan that fits your evolutionary speed.",
+    "free_title": "Sovereign Free",
+    "free_price": "Free",
+    "pro_title": "Autonomous Pro",
+    "pro_price": "$9.99",
+    "month": "/month",
+    "free_cta": "Start for Free",
+    "pro_cta": "Upgrade to Pro",
+    "pro_trial": "14-day free trial · Autopay at $9.99/mo after",
+    "free_f1": "Self-Healing AI Agent with Soul System",
+    "free_f2": "AI Chat — natural conversation with your agent",
+    "free_f3": "VRM Avatar + Inochi2D Live Expression",
+    "free_f4": "60-Second Autonomous Demo — watch AI trade",
+    "free_f5": "WASM Skill Ecosystem",
+    "free_f6": "Management Console with Setup Wizard",
+    "pro_f1": "Everything in Free, plus:",
+    "pro_f2": "Autonomous Economy — AI earns and invests 24/7",
+    "pro_f3": "Creator Marketplace — sell LoRA, VRM, Voice assets",
+    "pro_f4": "A2C Gifts — AI sends you real-world rewards",
+    "pro_f5": "Dream Mode — AI explores and learns while you sleep",
+    "pro_f6": "Shadow Clones — deploy multiple AI instances",
+    "pro_f7": "BuzzProtocol — AI posts to X autonomously",
+    "pro_f8": "Priority Support + Early Feature Access"
+  },
+  "live_demo": {
+    "title": "60-Second Autonomous Demo",
+    "desc": "Watch our AI agent trade, self-heal, and evolve autonomously in real-time.",
+    "step1": "Initializing Soul",
+    "step2": "Analyzing Codebase",
+    "step3": "Identifying Bug",
+    "step4": "Applying Fix",
+    "step5": "Running Test",
+    "step6": "Test Passed",
+    "step7": "Evolving Skills",
+    "step8": "Posting Status to X",
+    "start": "Start Demo"
+  },
+  "showcase": {
+    "title": "Management Console Showcase",
+    "desc": "Take control of your autonomous swarm with our premium glassmorphic dashboard.",
+    "img1_alt": "Agent Console Dashboard",
+    "img2_alt": "DemoView Execution Timeline",
+    "img3_alt": "Aiome Avatar Customizer"
   }
 }

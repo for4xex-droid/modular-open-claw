@@ -35,7 +35,7 @@ pub struct BuzzResponse {
 
 pub async fn generate(
     State(state): State<AppState>,
-    _auth: crate::auth::Authenticated,
+    _auth: crate::auth::ProAuthenticated,
     req: Option<Json<GenerateBuzzRequest>>,
 ) -> Result<Json<BuzzResponse>, AiomeError> {
     let req = req
@@ -90,6 +90,12 @@ pub async fn generate(
     }))
 }
 
+/// Buzz の保留中ジョブ一覧を取得する。
+///
+/// **アクセスポリシー: Free Tier (Authenticated)**
+/// このルートは意図的に `Authenticated`（Pro 不要）で保護されています。
+/// 理由: Buzz 生成（`generate`）は Pro 限定ですが、既に生成依頼済みのジョブの
+/// 進捗確認は無料ユーザーにも許可する設計です（ダウングレード後も確認可能）。
 pub async fn list_pending(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
@@ -217,7 +223,7 @@ pub async fn update_draft(
 
 pub async fn publish(
     State(state): State<AppState>,
-    _auth: crate::auth::Authenticated,
+    _auth: crate::auth::ProAuthenticated,
     Path(id): Path<String>,
 ) -> Result<Json<BuzzResponse>, AiomeError> {
     tracing::info!(buzz_id = %id, "Buzz publish requested");

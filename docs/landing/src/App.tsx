@@ -5,7 +5,10 @@ import { Hero } from './components/Hero';
 import { SocialProof } from './components/SocialProof';
 import { Features } from './components/Features';
 import { CodePreview } from './components/CodePreview';
+import { LiveDemo } from './components/LiveDemo';
 import { Security } from './components/Security';
+import { Showcase } from './components/Showcase';
+import { Pricing } from './components/Pricing';
 import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
 import './i18n/config';
@@ -26,7 +29,10 @@ function App() {
         <SocialProof />
         <Features />
         <CodePreview />
+        <LiveDemo />
         <Security />
+        <Showcase />
+        <Pricing />
         <CTA />
       </main>
       <Footer />

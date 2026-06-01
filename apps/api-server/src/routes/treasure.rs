@@ -29,7 +29,7 @@ use uuid::Uuid;
 )]
 pub async fn get_treasure(
     State(state): State<AppState>,
-    Extension(AuthenticatedUser(claims)): Extension<AuthenticatedUser>,
+    auth: crate::auth::ProAuthenticated,
 ) -> Result<impl IntoResponse, AppError> {
     // 1. Generate Intent (AS-1.1 - 1.2)
     let intent_gen = state.intent_generator.as_opt().ok_or_else(|| {
@@ -40,7 +40,7 @@ pub async fn get_treasure(
 
     // In a real scenario, we'd fetch actual context.
     // Here we use the agent's ID to fetch its "Recent desires"
-    let intent = intent_gen.generate_for_agent(claims.agent_id).await?;
+    let intent = intent_gen.generate_for_agent(auth.agent_id).await?;
 
     // 2. Fetch recommendations via AffiliateAdapter (AS-1.3)
     let adapter = state.affiliate_adapter.as_opt().ok_or_else(|| {

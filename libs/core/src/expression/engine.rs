@@ -96,3 +96,55 @@ impl ExpressionEngine {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::llm_provider::MockLlmProvider;
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn test_expression_engine_red() {
+        let karma_records = vec![json!({
+            "id": "karma-1",
+            "lesson": "Shared code improves developer velocity",
+            "karma_type": "Technical"
+        })];
+
+        let mock_llm = MockLlmProvider {
+            response: "Today I realized that code shared is power multiplied.\nEMOTION: proud"
+                .to_string(),
+            should_fail: false,
+        };
+
+        let result =
+            ExpressionEngine::generate(&karma_records, "Be proud and visionary", &mock_llm)
+                .await
+                .unwrap();
+
+        // Assertions for standard behavior
+        assert_eq!(result.emotion, "proud");
+        assert_eq!(
+            result.content,
+            "Today I realized that code shared is power multiplied."
+        );
+        assert!(result.avatar_params.is_some());
+        assert_eq!(result.karma_refs, vec!["karma-1".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn test_expression_engine_fallback_no_emotion() {
+        let karma_records = vec![];
+        let mock_llm = MockLlmProvider {
+            response: "Just a plain thought without emotion line".to_string(),
+            should_fail: false,
+        };
+
+        let result = ExpressionEngine::generate(&karma_records, "Soul prompt", &mock_llm)
+            .await
+            .unwrap();
+
+        assert_eq!(result.emotion, "reflective"); // fallback
+        assert_eq!(result.content, "Just a plain thought without emotion line");
+    }
+}

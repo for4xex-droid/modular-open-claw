@@ -248,7 +248,7 @@ pub async fn transfer(
 #[tracing::instrument(skip_all, fields(path = "/api/v1/commerce/purchase"))]
 pub async fn execute_purchase(
     State(state): State<AppState>,
-    auth: crate::auth::Authenticated,
+    auth: crate::auth::ProAuthenticated,
     axum::extract::Path(agent_id): axum::extract::Path<uuid::Uuid>,
     Json(req): Json<PurchaseRequest>,
 ) -> Result<impl IntoResponse, AppError> {

@@ -1,0 +1,49 @@
+# Aiome Production Caddyfile - TLS Reverse Proxy Template
+#
+# この設定は SSL/TLS 証明書を Let's Encrypt / ZeroSSL を用いて
+# 自動取得・更新し、ローカルの 3015 ポートへ安全に転送します。
+
+{
+    # グローバルオプション
+    admin off
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+    }
+}
+
+# 本番公開用ドメイン（環境変数 DOMAIN_NAME から読み込み。デフォルトは localhost）
+{$DOMAIN_NAME:localhost} {
+    # 3015 ポートへのリバースプロキシ転送
+    reverse_proxy api-server:3015 {
+        # ホストヘッダーと中継プロキシ情報を安全にフォワード (SSRF & Webhook 整合性のため)
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # セキュリティヘッダーの付与 (Aegis security guard)
+    header {
+        # HSTS (Strict-Transport-Security): 強制 HTTPS (2年間有効)
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        
+        # X-Frame-Options: クリックジャッキング防止 (Abyss UI 保護)
+        X-Frame-Options "DENY"
+        
+        # X-Content-Type-Options: MIMEタイプのセキュリティ
+        X-Content-Type-Options "nosniff"
+        
+        # Referrer-Policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        
+        # Permissions-Policy: 不要なデバイス機能へのアクセスを遮断 (SSRF & Client Protection)
+        Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+        
+        # Content-Security-Policy (CSP) - 自己サーバーと安全なアセットのみ許可
+        # (注: フロントエンド連携のため 'unsafe-inline' を一時的に許容)
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' wss: https:;"
+    }
+}

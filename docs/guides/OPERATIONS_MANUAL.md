@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
-**Version:** 3.1  
-**Last Updated:** 2026-05-31
+**Version:** 3.2  
+**Last Updated:** 2026-06-01
 
 ---
 
@@ -65,6 +65,11 @@ X_API_KEY=your_x_api_key
 X_API_SECRET=your_x_api_secret
 X_ACCESS_TOKEN=your_x_access_token
 X_ACCESS_TOKEN_SECRET=your_x_access_token_secret
+
+# --- Polar Commerce API Keys (P-1 Webhook Integration) ---
+POLAR_API_KEY=your_polar_api_key_here
+POLAR_BASE_URL=https://sandbox-api.polar.sh
+POLAR_WEBHOOK_SECRET=whsec_your_polar_webhook_secret_here
 
 # --- オプション (デフォルト値あり) ---
 AIOME_DB_PATH=sqlite://workspace/aiome.db       # DBパス
@@ -215,6 +220,8 @@ RUST_LOG=info cargo run -p api-server
 - [ ] XTTS 利用時: `XTTS_ENDPOINT` と `XTTS_SPEAKER` が `.env` に設定されているか確認
 - [ ] Shadow Worker 利用時: `SHADOW_CLONE_GRPC_HOST` / `SHADOW_CLONE_GRPC_PORT` が設定されているか確認
 - [ ] `main.rs` の初期化フローでシークレットの Zeroize が実行されているかログで確認
+- [ ] Polar Webhook 連携: `POLAR_API_KEY` および `POLAR_WEBHOOK_SECRET` が設定されているか確認 (P-1)
+- [ ] 運用アラート: `AlertManager` による重複排除キャッシュやサーキットブレーカーとの連動確認 (A-3)
 
 ### 9. local Embedding Server (ruri-v3) の起動
 1. `tools/ruri-embed-server` に移動。

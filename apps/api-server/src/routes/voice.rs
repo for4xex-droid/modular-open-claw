@@ -235,7 +235,7 @@ pub struct SynthesizeQuery {
 )]
 
 pub async fn synthesize_voice_handler(
-    auth: Authenticated,
+    auth: crate::auth::ProAuthenticated,
     State(state): State<AppState>,
     axum::extract::Query(query): axum::extract::Query<SynthesizeQuery>,
     Json(req): Json<SynthesizeRequest>,

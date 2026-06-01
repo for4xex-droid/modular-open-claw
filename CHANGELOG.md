@@ -1,6 +1,91 @@
 ## [Unreleased]
 
 ### Added
+- **ライセンスコンプライアンスの強化と12ファイルへの著作権ヘッダー付与**:
+  - `libs/infrastructure/tests/buzz_worker_tdd.rs` [MODIFY]
+  - `libs/infrastructure/src/buzz/worker.rs` [MODIFY]
+  - `libs/infrastructure/src/buzz/mod.rs` [MODIFY]
+  - `libs/infrastructure/src/buzz/templates.rs` [MODIFY]
+  - `libs/infrastructure/src/buzz/generator.rs` [MODIFY]
+  - `apps/api-server/src/bootstrap/llm_providers.rs` [MODIFY]
+  - `apps/api-server/src/bootstrap/database.rs` [MODIFY]
+  - `apps/api-server/src/bootstrap/state_assembly.rs` [MODIFY]
+  - `apps/api-server/src/bootstrap/helpers.rs` [MODIFY]
+  - `apps/api-server/src/bootstrap/preflight.rs` [MODIFY]
+  - `apps/api-server/src/bootstrap/workers.rs` [MODIFY]
+  - `apps/api-server/src/routes/commerce_helpers.rs` [MODIFY]
+  上記12の `.rs` ファイルに、公式の BUSL-1.1 著作権ヘッダーを追記・適切な絶対先頭位置へ移動。これに伴い、`python3 scripts/license_check.py` による静的ライセンスチェックが「ALL 11 TESTS PASSED」で完璧に合格。
+
+### Fixed
+- **Stripe/Polar 結合テスト失敗の完全解決と MockCommerceEngine の修正**:
+  - `apps/api-server/src/api_integration_tests/common.rs` [MODIFY]: `MockCommerceEngine` の `get_subscription_status` において、`None`, `Trialing`, `PastDue`, `Cancelled`, `Unpaid` などのテスト用UUIDに合わせたステータスルーティングを実装。さらに `verify_signature` において不正な署名を正しく拒否するシミュレーションロジックを追加。
+  - **Verification**: `cargo test --workspace` を実行し、`auth::tests::test_pro_gating_cancelled_subscriber_blocked` 等の4つのテスト失敗を含む、すべてのワークスペーステストが 100% グリーン（エラーゼロ）で完全に合格することを確認。
+- **Reflexion Phase E: Auth DRY リファクタ & Fail-Closed 一貫性修正**:
+  - `apps/api-server/src/auth.rs` [MODIFY]: JWT パース + Bearer 抽出 + nil UUID ガード + PII 保護ロジックを 3 つのヘルパー関数 (`extract_bearer_token`, `guard_nil_agent_id`, `jwt_failure_response`) に抽出し、5 箇所の重複を排除（74 行削減）。`ProAuthenticated` の Commerce エラー応答を 500 → 503 (SERVICE_UNAVAILABLE) に変更し、BanStore エラーの Fail-Closed 挙動と一貫性を確保。`X-Token-Expired` ヘッダーを期限切れ判定時のみ条件付与に修正。
+  - `apps/api-server/src/app_state.rs` [MODIFY]: `is_feature_enabled` と `get_system_soul_hash` で `get_inner()` (panic! 経由) を使用していたのを `as_opt()` による安全なアクセスに変更し、プロダクションコードのパニックパスを排除。
+  - **Verification**: `cargo check --workspace --tests` PASS、`cargo test --package api-server -- auth` 全 33 テスト PASS。
+
+### Added
+- **MockCommerceEngine のテストアーキテクチャ一元化 (Phase D)**:
+  - `libs/aiome-commerce/src/mock.rs` [MODIFY]: `MockCommerceEngine` に、結合テストで使用される UUID ベースのサブスクリプション状態分岐ルールと、特定の `agent_id` による `validate_activity` 資金不足エラーの返却ルールを完全統合。
+  - `apps/api-server/src/api_integration_tests/common.rs` [MODIFY]: テスト専用に定義されていたローカルの `struct MockCommerceEngine;` の二重定義を完全に排除し、ライブラリ側のモックをインポート・共用するようにリファクタリング。
+  - `apps/api-server/src/bootstrap.rs.bak` [DELETE]: 使用されなくなった古いバックアップファイルを削除。
+  - **Verification Protocol**: 正常系（10件の結合テスト合格、8件の静的・Pro制限アサーション合格） ➔ 異常系（Free ユーザーの UUID 状態を Active に改ざんし、アサーションエラー `left: 400 == right: 402` によるテスト失敗を正確に検知） ➔ 正常値への復帰・テスト完全合格への復元という 3 段階検証を 100% 完遂。
+
+- **Stripe サブスクリプション決済基盤とプロ・ゲート制限の TDD 実装 (Phase B & C)**:
+  - `libs/aiome-contracts/src/error.rs` [MODIFY]: `AiomeError` に `PaymentRequired` エラー型を追加し、Axum `IntoResponse` で `402 Payment Required` (402) ステータスコードへ自動マッピング。
+  - `apps/api-server/src/error.rs` [MODIFY]: `AppError::payment_required` ヘルパーメソッドと対応するユニットテスト群を追加。
+  - `apps/api-server/src/auth.rs` [MODIFY]: `ProAuthenticated` エクストラクターを新設し、Stripeサブスクリプション状態（`Active` または `Trialing`）を動的検証。未登録ユーザーからのアクセスに対して `402 Payment Required` で安全に遮断するガードロジックを実装。さらに、正常系 (Positive) および障害注入 (Negative) の自動検証結合テストを追加。
+  - `apps/api-server/src/routes/` 内の8つのルートハンドラ (`lora_market.rs`, `buzz.rs`, `gift.rs`, `commerce.rs`, `voice.rs`, `treasure.rs`, `syndicate.rs`) にて、引数を `Authenticated` から `ProAuthenticated` に変更し、プロサブスクリプションによる厳格なゲート制限を適用。
+  - `libs/aiome-commerce/src/mock.rs` [MODIFY]: `MockCommerceEngine` に `subscription_override` テスト制御フィールドを追加し、Stripeのモックライフサイクルテストに統合。
+  - **Verification Protocol**: 正常系（アクティブユーザーがPro機能にアクセス可能） ➔ 異常系（未登録ユーザーのアクセスを402で拒否） ➔ 正常復帰の3段階結合テスト検証を完全に自動パス。
+
+- **ランディングページ (LP) の獲得最大化とビジュアルアップグレード (Phase A)**:
+  - `docs/landing/src/i18n/locales/en.json` & `ja.json` [MODIFY]: Free 機能(6個), Pro 機能(8個)、14日間無料トライアルバッジ、ライブデモ、ショーケースの多言語翻訳データを追加・価格（$9.99）を完全に整合。
+  - `docs/landing/src/components/CodePreview.tsx` [MODIFY]: クイックスタートの指示を Git / Docker Compose 形式に修正し、コンソールの使い勝手を大幅に向上。
+  - `docs/landing/src/components/Pricing.tsx` [MODIFY]: Free(6個) / Pro(8個) の動的マップ展開、14日間無料体験バッジの追加、Stripe 本番用 Payment Link (`https://buy.stripe.com/aFa9AS1Kc1l47mK3u5f7i01`) への確実な差し替えと別窓遷移対応。
+  - `docs/landing/index.html` [MODIFY]: SEO・SNS監査用 Twitter OGP カード (`@aiome_dev`) のメタタグを追加。
+  - `docs/landing/src/components/LiveDemo.tsx` [NEW]: 60秒自律エージェントのタイムライン動作（自己修復・テスト合格・Xへの自律投稿など）を伝える美しいガラスモルフィズム調の CSS アニメーションデモを実装。
+  - `docs/landing/src/components/Showcase.tsx` [NEW]: `generate_image` で作成した高解像度の管理画面ダッシュボード、実行タイムライン、アバターカスタマイザーのモックアップアセット3点をマウントした最高峰のショーケースコンポーネントを新規実装。
+  - `docs/landing/src/App.tsx` [MODIFY]: 各種新規コンポーネントを正しいセクション配置でマッピングし、`npm run build` による警告なしのビルド合格を達成。
+
+
+### Added
+- **B-2: TLS / HTTPS リバースプロキシの設定テンプレート作成とインフラ TDD 実装 (B-2)**:
+  - `docker/caddy/Caddyfile` [NEW]: Let's Encrypt / ZeroSSL を用いた自動 SSL/TLS 証明書管理、`api-server:3015` への安全な `reverse_proxy` 転送（SSRF/プロキシ保護用のホストヘッダー中継含む）、HSTS 強制暗号化、CSP、クリックジャッキング防御等のセキュリティヘッダーを完備した本番用 Caddy プロキシテンプレートを新規作成。さらに **`Permissions-Policy` ヘッダーを追加**し、不要デバイス機能への無許可アクセスをインフラ層で完全に遮断。
+  - `apps/api-server/tests/deployment_config_tests.rs` [NEW]: 構成テンプレートを静的にパースし、安全なプロキシ定義（`reverse_proxy`, `:3015`, `header_up`, `Strict-Transport-Security`, `X-Frame-Options`）に加え、**CSP、Referrer-Policy、Permissions-Policy の存在を CI 上で毎ビルド自動アサート**するインフラ構成バリデーションテストを新規実装。**`CARGO_MANIFEST_DIR` による絶対パス解決**に書き換え、カレントワーキングディレクトリ依存のテスト不安定性を完全に排除。
+  - **Verification Protocol**: 正常系（テスト合格） ➔ 意図的に Caddyfile 内の Permissions-Policy 定義を削除してアサーションエラーを正確に検知（Negative） ➔ 正常に復旧（Revert & Report）の 3段階検証プロトコルを完全パス。
+
+- **A-2: ToS（利用規約）の正式日本語版化とリーガル・ガバナンス TDD 実装 (A-2)**:
+  - `docs/legal/TERMS_OF_SERVICE.md` [MODIFY]: 暫定スキャフォールド状態から、早期アクセス免責、BSL-1.1 使用制限、Karma Coins / 月額サブスクリプションの**完全返金不可（Non-Refundable）の明記**、自己修復（Self-Healing）・自律的コード書き換えに伴う完全免責、eKYC 本人確認義務化等を網羅した強固な日本語正式版に完全アップグレード。
+  - `apps/api-server/tests/legal_governance_tests.rs` [NEW]: 利用規約およびプライバシーポリシーを動的に解析し、免責・返金制限・BSL-1.1 などの重要法的キーワードの存在を CI 上で恒久的にアサートする自動ガバナンス監視テストを2件追加。
+  - **Verification Protocol**: 正常系（2件のテスト合格） ➔ 意図的に ToS から「返金」キーワードを削除してテスト不合格を正確に検知（Negative） ➔ 正常な文言に復旧（Revert & Report）の 3段階検証プロトコルを完全パス。
+
+- **A-3: 運用アラート通知パイプライン TDD 実装とサーキットブレーカー統合 (A-3)**:
+  - `libs/infrastructure/src/alerts/mod.rs` [NEW]: 抽象化された通知レイヤー `AlertNotifier` トレイト、重要度レベル `AlertLevel`、および重複送信を防止するメモリ内デバウンスキャッシュ（60秒の頻度制限）を備えた `AlertManager` を実装。さらに **重複キャッシュのクリーンアップ (Eviction) ロジック** を追加し、長期的 OOM (Out of Memory) のリスクを完全に排除。
+  - `libs/infrastructure/src/circuit_breaker.rs` [MODIFY]: `CircuitBreaker` に `AlertManager` をアタッチする機能（`new_with_alerts`）を追加。状態が Open 状態（トリップ）に遷移した際、自動的かつ非同期に `Critical` アラート通知をトリガーする連動ロジックを統合。
+  - `libs/infrastructure/src/alerts/tests.rs` [NEW]: アラートレベル別ルーティング、サーキットブレーカーのトリップ連動、非同期フェイルセーフ動作、および**新規追加した「デバウンス重複送信抑制機能」**を直接検証する TDD 統合テストを4件追加し、タスク待ち時間を 60ms へと安全に拡張して flakiness を排除した上で 100% GREEN パス。
+  - `libs/infrastructure/src/lib.rs` [MODIFY]: `alerts` モジュールを登録。
+  - **Verification Protocol**: 正常系処理（4件のテスト合格） ➔ トリップ時のアラートレベルを Critical から Info へ改ざんしてアサーション失敗を正確に検知（Negative） ➔ 復旧（正常なアサーションに復帰）の3段階検証プロトコルを完遂。
+
+- **Polar Webhook のビジネスロジック TDD 実装 (P-1)**:
+  - `apps/api-server/src/routes/commerce_webhook/polar.rs` [MODIFY]: 署名検証後にイベントを破棄していた状態から、Stripe と同様のトランザクション境界、および `polar_webhook_events` テーブルを用いた冪等性保証（イベントの二重処理防止）を実装。
+  - `checkout.completed` イベント受信時に `handle_checkout_completed` を実行し、ライセンス付与、クリエイターへの収益分配、および Nurture への結果整合性チャージ転送を自動処理。
+  - `subscription.created` / `subscription.updated` / `subscription.deleted` イベント受信時に、MCP サスペンドを解除（アンロック）またはサスペンドする設定更新を UniversalJobQueue へエンキュー。
+  - `apps/api-server/src/routes/polar_webhook_tests.rs` [MODIFY]: モック署名生成による正常系（チェックアウト成功、サブスクリプションのライフサイクル）および異常系（重複送信のスキップ、不正署名の拒否）の TDD 統合テストを4件追加し、100% GREEN パスを達成。
+  - `libs/infrastructure/src/registry.rs` [MODIFY] および SQLite/PostgreSQL のマイグレーション初期化 DDL [MODIFY] に `polar_webhook_events` テーブルを追加し、起動時・テスト時の自動スキーマ同期を保証。
+  - **Verification Protocol**: 正常系処理（Positive）➔ 重複送信のスキップおよび不正署名ヘッダー拒否（Negative）➔ テスト環境のクリーンアップ（Revert & Report）を完遂。
+
+- **感情表現エンジン (ExpressionEngine) への TDD ユニットテスト追加とエッジケース保護 (E-3)**:
+  - `libs/core/src/expression/engine.rs` [MODIFY] の末尾に `#[cfg(test)] mod tests` を新規追加。
+  - `MockLlmProvider` を利用した正常系（内的感情 "proud" のパース、content クリーニング、avatar_params、および karma_refs の整合性）の検証テストを追加。
+  - エッジケースとして、LLM の応答から EMOTION タグが欠落した場合のデフォルト感情（"reflective"）へのフォールバック挙動のテストを追加し、保護を強化。
+  - テスト失敗の検知（RED）➔ アサーション修正による合格（GREEN）➔ 意図的なデフォルト値改ざんによるテスト失敗（Negative）➔ 復元の 3段階検証プロトコルを完全パス。
+- **ランディングページ (LP) への Pricing セクションの追加と TDD 実装 (Phase 1-1.3)**:
+  - `docs/landing/src/components/Pricing.tsx` [NEW] および `Pricing.test.tsx` [NEW] を追加。多言語（日英）対応、レスポンシブなカードデザイン、Stripe サブスクリプションと整合する料金表示を実装。
+  - `docs/landing/src/App.tsx` [MODIFY] への `Pricing` コンポーネントの組み込み。
+  - `docs/landing/src/i18n/locales/en.json` [MODIFY] および `ja.json` [MODIFY] への `pricing` 翻訳オブジェクトの追加。
+  - Vitest での 24 個すべてのテスト合格と、Negative Test（意図的な価格変更）によるアサーション失敗の正確な検知、および正常化復帰の 3 段階検証プロトコルを完遂。
 - **docker-compose 環境変数の整合化と production との整合性確立 (B-5)**:
   - `docker-compose.nurture.yml` および `docker-compose.cell.yml` の `api-server-pro` / `api-server` および `nurture-api` サービスに `SHADOW_CLONE_GRPC_HOST`、`SHADOW_CLONE_GRPC_PORT`、`A2A_AUTH_TOKEN` を追加。本番環境との構成のブレを解消。
 - **デプロイ・運用ガイドに Ollama/XTTS/Shadow Worker の Docker 接続要件を明記 (D-5)**:

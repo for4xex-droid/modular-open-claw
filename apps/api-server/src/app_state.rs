@@ -200,8 +200,20 @@ impl AppState {
             }
         }
 
+        // Safe access: if job_queue is not initialized, treat features as disabled.
+        let jq = match self.job_queue.as_opt() {
+            Some(jq) => jq,
+            None => {
+                tracing::warn!(
+                    "⚠️ [AppState] job_queue not initialized, treating feature '{}' as disabled",
+                    flag
+                );
+                return false;
+            }
+        };
+
         use aiome_core::traits::SettingsOps;
-        let val = self.job_queue.get_inner().is_feature_enabled(flag).await;
+        let val = jq.is_feature_enabled(flag).await;
 
         if let Some(cache) = self.feature_flags_cache.as_opt() {
             cache.insert(flag.to_string(), val).await;
@@ -212,7 +224,14 @@ impl AppState {
 
     /// システム共通のSoulハッシュを計算し取得します。
     pub async fn get_system_soul_hash(&self) -> String {
-        let resolver = &self.config.get_inner().resolver;
+        let config = match self.config.as_opt() {
+            Some(c) => c,
+            None => {
+                tracing::warn!("⚠️ [AppState] config not initialized, returning empty soul hash");
+                return String::new();
+            }
+        };
+        let resolver = &config.resolver;
         let soul = crate::system_instructions::read_app_data_file(resolver, "SOUL.md").await;
         let evolving_soul =
             crate::system_instructions::read_app_data_file(resolver, "EVOLVING_SOUL.md").await;

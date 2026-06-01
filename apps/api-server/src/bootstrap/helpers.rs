@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
+
 #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 #![allow(clippy::default_constructed_unit_structs)]
 #![allow(clippy::field_reassign_with_default)]
@@ -6,12 +13,6 @@
 #![allow(clippy::useless_conversion)]
 #![allow(clippy::redundant_pattern_matching)]
 #![allow(clippy::manual_inspect)]
-/*
- * Aiome - The Autonomous AI Operating System
- * Copyright (C) 2026 motivationstudio, LLC
- *
- * Licensed under the Business Source License 1.1.
- */
 
 use crate::app_state::Component;
 use crate::internal_services;

@@ -31,6 +31,8 @@
 //! `core` で定義されたトレイトの具体実装を提供する。
 #![allow(missing_docs)]
 
+pub mod alerts;
+
 pub mod a2ui;
 pub mod aiome_log;
 pub use aiome_core::error::AiomeError;

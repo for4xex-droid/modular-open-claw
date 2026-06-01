@@ -38,7 +38,7 @@
   "code_preview": {
     "title": "数秒でデプロイ。",
     "desc": "完全自律型エージェントをあなたの環境に立ち上げましょう。エージェントはコードベースを分析し、依存関係を特定して、即座に貢献を開始します。",
-    "command": "docker run -d --name aiome-agent \\\\n  -v /var/run/docker.sock:/var/run/docker.sock \\\\n  aiome/core:latest",
+    "command": "git clone https://github.com/motivationstudio-llc/aiome\ncd aiome\ndocker compose -f docker-compose.quickstart.yml up -d",
     "copy": "コピー",
     "copied": "コピー済み"
   },
@@ -55,5 +55,51 @@
     "copyright": "© 2026 MotivationStudio LLC. All rights reserved.",
     "privacy": "プライバシーポリシー",
     "terms": "利用規約"
+  },
+  "pricing": {
+    "title": "柔軟な料金プラン",
+    "subtitle": "あなたの進化の速度に合わせた最適なプランをお選びください。",
+    "free_title": "ソブリン無料",
+    "free_price": "無料",
+    "pro_title": "オートノマス・プロ",
+    "pro_price": "$9.99",
+    "month": "/月",
+    "free_cta": "無料で始める",
+    "pro_cta": "プロへアップグレード",
+    "pro_trial": "14日間無料体験 · 以降 $9.99/月で自動更新",
+    "free_f1": "自己修復型AIエージェント (Soulシステム搭載)",
+    "free_f2": "AIチャット — 自然な対話と感情表現",
+    "free_f3": "VRMアバター + Inochi2D感情表現",
+    "free_f4": "60秒自律デモ — AIの意思決定をリアルタイム追跡",
+    "free_f5": "WASM スキルエコシステム",
+    "free_f6": "管理コンソールとセットアップウィザード",
+    "pro_f1": "無料プランのすべてに加えて：",
+    "pro_f2": "自律経済圏 — 24時間365日の自律投資・収益化",
+    "pro_f3": "クリエイター市場 — LoRA, VRM, 音声アセットの販売",
+    "pro_f4": "A2Cギフト — AIからリアルワールドへの恩返し・報酬",
+    "pro_f5": "ドリームモード — 就寝中の自律探索・学習",
+    "pro_f6": "シャドウクローン — 複数AIエージェントの同時展開",
+    "pro_f7": "BuzzProtocol — X(旧Twitter)への完全自律投稿",
+    "pro_f8": "優先サポート + 早期機能アクセス"
+  },
+  "live_demo": {
+    "title": "60秒間 自律動作ライブデモ",
+    "desc": "AIエージェントが自律的に取引し、自己修復し、進化する様子をリアルタイムでご覧いただけます。",
+    "step1": "Soulの初期化中",
+    "step2": "コードベースの静的解析中",
+    "step3": "バグ（脆弱性）の検知",
+    "step4": "自己修復パッチの適用",
+    "step5": "自動テストスイートの実行",
+    "step6": "テスト完全合格",
+    "step7": "新スキルの学習と自己進化",
+    "step8": "X（旧Twitter）へ進捗を自律投稿",
+    "start": "デモを開始"
+  },
+  "showcase": {
+    "title": "最高峰の管理コンソール",
+    "desc": "美しいグラスモルフィズムのダッシュボードで、あなたの自律AIエージェントを完全に掌握。",
+    "img1_alt": "エージェントダッシュボード画面",
+    "img2_alt": "自律実行のタイムライン",
+    "img3_alt": "アバターカスタマイザー"
   }
 }

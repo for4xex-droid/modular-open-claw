@@ -63,6 +63,7 @@ pub struct CircuitBreaker {
     last_failure_time: Arc<RwLock<Option<std::time::Instant>>>,
     // G-1: 最後の失敗時刻を SystemTime でも保持（DTO のため）
     last_failure_system_time: Arc<RwLock<Option<SystemTime>>>,
+    alert_manager: Option<Arc<crate::alerts::AlertManager>>,
 }
 
 impl CircuitBreaker {
@@ -75,6 +76,24 @@ impl CircuitBreaker {
             config,
             last_failure_time: Arc::new(RwLock::new(None)),
             last_failure_system_time: Arc::new(RwLock::new(None)),
+            alert_manager: None,
+        }
+    }
+
+    /// アラートマネージャー付きの CircuitBreaker を生成する
+    pub fn new_with_alerts(
+        name: &str,
+        config: CircuitBreakerConfig,
+        alert_manager: Arc<crate::alerts::AlertManager>,
+    ) -> Self {
+        Self {
+            name: name.to_string(),
+            state: Arc::new(RwLock::new(CircuitState::Closed)),
+            failures: Arc::new(AtomicUsize::new(0)),
+            config,
+            last_failure_time: Arc::new(RwLock::new(None)),
+            last_failure_system_time: Arc::new(RwLock::new(None)),
+            alert_manager: Some(alert_manager),
         }
     }
 
@@ -144,6 +163,19 @@ impl CircuitBreaker {
                     self.name
                 );
                 *state = CircuitState::Open;
+
+                // アラート送信
+                if let Some(ref am) = self.alert_manager {
+                    let name = self.name.clone();
+                    let am = am.clone();
+                    tokio::spawn(async move {
+                        let _ = am.trigger_alert(
+                            &format!("Circuit Breaker Tripped: {}", name),
+                            &format!("Service '{}' has reached failure threshold and entered Open state (Failing Fast).", name),
+                            crate::alerts::AlertLevel::Critical,
+                        ).await;
+                    });
+                }
             }
             let mut last_fail = self.last_failure_time.write().await;
             *last_fail = Some(now_instant);

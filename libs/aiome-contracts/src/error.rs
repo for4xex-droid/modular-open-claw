@@ -125,6 +125,9 @@ pub enum AiomeError {
     #[error("入力値エラー: {reason}")]
     Validation { reason: String },
 
+    #[error("サブスクリプションが必要です: {reason}")]
+    PaymentRequired { reason: String },
+
     #[error("JSON 処理エラー: {0}")]
     JsonSerialization(#[from] serde_json::Error),
 }
@@ -194,6 +197,10 @@ impl axum::response::IntoResponse for AiomeError {
             ),
             AiomeError::NotFound { reason } => (StatusCode::NOT_FOUND, reason.clone()),
             AiomeError::Unauthorized { reason } => (StatusCode::UNAUTHORIZED, reason.clone()),
+            AiomeError::PaymentRequired { reason } => (
+                StatusCode::PAYMENT_REQUIRED,
+                format!("Subscription required: {}", reason),
+            ),
             AiomeError::Validation { reason } => (
                 StatusCode::BAD_REQUEST,
                 format!("Validation error: {}", reason),

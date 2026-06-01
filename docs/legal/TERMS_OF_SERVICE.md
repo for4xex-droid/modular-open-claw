@@ -1,20 +1,51 @@
-# Aiome Terms of Service (First Penguin Edition)
+# Aiome 利用規約 (Terms of Service)
 
-*Last Updated: 2026-05-18*
+**最終更新日**: 2026-05-31
 
-Aiome ("The Software") is provided by motivationstudio, LLC ("We", "Us") as a dual-licensed software product.
-
-## 1. Early Access Disclaimer
-The Software is currently provided in an early access phase (First Penguin Edition). It is offered "AS IS" and "AS AVAILABLE" without any warranties of any kind, either express or implied. We do not guarantee that the Software will be bug-free, secure, or uninterrupted. You use the Software at your own risk.
-
-## 2. Licensing
-By using the Software, you agree to comply with the Business Source License 1.1 (BSL-1.1), which restricts certain production uses. Please refer to the `LICENSE` file for the exact terms.
-
-## 3. Telemetry and Data
-The Software may collect limited telemetry and observability metrics (such as performance benchmarks) to improve the system. We do not collect your personal knowledge data, prompt outputs, or private keys without explicit consent. Please refer to our [Privacy Policy](./PRIVACY_POLICY.md) for more details.
-
-## 4. Limitation of Liability
-To the maximum extent permitted by law, motivationstudio, LLC shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly, or any loss of data, use, goodwill, or other intangible losses.
+本利用規約（以下「本規約」）は、モチベーションスタジオ LLC（以下「当社」）が提供、または運営するセルフホスト型 AI オペレーティングシステム「Aiome」（以下「本ソフトウェア」）の利用条件を定めるものです。本ソフトウェアの利用者（以下「ユーザー」）は、本規約に同意した上で本ソフトウェアを利用するものとします。
 
 ---
-> **Note**: This is a scaffolded document for the First Penguin launch. A comprehensive legal review and full Terms of Service will be published prior to the official v1.0 General Availability release.
+
+## 1. 早期アクセス (First Penguin Edition) 免責
+本ソフトウェアは現在、早期アクセスおよびプレリリース段階（First Penguin Edition）として提供されています。当社は、本ソフトウェアの動作の完全性、安定性、無謬性、セキュリティについて一切の保証を行わず、「現状有姿（AS IS）」で提供します。ユーザーは、予期しないシステム破損やデータ消失が発生する可能性があることを理解し、自己の責任において本ソフトウェアを稼働させるものとします。
+
+---
+
+## 2. ライセンスおよび商用利用許諾 (BSL-1.1)
+本ソフトウェアは、**Business Source License 1.1 (BSL-1.1)** に基づきデュアルライセンス供与されています。
+*   非商用目的、個人的な検証目的、または BSL-1.1 の許諾範囲内での利用は無料です。
+*   BSL-1.1 で制限されている本番環境および特定の商用環境での運用については、当社が別途発行する商用利用ライセンスの取得が必要です。詳細はライセンスファイル（`LICENSE`）をご参照ください。
+
+---
+
+## 3. コマース経済圏および Karma Coins (KC) 決済規約
+本ソフトウェアは、Stripe または Polar などの決済インフラを統合したコマース機能（Karma Coins チャージ、Gig エージェント間タスク市場、LoRA アダプター取引等のマーケットプレイス）を提供します。
+*   **返金不可の方針**: **Stripe または Polar 決済を介して購入された Karma Coins (KC) のチャージ代金、および月額サブスクリプション料金については、理由の如何を問わず一切の返金を行いません。**
+*   **プラットフォーム手数料**: アプリケーション内での取引（Gig の履行決済、アセット購入など）において、プラットフォーム手数料として取引額の **15%** が控除され、残る **85%** がクリエイター（受託エージェントまたはアセット提供者）に分配されます。
+*   **eKYC（本人確認）の義務化**: ユーザーがクリエイターとしてプラットフォーム上での収益の出金や特定の有償サービス提供を行うにあたっては、Stripe Identity などを通じた本人確認（eKYC）の完了を必須条件とします。
+
+---
+
+## 4. 自己修復 (Self-Healing) および AI 自律実行に伴う完全免責
+本ソフトウェアは、AI によるコードの自動生成、デバッグ、自己修復（Self-Healing）、および外部 API への自動的な接続要求やタスクの自律的実行を行います。
+当社は、本ソフトウェアの自律的な動作（自律的なコード書き換えを含む）に起因して発生した、以下の事象について**一切の責任（法的責任および金銭的賠償責任を含む）を負いません。**
+1.  稼働サーバー内のデータ消失、ファイルの破損、データベースの不整合
+2.  自律的な外部 API 呼び出しに伴う、サードパーティサービス（LLM、TTS 等）の想定外の課金コストの発生
+3.  自動生成されたコードまたはアセットが、第三者の知的財産権（著作権、特許権等）を侵害した場合のトラブル
+4.  その他、AI の意思決定および行動の結果生じたシステム障害やビジネスの機会損失
+
+---
+
+## 5. 禁止事項
+ユーザーは、本ソフトウェアの利用にあたり、以下の行為を行ってはなりません。
+*   児童ポルノ（CSAM）の生成、極度に有害または毒性のある表現の自律拡散
+*   不正アクセス、他のセル環境への意図的なサイバー攻撃
+*   本ソフトウェアを利用した詐欺行為または他者へのなりすまし
+
+---
+
+## 6. 準拠法と管轄裁判所
+本規約は日本法または当社登記地の法に準拠し、本ソフトウェアに関する一切の紛争については、当社の本店所在地を管轄する地方裁判所を第一審の専属的合意管轄裁判所とします。
+
+---
+> **合意確認**: ユーザーが本ソフトウェアを起動し、初期設定または初回ログインを完了した時点で、本規約のすべての条項に同意したものとみなされます。

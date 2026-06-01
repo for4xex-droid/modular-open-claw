@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-05-31
+> **最終更新**: 2026-06-01
 > **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
 
 ---
@@ -433,6 +433,35 @@ sequenceDiagram
     API-->>Stripe: 200 OK
 ```
 
+### 5.4.1 Polar Webhook イベント処理 → サブスクリプション & ライセンス同期 (P-1)
+
+```mermaid
+sequenceDiagram
+    participant Polar as Polar Webhook
+    participant API as api-server (Aiome)
+    participant DB as Database (Aiome)
+    participant NAPI as nurture-api (Nurture)
+    participant Queue as UniversalJobQueue
+
+    Polar->>API: POST /api/v1/commerce_webhook/polar (checkout.completed / subscription.*)
+    API->>API: verify_signature(webhook-signature)
+    API->>DB: INSERT polar_webhook_events (冪等性ガード)
+    alt 重複イベント
+        DB-->>API: UNIQUE violation → 200 OK (skip)
+    else 新規イベント
+        DB-->>API: 1 row inserted
+        alt checkout.completed
+            API->>DB: grant_license_with_tx(agent_id, asset_id)
+            API->>DB: RevenueSplitter.split_revenue()
+            API->>DB: tx.commit()
+        else subscription.created / updated / deleted
+            API->>Queue: enqueue("update-subscription-status", payload)
+            Queue-->>API: job_id
+        end
+    end
+    API-->>Polar: 200 OK
+```
+
 ### 5.5 S2S マーケットプレイスアップロード (CSAM → 登録)
 
 ```mermaid
@@ -798,9 +827,25 @@ classDiagram
         +nurture-api のルートを登録
     }
 
+    class AlertNotifier {
+        <<trait>>
+        +notify(level, message) Result~()~
+    }
+    class AlertManager {
+        +AlertManager(notifiers, cache)
+        +send_alert(level, message)
+        +clean_expired_cache()
+    }
+    class CircuitBreaker {
+        +AlertManager alert_manager
+        +new_with_alerts(alert_manager)
+    }
+
     CommerceEngine <|.. StripeCommerceEngine : implements
     CommerceEngine <|.. NurtureCommerceBridge : implements
     AiomePlugin <|.. NurturePlugin : implements
+    AlertManager --> AlertNotifier
+    CircuitBreaker --> AlertManager
 
     note for CommerceEngine "Aiome OSS 側で定義\nNURTURE側で実装"
     note for LlmProvider "Aiome OSS 側で定義・実装\nNURTUREは触れない"

@@ -377,6 +377,13 @@ CREATE TABLE IF NOT EXISTS stripe_webhook_events (
     processed_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS polar_webhook_events (
+    event_id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    metadata TEXT,
+    processed_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS vault_keys (
     asset_id TEXT PRIMARY KEY,
     encrypted_key BLOB NOT NULL,

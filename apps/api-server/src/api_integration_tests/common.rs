@@ -225,8 +225,17 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
         agent_id: uuid::Uuid,
     ) -> Result<aiome_core_contracts::commerce::SubscriptionStatus, aiome_core::error::AiomeError>
     {
-        if agent_id == uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap() {
+        let id_str = agent_id.to_string();
+        if id_str.ends_with("0002") {
             return Ok(aiome_core_contracts::commerce::SubscriptionStatus::None);
+        } else if id_str.ends_with("0003") {
+            return Ok(aiome_core_contracts::commerce::SubscriptionStatus::Trialing);
+        } else if id_str.ends_with("0004") {
+            return Ok(aiome_core_contracts::commerce::SubscriptionStatus::PastDue);
+        } else if id_str.ends_with("0005") {
+            return Ok(aiome_core_contracts::commerce::SubscriptionStatus::Cancelled);
+        } else if id_str.ends_with("0006") {
+            return Ok(aiome_core_contracts::commerce::SubscriptionStatus::Unpaid);
         }
         Ok(aiome_core_contracts::commerce::SubscriptionStatus::Active)
     }
@@ -247,8 +256,13 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
     fn verify_signature(
         &self,
         _payload: &str,
-        _sig_header: &str,
+        sig_header: &str,
     ) -> Result<(), aiome_core::error::AiomeError> {
+        if sig_header.contains("invalid") || sig_header.contains("bad") {
+            return Err(aiome_core::error::AiomeError::Unauthorized {
+                reason: "Invalid signature".into(),
+            });
+        }
         Ok(())
     }
 

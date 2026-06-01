@@ -132,7 +132,7 @@ pub async fn list_market(
 )]
 pub async fn publish_listing(
     State(state): State<AppState>,
-    auth: crate::auth::Authenticated,
+    auth: crate::auth::ProAuthenticated,
     Json(mut req): Json<PublishListingRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let marketplace = state.lora_marketplace.as_opt().ok_or_else(|| {
@@ -199,7 +199,7 @@ pub async fn publish_listing(
 )]
 pub async fn purchase_listing(
     State(state): State<AppState>,
-    auth: crate::auth::Authenticated,
+    auth: crate::auth::ProAuthenticated,
     Json(req): Json<PurchaseRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let marketplace = state.lora_marketplace.as_opt().ok_or_else(|| {

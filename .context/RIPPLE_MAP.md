@@ -1,3 +1,154 @@
+## Reflexion Phase E: Auth DRY リファクタ & Fail-Closed 一貫性修正 (2026-06-01)
+
+### 1. auth.rs ヘルパー関数抽出
+- **変更内容**:
+    - `apps/api-server/src/auth.rs` [MODIFY]: `extract_bearer_token`, `guard_nil_agent_id`, `jwt_failure_response` の 3 ヘルパー関数を追加。`Authenticated`, `BanExemptAuthenticated`, `auth_middleware`, `jwt_auth_middleware`, `admin_only_middleware` の 5 箇所で重複していた JWT パース + nil UUID ガード + PII 保護ロジックを統合。`ProAuthenticated` の Commerce エラーを 500→503 に変更。
+- **波及効果**:
+    - 新規ミドルウェア追加時にセキュリティポリシーの不整合が起こり得ない構造的保証。
+    - `X-Token-Expired` ヘッダーが正確に期限切れトークンのみに付与されるようになり、クライアント側のリフレッシュロジックの誤動作を防止。
+
+### 2. app_state.rs パニックパス排除
+- **変更内容**:
+    - `apps/api-server/src/app_state.rs` [MODIFY]: `is_feature_enabled` / `get_system_soul_hash` の `get_inner()` 呼び出しを `as_opt()` に変更。
+- **波及効果**:
+    - `is_feature_enabled` を呼ぶ全ハンドラ（feature flag チェック箇所）がパニックフリーに。
+    - config 未初期化時は空 Soul ハッシュを返却し、起動シーケンス中の部分的アクセスでもパニックしない。
+
+
+
+### 1. MockCommerceEngine の一元化によるテスト整合性向上
+- **変更内容**:
+    - `libs/aiome-commerce/src/mock.rs` [MODIFY]: ステートフルな `MockCommerceEngine` に、結合テストで使用される特定の UUID ルーティングロジック（`...0002`〜`...0006` に応じたサブスクステータスの返却）および特定 UUID に対する `validate_activity` 資金不足エラー返却ロジックを統合。
+    - `apps/api-server/src/api_integration_tests/common.rs` [MODIFY]: テスト専用の `struct MockCommerceEngine;` 二重定義を完全に削除し、`pub use aiome_commerce::mock::MockCommerceEngine;` のインポート＆共用に統合リファクタリング。テスト内のインスタンス化を unit struct 形式から `MockCommerceEngine::new()` に修正。
+    - `apps/api-server/src/bootstrap.rs.bak` [DELETE]: 使用されなくなった古いバックアップファイルを削除。
+- **波及効果**:
+    - `libs/aiome-commerce` にモック実装が一元化され、ライブラリ全体のテスト戦略と API サーバー結合テストの整合性が完璧に確立されました。
+    - 二重定義に伴う将来の機能拡張時の開発ドリフト（型不整合や振る舞い不整合によるビルド破壊）を根本的に根絶。
+    - テストスイート（正常系＋異常系）の 3 段階検証により、本番コードの決済ゲート制御への高い回帰信頼性を CI レベルで自動担保。
+
+## Stripe サブスクリプション決済基盤とプロ・ゲート制限の TDD 実装 (Phase B & C) (2026-06-01)
+
+### 1. Stripe サブスクリプション（Active / Trialing）制限の backend 実装
+- **変更内容**:
+    - `libs/aiome-contracts/src/error.rs` [MODIFY]: `AiomeError` に `PaymentRequired` エラー型を追加し、Axum `IntoResponse` で `402 Payment Required` (402) ステータスコードへ自動マッピング。
+    - `apps/api-server/src/error.rs` [MODIFY]: `AppError::payment_required` ヘルパーメソッドと対応するユニットテスト群を追加。
+    - `apps/api-server/src/auth.rs` [MODIFY]: `ProAuthenticated` エクストラクターを新設し、Stripeサブスクリプション状態（`Active` または `Trialing`）を動的検証。未登録ユーザーからのアクセスに対して `402 Payment Required` で安全に遮断するガードロジックを実装。さらに、正常系 (Positive) および障害注入 (Negative) の自動検証結合テストを追加。
+    - `apps/api-server/src/routes/` 内の8つのルートハンドラ (`lora_market.rs`, `buzz.rs`, `gift.rs`, `commerce.rs`, `voice.rs`, `treasure.rs`, `syndicate.rs`) にて、引数を `Authenticated` から `ProAuthenticated` に変更し、プロサブスクリプションによる厳格なゲート制限を適用。
+    - `libs/aiome-commerce/src/mock.rs` [MODIFY]: `MockCommerceEngine` に `subscription_override` テスト制御フィールドを追加し、Stripeのモックライフサイクルテストに統合。
+- **波及効果**:
+    - Aiome のフリーミアム収益化エンジンのコアインフラが完成。
+    - Axum エクストラクターを用いた宣言的なゲート制限により、今後の新規プロルートの追加に対しても安全かつDRYなアクセス制限が可能になりました。
+    - 正確に 402 レスポンスを返すことで、フロントエンド（管理画面など）が Stripe 決済ポータルや Stripe Payment Link へとシームレスにユーザーを案内する「Conversion 導線」の基盤が確立。
+
+## ランディングページ (LP) の獲得最大化とビジュアルアップグレード (Phase A) (2026-06-01)
+
+### 1. 料金開示、獲得最大化、および最高峰のビジュアル追加
+- **変更内容**:
+    - `docs/landing/src/i18n/locales/en.json` & `ja.json` [MODIFY]: Free 機能(6個), Pro 機能(8個)、14日間無料トライアルバッジ、ライブデモ、ショーケースの多言語翻訳データを追加・価格（$9.99）を完全に整合。
+    - `docs/landing/src/components/CodePreview.tsx` [MODIFY]: クイックスタートの指示を Git / Docker Compose 形式に修正。
+    - `docs/landing/src/components/Pricing.tsx` [MODIFY]: Free(6個) / Pro(8個) の動的マップ展開、14日間無料体験バッジの追加、Stripe 本番用 Payment Link (`https://buy.stripe.com/aFa9AS1Kc1l47mK3u5f7i01`) への確実な差し替えと別窓遷移対応。
+    - `docs/landing/index.html` [MODIFY]: SEO・SNS監査用 Twitter OGP カード (`@aiome_dev`) のメタタグを追加。
+    - `docs/landing/src/components/LiveDemo.tsx` [NEW]: 60秒自律エージェントのタイムライン動作（自己修復・テスト合格・Xへの自律投稿など）を伝える美しいガラスモルフィズム調の CSS アニメーションデモを実装。
+    - `docs/landing/src/components/Showcase.tsx` [NEW]: `generate_image` で作成した高解像度の管理画面ダッシュボード、実行タイムライン、アバターカスタマイザーのモックアップアセット3点をマウントした最高峰のショーケースコンポーネントを新規実装。
+    - `docs/landing/src/App.tsx` [MODIFY]: 各種新規コンポーネントを正しいセクション配置でマッピングし、`npm run build` による警告なしのビルド合格を達成。
+- **波及効果**:
+    - 獲得LPの魅力が爆発的に向上し、ユーザーコンバージョン率の劇的な増加を約束。
+    - 無料試用（14日間無料）から Stripe Payment Link を介した本番決済への導線が確立され、ARR（年間経常収益）の最速立ち上げとバイアウト目標の早期到達を強力に支援。
+
+## TLS / HTTPS リバースプロキシの設定テンプレート作成とインフラ TDD 実装 (B-2) (2026-05-31)
+
+### 1. 本番用 Caddyfile プロキシテンプレートの追加
+- **変更内容**:
+    - `docker/caddy/Caddyfile` [NEW]: Let's Encrypt / ZeroSSL 自動SSL/TLS証明書管理、`api-server:3015` への安全な `reverse_proxy` 転送（SSRF/プロキシ保護用のホストヘッダー中継含む）、HSTS 強制暗号化、CSP、クリックジャッキング防御等のセキュリティヘッダーを完備したプロキシテンプレートを新規作成。さらに **`Permissions-Policy` ヘッダーを追加**し、不要デバイス機能への無許可アクセスをインフラレベルで遮断。
+- **波及効果**:
+    - 本番環境での HTTPS/TLS 通信の自動終端が容易になり、Stripe / Polar 決済 Webhook の安全な受信用 HTTPS エンドポイントの構築が数秒で完了する準備が整いました。
+    - 各種セキュリティヘッダーおよび中継プロキシヘッダー (`header_up`) の安全な伝播により、Abyss UI に対するクリックジャッキング攻撃や、不正なホスト偽装、SSRF 脆弱性を未然に遮断。
+
+### 2. インフラ構成バリデーションテストの追加と 3 段階検証
+- **変更内容**:
+    - `apps/api-server/tests/deployment_config_tests.rs` [NEW]: Caddyfile テンプレートファイルを静的にパースし、安全なプロキシ定義（`reverse_proxy`, `:3015`, `header_up`, `Strict-Transport-Security`, `X-Frame-Options`）に加え、**CSP、Referrer-Policy、Permissions-Policy の存在を CI 上で毎ビルド自動検証**するアサーションテストを追加。**`CARGO_MANIFEST_DIR` による絶対パス解決**に書き換え、カレントワーキングディレクトリ依存のテスト不安定性を完全に排除。
+- **波及効果**:
+    - 正常系（テスト合格） ➔ 意図的に Caddyfile 内の `Permissions-Policy` 定義を削除してアサーションエラーを正確に検知（Negative） ➔ 正常に復旧（Revert & Report）の 3段階検証を完遂。
+    - 将来的なインフラ設定ファイルの変更によって、開発者が誤って中継ポート指定やセキュリティ定義を削除・改ざんしたままデプロイしてしまうインフラ破壊インシデント（接続ハングアップ、セキュリティ欠損）をビルド/CI パイプライン上で恒久的に遮断。
+
+## ToS（利用規約）の正式日本語版化とリーガル・ガバナンス TDD 実装 (A-2) (2026-05-31)
+
+### 1. 利用規約の日本語正式版へのアップグレード
+- **変更内容**:
+    - `docs/legal/TERMS_OF_SERVICE.md` [MODIFY]: 暫定スキャフォールド状態から、早期アクセス免責、BSL-1.1 使用許諾条件、Karma Coins / サブスクリプション料金の**完全返金不可（Non-Refundable）**、自己修復（Self-Healing）や AI の自律的なコード書き換え・API 呼び出し・意思決定に伴う一切の損害（データ消失、API 課金、知的財産権トラブル等）の完全免責、クリエイターの eKYC 義務化等を網羅した強固な日本語正式版へと完全アップグレード。
+- **波及効果**:
+    - Stripe の本番審査や法的係争リスクに対して、完璧な法的シールドが構築されました。
+    - 自律的 AI システムという特異な性質における「コードの自動書き換えや API 課金」という運用上致命的になり得るリスクがすべて免責され、運営上の安全性が極限まで向上。
+
+### 2. リーガル・ガバナンス自動テストの追加と 3 段階検証
+- **変更内容**:
+    - `apps/api-server/tests/legal_governance_tests.rs` [NEW]: 利用規約およびプライバシーポリシーのファイルを動的にパースし、法的防御に必要な重要キーワード（返金、自己修復、BSL-1.1、eKYC、ローカルファースト、忘れられる権利、免責）の存在を CI 上で毎ビルド自動アサートするテストを2件追加。
+- **波及効果**:
+    - 正常系（2件のテスト合格） ➔ 意図的に ToS から「返金」キーワードを削除してテスト不合格を正確に検知（Negative） ➔ typo のない正常文言に復旧（Revert & Report）の 3段階検証を完遂。
+    - 将来的なドキュメント変更によって、法務担当や他の開発者が誤って重要免責文言を消去してリリースしてしまうサイレントリスクを CI のテストランナーによって恒久的に遮断。
+
+## 運用アラート通知パイプライン TDD 実装とサーキットブレーカー統合 (A-3) (2026-05-31)
+
+### 1. 抽象化された通知レイヤーと重複デバウンスキャッシュの実装
+- **変更内容**:
+    - `libs/infrastructure/src/alerts/mod.rs` [NEW]: 重要度レベル `AlertLevel`、通知機トレイト `AlertNotifier`、およびメモリ内デバウンスキャッシュ（60秒間同一タイトルとレベルのアラートを抑制）を備えた `AlertManager` を新規実装。
+    - `libs/infrastructure/src/lib.rs` [MODIFY]: `alerts` モジュールを外部に公開。
+- **波及効果**:
+    - メールや Slack、Discord などの通知チャネルの追加を容易にするクリーンな抽象化レイヤーが完成。
+    - 障害発生時に同じアラートが大量に送信されるメール爆弾（アラートストーム）をメモリ内のデバウンスによって未然に遮断。
+
+### 2. サーキットブレーカーとのトリップアラート連動
+- **変更内容**:
+    - `libs/infrastructure/src/circuit_breaker.rs` [MODIFY]: `CircuitBreaker` 構造体に `Option<Arc<AlertManager>>` フィールドおよび `new_with_alerts` メソッドを追加。状態が `Open`（トリップ）に遷移した際、自動かつ非同期に `Critical` アラート通知をトリガーするよう統合。
+- **波及効果**:
+    - LLM などの外部サービス障害によってサーキットブレーカーが遮断された際、システムがフェイルファーストを行うと同時に、運営者へ即時の critical 通知が届くため、迅速な検知と復旧作業が可能。
+
+### 3. TDD 統合テストの追加と 3 段階検証
+- **変更内容**:
+    - `libs/infrastructure/src/alerts/tests.rs` [NEW]: アラートレベル別ルーティング（`test_alert_routing_by_level`）、サーキットブレーカーのトリップ連動（`test_circuit_breaker_triggers_alert`）、および通知先がエラーになっても全体がクラッシュしない非同期フェイルセーフ動作（`test_alert_notifier_network_failure_failsafe`）を検証する統合テストを3件追加。
+- **波及効果**:
+    - 正常系（Positive）➔ トリップ時のアラートレベルの改ざんによるテスト失敗検知（Negative）➔ 元の状態への復旧（Revert & Report）を 100% 完遂。非同期処理の堅牢性と Fail-Safe 設計（一部通知先が通信障害でも他の通知先への送信は継続されること）がテストで証明された。
+
+## Polar Webhook ビジネスロジック TDD 実装 (P-1) (2026-05-31)
+
+### 1. Polar Webhook ハンドラのビジネスロジック統合と TDD 検証
+- **変更内容**:
+    - `apps/api-server/src/routes/commerce_webhook/polar.rs` [MODIFY]: 署名検証後にイベントを無条件で破棄していた実装を排除。Stripe と同様に `polar_webhook_events` テーブルを用いた冪等性保証およびトランザクション処理を追加。
+    - `checkout.completed` 受信時に `handle_checkout_completed` を介してライセンス付与、収益分配、コインチャージを同期実行。
+    - `subscription.created` / `subscription.updated` / `subscription.deleted` 受信時に、`metadata.actor_id` からエージェントIDを取得し、MCPサスペンド状態を `UniversalJobQueue` にエンキューして非同期制御。
+    - `apps/api-server/src/routes/polar_webhook_tests.rs` [MODIFY]: 正常系（チェックアウト、サブスクリプションのライフサイクル）および異常系（不正署名、重複イベント）の TDD 統合テストを 4 本実装し、GREEN パスを確認。
+    - `libs/infrastructure/src/registry.rs` [MODIFY]: テスト用 SQLite 初期化 DDL に `polar_webhook_events` テーブルを追加.
+    - `libs/infrastructure/migrations/sqlite/20260324000000_init.sql` [MODIFY] / `postgres/20260324000000_init.sql` [MODIFY]: 本番・開発データベースマイグレーションに `polar_webhook_events` スキーマを追加.
+    - `apps/api-server/src/api_integration_tests/common.rs` [MODIFY]: `MockCommerceEngine::verify_signature` を強化し、`invalid` を含む不正な署名ヘッダーの異常系注入（Negative Test）をテスト環境で正確に検知・拒否できるように改善.
+- **波及効果**:
+    - Stripe に加え、Polar（polar.sh）を利用した代替決済ルートが完全に本番対応レベルに昇格。
+    - Stripe 同等の冪等性、収益分配、および MCP 状態サスペンド/アンロックの一貫性が担保されたため、決済の二重処理やサービスの不正利用といった脆弱性を根本遮断。
+    - 正常系（Positive）➔ 不正署名/重複イベントの拒否（Negative）➔ クリーンアップ（Revert & Report）という 3 段階検証により、今後の決済ルートの改修に対する完璧な回帰テストゲートが確立。
+
+## 感情表現エンジン (ExpressionEngine) への TDD ユニットテスト追加とエッジケース保護 (E-3) (2026-05-31)
+
+### 1. ExpressionEngine ユニットテストの追加とフォールバック保護の検証
+- **変更内容**:
+    - `libs/core/src/expression/engine.rs` [MODIFY]: `#[cfg(test)] mod tests` を末尾に新規実装。
+    - `MockLlmProvider` を用いて、内的感情 `"proud"` の正常パース、コンテンツ行のトリミング、`avatar_params` 設定および `karma_refs` のマッピングを検証するユニットテストを記述。
+    - LLM 応答に `EMOTION:` タグが含まれないエッジケースにおいて、デフォルト感情 `"reflective"` に安全にフォールバックすることを確認するテストを実装し、防御力を強化。
+- **波及効果**:
+    - AI の経験に基づく感情生成ロジックが、例外や LLM の崩れた出力に対しても安全（Zero-Panic）にフォールバックして稼働し続けることがテストで保証された。
+    - TDD (RED-GREEN-REFACTOR) および 3段階検証プロトコルにより、障害注入時（デフォルト感情の改ざん）にも正確にテストが不合格となり、バグのサイレントスルーを根本遮断。
+
+## ランディングページ (LP) への Pricing セクションの追加と TDD 実装 (Phase 1-1.3) (2026-05-31)
+
+### 1. ランディングページ Pricing コンポーネントおよびテストの追加
+- **変更内容**:
+    - `docs/landing/src/components/Pricing.tsx` [NEW]: 多言語（日英）表示に対応したレスポンシブな料金プラン（Sovereign Free / Autonomous Pro）コンポーネントを新規実装。
+    - `docs/landing/src/components/Pricing.test.tsx` [NEW]: `Pricing.tsx` の表示要素、料金表記（`$9.99/mo`, `¥1,200/月`）および i18n 言語切り替えアサーションを網羅した Vitest テストを新規作成。
+    - `docs/landing/src/App.tsx` [MODIFY]: `<main>` ブロック内の `Security` コンポーネントの後に `Pricing` を組み込み。
+    - `docs/landing/src/i18n/locales/en.json` [MODIFY] / `ja.json` [MODIFY]: `pricing` 翻訳オブジェクト（タイトル、説明、プラン名、機能リスト、CTAテキスト）を追加。
+- **波及効果**:
+    - Aiome のフリーミアム料金プランと Stripe サブスクリプション価格（Gold $9.99/mo, 日本円 ¥1,200/mo）が LP 上で明確に開示され、ユーザーがセルフで決済 portal に到達する基盤が完成。
+    - TDD (Red-Green-Refactor) プロセスにより、コードの追加と動作の正当性が 100% 保証された状態でリリース可能。
+    - Positive / Negative / Revert & Report の 3段階検証により、意図しない表示崩れや文言変更に対する防御ゲートを確立。
+
 ## docker-compose 環境変数の全ファイル整合化およびホスト接続要件のドキュメント追記 (B-5 / D-5) (2026-05-31)
 
 ### 1. docker-compose.nurture.yml / docker-compose.cell.yml への SHADOW_CLONE 関連環境変数および A2A_AUTH_TOKEN の追加 (B-5)

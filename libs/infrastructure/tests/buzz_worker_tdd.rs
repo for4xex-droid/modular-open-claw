@@ -1,3 +1,10 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
+
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
 use aiome_core::traits::JobStatus;
