@@ -11,6 +11,7 @@ import { Showcase } from './components/Showcase';
 import { Pricing } from './components/Pricing';
 import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
+import { PrivacyPage, TermsPage, TokushohoPage } from './components/LegalPages';
 import './i18n/config';
 
 function App() {
@@ -20,6 +21,19 @@ function App() {
   useEffect(() => {
     document.documentElement.lang = i18n.language;
   }, [i18n.language]);
+
+  const path = window.location.pathname;
+
+  // Lightweight conditional routing
+  if (path === '/privacy') {
+    return <PrivacyPage />;
+  }
+  if (path === '/terms') {
+    return <TermsPage />;
+  }
+  if (path === '/tokushoho') {
+    return <TokushohoPage />;
+  }
 
   return (
     <div className="min-h-screen bg-brand-bg text-white font-body selection:bg-brand-cyan/30">

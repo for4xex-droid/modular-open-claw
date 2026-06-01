@@ -7,7 +7,7 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::alerts::{AlertLevel, AlertManager, AlertNotifier};
+    use crate::alerts::{AlertLevel, AlertManager, AlertNotifier, DiscordNotifier};
     use crate::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
     use aiome_core::error::AiomeError;
     use async_trait::async_trait;
@@ -177,5 +177,84 @@ mod tests {
         assert_eq!(records[0].2, "First message");
         assert_eq!(records[1].0, AlertLevel::Info);
         assert_eq!(records[1].2, "Info level message");
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_discord_notifier_success() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+
+        // Discord webhook は通常成功すると 204 No Content を返す
+        Mock::given(method("POST"))
+            .and(path("/"))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        std::env::set_var("DISCORD_WEBHOOK_URL", mock_server.uri());
+
+        let notifier = DiscordNotifier::new();
+        let res = notifier
+            .send_alert(
+                "Test Embed Title",
+                "Embedded message detail",
+                AlertLevel::Warning,
+            )
+            .await;
+
+        assert!(res.is_ok());
+
+        std::env::remove_var("DISCORD_WEBHOOK_URL");
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_discord_notifier_missing_webhook_url() {
+        std::env::remove_var("DISCORD_WEBHOOK_URL");
+
+        let notifier = DiscordNotifier::new();
+        // Webhook URL がなくてもエラーを出さず、Ok(()) でスキップされることを確認 (フェイルセーフ)
+        let res = notifier
+            .send_alert("Skip Alert", "Webhook URL is missing", AlertLevel::Info)
+            .await;
+
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_discord_notifier_network_failure() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+
+        // Webhook 呼び出し時に 500 エラーを返すように設定 (異常系障害注入)
+        Mock::given(method("POST"))
+            .and(path("/"))
+            .respond_with(ResponseTemplate::new(500))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        std::env::set_var("DISCORD_WEBHOOK_URL", mock_server.uri());
+
+        let notifier = DiscordNotifier::new();
+        let res = notifier
+            .send_alert(
+                "Failure Title",
+                "Should fail due to server error",
+                AlertLevel::Critical,
+            )
+            .await;
+
+        // ネットワーク/サーバーエラー時には Err を返すことを検証
+        assert!(res.is_err());
+
+        std::env::remove_var("DISCORD_WEBHOOK_URL");
     }
 }

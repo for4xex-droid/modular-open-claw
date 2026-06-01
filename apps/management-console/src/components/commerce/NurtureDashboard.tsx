@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { API_BASE } from "../../config";
+import { API_BASE, STRIPE_PRICE_ID } from "../../config";
 import { authenticatedFetch, getAuthToken } from "../../lib/auth";
+import { useCheckoutSession } from "../../hooks/useCheckoutSession";
 
 import {
   Wallet,
@@ -52,6 +53,14 @@ export default function NurtureDashboard() {
       // ignore
     }
   }
+
+  const { handleCheckout, isLoading: isCheckoutLoading, error: checkoutError } = useCheckoutSession(STRIPE_PRICE_ID, agentId);
+
+  useEffect(() => {
+    if (checkoutError) {
+      setError(checkoutError);
+    }
+  }, [checkoutError]);
 
   const fetchData = async (signal?: AbortSignal) => {
     setIsLoading(true);
@@ -114,33 +123,11 @@ export default function NurtureDashboard() {
         <div style={{ display: "flex", gap: "1rem" }}>
           <button
             className="primary-button"
-            onClick={async () => {
-              try {
-                setIsLoading(true);
-                const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/checkout-session/create`, {
-                  method: 'POST',
-                  body: JSON.stringify({
-                    agent_id: agentId,
-                    price_id: 'price_test_123', // Demo stub
-                    success_url: window.location.href,
-                    cancel_url: window.location.href,
-                  }),
-                });
-                if (res.ok) {
-                  const data = await res.json();
-                  if (data.url) window.location.assign(data.url);
-                } else {
-                  throw new Error("Failed to create checkout session");
-                }
-              } catch (err: any) {
-                setError(err.message || "Failed to create checkout session");
-                setIsLoading(false);
-              }
-            }}
-            disabled={isLoading}
+            onClick={handleCheckout}
+            disabled={isLoading || isCheckoutLoading}
             style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--accent-emerald)", color: "var(--black-100)" }}
           >
-            Buy Points
+            {isCheckoutLoading ? "Loading..." : "Buy Points"}
           </button>
           <button
             className="secondary-button"

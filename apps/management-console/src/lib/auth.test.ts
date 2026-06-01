@@ -132,5 +132,30 @@ describe('auth utility', () => {
                 headers: {}, // FormData はブラウザが境界を設定するため、明示的な Content-Type は付与しない
             });
         });
+
+        it('should dispatch CustomEvent stripe-402-payment-required when receiving 402', async () => {
+            global.fetch = jest.fn().mockImplementation(() =>
+                Promise.resolve({
+                    ok: false,
+                    status: 402,
+                    statusText: 'Payment Required',
+                } as unknown as Response)
+            );
+
+            const dispatchSpy = jest.spyOn(window, 'dispatchEvent');
+
+            const response = await authenticatedFetch('/api/pro-feature');
+
+            expect(response.status).toBe(402);
+            expect(dispatchSpy).toHaveBeenCalled();
+            
+            const eventCall = dispatchSpy.mock.calls.find(
+                (call) => call[0].type === 'stripe-402-payment-required'
+            );
+            expect(eventCall).toBeDefined();
+            
+            dispatchSpy.mockRestore();
+        });
     });
 });
+

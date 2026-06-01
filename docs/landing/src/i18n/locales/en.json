@@ -49,12 +49,20 @@
   "cta": {
     "title": "Start building with Aiome today.",
     "desc": "Ready to step into the future? Join the open-source revolution and deploy your first self-healing agent in under 5 minutes. No credit card required.",
-    "button": "Deploy Now"
+    "button": "Deploy Now",
+    "email_placeholder": "Enter your work email",
+    "notify_me": "Get Early Access",
+    "email_success": "Thank you! We've added you to the waitlist.",
+    "email_error": "Something went wrong. Please try again.",
+    "gdpr_consent": "I agree to receive updates and agree to the Privacy Policy."
   },
   "footer": {
     "copyright": "© 2026 MotivationStudio LLC. All rights reserved.",
     "privacy": "Privacy Policy",
-    "terms": "Terms of Service"
+    "terms": "Terms of Service",
+    "github": "GitHub",
+    "twitter": "X (formerly Twitter)",
+    "tokushoho": "Specified Commercial Transactions Act"
   },
   "pricing": {
     "title": "Flexible Pricing Plans",
@@ -79,7 +87,7 @@
     "pro_f4": "A2C Gifts — AI sends you real-world rewards",
     "pro_f5": "Dream Mode — AI explores and learns while you sleep",
     "pro_f6": "Shadow Clones — deploy multiple AI instances",
-    "pro_f7": "BuzzProtocol — AI posts to X autonomously",
+    "pro_f7": "BuzzProtocol — AI-powered trend analysis & content optimization",
     "pro_f8": "Priority Support + Early Feature Access"
   },
   "live_demo": {
@@ -92,7 +100,7 @@
     "step5": "Running Test",
     "step6": "Test Passed",
     "step7": "Evolving Skills",
-    "step8": "Posting Status to X",
+    "step8": "Analyzing Trends & Optimizing",
     "start": "Start Demo"
   },
   "showcase": {

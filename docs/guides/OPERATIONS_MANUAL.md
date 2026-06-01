@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
 **Version:** 3.2  
-**Last Updated:** 2026-06-01
+**Last Updated:** 2026-06-02
 
 ---
 
@@ -70,6 +70,9 @@ X_ACCESS_TOKEN_SECRET=your_x_access_token_secret
 POLAR_API_KEY=your_polar_api_key_here
 POLAR_BASE_URL=https://sandbox-api.polar.sh
 POLAR_WEBHOOK_SECRET=whsec_your_polar_webhook_secret_here
+
+# --- System Alerts (Discord Integration) ---
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/xxxx/xxxx # Webhook URL for system alerts (e.g. Stripe webhook failures)
 
 # --- オプション (デフォルト値あり) ---
 AIOME_DB_PATH=sqlite://workspace/aiome.db       # DBパス
@@ -219,9 +222,10 @@ RUST_LOG=info cargo run -p api-server
 - [ ] Docker 環境: `extra_hosts` に `host.docker.internal:host-gateway` が含まれているか確認
 - [ ] XTTS 利用時: `XTTS_ENDPOINT` と `XTTS_SPEAKER` が `.env` に設定されているか確認
 - [ ] Shadow Worker 利用時: `SHADOW_CLONE_GRPC_HOST` / `SHADOW_CLONE_GRPC_PORT` が設定されているか確認
-- [ ] `main.rs` の初期化フローでシークレットの Zeroize が実行されているかログで確認
+- [ ] `main.rs` の初期化フローでシークレット of Zeroize が実行されているかログで確認
 - [ ] Polar Webhook 連携: `POLAR_API_KEY` および `POLAR_WEBHOOK_SECRET` が設定されているか確認 (P-1)
 - [ ] 運用アラート: `AlertManager` による重複排除キャッシュやサーキットブレーカーとの連動確認 (A-3)
+- [ ] 運用アラート: Discord Webhook アラート送信のために `.env` に `DISCORD_WEBHOOK_URL` を設定 (Phase C-4)
 
 ### 9. local Embedding Server (ruri-v3) の起動
 1. `tools/ruri-embed-server` に移動。

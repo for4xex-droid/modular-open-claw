@@ -151,6 +151,34 @@ impl DatabasePool {
         }
     }
 
+    /// SQLite データベースのオンラインバックアップを指定したパスに安全に作成する。
+    ///
+    /// # エッジケースと注意点
+    /// - **既存ファイルの扱い**: `destination_path` にすでにファイルが存在する場合、
+    ///   SQLite の `VACUUM INTO` 仕様に基づき、上書きせずエラー（unable to open database）を返します。
+    ///   上書きを期待する場合は、事前に呼び出し側でバックアップ先ファイルを削除してください。
+    /// - **SQLインジェクション対策**: パス内のシングルクォート文字は二重化（`''`）エスケープされます。
+    /// - **PostgreSQL backend**: 本システムでは分散バックアップ等で管理されるため、
+    ///   本 API 呼び出し時はサポート外のエラー（`AiomeError::Infrastructure`）を返却します。
+    pub async fn backup(&self, destination_path: &str) -> Result<(), AiomeError> {
+        match self {
+            Self::Sqlite(p) => {
+                let escaped_path = destination_path.replace('\'', "''");
+                let sql = format!("VACUUM INTO '{}'", escaped_path);
+                sqlx::query(&sql)
+                    .execute(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                Ok(())
+            }
+            Self::Postgres(_) => Err(AiomeError::Infrastructure {
+                reason: "Backup is not supported for PostgreSQL backend via this API".into(),
+            }),
+        }
+    }
+
     /// Returns the N-th placeholder for the current database type
     pub fn ph(&self, idx: usize) -> String {
         match self {
@@ -654,5 +682,67 @@ mod tests {
         assert_eq!(fetch_res.unwrap().unwrap().0, "alice");
 
         tx.commit().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_backup_success() {
+        let tmp = tempfile::TempDir::new().expect("failed to create temp dir");
+        let db_path = tmp.path().join("source.db");
+        let backup_path = tmp.path().join("backup.db");
+
+        let pool = DatabasePool::new_sqlite(db_path.to_str().unwrap())
+            .await
+            .unwrap();
+
+        // Create table and insert some data
+        let _ = sql_exec!(
+            &pool,
+            "CREATE TABLE backup_test (id INTEGER PRIMARY KEY, val TEXT)"
+        );
+        let _ = sql_exec!(
+            &pool,
+            "INSERT INTO backup_test (val) VALUES (?)",
+            "hello_backup".to_string()
+        );
+
+        // Run backup
+        pool.backup(backup_path.to_str().unwrap()).await.unwrap();
+
+        // Verify destination file exists
+        assert!(backup_path.exists(), "Backup file should exist");
+
+        // Verify backup data integrity
+        let backup_pool = DatabasePool::new_sqlite(backup_path.to_str().unwrap())
+            .await
+            .unwrap();
+        let val: (String,) = sql_fetch_one!(
+            &backup_pool,
+            (String,),
+            "SELECT val FROM backup_test WHERE id = 1"
+        )
+        .unwrap();
+        assert_eq!(val.0, "hello_backup");
+
+        // Explicitly close pools before TempDir cleanup to release WAL/SHM files
+        backup_pool.close().await;
+        pool.close().await;
+        // TempDir drop handles cleanup automatically
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_backup_to_invalid_path() {
+        let tmp = tempfile::TempDir::new().expect("failed to create temp dir");
+        let db_path = tmp.path().join("source_err.db");
+        let invalid_backup_path = "/invalid_directory_does_not_exist/test_backup_dest.db";
+
+        let pool = DatabasePool::new_sqlite(db_path.to_str().unwrap())
+            .await
+            .unwrap();
+
+        // Try backing up to an invalid directory — should return Err, not panic
+        let res = pool.backup(invalid_backup_path).await;
+        assert!(res.is_err(), "Backup to nonexistent dir must fail");
+
+        pool.close().await;
     }
 }

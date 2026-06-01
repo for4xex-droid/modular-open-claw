@@ -8,9 +8,29 @@ describe('Footer Component', () => {
     expect(screen.getByText(/2026 MotivationStudio LLC/i)).toBeInTheDocument();
   });
 
-  it('renders privacy and terms links', () => {
+  it('renders privacy, terms, and tokushoho links', () => {
     render(<Footer />);
     expect(screen.getByText('Privacy Policy')).toBeInTheDocument();
     expect(screen.getByText('Terms of Service')).toBeInTheDocument();
+
+    const tokushohoLink = screen.getByText('Specified Commercial Transactions Act');
+    expect(tokushohoLink).toBeInTheDocument();
+    expect(tokushohoLink.closest('a')).toHaveAttribute('href', '/tokushoho');
+  });
+
+  it('renders GitHub and X (Twitter) social links with correct href and target', () => {
+    render(<Footer />);
+    const githubLink = screen.getByRole('link', { name: /GitHub/i });
+    const xLink = screen.getByRole('link', { name: /X \(formerly Twitter\)/i });
+    
+    expect(githubLink).toBeInTheDocument();
+    expect(githubLink).toHaveAttribute('href', 'https://github.com/motivationstudio-llc/aiome');
+    expect(githubLink).toHaveAttribute('target', '_blank');
+    expect(githubLink).toHaveAttribute('rel', 'noopener noreferrer');
+    
+    expect(xLink).toBeInTheDocument();
+    expect(xLink).toHaveAttribute('href', 'https://x.com/aiome_dev');
+    expect(xLink).toHaveAttribute('target', '_blank');
+    expect(xLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
 });

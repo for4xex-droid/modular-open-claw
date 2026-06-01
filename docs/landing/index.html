@@ -16,6 +16,7 @@
     <meta property="og:image" content="https://aiome.dev/ogp.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -27,6 +28,27 @@
 
     <!-- SEO -->
     <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://aiome.dev" />
+
+    <!-- Plausible Analytics (Commented out until DNS configuration is completed) -->
+    <!-- <script defer data-domain="aiome.dev" src="https://plausible.io/js/script.js"></script> -->
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Aiome",
+      "operatingSystem": "Linux, macOS, Windows",
+      "applicationCategory": "DeveloperApplication",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "description": "Deploy autonomous AI agents that write, verify, and heal themselves. Built with zero-panic Rust, formally verified with TLA+, and ready in seconds."
+    }
+    </script>
 
     <!-- Google Fonts: Outfit (display), Inter (body), JetBrains Mono (code) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

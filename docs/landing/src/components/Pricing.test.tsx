@@ -32,15 +32,14 @@ describe('Pricing Component', () => {
     render(<Pricing />);
 
     // Free features
-    expect(screen.getByText('1 Active Biome (P2P)')).toBeInTheDocument();
-    expect(screen.getByText('Standard Sovereign Verification')).toBeInTheDocument();
-    expect(screen.getByText('Basic Karma Analytics')).toBeInTheDocument();
+    expect(screen.getByText('Self-Healing AI Agent with Soul System')).toBeInTheDocument();
+    expect(screen.getByText('AI Chat — natural conversation with your agent')).toBeInTheDocument();
+    expect(screen.getByText('WASM Skill Ecosystem')).toBeInTheDocument();
 
     // Pro features
-    expect(screen.getByText('Unlimited Biomes')).toBeInTheDocument();
-    expect(screen.getByText('Priority Sovereign Verification')).toBeInTheDocument();
-    expect(screen.getByText('Deep Karma Trend Sonar')).toBeInTheDocument();
-    expect(screen.getByText('SkillVault Developer Access')).toBeInTheDocument();
+    expect(screen.getByText('Everything in Free, plus:')).toBeInTheDocument();
+    expect(screen.getByText('Autonomous Economy — AI earns and invests 24/7')).toBeInTheDocument();
+    expect(screen.getByText('Creator Marketplace — sell LoRA, VRM, Voice assets')).toBeInTheDocument();
   });
 
   it('switches content to Japanese when language changes', async () => {
@@ -60,7 +59,7 @@ describe('Pricing Component', () => {
 
     // Prices
     expect(screen.getByText('無料')).toBeInTheDocument();
-    expect(screen.getByText('¥1,200')).toBeInTheDocument();
+    expect(screen.getAllByText('$9.99').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('/月').length).toBeGreaterThanOrEqual(1);
 
     // Buttons

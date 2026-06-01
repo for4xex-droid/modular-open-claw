@@ -47,6 +47,8 @@ export function Hero() {
             alt="Aiome logo"
             className="relative w-full h-auto drop-shadow-[0_0_40px_rgba(20,83,154,0.3)]"
             data-testid="hero-logo"
+            fetchPriority="high"
+            loading="eager"
           />
         </motion.div>
 

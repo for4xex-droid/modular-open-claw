@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { ShoppingCart, Volume2, ShieldCheck, Crown } from "lucide-react";
 import { API_BASE, STRIPE_PRICE_ID } from "../config";
 import { authenticatedFetch } from "../lib/auth";
+import { useCheckoutSession } from '../hooks/useCheckoutSession';
 import { useTranslation } from '../i18n';
 import { useAgentIdentity } from '../hooks/useAgentIdentity';
 import { useToast } from './common/Toast';
@@ -56,6 +57,20 @@ export default function VoiceStore() {
   const [assets, setAssets] = useState<VoiceAsset[]>(mockAssets);
   const [balance, setBalance] = useState<number>(0);
   const [purchasing, setPurchasing] = useState<string | null>(null);
+
+  const {
+    handleCheckout,
+    handlePortal,
+    isLoading: isRecharging,
+    isPortalLoading: isManagingPortal,
+    error: checkoutError
+  } = useCheckoutSession(STRIPE_PRICE_ID, agentId);
+
+  useEffect(() => {
+    if (checkoutError) {
+      showToast('error', checkoutError);
+    }
+  }, [checkoutError]);
 
   useEffect(() => {
     fetchBalance();
@@ -131,69 +146,6 @@ export default function VoiceStore() {
     }
   };
 
-  const [isRecharging, setIsRecharging] = useState(false);
-  const [isManagingPortal, setIsManagingPortal] = useState(false);
-
-  const handleRecharge = async () => {
-    if (!agentId) return;
-    setIsRecharging(true);
-    try {
-      const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/checkout-session/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          agent_id: agentId,
-          price_id: STRIPE_PRICE_ID,
-          success_url: window.location.href,
-          cancel_url: window.location.href
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) {
-          window.location.assign(data.url);
-        }
-      } else {
-        showToast('error', t('voice.checkoutFailed') || 'Checkout session failed');
-      }
-    } catch (e) {
-      showToast('error', t('common.networkError'));
-    } finally {
-      setIsRecharging(false);
-    }
-  };
-
-  const handleManageSubscription = async () => {
-    if (!agentId) return;
-    setIsManagingPortal(true);
-    try {
-      const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/customer-portal/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          agent_id: agentId,
-          return_url: window.location.href
-        })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) {
-          window.location.assign(data.url);
-        }
-      } else {
-        showToast('error', t('voice.portalFailed') || 'Failed to open billing portal');
-      }
-    } catch (e) {
-      showToast('error', t('common.networkError'));
-    } finally {
-      setIsManagingPortal(false);
-    }
-  };
-
   return (
     <div className="system-panel" style={{ padding: "2rem", height: "100%", overflowY: "auto", position: 'relative' }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
@@ -224,7 +176,7 @@ export default function VoiceStore() {
           <button 
             className="primary-button" 
             style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
-            onClick={handleRecharge}
+            onClick={handleCheckout}
             disabled={isRecharging || !agentId}
           >
             {isRecharging ? (t('common.processing') || 'Processing...') : (t('voice.recharge') || 'Recharge')}
@@ -232,7 +184,7 @@ export default function VoiceStore() {
           <button 
             className="secondary-button" 
             style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
-            onClick={handleManageSubscription}
+            onClick={handlePortal}
             disabled={isManagingPortal || !agentId}
           >
             {isManagingPortal ? (t('common.processing') || 'Processing...') : (t('voice.manageSubscription') || 'Manage')}

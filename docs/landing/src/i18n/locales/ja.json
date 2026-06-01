@@ -49,12 +49,20 @@
   "cta": {
     "title": "Aiome で開発を始めよう。",
     "desc": "未来へ踏み出す準備はできましたか？オープンソースの革命に参加し、最初の自己修復エージェントを5分以内でデプロイしましょう。クレジットカードは不要です。",
-    "button": "今すぐデプロイ"
+    "button": "今すぐデプロイ",
+    "email_placeholder": "仕事用のメールアドレスを入力",
+    "notify_me": "早期アクセスに登録",
+    "email_success": "ありがとうございます！ウェイティングリストに追加されました。",
+    "email_error": "エラーが発生しました。もう一度お試しください。",
+    "gdpr_consent": "最新情報の受け取りに同意し、プライバシーポリシーに同意します。"
   },
   "footer": {
     "copyright": "© 2026 MotivationStudio LLC. All rights reserved.",
     "privacy": "プライバシーポリシー",
-    "terms": "利用規約"
+    "terms": "利用規約",
+    "github": "GitHub",
+    "twitter": "X (旧Twitter)",
+    "tokushoho": "特定商取引法に基づく表記"
   },
   "pricing": {
     "title": "柔軟な料金プラン",
@@ -79,7 +87,7 @@
     "pro_f4": "A2Cギフト — AIからリアルワールドへの恩返し・報酬",
     "pro_f5": "ドリームモード — 就寝中の自律探索・学習",
     "pro_f6": "シャドウクローン — 複数AIエージェントの同時展開",
-    "pro_f7": "BuzzProtocol — X(旧Twitter)への完全自律投稿",
+    "pro_f7": "BuzzProtocol — Xトレンド分析に基づくAI学習・コンテンツ最適化",
     "pro_f8": "優先サポート + 早期機能アクセス"
   },
   "live_demo": {
@@ -92,7 +100,7 @@
     "step5": "自動テストスイートの実行",
     "step6": "テスト完全合格",
     "step7": "新スキルの学習と自己進化",
-    "step8": "X（旧Twitter）へ進捗を自律投稿",
+    "step8": "トレンド分析・コンテンツ最適化",
     "start": "デモを開始"
   },
   "showcase": {

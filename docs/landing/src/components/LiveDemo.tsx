@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, RotateCcw, Cpu, Search, AlertTriangle, CheckCircle, Award, Share2 } from 'lucide-react';
+import { Play, RotateCcw, Cpu, Search, AlertTriangle, CheckCircle, Award, TrendingUp } from 'lucide-react';
 
 export function LiveDemo() {
   const { t } = useTranslation();
@@ -16,7 +16,7 @@ export function LiveDemo() {
     { icon: Search, label: t('live_demo.step5'), color: 'text-brand-cyan' },
     { icon: CheckCircle, label: t('live_demo.step6'), color: 'text-emerald-400' },
     { icon: Award, label: t('live_demo.step7'), color: 'text-brand-purple' },
-    { icon: Share2, label: t('live_demo.step8'), color: 'text-brand-rose animate-pulse' },
+    { icon: TrendingUp, label: t('live_demo.step8'), color: 'text-brand-cyan' },
   ];
 
   useEffect(() => {
@@ -103,7 +103,7 @@ export function LiveDemo() {
                   </div>
                   <h3 className="text-2xl font-bold text-white mb-2 font-display">{currentStep.label}</h3>
                   <div className="text-xs font-mono text-gray-500 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-brand-cyan animate-ping" />
+                    <span className="w-2 h-2 rounded-full bg-brand-cyan animate-ping" aria-hidden="true" />
                     <span>CYCLE STATE: STEP {step + 1} OF {steps.length}</span>
                   </div>
                 </motion.div>
@@ -114,10 +114,12 @@ export function LiveDemo() {
           {/* Timeline visualization */}
           <div className="mt-12 flex justify-between gap-2 max-w-md mx-auto relative">
             <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/10 -translate-y-1/2 z-0" />
-            {steps.map((_, i) => (
-              <div
+            {steps.map((s, i) => (
+              <button
                 key={i}
+                type="button"
                 onClick={() => isPlaying && setStep(i)}
+                aria-label={`Step ${i + 1}: ${s.label}`}
                 className={`relative z-10 w-4 h-4 rounded-full border-2 transition-all duration-300 cursor-pointer ${
                   i === step
                     ? 'bg-brand-cyan border-brand-cyan scale-125 shadow-lg shadow-brand-cyan/50'

@@ -123,3 +123,96 @@ impl Default for AlertManager {
         Self::new()
     }
 }
+
+/// Discord Webhook を使用したアラート通知送信機
+///
+/// グローバル HTTP クライアント (`aiome_core::http::get_http_client()`) を使用し、
+/// SSRF 保護と TCP 接続プールの恩恵を受ける。
+pub struct DiscordNotifier;
+
+impl DiscordNotifier {
+    /// 新規 DiscordNotifier を作成する
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for DiscordNotifier {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl std::fmt::Debug for DiscordNotifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DiscordNotifier").finish()
+    }
+}
+
+#[async_trait]
+impl AlertNotifier for DiscordNotifier {
+    async fn send_alert(
+        &self,
+        title: &str,
+        message: &str,
+        level: AlertLevel,
+    ) -> Result<(), AiomeError> {
+        // 環境変数から Webhook URL を取得
+        let webhook_url = match std::env::var("DISCORD_WEBHOOK_URL") {
+            Ok(url) if !url.is_empty() => url,
+            _ => {
+                // 未設定時はエラーにせず、フェイルセーフとして警告ログを出力し Ok(()) で早期リターン
+                tracing::warn!("⚠️ [DiscordNotifier] DISCORD_WEBHOOK_URL is not set. Skipping alert notification.");
+                return Ok(());
+            }
+        };
+
+        // AlertLevel に応じた Discord Embed 用のカラーコード (10進数)
+        // Info: 緑 (0x2ECC71 = 3066993)
+        // Warning: 黄 (0xF1C40F = 15848463)
+        // Critical: 赤 (0xE74C3C = 15158332)
+        let color = match level {
+            AlertLevel::Info => 3066993,
+            AlertLevel::Warning => 15848463,
+            AlertLevel::Critical => 15158332,
+        };
+
+        // 送信ペイロードの構築
+        let payload = serde_json::json!({
+            "embeds": [
+                {
+                    "title": title,
+                    "description": message,
+                    "color": color,
+                    "timestamp": chrono::Utc::now().to_rfc3339(),
+                }
+            ]
+        });
+
+        // グローバル HTTP クライアントを使用 (SSRF 保護 + TCP 接続プール)
+        let client = aiome_core::http::get_http_client();
+
+        // HTTP POST リクエスト送信 (リクエスト単位タイムアウト: 10秒)
+        let response = client
+            .post(&webhook_url)
+            .timeout(Duration::from_secs(10))
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to send Discord Webhook POST: {:?}", e),
+            })?;
+
+        // レスポンスステータスの検証
+        if !response.status().is_success() {
+            return Err(AiomeError::Infrastructure {
+                reason: format!(
+                    "Discord Webhook API returned failure status: {}",
+                    response.status()
+                ),
+            });
+        }
+
+        Ok(())
+    }
+}

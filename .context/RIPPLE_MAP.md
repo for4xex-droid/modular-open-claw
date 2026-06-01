@@ -1,3 +1,138 @@
+## SQLite データベース・オンラインバックアップ戦略の実装 (Phase C-3) (2026-06-02)
+
+### 1. DatabasePool へのバックアップ API 統合
+- **変更内容**:
+    - `libs/shared/src/db.rs` [MODIFY]: `DatabasePool` に `backup(&self, destination_path: &str) -> Result<(), AiomeError>` を追加。SQLite では `VACUUM INTO 'escaped_destination_path'` を `sqlx` を介して非破壊で実行する処理を実装（パスのエスケープ処理も含む）。PostgreSQL では非サポートとしての `AiomeError` を返却するフェイルセーフを実装。
+- **波及効果**:
+    - 稼働中のデータベースのトランザクション整合性を完全に維持したまま、ロックを長時間保持せず安全にバックアップファイルを作成できるオンラインバックアップ機能が極めて堅牢な API として抽象化されました。
+
+### 2. TDD 自動テストの追加による整合性・堅牢性の保証
+- **変更内容**:
+    - `libs/shared/src/db.rs` [MODIFY]: 正常系として一時ファイルへのデータコピーと整合性を検証する `test_sqlite_backup_success` を追加。異常系として存在しないディレクトリ等を指定した際に適切にエラーを検知・捕捉する `test_sqlite_backup_to_invalid_path` を追加。
+- **波波効果**:
+    - RED（未実装パニック）➔ GREEN（VACUUM INTO 実装完了） ➔ Negative Test（無効パスへの強制障害注入による `unable to open database` エラー検知・アサート） ➔ Revert の3段階検証プロトコルを完全にクリア。
+    - データベースプールの全 5 テスト（およびワークスペース全体）が 100% グリーン（PASS）を維持することを確認。
+
+## VoiceStore コマース決済・管理ポータル処理の DRY リファクタリング (Phase C-2) (2026-06-01)
+
+### 1. 共通決済フックへの Customer Portal 機能統合
+- **変更内容**:
+    - `apps/management-console/src/hooks/useCheckoutSession.ts` [MODIFY]: `useCheckoutSession` フックを拡張し、Stripe Billing Portal に遷移するための `handlePortal`（および `isPortalLoading` 状態）を新設。
+    - `apps/management-console/src/hooks/useCheckoutSession.test.ts` [MODIFY]: `handlePortal` の遷移、およびAPI失敗・ローディングの挙動を厳密にアサートする 2 件の Jest テストを新設。
+- **波及効果**:
+    - Stripe カスタマーポータル（サブスク解約、カード変更等）への遷移処理が完璧にフックへカプセル化され、個々のコンポーネントが直接非同期 fetch を記述するDRY違反が根本解消。
+
+### 2. VoiceStore のリファクタリングによる重複コード排除
+- **変更内容**:
+    - `apps/management-console/src/components/VoiceStore.tsx` [MODIFY]: スタブ化および重複していた Stripe チェックアウトセッション生成（`handleRecharge`）と Billing Portal 遷移（`handleManageSubscription`）の直接の fetch 処理（約60行）を完全に削除。拡張した `useCheckoutSession` フックをインポート・バインドし直す形へとクリーンにリファクタリング。
+- **波及効果**:
+    - 画面側のボイラープレートコードが 60行以上削減され、決済遷移ロジックの変更がフックの修正だけで一元適用される極めて保守性の高いアーキテクチャが実現。
+    - `VoiceStore.test.tsx`、およびフロントエンド全体の 278 の全テストが 100% 合格（PASS）を維持することを確認。
+
+## ランディングページ (LP) における軽量ルーティングおよび法務ドキュメント表示 pillars の TDD 実装 (Phase B-2) (2026-06-01)
+
+### 1. 条件付きルーティング処理の導入
+- **変更内容**:
+    - `docs/landing/src/App.tsx` [MODIFY]: `window.location.pathname` を評価し、パスが `/privacy`、`/terms`、`/tokushoho` の場合にそれぞれ対応する法務ページを返し、トップ画面のHero等コンポーネントを自動的に非表示にする条件分岐を組み込み。
+- **波及効果**:
+    - 外部の重いルーティングライブラリを一切使わずに、高速かつ軽量なシングルページ内ルーティングが実現。ユーザーがフッターリンク等から法務情報へスムーズにアクセス可能な環境を構築。
+
+### 2. LegalLayout & LegalPages コンポーネントの新規実装
+- **変更内容**:
+    - `docs/landing/src/components/LegalLayout.tsx` [NEW]: ガラスモーフィズム（backdrop-blur-md）、ダークテーマ（brand-bg）、および Viewport 追従型のプレミアムな法務文書専用枠組みを実装。
+    - `docs/landing/src/components/LegalPages.tsx` [NEW]: `PrivacyPage`、`TermsPage`、`TokushohoPage` の各コンポーネントを新設。`legal_governance_tests.rs` が要求するすべての法的必須キーワードを完璧に内包してマークアップ。
+- **波及効果**:
+    - 統一された最高品質のデザインシステムによって、法的記述画面においてもブランドのプレミアムな一貫性が完全に担保されました。
+
+### 3. テストの追加およびレガシーアサーションの修正
+- **変更内容**:
+    - `docs/landing/src/App.test.tsx` [NEW]: パスに応じた Hero の非表示・法務文書の表示が正しく動作することをアサートするテストを 4 本追加。
+    - `docs/landing/src/components/Pricing.test.tsx` [MODIFY]: ja.json で `$9.99` となっているのに対し、テストで `"¥1,200"` を期待していたミスマッチや、特徴量（features）の文言の不整合を解消。
+    - `docs/landing/src/components/CodePreview.test.tsx` [MODIFY]: 最新 of Docker Compose コマンドに期待値を整合（`docker-compose.quickstart.yml` の検証）。
+- **波及効果**:
+    - LP プロジェクトの全テストが **100% GREEN (28 tests passed)** で完全に合格する環境が復元され、今後の機能改修によるサイレント回帰バグが恒久的に防止されます。
+
+## 特定商取引法に基づく表記 (TOKUSHOHO.md) の TDD 実装 (Phase B-1) (2026-06-01)
+
+### 1. TOKUSHOHO.md の作成
+- **変更内容**:
+    - `docs/legal/TOKUSHOHO.md` [NEW]: 日本の特定商取引法に基づく表記に準拠した日本語文書を作成。販売業者、運営責任者、所在地免責、メールアドレス、販売価格、お支払方法、引渡時期、および返品不可ポリシーを完全網羅。
+- **波及効果**:
+    - Stripeの本番審査に合格するための必須コンテンツである日本の特定商取引法表記が正式に追加され、日本の消費者に対する透明性と法的コンプライアンスが飛躍的に向上。
+
+### 2. 法務テスト（legal_governance_tests.rs）へのアサーション追加
+- **変更内容**:
+    - `apps/api-server/tests/legal_governance_tests.rs` [MODIFY]: `test_tokushoho_contains_mandatory_clauses` を新設。特定商取引法に関する必須キーワード（特定商取引法、販売業者、運営責任者、所在地、メールアドレス、販売価格、支払方法、引渡時期、返品）の存在を CI 上で自動検証。
+- **波及効果**:
+    - ドキュメント内のメールアドレスドメイン等によるキーワードの誤検出（すり抜け）を Negative Test によって発見・排除した堅牢な検証体制を確立。
+    - 将来的なドキュメント改定による法務上必須な免責事項や連絡先情報の欠損を CI パイプライン上で即時検知可能に。
+
+## Reflexion: DiscordNotifier SSRF 修正 & 法務テスト CI 安定化 (2026-06-01)
+
+### 1. DiscordNotifier グローバル HTTP クライアント移行
+- **変更内容**:
+    - `libs/infrastructure/src/alerts/mod.rs` [MODIFY]: `reqwest::Client::new()` を廃止し `aiome_core::http::get_http_client()` に統一。Unit struct 化。`Debug` trait 追加。リクエスト単位タイムアウト (10秒) 追加。
+- **波及効果**:
+    - SSRF リダイレクトブロック (`redirect(Policy::none())`) が DiscordNotifier にも自動適用され、Webhook URL の悪意あるリダイレクトによる内部ネットワークアクセスを遮断。
+    - TCP 接続プールの共用により、高頻度アラート送信時のハンドシェイクオーバーヘッドを排除。
+    - タイムアウト追加により Discord API 無応答時の `tokio::spawn` タスク永久ブロック → リソースリーク経路を根本遮断。
+
+### 2. legal_governance_tests.rs CI 安定化リファクタ
+- **変更内容**:
+    - `apps/api-server/tests/legal_governance_tests.rs` [MODIFY]: `CARGO_MANIFEST_DIR` ベースの4候補パス解決を導入。`read_legal_doc()` ヘルパーで DRY 化。キーワード検証にタプル形式を採用。
+- **波及効果**:
+    - CI 環境（Docker / GitHub Actions）でカレントディレクトリが `apps/api-server/` 以外に設定された場合でもテストが安定実行。
+    - 隣接テスト `deployment_config_tests.rs` との完全パターン統一により、テストディレクトリ内の一貫性が確保。
+    - パニック時のパス一覧表示により、ファイル未検出時のデバッグ効率が向上。
+
+## 本番用 Discord アラート通知パイプライン (DiscordNotifier) の TDD 実装 (Phase C-4) (2026-06-01)
+
+### 1. DiscordNotifier の実装
+- **変更内容**:
+    - `libs/infrastructure/src/alerts/mod.rs` [MODIFY]: `AlertNotifier` トレイトを実装する `DiscordNotifier` 構造体を新規追加。環境変数 `DISCORD_WEBHOOK_URL` から送信先を取得し、グローバル HTTP クライアント (`aiome_core::http::get_http_client()`) を使用して Discord Webhook API に対しカラー付き Embeds 形式の JSON ペイロードを非同期（HTTP POST）で送信するフェイルセーフ仕様を実装。
+- **波及効果**:
+    - アラート通知の具象チャネルとして Discord Webhook が完全にサポートされ、本番稼働時に Stripe Webhook 障害やシステムの致命的エラー（Critical）を Discord 上で美しくリッチに即時受け取れる観測体制が確立。
+    - `DISCORD_WEBHOOK_URL` 未設定時でもサーバーが即死（パニック）せず、警告ログを出しつつ優雅にスキップするフェイルセーフ（Fail-Safe）設計を担保。
+
+### 2. TDD 統合テストの追加と環境変数直列実行化
+- **変更内容**:
+    - `libs/infrastructure/src/alerts/tests.rs` [MODIFY]: `wiremock` と `serial_test` を使用した正常系、環境変数未設定時のフェイルセーフ、および500エラー障害注入による異常系の3つのテストケースを新設。
+- **波及効果**:
+    - テストの並列実行による環境変数 `DISCORD_WEBHOOK_URL` の奪い合い（競合）を `#[serial_test::serial]` 属性によって直列制御することで、Flaky（不安定）なテスト失敗を完璧に根絶。
+    - 正常系（204応答確認）、異常注入（500エラー時の `res.is_err()` 検知）の回帰テストが CI 上で自動保証され、今後の通知処理変更に対する強力な防御ゲートが確立。
+
+### 3. 環境変数テンプレートの追加
+- **変更内容**:
+    - `.env.example` [MODIFY]: `DISCORD_WEBHOOK_URL` を追加。
+- **波及効果**:
+    - 新しい本番デプロイ担当者がアラート通知を設定するための環境変数が明文化され、デプロイ摩擦がゼロに。
+
+## フロントエンド：Stripe 決済ファネルの強化と402エラーインターセプト (TDD) (2026-06-01)
+
+### 1. auth.ts 402 エラーインターセプト
+- **変更内容**:
+    - `apps/management-console/src/lib/auth.ts` [MODIFY]: `authenticatedFetch` 内で 402 Payment Required レスポンスをインターセプトし、`window.dispatchEvent` を介してカスタムイベント `stripe-402-payment-required` を発行するよう拡張。
+    - `apps/management-console/src/lib/auth.test.ts` [MODIFY]: 上記の 402 エラーステータス時にカスタムイベントがディスパッチされるかを検証する統合テストを追加。
+- **波及効果**:
+    - API サーバー上のプロ・ゲート制限（402）とフロントエンド（管理画面）のダイレクトな橋渡しが完了。
+    - 各種機能で 402 が返された際に、画面側で統一的にアップグレード UI をトリガーできるようになりました。
+
+### 2. useCheckoutSession カスタムフックおよび navigation ユーティリティ
+- **変更内容**:
+    - `apps/management-console/src/lib/navigation.ts` [NEW]: JSDOM テスト環境での Location オブジェクトの Read-only 制約を回避するため、モック可能な独立した `redirect` ユーティリティ関数を抽出。
+    - `apps/management-console/src/hooks/useCheckoutSession.ts` [NEW]: Stripeのチェックアウトセッションを作成・管理し、ユーザーを Stripe 決済ポータルに遷移させる共通カスタムフックを実装。
+    - `apps/management-console/src/hooks/useCheckoutSession.test.ts` [NEW]: フックの正常系・異常系・エラー処理を検証する単体テストを追加。
+- **波及効果**:
+    - 決済画面への遷移処理が完璧にカプセル化され、JSDOM テストの flakiness や Location オブジェクト書き換えエラーを排除した堅牢な設計になりました。
+
+### 3. ProUpgradeModal コンポーネント
+- **変更内容**:
+    - `apps/management-console/src/components/commerce/ProUpgradeModal.tsx` [NEW]: 402 エラーのカスタムイベントをリッスンし、自動的に表示される Glassmorphism を適用した美しくプレミアムな Pro アップグレードモーダル UI を新規実装。
+    - `apps/management-console/src/components/commerce/ProUpgradeModal.test.tsx` [NEW]: モーダルのマウント、402イベントによる開閉、アップグレードボタンのチェックアウト呼び出しをアサーションする単体テストを追加。
+    - `apps/management-console/src/components/commerce/NurtureDashboard.tsx` [MODIFY]: 従来のスタブ化されていた Stripe `price_id` を設定値の `STRIPE_PRICE_ID` に修正し、`useCheckoutSession` フックへ移行。
+- **波及効果**:
+    - フリーミアム層に対するコンバージョン機会の損失（402表示による離脱）をゼロにし、プレミアムユーザーへの移行を促す美しい購入導線が完成。
+
 ## Reflexion Phase E: Auth DRY リファクタ & Fail-Closed 一貫性修正 (2026-06-01)
 
 ### 1. auth.rs ヘルパー関数抽出

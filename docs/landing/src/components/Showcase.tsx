@@ -6,15 +6,15 @@ export function Showcase() {
 
   const items = [
     {
-      img: '/dashboard_mock.png',
+      img: '/dashboard_mock.webp',
       alt: t('showcase.img1_alt'),
     },
     {
-      img: '/timeline_mock.png',
+      img: '/timeline_mock.webp',
       alt: t('showcase.img2_alt'),
     },
     {
-      img: '/avatar_mock.png',
+      img: '/avatar_mock.webp',
       alt: t('showcase.img3_alt'),
     },
   ];

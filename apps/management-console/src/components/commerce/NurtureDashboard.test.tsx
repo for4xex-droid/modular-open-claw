@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import NurtureDashboard from './NurtureDashboard';
@@ -11,7 +17,13 @@ jest.mock('../../lib/auth', () => ({
 
 jest.mock('../../config', () => ({
   API_BASE: 'http://localhost:3000',
+  STRIPE_PRICE_ID: 'price_test_mock',
 }));
+
+jest.mock('../../lib/navigation', () => ({
+  redirect: jest.fn(),
+}));
+
 
 describe('NurtureDashboard Commerce Integration', () => {
   beforeEach(() => {

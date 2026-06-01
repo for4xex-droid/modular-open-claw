@@ -12,6 +12,6 @@ describe('CodePreview Component', () => {
   it('renders the code snippet', () => {
     render(<CodePreview />);
     // The command might be split by line breaks and spans, so we look for part of it
-    expect(screen.getByText(/run -d --name aiome-agent/i)).toBeInTheDocument();
+    expect(screen.getByText(/docker-compose\.quickstart\.yml/i)).toBeInTheDocument();
   });
 });

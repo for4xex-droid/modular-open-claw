@@ -32,7 +32,15 @@ export const authenticatedFetch = async (url: string, options: RequestInit = {})
         headers['Content-Type'] = 'application/json';
     }
 
-    return fetch(url, { ...options, headers });
+    const response = await fetch(url, { ...options, headers });
+
+    if (response.status === 402) {
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('stripe-402-payment-required'));
+        }
+    }
+
+    return response;
 };
 
 /**
