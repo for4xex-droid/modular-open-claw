@@ -1,6 +1,12 @@
 ## [Unreleased]
 
 ### Added
+- **aiome.dev ランディングページ デプロイ基盤および SPA リダイレクト処理の TDD 実装**:
+  - `docs/landing/public/CNAME` [NEW]: カスタムドメイン `aiome.dev` 設定を追加。
+  - `docs/landing/public/404.html` [NEW]: GitHub Pages における SPA ルーティング対応のためのリダイレクトスクリプト（`spa-github-pages` パターン）を追加。
+  - `docs/landing/index.html` [MODIFY]: `<head>` 内の末尾に、上記 404 リダイレクトを受信して React ルーターへ履歴を復元する SPA デコードスクリプトを挿入。
+  - `docs/landing/src/Deployment.test.ts` [NEW]: CNAME 存在・ドメイン検証、404.html 存在・スクリプト検証、index.html 内の受け取りスクリプト検証、および JSDOM 環境における URL 復元ロジックの動作検証を網羅した Vitest 単体テストを新規実装。
+  - `.github/workflows/deploy-landing.yml` [NEW]: GitHub Pages 用のビルド・デプロイを行う GitHub Actions ワークフローを新規作成。
 - **AI 自律サポートシステム（Wiring & Quality Gate）の TDD 接続完了 (v5.2)**:
   - `apps/api-server/src/internal_services/watchtower.rs` [MODIFY]: ハードコードされていたサポート応答を、実績のあるサポートモジュールチェーン（`SupportClassifier` ➔ `SupportResponder` ➔ `AgentEngine::chat` ➔ `SupportIncidentRepository` ➔ `SupportEscalator`）に完全配線。`ControlCommand::SupportFeedback` ハンドラを新設し、`SupportFeedbackCollector` 経由で Karma 調整およびインシデント解決/エスカレーションを自動処理。
   - `libs/infrastructure/src/channel_bridge/discord.rs` [MODIFY]: `GUILD_MESSAGE_REACTIONS` インテントを有効化し、`reaction_add` イベントハンドラを実装。Bot 応答から `[TICKET:uuid]` パターンを正規表現で抽出するヘルパー `extract_ticket_id_from_text` を切り出し、これに対する TDD ユニットテストを新規実装・完全グリーン合格。
@@ -26,6 +32,8 @@
   - `libs/infrastructure/src/support/feedback.rs` [MODIFY]: フィードバック収集の際、対象インシデントに関連する Karma ID が見つからなかった場合にサイレントにスキップされるのを防ぎ、`tracing::warn!` で警告ログを出力するように改善。
 
 ### Fixed
+- **TypeScript ビルド設定の型定義不整合の修正**:
+  - `docs/landing/tsconfig.app.json` [MODIFY]: テストコード内で `fs` や `path` などの Node.js 標準モジュールを使用できるようにするため、`compilerOptions.types` に `"node"` を追加し、`npm run build` 時の型エラーを解消。
 - **Settings API / UI 安定化と feature_flag パストラバーサル防止のセキュリティ堅牢化 (Batch 2 /reflexion)**:
   - `apps/api-server/src/routes/settings.rs` [MODIFY]: `feature_flag` 設定キーのバリデーションに厳格な英数字+アンダースコアの文字種制限（`^[a-zA-Z0-9_]+$`）を導入し、パストラバーサルを構造的に排除。`llm_api_url` および `ENABLE_TOOL_REVIEWER` キーを `ALLOWED_KEYS` ホワイトリストに追加し、フロント・バックエンド不整合による 400 エラーを解消。テストケースを 6 ➔ 15 件へ拡張。
   - `apps/management-console/src/components/SettingsPage.tsx` [MODIFY]: 設定変更時の `onChange` 反映に伴う大量 API リクエスト（DoS）を `onBlur` 反映へ移行して解消。ファイル途中でのインポートを上部へ整理、および `as any` キャストを正しい共用体型へリファクタリング。

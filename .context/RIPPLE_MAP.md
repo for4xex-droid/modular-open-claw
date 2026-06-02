@@ -1,3 +1,32 @@
+## aiome.dev ランディングページ デプロイ基盤および SPA リダイレクト処理 of TDD 実装 (2026-06-03)
+
+### 1. CNAME および 404.html 静的アセットの追加
+- **変更内容**:
+    - `docs/landing/public/CNAME` [NEW]: カスタムドメイン `aiome.dev` を指定する設定ファイルを追加。
+    - `docs/landing/public/404.html` [NEW]: GitHub Pages で React ルーターなどの SPA 履歴ルーティングを動作させるため、エラー検出時にクエリパラメータに変換して `index.html` に転送するリダイレクトスクリプトを内包した静的HTMLを新規作成。
+- **波及効果**:
+    - GitHub Pages を経由してドメイン `https://aiome.dev` で直接ホスティング可能となり、かつ `/privacy`, `/terms`, `/tokushoho` などのダイレクトURLリンクに直接ユーザーがアクセスした際、404エラーにならずに React アプリが起動して元のURLを再現・表示できるようになりました。
+
+### 2. index.html への SPA リダイレクト復元用スクリプトの挿入
+- **変更内容**:
+    - `docs/landing/index.html` [MODIFY]: `<head>` の末尾（`</head>` の直前）に、404.html から転送されてきたクエリパラメータ（`?/privacy&foo=bar`）をパースし、ブラウザの History API を使って URL を正しい形（`/privacy?foo=bar`）に置き換える JavaScript レシーバースクリプトを挿入。
+- **波及効果**:
+    - アプリがロードされる前に History API による URL 復元が同期的に実行されるため、React アプリケーション側が読み込まれた瞬間に正しいパスが認識され、画面の瞬き（Flicker）なしに意図したページが描画される状態が実現。
+
+### 3. TDD 自動テスト（Deployment.test.ts）の作成による整合性保証
+- **変更内容**:
+    - `docs/landing/src/Deployment.test.ts` [NEW]: CNAME 存在検証、404.html 存在検証、index.html のレシーバースクリプト検証、および JSDOM 環境における URL 復元ロジック（`window.history.replaceState` が期待されるデコード値で呼び出されるか）を検証するユニットテスト群を追加。
+    - `docs/landing/tsconfig.app.json` [MODIFY]: テストコード内で `fs` や `path` などの Node.js 標準モジュールを使用できるようにするため、`compilerOptions.types` に `"node"` を追加。
+- **波及効果**:
+    - 静的アセットの設定や SPA 復元スクリプトという、GitHub Pages 運用に欠かせない構成要素がテストコードによって恒久的に CI 上で監視・保護され、誤って CNAME や HTML の記述を破壊した場合にも即座にビルドエラーとして検知される堅牢な基盤が確立。
+    - `npm run build` 時の型定義チェック（`tsc -b`）が完全に成功（GREEN）することを確認。
+
+### 4. GitHub Actions デプロイ自動化ワークフローの作成 (Safety-Critical Zone)
+- **変更内容**:
+    - `.github/workflows/deploy-landing.yml` [NEW]: GitHub Pages へのビルド・自動デプロイを実行するワークフロー定義を作成。Node.js 20 環境でのキャッシュ付きビルド、Vite ビルド成果物（`docs/landing/dist`）の Pages アップロード、および本番デプロイの一連のパイプラインを定義。
+- **波及効果**:
+    - `docs/landing/` 配下、あるいは本ワークフロー設定の更新が GitHub `main` ブランチにプッシュされた際、自律的かつ自動的に最新のランディングページがビルドされ、`https://aiome.dev` へデプロイされる仕組みが完成。
+
 ## AI 自律サポートシステム（Wiring & Quality Gate）の TDD 接続完了 (v5.2) (2026-06-02)
 
 ### 1. Watchtower サポート分岐のモジュールチェーン完全接続 (W-1)
