@@ -353,8 +353,8 @@ pub async fn send_message(
 
 #[cfg(test)]
 mod tests {
-    /// Biome バリデーションロジックのユニットテスト
-    /// ハンドラ内のインライン検証ロジックを再現してテスト
+    // Biome バリデーションロジックのユニットテスト
+    // ハンドラ内のインライン検証ロジックを再現してテスト
 
     const MAX_CONTENT_BYTES: usize = 8000;
 
