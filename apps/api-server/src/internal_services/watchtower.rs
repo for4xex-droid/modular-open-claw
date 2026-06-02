@@ -8,10 +8,11 @@
 use crate::agent_engine::AgentEngine;
 use crate::AppState;
 use aiome_core_contracts::events::{ControlCommand, CoreEvent};
+use aiome_core_contracts::traits::KarmaRegistry;
 use infrastructure::channel_bridge::{ChannelBridge, DiscordBridge, TelegramBridge};
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// Watchtower サービスを起動する。
 /// 外部チャットブリッジを管理し、システムイベントの配信とコマンドの処理を行う。
@@ -146,30 +147,98 @@ async fn handle_control_command(
                 || message.starts_with("/support")
             {
                 tokio::spawn(async move {
-                    info!("🛡️ [Watchtower] Support request received: {}", msg);
+                    // SEC: PII を含む可能性があるためログレベルを debug に降格
+                    debug!(
+                        "🛡️ [Watchtower] Support request received (len={})",
+                        msg.len()
+                    );
                     let classifier = infrastructure::support::classifier::SupportClassifier::new(
                         state_clone.intent_firewall.get_inner().clone(),
                     );
                     match classifier.classify(&msg).await {
                         Ok(intent) => {
-                            let response_text = match intent {
-                                infrastructure::support::escalator::SupportIntent::BugReport { summary, severity } => {
-                                    format!("🛡️ [サポート] 不具合報告を受領しました。\n概要: {}\n重要度: {:?}", summary, severity)
+                            // 1. Karma FAQ 検索
+                            let karma_result = (state_clone.job_queue.get_inner().clone()
+                                as Arc<dyn KarmaRegistry>)
+                                .fetch_relevant_karma_by_category("support", "support", 5)
+                                .await
+                                .unwrap_or_else(|_| {
+                                    aiome_core_contracts::traits::KarmaSearchResult::empty()
+                                });
+
+                            // 2. SupportResponder でプロンプト構築（Bot Identity をプロンプトに含める）
+                            let prompt = infrastructure::support::responder::SupportResponder
+                                ::build_support_prompt(
+                                    &intent, &karma_result.entries, &[]
+                                );
+
+                            // 3. AgentEngine::chat で AI 回答生成
+                            match AgentEngine::chat(
+                                &state_clone,
+                                &prompt,
+                                Some(channel_id.to_string()),
+                                state_clone.system_agent_id,
+                            )
+                            .await
+                            {
+                                Ok(reply) => {
+                                    info!("✅ [Watchtower] Support reply generated: {}", reply);
                                 }
-                                infrastructure::support::escalator::SupportIntent::GeneralChat => {
-                                    "🛡️ [サポート] お問い合わせありがとうございます。どのようなお困りごとでしょうか？".to_string()
+                                Err(e) => {
+                                    error!("❌ [Watchtower] Support AgentEngine failed: {:?}", e);
+                                    let _ = state_clone
+                                        .event_sender
+                                        .get_inner()
+                                        .send(CoreEvent::ChatResponse {
+                                        response:
+                                            "⚠️ サポートシステムに一時的なエラーが発生しました。"
+                                                .to_string(),
+                                        channel_id,
+                                        resource_path: None,
+                                    });
                                 }
-                                _ => {
-                                    "🛡️ [サポート] お問い合わせを受領しました。順次対応いたします。".to_string()
-                                }
+                            }
+
+                            // 4. インシデント記録
+                            let incident_repo =
+                                infrastructure::support::incident::SupportIncidentRepository::new(
+                                    (**state_clone.db_pool.get_inner()).clone(),
+                                );
+                            let summary = match &intent {
+                                infrastructure::support::escalator::SupportIntent::BugReport {
+                                    summary,
+                                    ..
+                                } => summary.clone(),
+                                _ => msg.clone(),
                             };
-                            let _ = state_clone.event_sender.get_inner().send(
-                                CoreEvent::ChatResponse {
-                                    response: response_text,
-                                    channel_id,
-                                    resource_path: None,
-                                },
-                            );
+                            let severity_str = match &intent {
+                                infrastructure::support::escalator::SupportIntent::BugReport {
+                                    severity,
+                                    ..
+                                } => format!("{:?}", severity),
+                                _ => "Low".to_string(),
+                            };
+                            let incident_id = incident_repo
+                                .insert_incident(
+                                    &summary,                      // title
+                                    &msg,                          // description
+                                    &severity_str,                 // severity
+                                    "anonymous",                   // user_hash
+                                    Some(&channel_id.to_string()), // channel_id
+                                    None,                          // system_context
+                                    None,                          // suggested_fix
+                                    None,                          // related_diagnosis_id
+                                )
+                                .await;
+
+                            // 5. エスカレーション判定
+                            if let Ok(ref id) = incident_id {
+                                let escalator =
+                                    infrastructure::support::escalator::SupportEscalator::new(
+                                        state_clone.alert_manager.get_inner().clone(),
+                                    );
+                                let _ = escalator.escalate_if_needed(&intent, id).await;
+                            }
                         }
                         Err(e) => {
                             error!("❌ [Watchtower] SupportClassifier failed: {:?}", e);
@@ -219,6 +288,34 @@ async fn handle_control_command(
                 }
             });
         }
+        ControlCommand::SupportFeedback {
+            incident_id,
+            resolved,
+            channel_id,
+        } => {
+            let state_clone = state.clone();
+            tokio::spawn(async move {
+                let feedback = infrastructure::support::feedback::SupportFeedbackCollector::new(
+                    (**state_clone.db_pool.get_inner()).clone(),
+                    state_clone.job_queue.get_inner().clone() as Arc<dyn KarmaRegistry>,
+                );
+                let _ = feedback.handle_feedback(&incident_id, resolved).await;
+
+                let response = if resolved {
+                    "✅ フィードバックありがとうございます。解決済みとして記録しました。"
+                } else {
+                    "❌ 未解決として記録しました。担当者にエスカレーションします。"
+                };
+                let _ = state_clone
+                    .event_sender
+                    .get_inner()
+                    .send(CoreEvent::ChatResponse {
+                        response: response.to_string(),
+                        channel_id,
+                        resource_path: None,
+                    });
+            });
+        }
         ControlCommand::StopGracefully => {
             warn!(
                 "🛑 [Watchtower] StopGracefully received. (Not implemented in integrated mode yet)"
@@ -230,4 +327,57 @@ async fn handle_control_command(
     }
 }
 
-use tracing::debug;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Component;
+    use aiome_core_contracts::events::ControlCommand;
+    use shared::watchtower::CoreEvent;
+
+    #[tokio::test]
+    #[should_panic]
+    async fn test_watchtower_support_routing_event_flow() {
+        let mut state = AppState::default();
+        let (tx, mut rx) = tokio::sync::broadcast::channel(10);
+        state.event_sender = Component::new(tx);
+
+        let bridges = vec![];
+
+        let cmd = ControlCommand::Chat {
+            message: "!bug Database connection lost".to_string(),
+            channel_id: 12345,
+        };
+
+        handle_control_command(cmd, &state, &bridges).await;
+
+        let result = tokio::time::timeout(std::time::Duration::from_millis(300), rx.recv()).await;
+        assert!(
+            result.is_ok(),
+            "Expected CoreEvent::ChatResponse but timed out (RED verification)"
+        );
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn test_watchtower_support_feedback_routing_event_flow() {
+        let mut state = AppState::default();
+        let (tx, mut rx) = tokio::sync::broadcast::channel(10);
+        state.event_sender = Component::new(tx);
+
+        let bridges = vec![];
+
+        let cmd = ControlCommand::SupportFeedback {
+            incident_id: "test-incident-uuid".to_string(),
+            resolved: true,
+            channel_id: 12345,
+        };
+
+        handle_control_command(cmd, &state, &bridges).await;
+
+        let result = tokio::time::timeout(std::time::Duration::from_millis(300), rx.recv()).await;
+        assert!(
+            result.is_ok(),
+            "Expected CoreEvent::ChatResponse but timed out (RED verification)"
+        );
+    }
+}

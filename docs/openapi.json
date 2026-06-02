@@ -5408,6 +5408,9 @@
             "format": "int32",
             "description": "共鳴度（対話品質スコア）"
           },
+          "support_incidents": {
+            "description": "サポートインシデントの週間統計情報 (S-5)"
+          },
           "total_disk_gb": {
             "type": "integer",
             "format": "int64",

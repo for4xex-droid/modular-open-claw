@@ -1,3 +1,27 @@
+## AI 自律サポートシステム（Wiring & Quality Gate）の TDD 接続完了 (v5.2) (2026-06-02)
+
+### 1. Watchtower サポート分岐のモジュールチェーン完全接続 (W-1)
+- **変更内容**:
+    - `apps/api-server/src/internal_services/watchtower.rs` [MODIFY]: ハードコードされていた仮のサポート応答（`!bug` / `!help` / `/support`）を、実績のあるサポートモジュール群（`SupportClassifier` ➔ `SupportResponder` ➔ `AgentEngine::chat` ➔ `SupportIncidentRepository` ➔ `SupportEscalator`）のチェーン接続へ置換。
+    - **波及効果**:
+        - サポート窓口への問い合わせに対して、AIエージェントが自律的にFAQ（Karma）を検索し、プロンプトを構築して回答し、インシデントデータベースへ永続化記録した上で、重要度が高い場合はアラートマネージャーへ自動エスカレーションする、という1,100行超の「眠っていたサポートシステム」が完全に実稼働状態へ移行しました。
+        - 正常動作テストと、未初期化 `AppState` 時のフェイルセーフなパニック挙動をアサートする TDD 統合テスト `test_watchtower_support_routing_event_flow` を追加し、GREEN（PASS）を確認。
+
+### 2. SupportFeedback コマンドハンドラの追加と Karma Registry 接続 (W-2)
+- **変更内容**:
+    - `apps/api-server/src/internal_services/watchtower.rs` [MODIFY]: `ControlCommand::SupportFeedback` マッチアームを新設し、`SupportFeedbackCollector` を用いて、解決時/未解決時の Karma 重み調整（`+10` / `-15`）とインシデントステータス（Resolved/Escalated）の更新ロジックを統合。
+    - **波及効果**:
+        - ユーザーからのリアクションフィードバックが、バックエンド側で直接 Karma Registry（長期記憶の重要度）へ安全にフィードバックバックループとして還元される仕組みが完成。
+        - SQLite インメモリ DB と Karma registry キャストを考慮した TDD 統合テスト `test_watchtower_support_feedback_routing_event_flow` を追加し、GREEN（PASS）を確認。
+
+### 3. Discord リアクションハンドラとチケット ID 抽出 (W-3)
+- **変更内容**:
+    - `libs/infrastructure/src/channel_bridge/discord.rs` [MODIFY]: `reaction_add` イベントハンドラを実装し、リアクション検出時に Bot 自身のリアクションを無視しつつ `✅` / `❌` などのリアクションを `ControlCommand::SupportFeedback` に自動変換して command_tx へ中継する処理を統合。
+    - `libs/infrastructure/src/channel_bridge/discord.rs` [MODIFY]: Bot メッセージから `[TICKET:uuid]` パターンを安全にパース・抽出する純粋関数 `extract_ticket_id_from_text`、および Serenity Context 連携ヘルパー `extract_ticket_id_from_bot_message` を新設。
+    - **波及効果**:
+        - チャットツール（Discord）上でのリアクションが、AI OS の意思決定・長期記憶（Karma）システムと一気通貫でリアルタイム双方向連動。
+        - チケットID抽出の境界値（正常・異常系文字列）を厳密にアサートする TDD ユニットテストを 2 件新規追加し、100% グリーン（PASS）を実証。
+
 ## 自律的サポートシステム用正常性/インシデント稼働状況ステータス画面（Status Page）の TDD 実装 (Phase S-5) (2026-06-02)
 
 ### 1. ResourceStatus への週間インシデント統計フィールド拡張と API 結合

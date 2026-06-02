@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-06-01
+> **最終更新**: 2026-06-03
 > **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
 
 ---
@@ -32,7 +32,7 @@ graph TB
         GAME_SRV["🎮 ゲームサーバー"]
     end
 
-    subgraph "Aiome OSS — 文明の OS"
+    subgraph "Aiome OSS — 文明 of OS"
         direction TB
         subgraph "L0: Safety Foundation"
             TLA["TLA+ 形式検証"]
@@ -67,6 +67,7 @@ graph TB
             IMMUNE["AdaptiveImmuneSystem"]
             P2P_SAFE["P2pSanitizer (Toxicity Filter)"]
             BUZZ["BuzzProtocol (Social Media)"]
+            SUPPORT["自律サポートシステムチェーン (TDD)"]
         end
 
         subgraph "Apps"
@@ -130,7 +131,7 @@ graph TB
     end
 
     %% ユーザー接続
-    USER -->|チャット / 育成| MGMT
+    USER -->|チャット / 育成 / サポートリアクション| MGMT
     USER -->|デスクトップ| TAURI
     CREATOR -->|アセット出品| NAPI
     MERCHANT -->|SDK| NAPI
@@ -145,6 +146,8 @@ graph TB
     SOUL --> KARMA
     SOUL --> TRAJECTORY
     SOUL --> SOT
+    SOUL --> SUPPORT
+    SUPPORT --> KARMA
     LLM --> BASTION
     LLM --> CONST
     SKILL --> BASTION
@@ -195,9 +198,9 @@ graph TB
 | レイヤー | 責務 | 主要クレート |
 |---------|------|------------|
 | **L0: Safety** | TLA+ 形式検証、BastionGuard、Constitutional Validator | `shared`, `aiome-contracts` |
-| **L1: Soul** | 記憶、感情、人格、自己修復 | `soul`, `aiome-core-contracts` |
-| **L2: Capabilities** | LLM推論、TTS、LoRA、3Dアバター、MCP | `core`, `avatar-engine`, `infrastructure` |
-| **L3: Social** | Federation (v1.0稼働)、CRDT同期、ギルド、Buzz Protocol | `samsara-hub`, `infrastructure` |
+| **L1: Soul** | 記憶、感情、人格、自己修復、自律サポートシステムチェーン（TDD実装） | `soul`, `aiome-core-contracts`, `infrastructure` |
+| **L2: Capabilities** | LLM推論、TTS、LoRA、3Dアバター、MCP、サポート応答・分類器 | `core`, `avatar-engine`, `infrastructure` |
+| **L3: Social** | Federation (v1.0稼働)、CRDT同期、ギルド、Buzz Protocol、Discordサポートリアクション連携 | `samsara-hub`, `infrastructure` |
 
 ### Project NURTURE — 3層構造
 
@@ -442,7 +445,7 @@ sequenceDiagram
     participant DB as Database (Aiome)
     participant NAPI as nurture-api (Nurture)
     participant Queue as UniversalJobQueue
-
+ 
     Polar->>API: POST /api/v1/commerce_webhook/polar (checkout.completed / subscription.*)
     API->>API: verify_signature(webhook-signature)
     API->>DB: INSERT polar_webhook_events (冪等性ガード)
@@ -460,6 +463,34 @@ sequenceDiagram
         end
     end
     API-->>Polar: 200 OK
+```
+
+### 5.4.2 Discord リアクションフィードバックループ（自律サポートシステム） (v5.2)
+
+```mermaid
+sequenceDiagram
+    actor User as 👤 ユーザー (Discord)
+    participant DBot as Discord (Serenity)
+    participant API as api-server (watchtower)
+    participant Collector as SupportFeedbackCollector
+    participant Karma as KarmaRegistry (Aiome)
+    participant Incident as SupportIncidentRepository
+
+    User->>DBot: Botメッセージに「✅」または「❌」のリアクションを付与
+    DBot->>DBot: reaction_add イベント発生
+    Note over DBot: OnceLockでBot自身のIDを除外<br/>LazyLock正規表現で [TICKET:uuid] を抽出
+    DBot->>API: ControlCommand::SupportFeedback { incident_id, resolved, channel_id } を送信 (command_tx)
+    API->>Collector: handle_feedback(incident_id, resolved)
+    Collector->>Incident: find_by_id(incident_id)
+    Incident-->>Collector: SupportIncident { karma_id, status }
+    alt 解決 (resolved = true)
+        Collector->>Karma: adjust_karma_weight(karma_id, +10)
+        Collector->>Incident: update_status(incident_id, Resolved)
+    else 未解決 (resolved = false)
+        Collector->>Karma: adjust_karma_weight(karma_id, -15)
+        Collector->>Incident: update_status(incident_id, Escalated)
+    end
+    Note over Collector: 関連する Karma ID が見つからない場合は警告ログを出力
 ```
 
 ### 5.5 S2S マーケットプレイスアップロード (CSAM → 登録)
@@ -841,11 +872,32 @@ classDiagram
         +new_with_alerts(alert_manager)
     }
 
+    class SupportClassifier {
+        +classify(message: &str) Result~SupportCategory~
+    }
+    class SupportResponder {
+        +build_support_prompt(context) String
+        +respond(incident) Result~String~
+    }
+    class SupportIncidentRepository {
+        +create_incident(user_id, message, severity) Result~Uuid~
+        +find_by_id(id) Result~Option~SupportIncident~~
+        +update_status(id, status) Result~()~
+        +compute_weekly_stats() Result~WeeklyStats~
+    }
+    class SupportFeedbackCollector {
+        +handle_feedback(incident_id, resolved) Result~()~
+    }
+    class SupportEscalator {
+        +escalate(incident) Result~()~
+    }
+
     CommerceEngine <|.. StripeCommerceEngine : implements
     CommerceEngine <|.. NurtureCommerceBridge : implements
     AiomePlugin <|.. NurturePlugin : implements
     AlertManager --> AlertNotifier
     CircuitBreaker --> AlertManager
+    SupportFeedbackCollector --> SupportIncidentRepository
 
     note for CommerceEngine "Aiome OSS 側で定義\nNURTURE側で実装"
     note for LlmProvider "Aiome OSS 側で定義・実装\nNURTUREは触れない"
@@ -964,7 +1016,7 @@ gantt
 | `aiome-contracts` | 19 | `LlmProvider`, `CommerceEngine`, `GiftEngine`, `FormalProofGate`, `GigMetadataUpdater` |
 | `aiome-core-contracts` | 70+ | `JobQueue`, `KarmaRegistry`, `ArtifactStore`, `Publisher` |
 | `shared` | 30+ | `AppDataResolver` (CBA Cell-ID Namespacing), `SecurityPolicy`, `Guardrails` |
-| `infrastructure` | 150+ | `RegistryManager`, `WordPressAdapter`, `ContextEngine`, `SoTEngine`, `EvaluationLogger`, `SemanticCacheRepository`, `DistillationOps` |
+| `infrastructure` | 150+ | `RegistryManager`, `WordPressAdapter`, `ContextEngine`, `SoTEngine`, `EvaluationLogger`, `SemanticCacheRepository`, `DistillationOps`, `SupportClassifier`, `SupportResponder`, `SupportIncidentRepository`, `SupportFeedbackCollector` |
 | `soul` | 20+ | `AgentSoul`, `SoulPipeline`, `SomaticMarker`, `SemanticRecaller`, `DreamState` |
 | `core` | 20+ | `OllamaProvider`, `GeminiProvider`, `ClaudeProvider`, `OpenAiProvider` |
 | `avatar-engine` | 15+ | `Inochi2dLoader`, `SimpleLipSyncEngine`, `PhysicsSimulator` |

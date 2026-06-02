@@ -90,6 +90,8 @@ impl SupportResponder {
 
         prompt.push_str("Please craft a professional, polite, and helpful response in Japanese (です・ます調).\n");
         prompt.push_str("If the issue is Critical/High severity, assure the user that their issue has been escalated to human engineers automatically.\n");
+        prompt.push_str("回答の末尾に必ず『※ この回答は AI エージェントによる自動応答です』を付与してください。\n");
+        prompt.push_str("If a ticket has been created, include the ticket ID in the format [TICKET:uuid] at the end of your response.\n");
 
         prompt
     }
@@ -138,5 +140,7 @@ mod tests {
 
         assert!(prompt.contains("Japanese (です・ます調)"));
         assert!(prompt.contains("escalated to human engineers automatically"));
+        assert!(prompt.contains("自動応答です"));
+        assert!(prompt.contains("[TICKET:"));
     }
 }

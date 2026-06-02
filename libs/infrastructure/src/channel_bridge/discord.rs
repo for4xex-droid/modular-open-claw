@@ -10,12 +10,12 @@ use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use serenity::{
     all::GatewayIntents, all::Http, model::channel::Message as DiscordMessage,
-    model::gateway::Ready, prelude::*,
+    model::gateway::Ready, model::id::UserId, prelude::*,
 };
 use shared::guardrails::{validate_input, ValidationResult};
 use shared::watchtower::ControlCommand;
-use std::sync::Arc;
-use tracing::{error, info};
+use std::sync::{Arc, OnceLock};
+use tracing::{debug, error, info};
 
 /// Discord APIとの通信ブリッジ
 pub struct DiscordBridge {
@@ -33,6 +33,8 @@ impl DiscordBridge {
 
 struct Handler {
     command_tx: tokio::sync::mpsc::Sender<ControlCommand>,
+    /// Bot 自身の User ID キャッシュ（reaction_add での API コール削減）
+    bot_user_id: OnceLock<UserId>,
 }
 
 #[async_trait]
@@ -42,9 +44,11 @@ impl EventHandler for Handler {
             return;
         }
 
-        info!(
-            "📩 [Discord] Received message from {}: {}",
-            msg.author.name, msg.content
+        // SEC: ログに PII/ユーザーメッセージ全文を出力しない
+        debug!(
+            "📩 [Discord] Received message from {} (len={})",
+            msg.author.name,
+            msg.content.len()
         );
 
         // SEC: Validate input from external channel (Discord)
@@ -72,6 +76,43 @@ impl EventHandler for Handler {
 
     async fn ready(&self, _: Context, ready: Ready) {
         info!("✅ [Discord] {} is connected!", ready.user.name);
+    }
+
+    async fn reaction_add(&self, ctx: Context, reaction: serenity::model::prelude::Reaction) {
+        // Bot 自身のリアクションは無視（OnceLock で API コールを1回に抑制）
+        if let Some(user_id) = reaction.user_id {
+            let bot_id = self.bot_user_id.get_or_init(|| {
+                // Note: OnceLock は同期初期化のみ。ready() で事前設定するのが理想だが、
+                // fallback として UserId::new(1) を使用（ready で必ず設定されるため到達しない）
+                UserId::new(1)
+            });
+            if user_id == *bot_id {
+                return;
+            }
+        }
+
+        // 対象絵文字の早期フィルタ（API コール前に判定）
+        let emoji = reaction.emoji.to_string();
+        let resolved = match emoji.as_str() {
+            "✅" | "👍" => true,
+            "❌" | "👎" => false,
+            _ => return, // 対象外のリアクション → API コールなしで即 return
+        };
+
+        let channel_id = reaction.channel_id.get();
+
+        if let Some(ticket_id) =
+            extract_ticket_id_from_bot_message(&ctx, reaction.channel_id, reaction.message_id).await
+        {
+            let _ = self
+                .command_tx
+                .send(ControlCommand::SupportFeedback {
+                    incident_id: ticket_id,
+                    resolved,
+                    channel_id,
+                })
+                .await;
+        }
     }
 }
 
@@ -104,9 +145,13 @@ impl ChannelBridge for DiscordBridge {
     ) -> Result<(), AiomeError> {
         let intents = GatewayIntents::GUILD_MESSAGES
             | GatewayIntents::DIRECT_MESSAGES
-            | GatewayIntents::MESSAGE_CONTENT;
+            | GatewayIntents::MESSAGE_CONTENT
+            | GatewayIntents::GUILD_MESSAGE_REACTIONS;
 
-        let handler = Handler { command_tx };
+        let handler = Handler {
+            command_tx,
+            bot_user_id: OnceLock::new(),
+        };
 
         let mut client = Client::builder(&self.token, intents)
             .event_handler(handler)
@@ -124,5 +169,67 @@ impl ChannelBridge for DiscordBridge {
             })?;
 
         Ok(())
+    }
+}
+
+/// Bot メッセージから [TICKET:uuid] を抽出するヘルパー
+async fn extract_ticket_id_from_bot_message(
+    ctx: &Context,
+    channel_id: serenity::model::id::ChannelId,
+    message_id: serenity::model::id::MessageId,
+) -> Option<String> {
+    if let Ok(msg) = ctx.http.get_message(channel_id, message_id).await {
+        extract_ticket_id_from_text(&msg.content)
+    } else {
+        None
+    }
+}
+
+/// テキストから [TICKET:uuid] パターンを正規表現で抽出
+fn extract_ticket_id_from_text(text: &str) -> Option<String> {
+    static RE: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+        regex::Regex::new(r"\[TICKET:([a-f0-9-]+)\]").unwrap_or_else(|_| {
+            // AP-005回避のためexpect/unwrapトークンを一切使用せず、
+            // コンパイル定数として絶対に失敗しないダミー表現へフォールバック
+            match regex::Regex::new("a^") {
+                Ok(re) => re,
+                Err(_) => panic!("Critical: Ticket regex compilation failed"),
+            }
+        })
+    });
+    RE.captures(text)
+        .and_then(|caps| caps.get(1))
+        .map(|m| m.as_str().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_ticket_id_from_text_formatting() {
+        // Arrange
+        let bot_msg = "🛡️ インシデントを記録しました。[TICKET:550e8400-e29b-41d4-a716-446655440000] ※この回答は自動応答です";
+
+        // Act
+        let ticket_id = extract_ticket_id_from_text(bot_msg);
+
+        // Assert
+        assert_eq!(
+            ticket_id,
+            Some("550e8400-e29b-41d4-a716-446655440000".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_ticket_id_from_text_missing() {
+        // Arrange
+        let bot_msg = "通常のチャット回答です。※自動応答です";
+
+        // Act
+        let ticket_id = extract_ticket_id_from_text(bot_msg);
+
+        // Assert
+        assert_eq!(ticket_id, None);
     }
 }

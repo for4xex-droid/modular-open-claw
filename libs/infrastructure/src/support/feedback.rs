@@ -101,6 +101,11 @@ impl SupportFeedbackCollector {
             self.karma_registry
                 .adjust_karma_weight(&karma_id, delta)
                 .await?;
+        } else {
+            tracing::warn!(
+                "⚠️ [SupportFeedback] No associated karma found for incident '{}'. Karma adjustment skipped.",
+                incident_id
+            );
         }
 
         Ok(())

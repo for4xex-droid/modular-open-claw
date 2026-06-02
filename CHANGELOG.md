@@ -1,5 +1,30 @@
 ## [Unreleased]
 
+### Added
+- **AI 自律サポートシステム（Wiring & Quality Gate）の TDD 接続完了 (v5.2)**:
+  - `apps/api-server/src/internal_services/watchtower.rs` [MODIFY]: ハードコードされていたサポート応答を、実績のあるサポートモジュールチェーン（`SupportClassifier` ➔ `SupportResponder` ➔ `AgentEngine::chat` ➔ `SupportIncidentRepository` ➔ `SupportEscalator`）に完全配線。`ControlCommand::SupportFeedback` ハンドラを新設し、`SupportFeedbackCollector` 経由で Karma 調整およびインシデント解決/エスカレーションを自動処理。
+  - `libs/infrastructure/src/channel_bridge/discord.rs` [MODIFY]: `GUILD_MESSAGE_REACTIONS` インテントを有効化し、`reaction_add` イベントハンドラを実装。Bot 応答から `[TICKET:uuid]` パターンを正規表現で抽出するヘルパー `extract_ticket_id_from_text` を切り出し、これに対する TDD ユニットテストを新規実装・完全グリーン合格。
+  - `libs/infrastructure/src/support/responder.rs` [MODIFY]: `build_support_prompt()` プロンプトビルダーの末尾に、Bot Identity 識別文（`※ この回答は AI エージェントによる自動応答です`）およびチケット ID 埋め込み指示（`[TICKET:uuid]`）を追加し、テストで期待通りの生成を検証。
+  - `AGENTS.md` [MODIFY]: エージェントが自律変更してはいけない領域を定義する「🔐 Safety-Critical Zone（人間専有コード）」セクションを Scope Lock の直後に追加。ドキュメント生成等の Anti-Slop 冗長性排除ルールを拡張。
+  - `CONTRIBUTING.md` [MODIFY]: レビュー基準に「AI 生成コンテンツの品質・識別基準（AI 生成コンテンツ pillars）」を追加。
+  - **Verification**:
+    - `responder.rs`: 新規アサーション追加（RED） ➔ プロンプト指示追記（GREEN）の TDD サイクル合格。
+    - `watchtower.rs`: 非同期イベントタイムアウトアサーション追加（RED） ➔ 実装・型キャスト適用（GREEN） ➔ フェイルセーフパニック should_panic 検証（PASS）の TDD サイクル合格。
+    - `discord.rs`: チケットID抽出ロジックの不在エラー（RED） ➔ 抽出関数・ハンドラ実装（GREEN） ➔ 正常・異常系文字列パース検証（PASS）の TDD サイクル合格。
+
+### Security
+- **Watchtower & Discord API における PII（個人識別情報）のログ出力漏洩防御 (v5.2 / Reflexion #5)**:
+  - `apps/api-server/src/internal_services/watchtower.rs` [MODIFY] & `libs/infrastructure/src/channel_bridge/discord.rs` [MODIFY]: 外部メッセージの受信ログにおいて、ユーザーメッセージ全文や PII が誤ってシステムログに出力されるリスクを排除するため、ログレベルを `info!` から `debug!` に変更し、かつメッセージ長（`len()` / `msg.content.len()`）のみを出力する形に制限してセキュリティを向上。
+
+### Performance
+- **Discord イベントハンドラにおける API コール削減とキャッシュ最適化 (v5.2 / Reflexion #5)**:
+  - `libs/infrastructure/src/channel_bridge/discord.rs` [MODIFY]: `Handler` 構造体に `bot_user_id: OnceLock<UserId>` キャッシュを導入。リアクション追加時に Bot 自身のアクションを判定する際、都度発生していた API コールを 1 回に抑制。
+  - `libs/infrastructure/src/channel_bridge/discord.rs` [MODIFY]: `extract_ticket_id_from_text` 内のチケット ID 抽出用正規表現（Regex）を呼び出しの都度コンパイルするのではなく、`std::sync::LazyLock` を用いた静的初期化・事前コンパイルにリファクタリングし、CPU 負荷を軽減。
+
+### Improved
+- **Karma 調整時における非関連インシデント警告ログの追加 (v5.2 / Reflexion #5)**:
+  - `libs/infrastructure/src/support/feedback.rs` [MODIFY]: フィードバック収集の際、対象インシデントに関連する Karma ID が見つからなかった場合にサイレントにスキップされるのを防ぎ、`tracing::warn!` で警告ログを出力するように改善。
+
 ### Fixed
 - **Settings API / UI 安定化と feature_flag パストラバーサル防止のセキュリティ堅牢化 (Batch 2 /reflexion)**:
   - `apps/api-server/src/routes/settings.rs` [MODIFY]: `feature_flag` 設定キーのバリデーションに厳格な英数字+アンダースコアの文字種制限（`^[a-zA-Z0-9_]+$`）を導入し、パストラバーサルを構造的に排除。`llm_api_url` および `ENABLE_TOOL_REVIEWER` キーを `ALLOWED_KEYS` ホワイトリストに追加し、フロント・バックエンド不整合による 400 エラーを解消。テストケースを 6 ➔ 15 件へ拡張。
