@@ -16,10 +16,10 @@
     "cta_secondary": "View on GitHub →"
   },
   "social_proof": {
-    "metric1_value": "90,000+",
+    "metric1_value": "262,000+",
     "metric1_label": "lines of production Rust",
     "metric1_desc": "\"Every line written by AI agents. Not a single human keystroke.\"",
-    "metric2_value": "220+",
+    "metric2_value": "700+",
     "metric2_label": "E2E tests passing",
     "metric2_desc": "\"Automated quality gates covering every endpoint.\"",
     "metric3_value": "0",

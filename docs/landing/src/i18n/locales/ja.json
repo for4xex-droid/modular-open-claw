@@ -16,10 +16,10 @@
     "cta_secondary": "GitHub で見る →"
   },
   "social_proof": {
-    "metric1_value": "90,000+",
+    "metric1_value": "262,000+",
     "metric1_label": "行の本番用 Rust コード",
     "metric1_desc": "\"すべて AI エージェントが記述。人間のキーストロークは一切ありません。\"",
-    "metric2_value": "220+",
+    "metric2_value": "700+",
     "metric2_label": "パスする E2E テスト",
     "metric2_desc": "\"すべてのエンドポイントをカバーする自動品質ゲート。\"",
     "metric3_value": "0",
