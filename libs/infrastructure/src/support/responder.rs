@@ -50,7 +50,7 @@ impl SupportResponder {
                 prompt.push_str(&format!("Category: General Inquiries\nDetails: {}\n", raw));
             }
         }
-        prompt.push_str("\n");
+        prompt.push('\n');
 
         // 2. FAQ/Knowledge base (Karma)
         prompt.push_str("=== RELEVANT KNOWLEDGE (FAQ) ===\n");
@@ -66,7 +66,7 @@ impl SupportResponder {
                 ));
             }
         }
-        prompt.push_str("\n");
+        prompt.push('\n');
 
         // 3. System Diagnostics (自己診断)
         prompt.push_str("=== SYSTEM DIAGNOSTICS ===\n");
@@ -86,7 +86,7 @@ impl SupportResponder {
                 ));
             }
         }
-        prompt.push_str("\n");
+        prompt.push('\n');
 
         prompt.push_str("Please craft a professional, polite, and helpful response in Japanese (です・ます調).\n");
         prompt.push_str("If the issue is Critical/High severity, assure the user that their issue has been escalated to human engineers automatically.\n");
