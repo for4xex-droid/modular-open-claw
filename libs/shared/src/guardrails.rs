@@ -166,9 +166,9 @@ pub fn sanitize_for_prompt(input: &str) -> String {
                 || trimmed.starts_with('＃')
                 || trimmed.starts_with("－－－")
             {
-                format!(" \\{}", line)
+                format!(" \\{}", nfc_line)
             } else {
-                line.to_string()
+                nfc_line
             }
         })
         .collect::<Vec<_>>()

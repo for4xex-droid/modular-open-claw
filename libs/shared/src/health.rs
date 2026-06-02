@@ -72,6 +72,9 @@ pub struct ResourceStatus {
     /// LoRA 学習エンジンの状態 (Sprint 4)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lora_engine: Option<serde_json::Value>,
+    /// サポートインシデントの週間統計情報 (S-5)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub support_incidents: Option<serde_json::Value>,
 }
 
 /// システムの状態を監視する
@@ -167,6 +170,7 @@ impl HealthMonitor {
             fatigue: 10,
             llm_circuit_breaker: None,
             lora_engine: None,
+            support_incidents: None,
         }
     }
 }

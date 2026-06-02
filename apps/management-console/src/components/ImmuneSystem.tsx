@@ -34,6 +34,7 @@ const ImmuneSystem: React.FC = () => {
     const [newRule, setNewRule] = useState({ pattern: '', severity: 50, action: 'BLOCK' });
     const [editingId, setEditingId] = useState<string | null>(null);
     const { showToast } = useToast();
+    const [searchTerm, setSearchTerm] = useState('');
     
     // Confirm Modals state
     const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
@@ -280,6 +281,8 @@ const ImmuneSystem: React.FC = () => {
                             <Search size={18} color="var(--text-muted)" />
                             <input
                                 placeholder={t('immune.searchPlaceholder')}
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
                                 style={{ background: 'none', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '100%', fontSize: '0.9rem' }}
                             />
                         </div>
@@ -332,7 +335,7 @@ const ImmuneSystem: React.FC = () => {
                                     <input
                                         type="number"
                                         value={newRule.severity}
-                                        onChange={e => setNewRule({ ...newRule, severity: parseInt(e.target.value) || 0 })}
+                                        onChange={e => setNewRule({ ...newRule, severity: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) })}
                                         style={inputStyle}
                                     />
                                 </div>
@@ -363,7 +366,7 @@ const ImmuneSystem: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
                     <AnimatePresence>
                         {activeTab === 'RULES' ? (
-                            rules.length > 0 ? rules.map((rule, i) => (
+                            rules.length > 0 ? rules.filter(r => !searchTerm || r.pattern.toLowerCase().includes(searchTerm.toLowerCase()) || r.action.toLowerCase().includes(searchTerm.toLowerCase())).map((rule, i) => (
                             <motion.div
                                 key={rule.id}
                                 initial={{ opacity: 0, y: 10 }}
@@ -457,7 +460,7 @@ const ImmuneSystem: React.FC = () => {
                                 <div style={{ fontSize: '0.9rem' }}>{t('immune.noActiveRulesDesc')}</div>
                             </motion.div>
                         )) : activeTab === 'QUARANTINE' ? (
-                            quarantinedAssets.length > 0 ? quarantinedAssets.map((asset, i) => (
+                            quarantinedAssets.length > 0 ? quarantinedAssets.filter(a => !searchTerm || a.asset_name.toLowerCase().includes(searchTerm.toLowerCase()) || a.reason.toLowerCase().includes(searchTerm.toLowerCase())).map((asset, i) => (
                             <motion.div
                                 key={asset.id}
                                 initial={{ opacity: 0, y: 10 }}

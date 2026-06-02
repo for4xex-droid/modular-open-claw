@@ -114,6 +114,19 @@ pub async fn get_health_status(
         "status": if lora_ok { "ready" } else { "unavailable" }
     }));
 
+    // 🛡️ Phase S-5: サポートインシデント週間統計のロード
+    let support_repo = infrastructure::support::incident::SupportIncidentRepository::new(
+        state.job_queue.pool.clone(),
+    );
+    if let Ok(stats) = support_repo.compute_weekly_stats().await {
+        status.support_incidents = Some(serde_json::json!({
+            "total_incidents_7d": stats.total_incidents_7d,
+            "distinct_users": stats.distinct_users,
+            "unresolved": stats.unresolved,
+            "top_severity": stats.top_severity.unwrap_or_else(|| "None".to_string()),
+        }));
+    }
+
     Ok(Json(status))
 }
 

@@ -18,6 +18,8 @@ import { OllamaModelSelector } from './OllamaModelSelector';
 import { McpConfigManager } from './McpConfigManager';
 import { setAuthToken, authenticatedFetch, clearAuthToken } from '../lib/auth';
 import EscrowManagementView from './EscrowManagementView';
+import { OriginManager } from './OriginManager';
+import { ToxicityConfig } from './ToxicityConfig';
 
 interface SettingEntry {
     key: string;
@@ -141,16 +143,13 @@ const SettingsPage: React.FC = () => {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                        <div>
-                            <label style={labelStyle}>{t('settings.aiName')}</label>
-                            <input
-                                type="text"
-                                value={getSetting('ai_name')}
-                                placeholder={t('settings.aiNamePlaceholder', { defaultValue: 'Watchtower' }) as string}
-                                onChange={(e) => updateSetting('ai_name', e.target.value, 'identity')}
-                                style={inputStyle}
-                            />
-                        </div>
+                        <SettingInput
+                            label={t('settings.aiName')}
+                            value={getSetting('ai_name')}
+                            placeholder={t('settings.aiNamePlaceholder', { defaultValue: 'Watchtower' }) as string}
+                            onBlur={(v) => updateSetting('ai_name', v, 'identity')}
+                            saving={saving === 'ai_name'}
+                        />
 
                         <div>
                             <label style={labelStyle}>{t('settings.avatarCharacter')}</label>
@@ -187,7 +186,7 @@ const SettingsPage: React.FC = () => {
                                 {['vrm', 'lite', 'off'].map((m) => (
                                     <button
                                         key={m}
-                                        onClick={() => setMode(m as any)}
+                                        onClick={() => setMode(m as 'vrm' | 'lite' | 'off')}
                                         style={modeBtnStyle(mode === m)}
                                     >
                                         {m === 'vrm' ? '🌟 ' : m === 'lite' ? '⚡ ' : '🚫 '}{m}
@@ -466,7 +465,7 @@ const SettingsPage: React.FC = () => {
 
 // --- Sub-Components ---
 
-import { OriginManager } from './OriginManager';
+// OriginManager: imported at file top
 
 const SecretUpdater: React.FC = () => {
     const { t } = useTranslation();
@@ -526,7 +525,7 @@ const SecretUpdater: React.FC = () => {
     );
 };
 
-import { ToxicityConfig } from './ToxicityConfig';
+// ToxicityConfig: imported at file top
 
 const SettingInput: React.FC<{ label: string, value: string, placeholder?: string, onBlur: (v: string) => void, saving?: boolean, isPassword?: boolean }> = ({ label, value, placeholder, onBlur, saving, isPassword }) => {
     const [local, setLocal] = useState(value);

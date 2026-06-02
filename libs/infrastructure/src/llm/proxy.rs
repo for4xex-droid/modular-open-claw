@@ -71,11 +71,19 @@ impl ProxyLlmProvider {
             use hmac::{Hmac, Mac};
             use sha2::Sha256;
             type HmacSha256 = Hmac<Sha256>;
-            if let Ok(mut mac) = HmacSha256::new_from_slice(secret.expose_secret().as_bytes()) {
-                mac.update(payload.as_bytes());
-                let result = mac.finalize();
-                let signature = hex::encode(result.into_bytes());
-                builder = builder.header("X-Proxy-Signature", signature);
+            match HmacSha256::new_from_slice(secret.expose_secret().as_bytes()) {
+                Ok(mut mac) => {
+                    mac.update(payload.as_bytes());
+                    let result = mac.finalize();
+                    let signature = hex::encode(result.into_bytes());
+                    builder = builder.header("X-Proxy-Signature", signature);
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "⚠️ [KeyProxy] HMAC initialization failed (invalid key length?): {}. Request will be sent WITHOUT signature.",
+                        e
+                    );
+                }
             }
         }
         builder

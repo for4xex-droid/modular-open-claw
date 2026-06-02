@@ -119,7 +119,7 @@ pub fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
 /// `UniversalJobQueue` 構造体
 #[derive(Clone)]
 pub struct UniversalJobQueue {
-    pub(crate) pool: DatabasePool,
+    pub pool: DatabasePool,
     pub karma_cache: Arc<RwLock<HashMap<String, (KarmaSearchResult, Instant)>>>,
     pub llm: Option<Arc<dyn LlmProvider>>,
     pub embed_provider: Arc<RwLock<Option<Arc<dyn EmbeddingProvider>>>>,

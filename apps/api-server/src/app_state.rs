@@ -183,6 +183,7 @@ pub struct AppState {
     pub buzz_scheduler: Component<Arc<infrastructure::buzz::scheduler::BuzzScheduler>>,
     // --- Stripe Production Config ---
     pub stripe_price_subscription_monthly: Option<String>,
+    pub alert_manager: Component<Arc<infrastructure::alerts::AlertManager>>,
 }
 
 impl AppState {

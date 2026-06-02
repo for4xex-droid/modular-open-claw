@@ -199,6 +199,7 @@ pub mod disk_quota;
 mod hierarchical_router_tests;
 mod knowledge_indexer_tests;
 mod soul_store_tests;
+pub mod support;
 #[cfg(any(test, debug_assertions))]
 pub mod test_utils;
 mod workspace_manager_tests;

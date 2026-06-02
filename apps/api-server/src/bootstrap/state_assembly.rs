@@ -117,6 +117,7 @@ pub async fn assemble_app_state(
         circuit_breaker: Component::new(db.circuit_breaker.clone()),
         rate_limiter: Component::new(db.rate_limiter.clone()),
         slo_engine: Component::new(db.slo_engine.clone()),
+        alert_manager: Component::new(db.alert_manager.clone()),
         skill_arena: Component::new(std::sync::Arc::new(
             infrastructure::skills::skill_arena::SkillArena::new().with_db_pool(db.db_pool.clone()),
         )),

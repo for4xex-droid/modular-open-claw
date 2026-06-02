@@ -151,12 +151,16 @@ impl RegistryManager {
         };
 
         Ok(AssetManifest {
-            id: Uuid::parse_str(&row.0).unwrap_or(asset_id),
-            creator_id: Uuid::parse_str(&row.1).unwrap_or_default(),
+            id: Uuid::parse_str(&row.0).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Invalid asset UUID in DB: {e}"),
+            })?,
+            creator_id: Uuid::parse_str(&row.1).map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Invalid creator UUID in DB: {e}"),
+            })?,
             asset_type,
             name: row.3,
             description: row.4,
-            price_coins: row.5 as u64,
+            price_coins: row.5.max(0) as u64,
             safety_level,
             metadata: row.7.and_then(|m| serde_json::from_str(&m).ok()),
         })
@@ -254,7 +258,7 @@ impl RegistryManager {
                     asset_type: asset_type.clone(),
                     name: row.3,
                     description: row.4,
-                    price_coins: row.5 as u64,
+                    price_coins: row.5.max(0) as u64,
                     safety_level,
                     metadata: row.7.and_then(|m| serde_json::from_str(&m).ok()),
                 }
@@ -666,7 +670,7 @@ mod tests {
         // 購入前
         assert!(!registry.check_ownership(agent_id, asset_id).await.unwrap());
 
-        // 新しいメソッド: ライセンスの付与 (まだ未実装なのでコンパイルエラーになるかパニックするはず)
+        // ライセンスの付与
         registry
             .grant_license(agent_id, asset_id, "evt_test_grant".to_string())
             .await

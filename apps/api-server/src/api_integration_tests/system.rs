@@ -32,6 +32,14 @@ async fn test_health_check() {
         .expect("llm_circuit_breaker field missing");
     assert_eq!(cb["name"], "integration-test");
     assert_eq!(cb["state"], "Closed");
+
+    // Check Support Incidents stats (S-5)
+    let si = json
+        .get("support_incidents")
+        .expect("support_incidents field missing");
+    assert!(si.get("total_incidents_7d").is_some());
+    assert!(si.get("distinct_users").is_some());
+    assert!(si.get("unresolved").is_some());
 }
 #[serial]
 #[tokio::test]
@@ -593,4 +601,59 @@ async fn test_cortex_god_nodes() {
 
     let json = res.json::<serde_json::Value>();
     assert!(json.is_array(), "Expected God Nodes to be an array");
+}
+
+#[serial]
+#[tokio::test]
+async fn test_alert_manager_di_and_alerting() {
+    let (_server, state, _tmp) = create_test_server().await;
+
+    // 1. AppState に alert_manager フィールドが存在し、アクセス可能であることを検証
+    // （この時点では AppState にフィールドが存在しないため、コンパイルエラー（RED）となります）
+    let alert_manager = state.alert_manager.get_inner().clone();
+
+    // 2. AlertManager の基本的なアラート発火が機能するか検証
+    // テスト用の Notifier を登録し、アラートが通知されることを検証
+    #[derive(Debug)]
+    struct MockNotifier {
+        received: std::sync::Arc<tokio::sync::Mutex<Vec<(String, String)>>>,
+    }
+
+    #[async_trait::async_trait]
+    impl infrastructure::alerts::AlertNotifier for MockNotifier {
+        async fn send_alert(
+            &self,
+            title: &str,
+            message: &str,
+            _level: infrastructure::alerts::AlertLevel,
+        ) -> Result<(), aiome_core::error::AiomeError> {
+            self.received
+                .lock()
+                .await
+                .push((title.to_string(), message.to_string()));
+            Ok(())
+        }
+    }
+
+    let received = std::sync::Arc::new(tokio::sync::Mutex::new(Vec::new()));
+    let mock_notifier = std::sync::Arc::new(MockNotifier {
+        received: received.clone(),
+    });
+
+    alert_manager.register_notifier(mock_notifier).await;
+    let _ = alert_manager
+        .trigger_alert(
+            "Test Title",
+            "Test Message",
+            infrastructure::alerts::AlertLevel::Critical,
+        )
+        .await;
+
+    // Wait for async spawn to execute the notifier
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+    let results = received.lock().await;
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].0, "Test Title");
+    assert_eq!(results[0].1, "Test Message");
 }

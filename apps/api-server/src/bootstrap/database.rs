@@ -124,13 +124,23 @@ pub async fn init_database(preflight: &PreflightResult) -> anyhow::Result<Databa
         .await
         .unwrap_or_else(|_| uuid::Uuid::nil());
 
-    let circuit_breaker = Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
-        "api-server",
-        infrastructure::circuit_breaker::CircuitBreakerConfig {
-            failure_threshold: 5,
-            reset_timeout: std::time::Duration::from_secs(60),
-        },
-    ));
+    // Initialize AlertManager
+    let alert_manager = Arc::new(infrastructure::alerts::AlertManager::new());
+
+    // Register DiscordNotifier
+    let discord_notifier = Arc::new(infrastructure::alerts::DiscordNotifier::new());
+    alert_manager.register_notifier(discord_notifier).await;
+
+    let circuit_breaker = Arc::new(
+        infrastructure::circuit_breaker::CircuitBreaker::new_with_alerts(
+            "api-server",
+            infrastructure::circuit_breaker::CircuitBreakerConfig {
+                failure_threshold: 5,
+                reset_timeout: std::time::Duration::from_secs(60),
+            },
+            alert_manager.clone(),
+        ),
+    );
 
     // G-2: Per-Agent Rate Limiter (60 requests per minute)
     let rate_limiter = infrastructure::rate_limiter::AgentRateLimiter::new(60)?;
@@ -183,5 +193,6 @@ pub async fn init_database(preflight: &PreflightResult) -> anyhow::Result<Databa
         http_client,
         sandbox,
         hook_manager,
+        alert_manager,
     })
 }

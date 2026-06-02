@@ -1,3 +1,72 @@
+## 自律的サポートシステム用正常性/インシデント稼働状況ステータス画面（Status Page）の TDD 実装 (Phase S-5) (2026-06-02)
+
+### 1. ResourceStatus への週間インシデント統計フィールド拡張と API 結合
+- **変更内容**:
+    - `libs/shared/src/health.rs` [MODIFY]: `ResourceStatus` 構造体に `support_incidents` フィールド（`Option<serde_json::Value>`）を拡張。
+    - `apps/api-server/src/routes/general.rs` [MODIFY]: ヘルスチェック API（`/api/health`）に `SupportIncidentRepository` の週間統計計算処理（`compute_weekly_stats`）をロードして結合。
+    - `apps/api-server/src/api_integration_tests/system.rs` [MODIFY]: `test_health_check` 結合テストを拡張し、`support_incidents` および週間統計情報（直近7日間の総件数、未解決数など）の返却を検証するアサーションを追加。
+- **波及効果**:
+    - システム全体の健全性モニター（CPU、メモリ、ディスク使用量）と、顧客サポートインシデントの統計データ（週次合計件数、未解決件数、影響ユーザー数、ピーク重要度）が、ひとつのヘルスチェック API 経由で統合的に取得可能になり、システムの可観測性が大幅に向上。
+    - 正常系 ➔ 意図的障害注入（`total_incidents_7d_WRONG`）によるテスト失敗（Negative） ➔ Revert 復旧の 3 段階検証を完遂し、バックエンド側の堅牢性を確認。
+
+### 2. フロントエンド Status Page コンポーネントおよびテストの新規実装
+- **変更内容**:
+    - `apps/management-console/src/components/StatusPage.tsx` [NEW]: ガラスモーフィズムと Vanilla CSS アニメーションを適用したプレミアムな Status Page コンポーネントを新規実装。インシデント統計（直近7日間の件数、未解決数、ユーザー数、最多重要度）と、システムリソース（CPU、メモリ、ディスク使用量）のグラフおよびサーキットブレーカー/LoRA 整合状態 of 診断ビューを統合。
+    - `apps/management-console/src/components/StatusPage.test.tsx` [NEW]: 非同期ローディングとシステム健全性・サポート統計情報のレンダリング、および network エラー時の優雅なフォールバック表示を検証する Jest 結合テストを 2 件実装。
+- **波及効果**:
+    - サービス稼働状況やインシデント状況、システムリソースをリアルタイムに一元監視できる美しい管理ダッシュボードが完成。
+    - 非同期フェッチのタイミングを考慮した頑健な Jest テストによって、表示ロジックの回帰バグが CI 上で 100% 防止されます。
+
+### 3. メインアプリケーション（App.tsx）への Status Page のシームレスな統合
+- **変更内容**:
+    - `apps/management-console/src/App.tsx` [MODIFY]: `StatusPage` の遅延インポート（React.lazy）、`status-page` タブのルーティング登録、左サイドバー（Control セクション）への NavItem マウント、およびヘッダーとコンテンツ切り替え表示の統合。
+- **波及効果**:
+    - 管理コンソールのメニューに「System Integrity」という美しい NavItem が出現し、ユーザーがワンクリックでシステム正常性ステータスページに遷移・監視できるようになりました。
+    - フロントエンド全体の 280 のすべてのテストが 100% GREEN (PASS) で合格することを確認し、他のコンポーネントやナビゲーションへの影響がないことを実証。
+
+## 自律的サポートシステム用フィードバック収集および Karma 調整モジュール（Feedback Collector）の TDD 実装 (Phase S-4) (2026-06-02)
+
+### 1. SupportFeedbackCollector の新規作成と Karma Registry との連動
+- **変更内容**:
+    - `libs/infrastructure/src/support/feedback.rs` [NEW]: `SupportFeedbackCollector` を新設。インシデントIDに対するフィードバック（解決または未解決）を受理し、`support_incidents` テーブルのステータス更新を行うとともに、自己修復による診断ログ `agent_diagnoses` から元の失敗ジョブとそれに紐付く教訓カルマ `karma_logs` の ID を自動的かつ正確に特定・解決する処理を実装。
+    - `libs/infrastructure/src/support/mod.rs` [MODIFY]: `pub mod feedback;` を登録し外部に公開。
+- **波及効果**:
+    - ユーザーからの解決・未解決フィードバックが、データベースを跨いだJOIN処理によってAIエージェントの教訓・長期記憶（Karma）の重み（Weight）と完全に双方向接続されました。
+
+### 2. フィードバックに応じた Karma 重みの報酬・ペナルティ調整
+- **変更内容**:
+    - `libs/infrastructure/src/support/feedback.rs` [NEW]: 解決時（`resolved == true`）に Karma 重みを `+10` ブーストし、未解決時（`resolved == false`）には `-15` のペナルティを与える連動調整ロジックを実装。
+- **波及効果**:
+    - 自己修復によって自動構築されたパッチ・対策教訓の有用性を人間（ユーザー）のフィードバックに基づいて強化学習型で動的に評価・反映する仕組みが完成し、AIエージェントの長期的な自己進化・自己修復の適合度が劇的に向上。
+
+### 3. TDD によるテスト駆動開発と 3段階検証プロトコルの完遂
+- **変更内容**:
+    - `libs/infrastructure/src/support/feedback.rs` [NEW]: インメモリデータベース上でジョブ・教訓カルマ・診断ログ・インシデントログをすべてJOINさせた統合ユニットテストを追加。
+- **波及効果**:
+    - SQLite の Karma 重み CHECK 制約（`weight BETWEEN 0 AND 100`）による更新エラー（100+10=110での制約違反）を早期検知し、初期重みを `80` とすることで安全に範囲内でアサートする強固なテスト設計を実証。
+    - Positive Test ➔ アサーション障害注入によるテスト不合格確認（Negative Test） ➔ アサーション復元（Revert）の 3段階検証プロトコルを完全にクリア。
+
+## 自律的サポートシステム用インシデント管理リポジトリ（Incident Generator） of TDD 実装 (Phase S-3) (2026-06-02)
+
+### 1. SupportIncidentRepository の新規作成と SQLite/Postgres 両対応の CRUD 実装
+- **変更内容**:
+    - `libs/infrastructure/src/support/incident.rs` [NEW]: `SupportIncidentRepository` を新設し、インシデントの新規登録（UUID v4 自動生成）、特定IDによるフェッチ、オープンインシデント一覧取得、ステータス変更（Resolved時の解決時刻自動打刻を含む）、推奨修正案（suggested_fix）の更新を実装。SQLite/Postgres の双方の SQL ダイアレクトとプレースホルダーに対応。
+    - `libs/infrastructure/src/support/mod.rs` [MODIFY]: `pub mod incident;` を登録し外部に公開。
+- **波及効果**:
+    - サポートシステムの運用状況をデータベース上で永続化管理するための堅牢なリポジトリが完成。オンラインマイグレーションシステムと完全に連動し、テスト時には自動的に SQLite インメモリ DB スキーマが構築されるクリーンな構造を実現。
+
+### 2. サポート週間統計計算ロジック（compute_weekly_stats）の実装
+- **変更内容**:
+    - `libs/infrastructure/src/support/incident.rs` [NEW]: 過去7日間の総インシデント件数、重複排除ユーザー数、現在未解決（Open, InProgress, Escalated）件数、最多発生重要度レベル（top_severity）を1クエリで効率よく集計・算出する週間統計メソッドを実装。
+- **波及効果**:
+    - サポート窓口や管理ダッシュボードに対して、直近のシステム負荷状況や重要インシデントのトレンドを瞬時に提供可能な可観測性インフラが確立。
+
+### 3. TDD によるテスト駆動開発と 3段階検証プロトコルの完遂
+- **変更内容**:
+    - `libs/infrastructure/src/support/incident.rs` [NEW]: インメモリデータベースを用いた正常系ユニットテスト（`test_support_insert_and_fetch`, `test_support_weekly_stats`, `test_support_update_status_and_fix`）を追加。
+- **波及効果**:
+    - Positive Test ➔ 意図的なアサーション書き換えによるテスト失敗確認（Negative Test） ➔ アサーションの復元（Revert）という 3 段階検証プロトコルを完全にパス。サイレントな回帰バグの混入を CI 上で恒久的に防止。
+
 ## SQLite データベース・オンラインバックアップ戦略の実装 (Phase C-3) (2026-06-02)
 
 ### 1. DatabasePool へのバックアップ API 統合

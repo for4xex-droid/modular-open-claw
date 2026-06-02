@@ -155,4 +155,14 @@ pub enum ControlCommand {
         platform: String,
         content_id: String,
     },
+    SupportReport {
+        message: String,
+        channel_id: u64,
+        severity: String,
+    },
+    SupportFeedback {
+        incident_id: String,
+        resolved: bool,
+        channel_id: u64,
+    },
 }

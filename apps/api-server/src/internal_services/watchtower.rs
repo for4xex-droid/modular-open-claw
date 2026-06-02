@@ -137,8 +137,48 @@ async fn handle_control_command(
                 channel_id
             );
 
-            // AgentEngine を使用して対話を実行
             let state_clone = state.clone();
+            let msg = message.clone();
+
+            // サポート分岐は spawn 前で実行
+            if message.starts_with("!bug")
+                || message.starts_with("!help")
+                || message.starts_with("/support")
+            {
+                tokio::spawn(async move {
+                    info!("🛡️ [Watchtower] Support request received: {}", msg);
+                    let classifier = infrastructure::support::classifier::SupportClassifier::new(
+                        state_clone.intent_firewall.get_inner().clone(),
+                    );
+                    match classifier.classify(&msg).await {
+                        Ok(intent) => {
+                            let response_text = match intent {
+                                infrastructure::support::escalator::SupportIntent::BugReport { summary, severity } => {
+                                    format!("🛡️ [サポート] 不具合報告を受領しました。\n概要: {}\n重要度: {:?}", summary, severity)
+                                }
+                                infrastructure::support::escalator::SupportIntent::GeneralChat => {
+                                    "🛡️ [サポート] お問い合わせありがとうございます。どのようなお困りごとでしょうか？".to_string()
+                                }
+                                _ => {
+                                    "🛡️ [サポート] お問い合わせを受領しました。順次対応いたします。".to_string()
+                                }
+                            };
+                            let _ = state_clone.event_sender.get_inner().send(
+                                CoreEvent::ChatResponse {
+                                    response: response_text,
+                                    channel_id,
+                                    resource_path: None,
+                                },
+                            );
+                        }
+                        Err(e) => {
+                            error!("❌ [Watchtower] SupportClassifier failed: {:?}", e);
+                        }
+                    }
+                });
+                return; // ← 通常 Chat フローには行かない
+            }
+
             let prompt = message.clone();
 
             tokio::spawn(async move {

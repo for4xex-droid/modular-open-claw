@@ -115,6 +115,7 @@ pub struct DatabaseResult {
     pub http_client: reqwest::Client,
     pub sandbox: Arc<shared::sandbox::PathSandbox>,
     pub hook_manager: Arc<infrastructure::security::hook_manager::HookManager>,
+    pub alert_manager: Arc<infrastructure::alerts::AlertManager>,
 }
 
 pub struct ProviderResult {

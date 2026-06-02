@@ -633,6 +633,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
                 },
             ),
         )),
+        alert_manager: Component::new(Arc::new(infrastructure::alerts::AlertManager::new())),
         rate_limiter: Component::new(rate_limiter),
         slo_engine: Component::new(Arc::new(infrastructure::slo_engine::SloEngine::new(
             infrastructure::slo_engine::SloConfig {

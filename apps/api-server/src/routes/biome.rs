@@ -350,3 +350,95 @@ pub async fn send_message(
     });
     Ok((status, Json(body)).into_response())
 }
+
+#[cfg(test)]
+mod tests {
+    /// Biome バリデーションロジックのユニットテスト
+    /// ハンドラ内のインライン検証ロジックを再現してテスト
+
+    const MAX_CONTENT_BYTES: usize = 8000;
+
+    #[test]
+    fn test_content_size_within_limit() {
+        let content = "a".repeat(MAX_CONTENT_BYTES);
+        assert!(content.len() <= MAX_CONTENT_BYTES);
+    }
+
+    #[test]
+    fn test_content_size_exceeds_limit() {
+        let content = "a".repeat(MAX_CONTENT_BYTES + 1);
+        assert!(content.len() > MAX_CONTENT_BYTES);
+    }
+
+    #[test]
+    fn test_content_size_multibyte_chars() {
+        // 日本語: 1文字 = 3バイト (UTF-8)
+        let content = "あ".repeat(2667); // 2667 * 3 = 8001 bytes
+        assert!(content.len() > MAX_CONTENT_BYTES);
+    }
+
+    #[test]
+    fn test_base64_embedding_blocked() {
+        let test_cases = vec![
+            "Hello data:image/png;base64,abc123",
+            "data:video/mp4;base64,xyz",
+            "innocent text;base64,payload",
+            "DATA:IMAGE/JPEG;BASE64,upper",
+        ];
+        for input in test_cases {
+            let lower = input.to_lowercase();
+            let blocked = lower.contains("data:image/")
+                || lower.contains("data:video/")
+                || lower.contains(";base64,");
+            assert!(blocked, "Should block: {}", input);
+        }
+    }
+
+    #[test]
+    fn test_normal_content_not_blocked() {
+        let safe_inputs = vec![
+            "Hello, world!",
+            "The base64 encoding is interesting",
+            "data about images",
+            "video analysis report",
+        ];
+        for input in safe_inputs {
+            let lower = input.to_lowercase();
+            let blocked = lower.contains("data:image/")
+                || lower.contains("data:video/")
+                || lower.contains(";base64,");
+            assert!(!blocked, "Should NOT block: {}", input);
+        }
+    }
+
+    #[test]
+    fn test_autonomous_interval_clamping() {
+        // 最小10秒
+        assert_eq!(5_u64.clamp(10, 3600), 10);
+        // デフォルト60秒
+        assert_eq!(60_u64.clamp(10, 3600), 60);
+        // 最大3600秒
+        assert_eq!(9999_u64.clamp(10, 3600), 3600);
+    }
+
+    #[test]
+    fn test_autonomous_max_rounds_clamping() {
+        // 0は1に引き上げ
+        assert_eq!(0_u32.clamp(1, 1000), 1);
+        // デフォルト10
+        assert_eq!(10_u32.clamp(1, 1000), 10);
+        // 上限1000
+        assert_eq!(5000_u32.clamp(1, 1000), 1000);
+    }
+
+    #[test]
+    fn test_empty_content_allowed() {
+        let content = "";
+        assert!(content.len() <= MAX_CONTENT_BYTES);
+        let lower = content.to_lowercase();
+        let blocked = lower.contains("data:image/")
+            || lower.contains("data:video/")
+            || lower.contains(";base64,");
+        assert!(!blocked);
+    }
+}

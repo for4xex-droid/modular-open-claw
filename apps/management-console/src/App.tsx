@@ -49,6 +49,7 @@ const DiagnosticsHistory = React.lazy(() => import("./components/DiagnosticsHist
 const GraphView = React.lazy(() => import("./components/GraphView"));
 const PromptStatsView = React.lazy(() => import("./components/PromptStatsView"));
 const SettingsPage = React.lazy(() => import("./components/SettingsPage"));
+const StatusPage = React.lazy(() => import("./components/StatusPage"));
 const ExpressionPipeline = React.lazy(() => import("./components/ExpressionPipeline"));
 const LoraTrainingView = React.lazy(() => import("./components/LoraTrainingView"));
 const BiomeDialogueView = React.lazy(() => import("./components/BiomeDialogueView"));
@@ -279,7 +280,7 @@ function App() {
 
   const isVisible = (tab: string) => {
     const beginner = ['home-v2', 'agent', 'artifacts', 'settings'];
-    const intermediate = [...beginner, 'dashboard', 'demo', 'cortex', 'vault', 'store', 'nurture', 'mcp-dashboard', 'seo-pulse'];
+    const intermediate = [...beginner, 'dashboard', 'demo', 'cortex', 'vault', 'store', 'nurture', 'mcp-dashboard', 'seo-pulse', 'status-page'];
     const advanced = [...intermediate, 'karma', 'graph', 'causal', 'biome', 'audit', 'prompt-stats', 'immune', 'lora', 'expressions', 'ban-dashboard'];
     
     if (viewMode === 'beginner') return beginner.includes(tab);
@@ -521,10 +522,18 @@ function App() {
 
         <nav className="nav-group">
           <h4>{t('nav.section.control')}</h4>
+          {isVisible("status-page") && (
+            <NavItem
+              icon={<Shield size={20} />}
+              label={t('nav.statusPage', { defaultValue: 'System Integrity' }) as string}
+              active={activeTab === "status-page"}
+              onClick={() => setActiveTab("status-page")}
+            />
+          )}
           {isVisible("ban-dashboard") && (
             <NavItem
               icon={<Shield size={20} />}
-              label="Compliance (BAN)"
+              label="Governance & BAN Dashboard"
               active={activeTab === "ban-dashboard"}
               onClick={() => setActiveTab("ban-dashboard")}
             />
@@ -663,6 +672,7 @@ function App() {
             {activeTab === "lora" && t('page.loraAutotuner')}
             {activeTab === "settings" && t('page.settings')}
             {activeTab === "agency" && "Agency Onboarding"}
+            {activeTab === "status-page" && (t('page.statusPage', { defaultValue: 'System Integrity' }) as string)}
           </motion.h2>
 
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -714,6 +724,7 @@ function App() {
               {activeTab === "lora" && <LoraTrainingView />}
               {activeTab === "settings" && <SettingsPage />}
               {activeTab === "agency" && <AiaaOnboardingWizard />}
+              {activeTab === "status-page" && <StatusPage />}
             </motion.div>
           </React.Suspense>
         </AnimatePresence>

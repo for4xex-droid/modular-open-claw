@@ -6,14 +6,12 @@
  */
 
 use crate::registry::RegistryManager;
-use crate::security::mlock::MlockedVec;
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::voice_vault::VoiceKeyVault;
 use async_trait::async_trait;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use uuid::Uuid;
-use zeroize::{Zeroize, Zeroizing};
+use zeroize::Zeroizing;
 
 use sqlx::SqlitePool;
 

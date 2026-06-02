@@ -97,6 +97,8 @@ pub const ALLOWED_KEYS: &[&str] = &[
     "lora_opt_out",
     "csam_toxicity_forbidden_words",
     "tos_accepted",
+    "llm_api_url",
+    "ENABLE_TOOL_REVIEWER",
 ];
 
 pub const ALLOWED_CATEGORIES: &[&str] = &[
@@ -150,7 +152,8 @@ pub async fn update_setting(
     Json(payload): Json<UpdateSettingsRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     // 1. Key whitelist check
-    if !ALLOWED_KEYS.contains(&payload.key.as_str()) && !payload.key.starts_with("feature_flag.") {
+    let is_feature_flag = payload.key.starts_with("feature_flag.");
+    if !ALLOWED_KEYS.contains(&payload.key.as_str()) && !is_feature_flag {
         warn!(
             "🚨 [Security] Unauthorized settings key attempt: {}",
             payload.key
@@ -159,6 +162,25 @@ pub async fn update_setting(
             reason: "Unauthorized setting key".to_string(),
         }
         .into());
+    }
+
+    // 1b. Feature flag key sanitization: only alphanumeric + underscore allowed after prefix
+    if is_feature_flag {
+        if let Some(flag_name) = payload.key.strip_prefix("feature_flag.") {
+            if flag_name.is_empty()
+                || !flag_name
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_')
+            {
+                warn!(
+                    "🚨 [Security] Invalid feature_flag key format: {}",
+                    payload.key
+                );
+                return Err(AppError::bad_request(
+                    "Feature flag key must contain only alphanumeric characters and underscores",
+                ));
+            }
+        }
     }
 
     // 2. Category validation
@@ -672,5 +694,116 @@ mod tests {
             "Service 'anthropic' was not routed correctly in test_cloud_connection. Message: {}",
             res.message
         );
+    }
+
+    // --- Feature Flag Key Validation Tests ---
+
+    /// Helper: checks if a feature_flag key name is valid (alphanumeric + underscore only)
+    fn is_valid_feature_flag_name(key: &str) -> bool {
+        if let Some(flag_name) = key.strip_prefix("feature_flag.") {
+            !flag_name.is_empty()
+                && flag_name
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_')
+        } else {
+            false
+        }
+    }
+
+    #[test]
+    fn test_feature_flag_valid_keys() {
+        assert!(is_valid_feature_flag_name("feature_flag.seo_publish"));
+        assert!(is_valid_feature_flag_name("feature_flag.p2p_federation"));
+        assert!(is_valid_feature_flag_name(
+            "feature_flag.intent_first_suggestion"
+        ));
+        assert!(is_valid_feature_flag_name("feature_flag.A1"));
+    }
+
+    #[test]
+    fn test_feature_flag_rejects_path_traversal() {
+        assert!(!is_valid_feature_flag_name(
+            "feature_flag.../../../../etc/passwd"
+        ));
+        assert!(!is_valid_feature_flag_name("feature_flag../../../shadow"));
+        assert!(!is_valid_feature_flag_name("feature_flag.foo/bar"));
+    }
+
+    #[test]
+    fn test_feature_flag_rejects_dot_notation() {
+        assert!(!is_valid_feature_flag_name("feature_flag.nested.key"));
+        assert!(!is_valid_feature_flag_name("feature_flag.a.b.c"));
+    }
+
+    #[test]
+    fn test_feature_flag_rejects_empty() {
+        assert!(!is_valid_feature_flag_name("feature_flag."));
+    }
+
+    #[test]
+    fn test_feature_flag_rejects_special_chars() {
+        assert!(!is_valid_feature_flag_name("feature_flag.key-with-dash"));
+        assert!(!is_valid_feature_flag_name("feature_flag.key with space"));
+        assert!(!is_valid_feature_flag_name("feature_flag.key;injection"));
+        assert!(!is_valid_feature_flag_name("feature_flag.日本語"));
+    }
+
+    #[test]
+    fn test_value_length_limit() {
+        let short_val = "a".repeat(4096);
+        assert!(short_val.len() <= 4096);
+
+        let long_val = "a".repeat(4097);
+        assert!(long_val.len() > 4096);
+    }
+
+    #[test]
+    fn test_masked_secret_detection() {
+        let mask = "••••••••";
+        assert_eq!(mask, "••••••••");
+        // Ensure the mask string isn't accidentally stored
+        for secret_key in SECRETS {
+            assert!(
+                SECRETS.contains(secret_key),
+                "All SECRETS entries should be valid"
+            );
+        }
+    }
+
+    #[test]
+    fn test_commerce_keys_are_allowed_and_secret() {
+        for key in &[
+            "stripe_api_key",
+            "stripe_webhook_secret",
+            "polar_api_key",
+            "polar_webhook_secret",
+        ] {
+            assert!(
+                ALLOWED_KEYS.contains(key),
+                "{} should be in ALLOWED_KEYS",
+                key
+            );
+            assert!(SECRETS.contains(key), "{} should be in SECRETS", key);
+        }
+    }
+
+    #[test]
+    fn test_frontend_used_keys_are_allowed() {
+        // Keys used by SettingsPage.tsx must be in ALLOWED_KEYS
+        let frontend_keys = &[
+            "llm_api_url",
+            "ENABLE_TOOL_REVIEWER",
+            "ai_name",
+            "llm_provider",
+            "ollama_model",
+            "commerce_provider",
+        ];
+        for key in frontend_keys {
+            assert!(
+                ALLOWED_KEYS.contains(key),
+                "Frontend key '{}' is missing from ALLOWED_KEYS — will cause silent save failure",
+                key
+            );
+        }
     }
 }

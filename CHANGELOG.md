@@ -1,6 +1,35 @@
 ## [Unreleased]
 
+### Fixed
+- **Settings API / UI 安定化と feature_flag パストラバーサル防止のセキュリティ堅牢化 (Batch 2 /reflexion)**:
+  - `apps/api-server/src/routes/settings.rs` [MODIFY]: `feature_flag` 設定キーのバリデーションに厳格な英数字+アンダースコアの文字種制限（`^[a-zA-Z0-9_]+$`）を導入し、パストラバーサルを構造的に排除。`llm_api_url` および `ENABLE_TOOL_REVIEWER` キーを `ALLOWED_KEYS` ホワイトリストに追加し、フロント・バックエンド不整合による 400 エラーを解消。テストケースを 6 ➔ 15 件へ拡張。
+  - `apps/management-console/src/components/SettingsPage.tsx` [MODIFY]: 設定変更時の `onChange` 反映に伴う大量 API リクエスト（DoS）を `onBlur` 反映へ移行して解消。ファイル途中でのインポートを上部へ整理、および `as any` キャストを正しい共用体型へリファクタリング。
+- **Biome P2P コンテンツおよび CSAM / Toxicity 漏洩防御 (Batch 1 /reflexion)**:
+  - `apps/api-server/src/routes/biome.rs` [MODIFY]: 送信メッセージの 8000 バイト上限検証、および Base64 / `data:image/` などのバイナリ埋め込みによる CSAM 制限のすり抜け試行を境界防御で遮断する安全ガードを実装。テストケースを 8 件追加して検証を強化。
+- **ImmuneSystem 設定コンポーネントの挙動修復と安全クランプ (Batch 2 /reflexion)**:
+  - `apps/management-console/src/components/ImmuneSystem.tsx` [MODIFY]: デッド状態だった検索ボックス (`searchTerm`) を状態およびフィルタリングロジックへマウントして機能を修復。severity（重要度）入力欄を 1〜100 の範囲に厳格にクランプ。
+- **HMAC 署名検証スキップ時のデバッグ診断性向上 (Batch 2 /reflexion)**:
+  - `libs/infrastructure/src/llm/proxy.rs` [MODIFY]: HMAC 署名検証の初期化失敗によるサイレントな検証スキップを防止するため、`tracing::warn` による警告ログを明示的に出力するように改善。
+
 ### Added
+- **自律的サポートシステム用正常性/インシデント稼働状況ステータス画面（Status Page）の TDD 実装 (Phase S-5)**:
+  - `libs/shared/src/health.rs` [MODIFY]: `ResourceStatus` 構造体に `support_incidents` フィールド（`Option<serde_json::Value>`）を拡張。
+  - `apps/api-server/src/routes/general.rs` [MODIFY]: ヘルスチェック API（`/api/health`）に `SupportIncidentRepository` の週間統計計算処理をロードして結合。
+  - `apps/api-server/src/api_integration_tests/system.rs` [MODIFY]: `test_health_check` 結合テストを拡張し、`support_incidents` および週間統計情報（直近7日間の総件数、未解決数など）の返却をアサート。
+  - `apps/management-console/src/components/StatusPage.tsx` [NEW]: ガラスモーフィズムと Vanilla CSS アニメーションを適用したプレミアムな Status Page コンポーネントを新規実装。インシデント統計（直近7日間の件数、未解決数、ユーザー数、最多重要度）と、システムリソース（CPU、メモリ、ディスク使用量）のグラフおよびサーキットブレーカー/LoRA 整合状態の診断ビューを統合。
+  - `apps/management-console/src/components/StatusPage.test.tsx` [NEW]: 非同期ローディングとシステム健全性・サポート統計情報のレンダリングを検証する Jest 結合テストを 2 件実装。
+  - `apps/management-console/src/App.tsx` [MODIFY]: `StatusPage` の遅延インポート、`status-page` タブのルーティング登録、左サイドバーへの NavItem マウント、およびヘッダーとコンテンツ切り替え表示の統合。
+  - **Verification**: 
+    - バックエンド側：正常系テスト合格 ➔ `total_incidents_7d_WRONG` のアサーションによる意図的なテスト失敗検知（Negative） ➔ 元の正しいアサーションへの Revert の 3 段階検証プロトコルを 100% 完遂。
+    - フロントエンド側：コンポーネント未実装による Jest 起動失敗（RED）➔ コンポーネントおよび App.tsx への統合完了によるテスト合格（GREEN）➔ 状態遷移アサーション（非同期ローディング待機やネットワークエラー時のフォールバック表示）の 3 段階検証を完遂。フロントエンド全体の全 280 テストケースが完全グリーンで合格。
+- **自律的サポートシステム用フィードバック収集および Karma 調整モジュール（Feedback Collector）の TDD 実装 (Phase S-4)**:
+  - `libs/infrastructure/src/support/feedback.rs` [NEW]: `SupportFeedbackCollector` を新規実装。インシデントへのユーザーフィードバック（解決/未解決）を処理し、自己修復の診断ログ（`agent_diagnoses`）から失敗ジョブの教訓（`karma_logs`）の ID を逆引き・特定。解決時には Karma 重みを `+10` ブーストし、未解決時には `-15` ペナルティを課す Karma Registry 連携ロジックを統合。
+  - `libs/infrastructure/src/support/mod.rs` [MODIFY]: `pub mod feedback;` モジュールを登録。
+  - **Verification**: `cargo test -p infrastructure --lib support::feedback::tests` による正常系（Positive：解決時のKarma加算およびインシデント Resolved への更新、未解決時のKarma減算および Escalated への更新） ➔ 意図的なアサーション障害注入によるテスト不合格（Negative） ➔ アサーションの復元（Revert）の 3 段階検証プロトコルを 100% 完遂。
+- **自律的サポートシステム用インシデント管理リポジトリ（Incident Generator）の TDD 実装 (Phase S-3)**:
+  - `libs/infrastructure/src/support/incident.rs` [NEW]: SQLite/Postgres 両対応 of `SupportIncidentRepository` を新規実装。インシデントの新規登録（UUID v4 自動生成）、特定IDによるフェッチ、オープンなインシデントのソート・上限取得、ステータス変更（Resolved時の解決時刻自動打刻を含む）、推奨修正案（suggested_fix）の更新、および過去7日間の総件数・重複排除ユーザー数・未解決件数・最多発生重要度レベルの集計等を行う週間統計計算メソッド（`compute_weekly_stats`）を完備。
+  - `libs/infrastructure/src/support/mod.rs` [MODIFY]: `pub mod incident;` モジュールを登録。
+  - **Verification**: `cargo test -p infrastructure --lib support::incident::tests` による正常系（Positive：挿入、取得、ステータス更新、週間統計計算） ➔ 意図的なアサーション障害注入によるテスト不合格（Negative） ➔ アサーションの復元（Revert）の 3 段階検証プロトコルを 100% 完遂。
 - **バイアウト（M&A）戦略行動計画書のモジュール構造化および TDD 整合性検証の完了**:
   - `brain` ディレクトリ内の巨大なバイアウト戦略行動計画書 (`buyout_strategy.md` 945行 / 95 KB) を、対象読者および経営・技術・法務のドメイン境界に基づいて 4 つのマークダウン仕様書（`executive_summary.md`, `technical_asset_inventory.md`, `business_plan.md`, `verification_log.md`）へと完全に分割・モジュール構造化。
   - `verify_split.py` [NEW] (TDD検証スクリプト) を作成し、元の文書からの文言、詳細な数値、アスキーアートテーブルの漏れが「0行」（100% カバレッジ）であることを厳格に自動検証。
