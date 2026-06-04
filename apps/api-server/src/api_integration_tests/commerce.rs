@@ -369,6 +369,11 @@ async fn test_syndicate_guild_sanitization() {
 #[serial]
 #[tokio::test]
 async fn test_create_checkout_session() {
+    // 他の並列テストからの環境変数干渉を防ぐためのセーフガード
+    let old_allowed = std::env::var("ALLOWED_ORIGINS").ok();
+    std::env::remove_var("ALLOWED_ORIGINS");
+    std::env::set_var("AIOME_DEV_MODE", "1");
+
     let (server, _state, _tmp_dir) = create_test_server().await;
 
     let agent_id = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
@@ -430,6 +435,13 @@ async fn test_create_checkout_session() {
         .await;
 
     assert_eq!(res_bad_cancel.status_code(), 400);
+
+    // 環境変数の復元
+    if let Some(val) = old_allowed {
+        std::env::set_var("ALLOWED_ORIGINS", val);
+    } else {
+        std::env::remove_var("ALLOWED_ORIGINS");
+    }
 }
 #[serial]
 #[tokio::test]
