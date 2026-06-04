@@ -7,6 +7,8 @@
   - 主要ライブラリ (`shared`, `soul`, `core`, `aiome-commerce`, `infrastructure`, `napi-bridge`) およびすべてのアプリケーション (`api-server`, `aiome-migrate`, `samsara-hub`, `aiome-node`) から、不要な `allow(unused_imports, unused_variables, unused_mut)` 属性を除去。
   - `cargo fix` の適用によって破損したテストコード側のインポート関係を手動で復元し、インポート文と未使用変数を徹底的にクリーンアップ。
   - ワークスペース全体で `cargo check --workspace --tests` を警告0件、エラー0件で完全にクリーンパスするように修復。
+- **テストコード (commerce) の Flakiness 修正**:
+  - `apps/api-server/src/api_integration_tests/commerce.rs` の `test_create_checkout_session` が他の並列テストによる環境変数 `ALLOWED_ORIGINS` の変更影響を受けないよう、テスト開始時に退避・アンセットし、終了時に復元するセーフガードロジックを実装。
 
 ### Added
 - **aiome.dev ランディングページ デプロイ基盤および SPA リダイレクト処理の TDD 実装**:
