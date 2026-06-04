@@ -18,9 +18,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use aiome_core_contracts::lora_marketplace::{
-    ListingFilter, ListingStatus, LoraListing, LoraPurchase,
-};
+use aiome_core_contracts::lora_marketplace::{ListingFilter, ListingStatus, LoraListing};
 
 // --- Request / Response DTOs ---
 

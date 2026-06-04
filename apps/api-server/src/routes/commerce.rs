@@ -7,7 +7,6 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use aiome_core::traits::*;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -15,7 +14,6 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]

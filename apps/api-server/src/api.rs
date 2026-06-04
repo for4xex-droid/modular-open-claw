@@ -5,7 +5,6 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_core::traits::SettingsOps;
 use utoipa::OpenApi;
 
 #[derive(OpenApi)]
@@ -274,7 +273,7 @@ impl utoipa::Modify for SecurityAddon {
             for (path, item) in debug_doc.paths.paths {
                 openapi.paths.paths.insert(path, item);
             }
-            if let (Some(mut debug_components), Some(components)) =
+            if let (Some(debug_components), Some(components)) =
                 (debug_doc.components.take(), openapi.components.as_mut())
             {
                 for (name, schema) in debug_components.schemas {
@@ -285,7 +284,7 @@ impl utoipa::Modify for SecurityAddon {
 
         #[cfg(any(debug_assertions, feature = "demo"))]
         {
-            let mut demo_doc = DemoApiDoc::openapi();
+            let demo_doc = DemoApiDoc::openapi();
             for (path, item) in demo_doc.paths.paths {
                 openapi.paths.paths.insert(path, item);
             }

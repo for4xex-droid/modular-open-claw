@@ -5,7 +5,6 @@
  * Licensed under the Apache License, Version 2.0.
  */
 use crate::error::AppError;
-use aiome_core::traits::SettingsOps;
 use infrastructure::db::DatabaseTransaction;
 use tracing::{error, info, warn};
 

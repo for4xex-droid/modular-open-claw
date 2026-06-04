@@ -6,7 +6,6 @@
  */
 
 use super::common::*;
-use crate::app_state::Component;
 use axum::http::StatusCode;
 use serde_json::json;
 use serial_test::serial;

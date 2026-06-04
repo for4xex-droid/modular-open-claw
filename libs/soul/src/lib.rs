@@ -7,7 +7,7 @@
  * Licensed under the Business Source License 1.1.
  */
 #![forbid(unsafe_code)]
-#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
+// #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 //! # Soul Engine
 //!
 //! AIエージェントに「魂」を宿すためのフェーズ3 アーキテクチャ

@@ -7,9 +7,7 @@
 #[cfg(test)]
 mod tests {
     use axum::http::Request;
-    use mdns_sd::{ServiceDaemon, ServiceInfo};
-    use std::collections::HashMap;
-    use std::time::Duration;
+
     // use tower::ServiceExt; の代わりに直接 axum::serve や oneshot を自作できないか？
     // oneshot を使うには `tower::ServiceExt` が必要。`samsara-hub` の依存に tower があるはず。
 

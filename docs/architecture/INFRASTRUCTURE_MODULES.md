@@ -33,7 +33,7 @@
 | `cortex_query`   | 抽出済みのドキュメントやコンパイル済みWikiの双方に対して、セマンティックな意味検索を提供するエンジン。FTS5 高速化に加え、Typed Linksの最小 `confidence` に基づく `evidence_quality` (extracted/inferred/ambiguous) 導出機能を統合済。 | **Phase D & CT 完了** |
 | `dataset_extractor` | SoulStoreから記憶（`experiences`）を抽出し、MLX LoRA学習用JSONLデータセットに動的に蒸留・フォーマット変換を行うETL基盤。スレッドセーフかつコンテキスト維持（破滅的忘却防止）を担う。 | **Phase 1A-2 完了** |
 | `diagnostics` | AgentRx の軌跡分析と自己診断（LLM Judge）。OpenAPI 公開および管理画面統合済。**Phase B**にて `FailureCategory` 別の集計を返す `/api/v1/audit/diagnostics/summary` API を追加。 | **Phase B 拡張済** |
-| `dream_state` | アイドル時の自律思考（探求夢・反省夢）の状態管理。api-server側で `DreamService` ランタイムとしてバックグラウンド統合完了。 | **インテリジェンス層統合完了** |
+| `dream_state` | アイドル時の自律思考（探求夢・反省夢）の状態管理。7つのサブモジュール（aegis, communication, exploration, observability, reflection, scientific, tests）に分割され、api-server側で `DreamService` ランタイムとしてバックグラウンド統合完了。 | **インテリジェンス層統合完了** |
 | `forecast` | Google `timesfm-2.5-200m-pytorch` と通信し、成長停滞等の時系列予測を透過的に返す `ForecastProvider` トレイトの実装。 | **Phase 3D 完了** |
 | `heartbeat_wakeup` | 定期的な自己診断とプロアクティブなアクションのトリガー。 | 実装完了 |
 | `invariant_dag` | SHA-256 ハッシュチェーンによる因果関係の追跡と改ざん検知基盤。 | **Phase 48 完了** |
@@ -83,7 +83,7 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-06-01 (Asia/Tokyo) - Alert notification pipeline, Polar webhook, and Caddy headers integration*
+*最終更新: 2026-06-05 (Asia/Tokyo) - Alert notification pipeline, Polar webhook, Caddy headers integration, and dream_state modularization*
 
 ## Phase 6 Integration Notes
 

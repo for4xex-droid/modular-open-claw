@@ -432,7 +432,6 @@ impl SyndicateOps for UniversalSyndicateStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::sqlite::SqlitePoolOptions;
 
     async fn setup_test_db() -> shared::db::DatabasePool {
         let pool = shared::db::DatabasePool::new_sqlite("sqlite::memory:")

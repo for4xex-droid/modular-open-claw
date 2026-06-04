@@ -24,6 +24,7 @@ pub enum X402Error {
 }
 
 pub struct X402Client {
+    #[allow(dead_code)]
     rpc_url: String,
     budget_cap: U256,
     signer: PrivateKeySigner,

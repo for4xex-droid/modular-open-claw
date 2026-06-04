@@ -11,9 +11,7 @@ use aiome_core_contracts::gig::{
     AcceptanceCriteria, GigBid, GigDeliverable, GigEngine, GigIntent, VerificationResult,
 };
 use async_trait::async_trait;
-use shared::db::{DatabasePool, DatabaseTransaction};
-use shared::sql_exec;
-use sqlx::Row;
+use shared::db::DatabasePool;
 use std::sync::Arc;
 use uuid::Uuid;
 

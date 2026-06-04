@@ -1352,7 +1352,7 @@ mod tests {
     #[tokio::test]
     async fn test_verify_webhook_signature_green() {
         use hmac::{Hmac, Mac};
-        use sha2::{Digest, Sha256};
+        use sha2::Sha256;
 
         let engine = get_test_engine().await;
         let payload = r#"{

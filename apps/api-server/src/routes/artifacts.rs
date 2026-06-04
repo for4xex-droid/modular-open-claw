@@ -7,15 +7,14 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use aiome_core::traits::{ArtifactCategory, ArtifactMeta, ArtifactStore};
+use aiome_core::traits::{ArtifactCategory, ArtifactMeta};
 use axum::{
     extract::{Json, Path, Query, State},
     http::{header, StatusCode},
     response::{IntoResponse, Response},
 };
 use bastion::fs_guard::Jail;
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use serde::Deserialize;
 
 #[derive(Deserialize, utoipa::ToSchema)]
 pub struct ListArtifactsParams {

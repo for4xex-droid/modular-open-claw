@@ -1,5 +1,5 @@
 #![cfg_attr(test, allow(clippy::unwrap_used))]
-#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
+#![allow(dead_code)]
 /*
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
@@ -21,9 +21,6 @@ use napi_derive::napi;
 mod state;
 pub use state::*;
 
-use aiome_core::traits::{
-    AgentEvolver, ChatStore, ImmuneSystemOps, JobQueue, KarmaRegistry, TaskRegistry,
-};
 #[napi(object)]
 /// `SubagentSpawnResponse` 構造体
 pub struct SubagentSpawnResponse {

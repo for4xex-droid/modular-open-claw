@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Info, CheckCircle, AlertCircle } from 'lucide-react';
+import { cssVar } from '../../utils/cssVar';
 
 export type ConfirmModalType = 'warning' | 'danger' | 'info' | 'success';
 
@@ -33,14 +34,14 @@ const getIcon = (type: ConfirmModalType) => {
 const getConfirmButtonColor = (type: ConfirmModalType) => {
   switch (type) {
     case 'warning':
-      return { background: 'var(--accent-amber)', color: '#000' };
+      return { background: 'var(--accent-amber)', color: cssVar('--text-primary') };
     case 'danger':
-      return { background: 'var(--accent-rose)', color: '#fff' };
+      return { background: 'var(--accent-rose)', color: cssVar('--text-on-accent') };
     case 'success':
-      return { background: 'var(--accent-emerald)', color: '#fff' };
+      return { background: 'var(--accent-emerald)', color: cssVar('--text-on-accent') };
     case 'info':
     default:
-      return { background: 'var(--accent-cyan)', color: '#000' };
+      return { background: 'var(--accent-cyan)', color: cssVar('--text-primary') };
   }
 };
 

@@ -6,7 +6,6 @@
  */
 use crate::handlers::verify_bearer;
 use crate::state::HubState;
-use aiome_core::contracts::HubMessage;
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -18,7 +17,7 @@ use axum::{
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast::error::RecvError;
-use tracing::{debug, error, info, warn};
+use tracing::{info, warn};
 
 pub async fn ws_handler(
     headers: HeaderMap,

@@ -7,7 +7,7 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use avatar_engine::proportions::{AvatarDimensions, ProportionsChecker};
+use avatar_engine::proportions::ProportionsChecker;
 use axum::{
     extract::{Json, State},
     http::StatusCode,

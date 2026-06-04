@@ -389,7 +389,7 @@ pub async fn history(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+
     use crate::api_integration_tests::{create_test_server, test_bearer};
     use axum::http::StatusCode;
 

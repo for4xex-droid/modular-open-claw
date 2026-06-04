@@ -6,7 +6,7 @@
  */
 
 use crate::error::AiomeError;
-use aiome_core_contracts::live_types::{LiveEvent, LiveSessionState, ThinkingLevel};
+use aiome_core_contracts::live_types::ThinkingLevel;
 use aiome_core_contracts::traits::LiveSessionManager;
 use async_trait::async_trait;
 use futures_util::{SinkExt, StreamExt};
@@ -14,7 +14,7 @@ use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 /// Gemini 3.1 Flash Live 用の WebSocket プロバイダー
 #[derive(Debug)]

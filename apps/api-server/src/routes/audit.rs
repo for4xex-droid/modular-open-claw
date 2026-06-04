@@ -11,12 +11,8 @@ use crate::routes::general::{
     LogEntryResponse, PromptStatsResponse,
 };
 use crate::AppState;
-use aiome_core::traits::*;
 use aiome_core_contracts::contracts::QuarantinedAsset;
-use axum::{
-    extract::Path, extract::State, http::StatusCode, response::IntoResponse, response::Json,
-    routing::get,
-};
+use axum::{extract::Path, extract::State, http::StatusCode, response::Json};
 use shared::auth::Role;
 
 #[utoipa::path(

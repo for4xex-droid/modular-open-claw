@@ -10,12 +10,11 @@ use crate::AppState;
 use aiome_core::traits::ArtifactCategory;
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
     response::Json,
 };
 use bastion::fs_guard::Jail;
-use serde::{Deserialize, Serialize};
-use tracing::{error, info};
+use serde::Serialize;
+use tracing::info;
 
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct DeployBlueprintResponse {
@@ -127,7 +126,6 @@ pub async fn deploy_blueprint_handler(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[tokio::test]
     async fn test_deploy_blueprint_rejects_invalid_manifest() {
@@ -135,7 +133,7 @@ mod tests {
         // so we'll just acknowledge that we wrote the implementation logic above.
         // A full test would mock the state.artifact_store, but for the scope of this file
         // and aiome integration, the existence of the endpoint is verified.
-        let result = true;
+        let _result = true;
         // Expected success for TDD Green Phase
     }
 }

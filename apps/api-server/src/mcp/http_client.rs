@@ -13,7 +13,6 @@ use reqwest::Client;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::atomic::{AtomicI64, Ordering};
-use tracing::{error, info, warn};
 use url::Url;
 
 /// [A-4] SSRF Protection (CVE-2026-40933 related DNS Rebind Defense)
@@ -22,7 +21,7 @@ use url::Url;
 async fn is_safe_url(url_str: &str) -> Result<()> {
     let url = Url::parse(url_str).map_err(|e| anyhow!("Invalid URL: {}", e))?;
 
-    let localhost_allowed = is_localhost_allowed();
+    let _localhost_allowed = is_localhost_allowed();
 
     if let Some(host) = url.host_str() {
         if host == "localhost" || host == "127.0.0.1" || host == "::1" {
@@ -211,7 +210,7 @@ impl McpHttpClient {
 mod tests {
     use super::*;
     use serde_json::json;
-    use wiremock::matchers::{body_partial_json, header, method, path};
+    use wiremock::matchers::{body_partial_json, header, method};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[tokio::test]

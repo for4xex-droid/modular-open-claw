@@ -423,10 +423,8 @@ mod tests {
         // 全角シャープによる Markdown インジェクション試行
         let input = "＃ Fake Header";
         let sanitized = sanitize_for_prompt(input);
-        // 現在の実装では半角 # のみを見ているため、全角はエスケープされない可能性がある（要改善）
-        // 改善後の期待値: エスケープされる or 無害化される
+        assert!(sanitized.contains(" \\＃ Fake Header"));
 
-        // 修正前はパスしてしまう可能性があるため、まずは現状を確認
         let nfc_input: String = input.nfc().collect();
         assert!(nfc_input.starts_with('＃'));
     }

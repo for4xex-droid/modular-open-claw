@@ -1,5 +1,5 @@
 #![cfg_attr(test, allow(clippy::unwrap_used))]
-#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
+#![allow(dead_code)]
 /*
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
@@ -10,25 +10,14 @@
 #![allow(clippy::needless_borrows_for_generic_args)]
 #![allow(clippy::unnecessary_cast)]
 
-use aiome_core::contracts::{
-    ApprovalState, FederatedKarma, FederationPushRequest, FederationPushResponse,
-    FederationSyncRequest, FederationSyncResponse, HubMessage, ImmuneRule,
-};
 use axum::{
     error_handling::HandleErrorLayer,
-    extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
-        DefaultBodyLimit, Query, State,
-    },
-    http::{HeaderMap, StatusCode},
-    response::IntoResponse,
+    extract::DefaultBodyLimit,
+    http::StatusCode,
     routing::{get, post},
-    Json, Router,
+    Router,
 };
-use secrecy::ExposeSecret;
-use serde::{Deserialize, Serialize};
 // Standard imports
-use shared::sql_fetch_all;
 // use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -48,9 +37,7 @@ mod state;
 mod workers;
 
 use crate::handlers::federation::{push_handler, sync_handler};
-use crate::handlers::verify_bearer;
 use crate::handlers::ws::ws_handler;
-use crate::models::*;
 use crate::state::*;
 
 #[tokio::main]

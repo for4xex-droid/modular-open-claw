@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 use crate::error::AiomeError;
-use aiome_core_contracts::llm::{LlmProvider, LlmRequest, LlmResponse, StopReason};
+use aiome_core_contracts::llm::{LlmProvider, LlmRequest, LlmResponse};
 use async_trait::async_trait;
 use std::fmt::Debug;
 

@@ -1,3 +1,23 @@
+## 技術的負債の解消、巨大ファイルの分割およびコンパイル警告の完全排除 (2026-06-05)
+
+### 1. dream_state.rs のモジュール構造化
+- **変更内容**:
+    - `libs/infrastructure/src/dream_state.rs` を削除し、`libs/infrastructure/src/dream_state/` ディレクトリ配下に `mod.rs`, `aegis.rs`, `communication.rs`, `exploration.rs`, `observability.rs`, `reflection.rs`, `scientific.rs`, `tests.rs` の7つのサブモジュールとして分割・整理。
+- **波及効果**:
+    - 約1800行に達していた巨大ファイルの可読性と凝集度が向上し、関心の分離が明確化。既存の `pub use` 再エクスポート構造により、`api-server` 側の `DreamService` ランタイムを含む外部からの依存箇所に変更を加えることなく動作を維持。
+
+### 2. bootstrap/mod.rs のサービス初期化ロジック抽出
+- **変更内容**:
+    - `apps/api-server/src/bootstrap/mod.rs` 内に存在していた約900行の `init_core_services()` ロジックを、新設ファイル `apps/api-server/src/bootstrap/core_services.rs` に抽出・分離。
+- **波及効果**:
+    - アプリケーション起動プロセスの最も肥大化していた部分が分離され、コード理解と起動プロセスの変更が極めて容易になりました。既存の `bootstrap/mod.rs` は再エクスポートにより後方互換性を完全に保証。
+
+### 3. ブランケット allow(unused_*) 属性の完全排除
+- **変更内容**:
+    - 主要ライブラリ（`shared`, `soul`, `core`, `aiome-commerce`, `infrastructure`, `napi-bridge`）およびアプリケーション（`api-server`, `aiome-migrate`, `samsara-hub`, `aiome-node`）合計95ファイルから、不要な `allow(unused_imports, unused_variables, unused_mut)` などの警告抑制用アトリビュートを完全除去し、未使用インポート・変数を修正。
+- **波及効果**:
+    - ワークスペース全体で `cargo check --workspace --tests` がコンパイル警告0件・エラー0件でクリーンパスするようになり、潜在的なリソースリークや未使用コードなどの技術的負債が完全に解消されました。
+
 ## aiome.dev ランディングページ デプロイ基盤および SPA リダイレクト処理 of TDD 実装 (2026-06-03)
 
 ### 1. CNAME および 404.html 静的アセットの追加

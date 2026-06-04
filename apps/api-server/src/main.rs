@@ -6,7 +6,7 @@
  */
 #![cfg_attr(test, allow(clippy::unwrap_used))]
 #![deny(unsafe_code)]
-#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
+#![allow(dead_code)]
 #![allow(clippy::default_constructed_unit_structs)]
 #![allow(clippy::field_reassign_with_default)]
 #![allow(clippy::type_complexity)]
@@ -15,45 +15,9 @@
 #![allow(clippy::redundant_pattern_matching)]
 #![allow(clippy::manual_inspect)]
 
-use crate::app_state::Component;
-use aiome_core::llm_provider::{EmbeddingProvider, LlmProvider};
-use aiome_core::traits::TranscriptionEngine;
-use aiome_core_contracts::commerce::CommerceEngine;
-use aiome_core_contracts::commerce::GiftEngine;
-use aiome_core_contracts::commerce::GiftPolicyContext;
-use aiome_core_contracts::ekyc::EkycEngine;
-use aiome_core_contracts::ekyc::EkycSessionStore;
-use infrastructure::audit_logger::AsyncAuditLogger;
-use infrastructure::auth::AuthManager;
-use infrastructure::belief_consistency_gate::BeliefConsistencyGate;
-use infrastructure::circuit_breaker::CircuitBreaker;
-use infrastructure::compliance::quarantine::QuarantineStore;
-use infrastructure::memory_crystallizer::MemoryCrystallizer;
-use infrastructure::slo_engine::SloEngine;
-use infrastructure::whisper_transcription::WhisperTranscriptionAdapter;
-use shared::config::AiomeConfig;
-
-use async_trait::async_trait;
-use axum::http::header::{
-    CACHE_CONTROL, CONTENT_SECURITY_POLICY, STRICT_TRANSPORT_SECURITY, X_CONTENT_TYPE_OPTIONS,
-    X_FRAME_OPTIONS,
-};
-use axum::http::HeaderValue;
-use axum::{http::StatusCode, response::IntoResponse, response::Json, routing::get, Router};
-use base64::Engine;
-use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::Mutex;
-use tokio_util::sync::CancellationToken;
-use tower_http::cors::{AllowOrigin, CorsLayer};
-use tower_http::limit::RequestBodyLimitLayer;
-use tower_http::services::ServeDir;
-use tower_http::set_header::SetResponseHeaderLayer;
-use tower_http::timeout::TimeoutLayer;
-use tracing::{debug, error, info, warn};
-use utoipa::OpenApi;
+use tracing::{error, info};
 
 pub mod agent_engine;
 mod api;
@@ -90,10 +54,6 @@ pub mod tool_call_router;
 pub use app_state::AppState;
 pub use router::build_app;
 
-use aiome_core::expression::tts_worker::TtsWorker;
-use aiome_core::traits::JobQueue;
-use shared::health::HealthMonitor;
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     shared::process_hardening::pre_main_hardening();
@@ -103,7 +63,7 @@ async fn main() -> anyhow::Result<()> {
         std::process::exit(1);
     }
 
-    let mut boot_ctx = crate::bootstrap::boot_sequence().await?;
+    let boot_ctx = crate::bootstrap::boot_sequence().await?;
     let state = boot_ctx.state;
     let plugin_registry = boot_ctx.plugin_registry;
     let metrics_handle = boot_ctx.metrics_handle;

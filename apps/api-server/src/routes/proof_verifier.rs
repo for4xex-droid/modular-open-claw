@@ -7,12 +7,9 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use aiome_core_contracts::a2a::internal::proof_verifier_client::ProofVerifierClient;
-use aiome_core_contracts::a2a::internal::ProofRequest;
 use axum::{extract::State, response::Json};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::env;
 use tracing::{error, info};
 
 #[derive(Deserialize, utoipa::ToSchema)]
@@ -86,7 +83,7 @@ pub async fn verify_skill_proof(
         .map_err(|e| AppError::internal(format!("Failed to read WASM: {}", e)))?;
     let mut hasher = Sha256::new();
     hasher.update(&wasm_bytes);
-    let wasm_hash = hex::encode(hasher.finalize());
+    let _wasm_hash = hex::encode(hasher.finalize());
 
     // ── Call Formal Proof Gate ──
     let is_valid = match state

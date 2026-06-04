@@ -80,7 +80,7 @@ pub async fn upload_inochi2d_handler(
     }
 
     // 2. Format Validation
-    let mut temp_file = tokio::task::spawn_blocking(tempfile::NamedTempFile::new)
+    let temp_file = tokio::task::spawn_blocking(tempfile::NamedTempFile::new)
         .await
         .map_err(|e| AppError::internal(format!("Tokio spawn blocking failed: {}", e)))?
         .map_err(|e| AppError::internal(format!("Failed to create tempfile: {}", e)))?;

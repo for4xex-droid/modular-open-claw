@@ -6,16 +6,14 @@
  */
 
 use crate::error::AppError;
-use crate::skill_handler;
 use crate::AppState;
 use aiome_core::error::AiomeError;
 use aiome_core::traits::{ChatStore, KarmaRegistry, SettingsOps};
 use aiome_core_contracts::events::CoreEvent;
 use shared::guardrails;
 use std::time::Duration;
-use tokio::fs;
 use tokio::time::timeout;
-use tracing::{error, info, warn};
+use tracing::{error, warn};
 
 // --- Backward compatibility exports ---
 pub(crate) use crate::system_instructions::*;
@@ -181,7 +179,7 @@ impl AgentEngine {
         let mut total_token_in: i64 = 0;
         let mut total_token_out: i64 = 0;
         let mut has_token_metadata = false;
-        let chat_execution_id = format!("chat_exec_{}", uuid::Uuid::new_v4());
+        let _chat_execution_id = format!("chat_exec_{}", uuid::Uuid::new_v4());
         let mut total_steps = 0;
 
         let mut current_prompt = prompt.to_string();
@@ -390,10 +388,10 @@ impl AgentEngine {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+
     use crate::app_state::Component;
     use infrastructure::job_queue::UniversalJobQueue;
-    use infrastructure::registry::{AssetManifest, AssetType, RegistryManager};
+    use infrastructure::registry::RegistryManager;
     use infrastructure::skills::WasmSkillManager;
     use std::sync::Arc;
 
@@ -443,7 +441,7 @@ mod tests {
 
     #[test]
     fn test_should_trigger_diagnostics() {
-        use aiome_core::trajectory::{ConstraintViolation, TrajectoryStep};
+        use aiome_core::trajectory::TrajectoryStep;
 
         let mut step1 = TrajectoryStep::default();
         step1.is_critical_failure = false;

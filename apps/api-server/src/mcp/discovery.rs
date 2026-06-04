@@ -6,7 +6,7 @@
  */
 
 use crate::mcp::client::McpProcessManager;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -274,7 +274,7 @@ pub async fn discover_and_connect(
             McpTransport::Stdio => {
                 let mut resolved_env = HashMap::new();
                 for (k, v) in config.env {
-                    let mut resolved = if v == "$VAULT_TOKEN" {
+                    let resolved = if v == "$VAULT_TOKEN" {
                         if let Some(vault) = &vault_backend {
                             let asset_id = provider_to_asset_id(&id);
                             if let Ok(dek) = vault.get_dek(asset_id).await {
@@ -361,7 +361,7 @@ pub async fn discover_and_connect(
 
                 let mut resolved_headers = HashMap::new();
                 for (k, v) in config.headers {
-                    let mut resolved = if v == "Bearer $VAULT_TOKEN" || v == "$VAULT_TOKEN" {
+                    let resolved = if v == "Bearer $VAULT_TOKEN" || v == "$VAULT_TOKEN" {
                         if let Some(vault) = &vault_backend {
                             let asset_id = provider_to_asset_id(&id);
                             if let Ok(dek) = vault.get_dek(asset_id).await {

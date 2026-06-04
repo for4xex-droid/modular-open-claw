@@ -7,7 +7,7 @@
 
 use aiome_core::commerce::CommerceEngine;
 use aiome_core::llm_provider::LlmProvider;
-use aiome_core::traits::{ArtifactStore, JobQueue, TranscriptionEngine};
+use aiome_core::traits::{ArtifactStore, TranscriptionEngine};
 use aiome_core_contracts::commerce::GiftEngine;
 use aiome_core_contracts::ekyc::EkycEngine;
 use infrastructure::audit_logger::AsyncAuditLogger;

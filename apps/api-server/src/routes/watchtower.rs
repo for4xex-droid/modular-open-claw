@@ -299,7 +299,7 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::http::StatusCode;
+
     use std::sync::atomic::Ordering;
 
     #[tokio::test]

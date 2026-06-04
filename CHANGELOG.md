@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+### Fixed
+- **コードベースの技術的負債解消とコンパイル警告の完全排除 (TDD) および巨大ファイルのモジュール構造化**:
+  - `libs/infrastructure/src/dream_state.rs` (1784行) を、7つのサブモジュール（`aegis`, `communication`, `exploration`, `observability`, `reflection`, `scientific`, `tests`）に分割し、`dream_state/` ディレクトリとしてモジュール構造化。
+  - `apps/api-server/src/bootstrap/mod.rs` から `init_core_services()` ロジックを `bootstrap/core_services.rs` へ抽出・分離し、巨大ファイルの可読性と保守性を向上。
+  - 主要ライブラリ (`shared`, `soul`, `core`, `aiome-commerce`, `infrastructure`, `napi-bridge`) およびすべてのアプリケーション (`api-server`, `aiome-migrate`, `samsara-hub`, `aiome-node`) から、不要な `allow(unused_imports, unused_variables, unused_mut)` 属性を除去。
+  - `cargo fix` の適用によって破損したテストコード側のインポート関係を手動で復元し、インポート文と未使用変数を徹底的にクリーンアップ。
+  - ワークスペース全体で `cargo check --workspace --tests` を警告0件、エラー0件で完全にクリーンパスするように修復。
+
 ### Added
 - **aiome.dev ランディングページ デプロイ基盤および SPA リダイレクト処理の TDD 実装**:
   - `docs/landing/public/CNAME` [NEW]: カスタムドメイン `aiome.dev` 設定を追加。

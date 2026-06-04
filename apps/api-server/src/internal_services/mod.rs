@@ -12,7 +12,6 @@ pub mod watchtower;
 pub mod oxilean_poller;
 
 use crate::AppState;
-use std::sync::Arc;
 use tracing::info;
 
 pub async fn spawn_all(state: AppState) {

@@ -8,12 +8,8 @@
 use crate::error::AppError;
 use crate::AppState;
 use aiome_core::traits::*;
-use aiome_core_contracts::contracts::QuarantinedAsset;
-use axum::{
-    extract::Path, extract::State, http::StatusCode, response::IntoResponse, response::Json,
-    routing::get,
-};
-use shared::health::{HealthMonitor, ResourceStatus};
+use axum::{extract::Path, extract::State, response::Json};
+use shared::health::ResourceStatus;
 use std::fs;
 
 #[utoipa::path(

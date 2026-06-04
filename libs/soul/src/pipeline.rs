@@ -386,7 +386,6 @@ mod tests {
 
     #[test]
     fn test_compound_trigger() {
-        let soul = AgentSoul::new("test".to_string());
         let exp = Experience {
             id: "e1".to_string(),
             domain: "test".to_string(),

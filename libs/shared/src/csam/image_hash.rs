@@ -5,8 +5,6 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use image::GenericImageView;
-use std::io::Cursor;
 use thiserror::Error;
 use visual_hash::{HashAlg, HasherConfig};
 

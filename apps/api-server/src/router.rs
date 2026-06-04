@@ -8,7 +8,6 @@
 use crate::auth;
 use crate::routes;
 use crate::AppState;
-use aiome_core::traits::SettingsOps;
 use axum::extract::Request;
 use axum::middleware::Next;
 use axum::response::Response;
@@ -636,7 +635,7 @@ pub fn build_app(
     let state_for_auth = state.clone();
 
     // 1. Create the base authenticated router (WITHOUT global limit yet)
-    let mut authed_router = internal_router.merge(streaming_router);
+    let authed_router = internal_router.merge(streaming_router);
 
     let authed_router = plugin_registry.merge_routes(authed_router).route_layer(
         axum::middleware::from_fn_with_state(state_for_auth, auth::auth_middleware),

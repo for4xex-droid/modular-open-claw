@@ -11,8 +11,7 @@ use aiome_core::contracts::ImmuneRule;
 use aiome_core::traits::*;
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
-    response::{IntoResponse, Json},
+    response::Json,
 };
 use tracing::{info, warn};
 

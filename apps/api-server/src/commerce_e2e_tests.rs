@@ -4,7 +4,7 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
-use crate::api_integration_tests::{create_test_server, test_bearer};
+use crate::api_integration_tests::create_test_server;
 use axum::http::StatusCode;
 use serde_json::json;
 

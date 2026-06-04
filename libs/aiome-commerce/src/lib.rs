@@ -1,5 +1,5 @@
 #![cfg_attr(test, allow(clippy::unwrap_used))]
-#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
+// #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 /*
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
@@ -30,7 +30,6 @@ pub use crate::syndicate::UniversalSyndicateStore;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_commerce_engine_structure() {

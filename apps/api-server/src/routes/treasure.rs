@@ -7,15 +7,9 @@
 use crate::auth::AuthenticatedUser;
 use crate::error::AppError;
 use crate::AppState;
-use aiome_core_contracts::traits::{AgentEvolver, JobQueue};
+use aiome_core_contracts::traits::AgentEvolver;
 use aiome_core_contracts::treasure::{TreasureFeedback, TreasureItem};
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::IntoResponse,
-    Extension, Json,
-};
-use uuid::Uuid;
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Extension, Json};
 
 /// [GET] /api/v1/treasure
 #[utoipa::path(

@@ -12,7 +12,6 @@ use std::process::Stdio;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::Command;
 use tokio::sync::{oneshot, Mutex};
 use tracing::{info, warn};
 
@@ -783,7 +782,7 @@ mod tests {
         assert_eq!(manager.active_client_ids().await.len(), 0);
 
         // Fetching the client should trigger a lazy spawn
-        let endpoint = manager
+        let _endpoint = manager
             .get_client("lazy_python")
             .await
             .expect("Client should be spawned on demand");

@@ -6,8 +6,8 @@
  */
 
 use super::common::*;
-use crate::app_state::Component;
 use axum::http::StatusCode;
+use base64::Engine;
 use serde_json::json;
 use serial_test::serial;
 
@@ -431,7 +431,7 @@ async fn test_synergy_demo_routes_visibility() {
     }
 
     // 2. Settings Test Connection Route
-    let resp_settings = server
+    let _resp_settings = server
         .post("/api/v1/settings/test")
         .add_header(axum::http::header::AUTHORIZATION, &auth)
         .json(&json!({
@@ -531,7 +531,7 @@ async fn test_tts_worker_flow_red() {
     use aiome_core::expression::Expression;
     use aiome_core_contracts::expression::TtsStatus;
 
-    let (server, state, tmp) = create_test_server().await;
+    let (_server, state, tmp) = create_test_server().await;
     let jq = state.job_queue.clone();
 
     let artifacts_dir = tmp.path().join("artifacts");
@@ -724,7 +724,7 @@ async fn test_inochi2d_asset_delivery_and_path_traversal() {
     let (server, _state, _tmp) = create_test_server().await;
 
     // 1. Try to download a valid asset (RED initially as endpoint missing)
-    let valid_response = server.get("/api/v1/avatar/inochi2d/valid.inx").await;
+    let _valid_response = server.get("/api/v1/avatar/inochi2d/valid.inx").await;
     // We expect a 404 if the file isn't there, but currently the route doesn't exist at all so it might be 404 too.
     // Instead we can actually create the file in the mock Sandbox and fetch it.
 
@@ -822,7 +822,7 @@ async fn test_expression_generation_with_tts_stream() {
     let bearer = test_bearer();
 
     use aiome_core::traits::SettingsOps;
-    use aiome_core_contracts::traits::{JobQueue, KarmaRegistry};
+    use aiome_core_contracts::traits::KarmaRegistry;
 
     // Setup Tts settings to use mock TTS
     let _ = state

@@ -7,7 +7,6 @@
 
 use crate::app_state::AppState;
 use crate::autonomous_demo::AutonomousDemo;
-use aiome_core_contracts::error::AiomeError;
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde_json::json;
 

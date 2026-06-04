@@ -8,7 +8,7 @@
 use crate::error::AppError;
 use crate::AppState;
 use axum::extract::{Json, State};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tracing::info;
 
 #[derive(Serialize, utoipa::ToSchema)]

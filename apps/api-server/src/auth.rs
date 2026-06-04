@@ -376,7 +376,7 @@ pub async fn admin_only_middleware(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+
     use crate::api_integration_tests::create_test_server;
     use axum::http::StatusCode;
 

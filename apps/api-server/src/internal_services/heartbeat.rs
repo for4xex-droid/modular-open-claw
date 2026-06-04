@@ -14,7 +14,7 @@ use infrastructure::score_tracker::ScoreTracker;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::interval;
-use tracing::{error, info};
+use tracing::info;
 
 /// Heartbeat サービスを起動する。
 /// 自律的な話しかけ（Wakeup Ping）や、Score Plateau（停滞）の検知を定期的に実行する。

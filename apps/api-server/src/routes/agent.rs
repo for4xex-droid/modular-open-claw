@@ -5,22 +5,11 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use crate::docker;
 use crate::error::AppError;
-use crate::skill_handler;
 use crate::AppState;
-use aiome_core::llm_provider::LlmProvider;
 use aiome_core::traits::*;
-use axum::{
-    extract::State, http::HeaderMap, http::StatusCode, response::IntoResponse, response::Json,
-};
+use axum::{extract::State, response::Json};
 use serde::{Deserialize, Serialize};
-#[cfg(test)]
-use serial_test::serial;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::time::timeout;
-use tracing::info;
 
 #[derive(Deserialize, Serialize, Clone, utoipa::ToSchema)]
 pub struct ChatMessage {
@@ -109,6 +98,7 @@ mod tests {
     use super::*;
     use crate::agent_engine::build_system_instructions;
     use crate::app_state::Component;
+    use crate::skill_handler;
     use infrastructure::job_queue::UniversalJobQueue;
     use infrastructure::registry::{AssetManifest, AssetType, RegistryManager};
     use infrastructure::skills::WasmSkillManager;

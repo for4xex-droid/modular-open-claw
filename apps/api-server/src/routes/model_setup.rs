@@ -240,7 +240,6 @@ pub async fn pull_model(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[tokio::test]
     async fn test_get_model_status_returns_success() {

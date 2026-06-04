@@ -16,7 +16,6 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use std::sync::Arc;
 use uuid::Uuid;
 
 /// Gig 検証の合格スコアしきい値

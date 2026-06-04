@@ -181,7 +181,7 @@ async fn test_security_regression_path_traversal() {
 
     // Attempt to parse tool calls with path traversal
     let reply = r#"../../etc/passwd { "data": "exploit" }"#;
-    let calls = crate::tool_call_processor::parse_tool_calls(reply);
+    let _calls = crate::tool_call_processor::parse_tool_calls(reply);
 
     // Test that the tool parser actually ignores or fails to parse invalid skill names
     // We expect the parser to drop it, or process_generated_tool_calls to block it

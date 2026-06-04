@@ -146,7 +146,7 @@ impl SecurityPolicy {
     }
 
     /// 新しいエンドポイントを動的に許可する
-    pub fn allow_endpoint(&mut self, endpoint: &str) {
+    pub fn allow_endpoint(&mut self, _endpoint: &str) {
         // ShieldClient は immutable なので、動的追加は builder の再構築が必要だが、
         // 現状の bastion::net_guard::ShieldClient の仕様に合わせて、
         // 必要なら新しいインスタンスを作成して入れ替える。

@@ -4,7 +4,6 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
-use crate::error::AppError;
 use infrastructure::db::DatabasePool;
 use tracing::{error, info, Instrument};
 use uuid::Uuid;

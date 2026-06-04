@@ -122,7 +122,7 @@ async fn handle_core_event(event: CoreEvent, bridges: &[Arc<dyn ChannelBridge>])
 async fn handle_control_command(
     cmd: ControlCommand,
     state: &AppState,
-    bridges: &[Arc<dyn ChannelBridge>],
+    _bridges: &[Arc<dyn ChannelBridge>],
 ) {
     match cmd {
         ControlCommand::Chat {
@@ -330,9 +330,8 @@ async fn handle_control_command(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Component;
+    use crate::app_state::Component;
     use aiome_core_contracts::events::ControlCommand;
-    use shared::watchtower::CoreEvent;
 
     #[tokio::test]
     #[should_panic]

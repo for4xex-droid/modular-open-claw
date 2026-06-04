@@ -7,11 +7,10 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::api_integration_tests::{create_test_server, test_bearer};
+    use crate::api_integration_tests::create_test_server;
     use axum::http::StatusCode;
     use serde_json::json;
     use serial_test::serial;
-    use std::sync::Arc;
 
     // Helper to generate a dummy signature for Polar (svix format)
     fn generate_polar_signature(

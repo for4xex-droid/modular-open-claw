@@ -6,7 +6,7 @@
  */
 
 use crate::app_state::AppState;
-use aiome_core::traits::{AgentEvolver, JobQueue};
+use aiome_core::traits::AgentEvolver;
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::events::CoreEvent;
 use chrono::Utc;
@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::time::Duration;
 use tokio::time::sleep;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 use uuid::Uuid;
 
 /// デモの各ステップ
@@ -215,7 +215,6 @@ impl AutonomousDemo {
         )
         .await;
 
-        use aiome_core::commerce::CommerceEngine;
         let escrow_id = state
             .commerce_engine
             .escrow_create(agent_id, 80)

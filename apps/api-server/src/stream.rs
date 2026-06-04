@@ -5,7 +5,6 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_core::llm_provider::LlmProvider;
 use aiome_core::traits::SettingsOps;
 use aiome_core_contracts::traits::{
     AgentEvolver, ChatStore, ConstitutionalValidator, JobQueue, KarmaRegistry, TaskRegistry,
@@ -18,10 +17,7 @@ use axum::{
 use core::convert::Infallible;
 use futures::stream::Stream;
 // use infrastructure::skills::UnverifiedSkill;
-use crate::skill_handler;
 use futures::StreamExt;
-use infrastructure::skills::hooks::HookVerdict;
-use std::sync::Arc;
 use tokio::time::{interval, timeout, Duration};
 use tracing::{debug, error, info, warn};
 

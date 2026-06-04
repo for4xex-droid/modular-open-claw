@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 #![cfg_attr(test, allow(clippy::unwrap_used))]
-#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
+#![allow(dead_code)]
 use axum::Router;
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -268,7 +268,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let skill_arena =
             infrastructure::skills::skill_arena::SkillArena::new().with_db_pool(db_pool);
 
-        let mcp_server = mcp_server::McpServer::new(gateway)
+        let _mcp_server = mcp_server::McpServer::new(gateway)
             .with_wasm_manager(wasm_manager)
             .with_skill_arena(Arc::new(skill_arena));
 
@@ -299,7 +299,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn setup_router() -> Router {
-    let config = shared::config::AiomeConfig::load().unwrap_or_default();
+    let _config = shared::config::AiomeConfig::load().unwrap_or_default();
     let router = Router::new().nest("/.well-known", routes::well_known_routes());
 
     #[cfg(feature = "federation")]

@@ -5,12 +5,11 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-use crate::mdns_listener::AgentInfo;
 use crate::models::*;
 use crate::state::HubState;
 use aiome_core::contracts::ImmuneRule;
 use aiome_core::contracts::{
-    ApprovalState, FederatedKarma, FederatedMetrics, FederationPushRequest, FederationPushResponse,
+    ApprovalState, FederatedKarma, FederationPushRequest, FederationPushResponse,
     FederationSyncRequest, FederationSyncResponse, HubMessage,
 };
 use axum::{
@@ -18,16 +17,12 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
-use base64::{engine::general_purpose, Engine as _};
-use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-use serde_json::Value;
-use shared::sql_fetch_all;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 
 pub async fn sync_handler(
     State(state): State<Arc<HubState>>,
-    headers: HeaderMap,
+    _headers: HeaderMap,
     Json(payload): Json<FederationSyncRequest>,
 ) -> impl IntoResponse {
     // BFT: BAN Check
@@ -172,7 +167,7 @@ pub async fn sync_handler(
 
 pub async fn push_handler(
     State(state): State<Arc<HubState>>,
-    headers: HeaderMap,
+    _headers: HeaderMap,
     Json(mut payload): Json<FederationPushRequest>,
 ) -> impl IntoResponse {
     // 🛡️ [GlassWorm Shield] Sanitize all inbound text fields to prevent Federation Worm Attack

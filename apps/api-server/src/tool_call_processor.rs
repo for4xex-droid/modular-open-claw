@@ -6,7 +6,7 @@
  */
 use crate::tool_call_router::ToolCallRouter;
 use crate::AppState;
-use tracing::{error, warn};
+use tracing::error;
 
 pub(crate) async fn process_generated_tool_calls(
     reply: &str,
@@ -64,7 +64,7 @@ pub(crate) async fn process_generated_tool_calls(
                 serde_json::Value::String(last_res.to_string())
             };
 
-            let mut input_val: serde_json::Value = serde_json::from_str(&skill_input)
+            let input_val: serde_json::Value = serde_json::from_str(&skill_input)
                 .unwrap_or(serde_json::Value::String(skill_input.clone()));
 
             let mut step = TrajectoryStep {
@@ -156,8 +156,8 @@ mod tests {
     use async_trait::async_trait;
     use infrastructure::immune_system::AdaptiveImmuneSystem;
     use infrastructure::job_queue::UniversalJobQueue;
-    use infrastructure::registry::{AssetManifest, AssetType, RegistryManager};
-    use infrastructure::skills::hooks::{HookChain, HookVerdict, ToolHook};
+    use infrastructure::registry::RegistryManager;
+
     use infrastructure::skills::WasmSkillManager;
     use std::sync::Arc;
 
@@ -283,7 +283,7 @@ mod tests {
                 Ok(())
             }
         }
-        let immune_system = AdaptiveImmuneSystem::new(Arc::new(DummyLlm));
+        let _immune_system = AdaptiveImmuneSystem::new(Arc::new(DummyLlm));
 
         let reply_from_llm = r#"I should process this
 some_skill { "data": "hello" }"#;
@@ -344,7 +344,7 @@ some_skill { "data": "hello" }"#;
 
         // We replace the provider in the state so the Router's internal verify_intent uses this one
         state.provider = Component::new(Arc::new(SentinelLlm));
-        let immune_system = AdaptiveImmuneSystem::new(Arc::new(SentinelLlm));
+        let _immune_system = AdaptiveImmuneSystem::new(Arc::new(SentinelLlm));
 
         let reply_from_llm = r#"bad_skill { "cmd": "rm -rf /" }"#;
 

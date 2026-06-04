@@ -1,5 +1,5 @@
 #![cfg_attr(test, allow(clippy::unwrap_used))]
-#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
+#![allow(dead_code)]
 /*
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
@@ -9,9 +9,8 @@
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use infrastructure::db::DatabasePool;
 use sqlx::{PgPool, SqlitePool};
-use tracing::{info, warn};
+use tracing::info;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]

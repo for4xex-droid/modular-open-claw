@@ -223,13 +223,12 @@ impl Default for Experience {
 mod tests {
     use super::*;
     use crate::defense::{Defense, DefenseAction, DefenseTrigger};
-    use crate::somatic::SomaticMarker;
 
     #[test]
     fn test_temporal_decay() {
         let mut soul = AgentSoul::new("test-decay".to_string());
 
-        let mut d1 = Defense {
+        let d1 = Defense {
             id: "d1".to_string(),
             trigger: DefenseTrigger::Tag("foo".to_string()),
             action: DefenseAction::Hesitate(1.0),

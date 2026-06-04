@@ -8,12 +8,7 @@
 use crate::error::AppError;
 use crate::AppState;
 use aiome_core_contracts::commerce::GiftRequest;
-use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::Serialize;
 use sha2::Digest;
 use uuid::Uuid;

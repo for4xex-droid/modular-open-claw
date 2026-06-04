@@ -103,6 +103,7 @@ pub const DEFAULT_KEY_PROXY_URL: &str = "http://key-proxy:3017";
 /// Samsara HubのデフォルトURL
 pub const DEFAULT_SAMSARA_HUB_URL: &str = "http://samsara-hub:3016";
 /// CORS許可オリジンのデフォルト値
+// SECURITY-NOTE: 本番環境ではワイルドカード（"*"）のまま運用せず、適切なドメインを設定してください。
 pub const DEFAULT_ALLOWED_ORIGINS: &str = "*";
 /// LM StudioのデフォルトURL
 pub const DEFAULT_LM_STUDIO_HOST: &str = "http://lm-studio:1234";

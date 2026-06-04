@@ -6,14 +6,14 @@
  */
 #[cfg(test)]
 mod tests {
-    use aiome_core::traits::JobQueue;
+
     use infrastructure::db::DatabasePool;
     use infrastructure::job_queue::federation::FederationOps;
     use infrastructure::job_queue::UniversalJobQueue;
-    use shared::config::AiomeConfig;
+
     use sqlx::sqlite::SqlitePoolOptions;
     use std::sync::Arc;
-    use std::time::Duration;
+
     use wiremock::matchers::{header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 

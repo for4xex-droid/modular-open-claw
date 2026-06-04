@@ -7,7 +7,6 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use aiome_core_contracts::traits::SoulStore;
 use axum::{
     extract::{Query, State},
     response::Json,

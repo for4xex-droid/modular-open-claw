@@ -371,8 +371,6 @@ pub async fn execute_wasm_skill(
             step.failure_category =
                 Some(aiome_core::trajectory::FailureCategory::GuardrailsTriggered);
         }
-
-        use aiome_core::trajectory::TrajectoryStore;
         let _ = state.job_queue.trajectory_store.record_step(id, step).await;
     }
 

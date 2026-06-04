@@ -11,7 +11,6 @@
 //! を防止するためのセキュリティ検証を提供する。
 
 use aiome_core_contracts::error::AiomeError;
-use std::path::Path;
 
 /// サポートされているファイルタイプとその Magic Bytes
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

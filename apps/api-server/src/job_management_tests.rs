@@ -10,7 +10,6 @@
 
 use super::api_integration_tests::{create_test_server, test_bearer};
 use axum::http::StatusCode;
-use serde_json::json;
 
 #[tokio::test]
 async fn test_job_cancel_non_existent() {

@@ -5,9 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 use crate::AppState;
-use aiome_core_contracts::traits::{
-    AgentEvolver, ChatStore, ConstitutionalValidator, JobQueue, KarmaRegistry, TaskRegistry,
-};
+use aiome_core_contracts::traits::AgentEvolver;
 use async_trait::async_trait;
 use infrastructure::output_filter::{FilterLevel, FilterStrategy, OutputFilter};
 use tokio::sync::mpsc;
@@ -534,10 +532,8 @@ async fn check_robots_txt_policy(url_str: &str) -> bool {
 mod tests {
     use super::*;
     use crate::app_state::Component;
-    use aiome_core::error::AiomeError;
-    use aiome_core_contracts::traits::JobQueue;
-    use aiome_core_contracts::AgentStats;
-    use infrastructure::skills::hooks::{HookChain, HookVerdict, ToolHook};
+
+    use infrastructure::skills::hooks::HookChain;
     use std::sync::Arc;
 
     // Create a mock state matching the signature needed for ToolCallRouter.
@@ -567,7 +563,7 @@ mod tests {
         let router = DefaultToolCallRouter;
         let (mut state, _guard) = setup_mock_state().await;
 
-        let mut chain = HookChain::new();
+        let chain = HookChain::new();
         state.hook_chain = Component::new(Arc::new(chain));
 
         let mut rx = router.execute_skill("describe_skill", "test", &state).await;
@@ -593,7 +589,7 @@ mod tests {
         let router = DefaultToolCallRouter;
         let (mut state, _guard) = setup_mock_state().await;
 
-        let mut chain = HookChain::new();
+        let chain = HookChain::new();
         state.hook_chain = Component::new(Arc::new(chain));
 
         // Assign a unique UUID for this test to avoid parallel DB race conditions
@@ -638,7 +634,7 @@ mod tests {
         state.system_agent_id =
             uuid::Uuid::parse_str("00000000-0000-0000-0000-fa1100000000").unwrap();
 
-        let mut chain = HookChain::new();
+        let chain = HookChain::new();
         state.hook_chain = Component::new(Arc::new(chain));
 
         // Run an MCP tool
@@ -665,7 +661,7 @@ mod tests {
         let router = DefaultToolCallRouter;
         let (mut state, _guard) = setup_mock_state().await;
 
-        let mut chain = HookChain::new();
+        let chain = HookChain::new();
         state.hook_chain = Component::new(Arc::new(chain));
 
         // 1. Test SSRF (localhost)

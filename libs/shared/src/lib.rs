@@ -18,7 +18,7 @@
 //! シークレット消去ヘルパー (`scrub_env`) が unsafe を必要とする。
 //! `forbid` は子モジュールからのオーバーライドが不可能 (E0453) なため `deny` を使用。
 #![deny(unsafe_code)]
-#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
+// #![allow(unused_imports, unused_variables, dead_code, unused_mut)]
 #![warn(missing_docs)]
 
 /// 認証・認可関連のロジック

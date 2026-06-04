@@ -7,7 +7,6 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::HubState;
 
     #[tokio::test]
     async fn test_clock_u32_boundary_failure() {

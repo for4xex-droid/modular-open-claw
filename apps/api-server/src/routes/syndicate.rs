@@ -14,7 +14,6 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]

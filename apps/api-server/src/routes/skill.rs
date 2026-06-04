@@ -7,9 +7,9 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use axum::{extract::State, http::StatusCode, response::Json};
+use axum::{extract::State, response::Json};
 use serde::{Deserialize, Serialize};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct SkillSummary {

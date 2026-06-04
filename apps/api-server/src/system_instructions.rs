@@ -6,11 +6,9 @@
  */
 use crate::AppState;
 use aiome_core::commerce::EconomicContext;
-use aiome_core::traits::SettingsOps;
 use infrastructure::soul_store::SoulSnapshot;
 
 use tokio::fs;
-use tracing::warn;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn build_system_instructions(
@@ -266,6 +264,7 @@ pub(crate) async fn read_app_data_file(
 mod tests {
     use super::*;
     use crate::app_state::Component;
+    use aiome_core::traits::SettingsOps;
     use infrastructure::job_queue::UniversalJobQueue;
     use infrastructure::registry::{AssetManifest, AssetType, RegistryManager};
     use infrastructure::skills::WasmSkillManager;
