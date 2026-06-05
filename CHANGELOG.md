@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-05
+
+### CI/CD
+- **GitHub Actions の非推奨 Action バージョン更新**:
+  - `triage.yml`: `actions/github-script@v6` → `@v7`（Node.js 20 ベース移行）、最小権限 `permissions: issues: write` を追加。
+  - `ci.yml`: `actions/setup-python@v4` → `@v5`（Node.js 20 ベース移行）、全3箇所を更新。
+
 ### Fixed
 - **コードベースの技術的負債解消とコンパイル警告の完全排除 (TDD) および巨大ファイルのモジュール構造化**:
   - `libs/infrastructure/src/dream_state.rs` (1784行) を、7つのサブモジュール（`aegis`, `communication`, `exploration`, `observability`, `reflection`, `scientific`, `tests`）に分割し、`dream_state/` ディレクトリとしてモジュール構造化。
