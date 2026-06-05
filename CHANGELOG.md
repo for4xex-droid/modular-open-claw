@@ -1,5 +1,40 @@
 ## [Unreleased]
 
+### Added
+- **GitHub / LP 情報不整合修正および未記載機能の追記**:
+  - `README.md` & `README_en.md`:
+    - 実際のコード行数（約 126,000+ 行）への修正（`262,000+` → `126,000+`）。
+    - ワークスペースアーキテクチャ図の修正（`watchtower` をメインバイナリ `api-server` に統合し、`samsara-hub` を新規追記）。
+    - 未記載だった6件の重要機能（Arena Battle, Society of Thought, Memory Crystallizer, Adaptive Immune System, TimesFM Forecast, Compliance）を追加。
+    - CI Status バッジを最上部に追加。
+  - `docs/landing/src/i18n/locales/en.json` & `ja.json`:
+    - LP（ランディングページ）上の LOC 値を `126,000+`、テスト数を `4,000+` に修正し、ラベルを `E2E tests` から `automated tests` に更新。
+    - `ja.json` の `f1_desc` における「E2Eテスト」表記を「自動テスト」に整合。
+  - `docs/landing/src/components/SocialProof.test.tsx`:
+    - 上記 LP の metric 修正に伴うテスト期待値の更新。
+  - `docs/landing/src/components/CTA.tsx` & `CTA.test.tsx`:
+    - 環境変数 `VITE_FORMSPREE_ID` の有無によるメール Waitlist フォームの表示制御（条件付きレンダリング）を実装。
+    - テストファイル側で環境変数のモック化（`vi.stubEnv`）を導入し、未設定時のフォーム非表示テストを追加。
+- **MemoryCrystallizer の堅牢化検証テスト群の追加**:
+  - `libs/infrastructure/src/memory_crystallizer.rs`:
+    - 正常系動作（`test_distillation_cycle_success`）、LLM 失敗時のチャンクスキップ（`test_distillation_cycle_llm_failure_skips_chunk`）、スキル無しの境界値（`test_distillation_cycle_no_skills`）、およびセマフォ枯渇（`test_distillation_cycle_semaphore_exhausted`）の4つのテストケースを新規実装し、耐障害性を自動検証。
+
+### Changed
+- **MemoryCrystallizer の堅牢化とエラー局所化（Reflexion 改良）**:
+  - `libs/infrastructure/src/memory_crystallizer.rs`:
+    - `run_distillation_cycle` の戻り値の型を `Result<(), Box<dyn std::error::Error>>` から `Result<(), AiomeError>` に変更し、エラー型の一貫性を確保。
+    - 外部 LLM API の呼び出し失敗時にサイクル全体を停止させず、該当チャンクのみをスキップするエラー局所化（Graceful Skip）を実装（未消費の Raw Karma は次サイクルで再試行）。
+    - トラフィック増加時の診断を容易にするため、セマフォ獲得失敗（try_acquire 失敗）時にデバッグ用警告ログを出力するよう改善。
+- **libs/aiome-commerce のワークスペース登録**:
+  - `Cargo.toml`: `"libs/aiome-commerce"` を workspace `members` 配列に追加。これにより `cargo test --workspace` の実行対象に `aiome-commerce` のテスト（49件）が正常に含まれることを保証。
+
+### Security
+- **MemoryCrystallizer における多層 OOM 防御とインジェクション対策**:
+  - `libs/infrastructure/src/memory_crystallizer.rs`:
+    - 1サイクルあたり最大処理スキル数を `MAX_SKILLS_PER_CYCLE = 100` に制限。
+    - 生の教訓（Raw Karma）を 50 単位のチャンクに分割し、かつ個別教訓の最大長を `MAX_LESSON_CHARS = 2000` に制限（超過分は切り捨て）。これにより巨大な文字列割り当てによるメモリ枯渇（OOM）を物理的に防止。
+    - LLM プロンプト構築時、生の教訓データを `<SKILL>` および `<LESSONS>` などの XML タグ（デリミタ）で分離。これにより、生の教訓データに悪意ある命令が混入した場合のプロンプトインジェクション攻撃を遮断。
+
 ## [1.1.0] - 2026-06-05
 
 ### CI/CD

@@ -44,6 +44,7 @@ graph TD
         aiome-contracts(aiome-contracts)
         aiome-core-contracts(aiome-core-contracts)
         soul(soul)
+        aiome-commerce(aiome-commerce)
     end
 
     api-server --> soul
@@ -52,6 +53,7 @@ graph TD
     api-server --> avatar-engine
     api-server --> aiome-core-contracts
     api-server --> aiome-contracts
+    api-server --> aiome-commerce
     api-server --> infrastructure
     samsara-hub --> aiome-core
     samsara-hub --> shared
@@ -82,8 +84,12 @@ graph TD
     aiome-node --> aiome-core-contracts
     aiome-node --> shared
     aiome-node --> infrastructure
+    aiome-node --> aiome-commerce
     aiome-node --> aiome-core
     aiome-node --> aiome-core-contracts
+    aiome-commerce --> aiome-core-contracts
+    aiome-commerce --> aiome-core
+    aiome-commerce --> shared
 ```
 
 ## 4. Directory Map (Crates)
@@ -108,6 +114,7 @@ graph TD
 | `aiome-migrate` | `apps/aiome-migrate` | (Core Module) |
 | `shadow-worker` | `apps/shadow-worker` | (Core Module) |
 | `aiome-node` | `apps/aiome-node` | (Core Module) |
+| `aiome-commerce` | `libs/aiome-commerce` | (Core Module) |
 
 ## 5. Critical Environment Variables
 *(Auto-extracted from `.env.example`)*

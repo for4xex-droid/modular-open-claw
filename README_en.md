@@ -9,12 +9,13 @@
 <h1 align="center">Aiome</h1>
 <p align="center">
   <strong>The Self-Healing AI Agent OS</strong><br>
-  <em>Written entirely by AI agents. 262,000+ lines of production Rust.</em><br><br>
+  <em>Written entirely by AI agents. 126,000+ lines of production Rust.</em><br><br>
   <a href="https://aiome.dev"><strong>aiome.dev (Official Website)</strong></a><br><br>
   <strong>An Autonomous Operating System built by AI, for AI to operate and evolve safely.</strong>
 </p>
 
 <p align="center">
+  <img src="https://github.com/motivationstudio-llc/aiome/workflows/CI/badge.svg" alt="CI Status">
   <img src="https://img.shields.io/badge/License-BUSL_1.1-blue.svg" alt="License: BUSL-1.1">
   <img src="https://img.shields.io/badge/Rust-1.85%2B-orange.svg" alt="Rust 1.85+">
   <img src="https://img.shields.io/badge/TLA%2B-Verified-0052cc.svg" alt="TLA+ Verified">
@@ -109,8 +110,8 @@ It is the "skull, nervous system, and immune system" allowing the "wild genius (
 To guarantee robustness, Aiome heavily utilizes Rust's TypeState pattern to maintain strict layer isolation:
 
 ```text
-apps/api-server      ← Main Binary (The Body / Management Engine)
-apps/watchtower      ← External Channel Integration (The Soul / Discord & Telegram Bridge)
+apps/api-server      ← Main Binary + Watchtower (Body / Soul / Discord Bridge)
+apps/samsara-hub     ← P2P Federation (Hub / CRDT Sync)
       ↓
 libs/core            ← Domain Logic (Open)
       ↓
@@ -134,8 +135,9 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 6. **Impact Analysis Protocol**: A structured `grep_search`-based dependency tracing protocol and semantic dependency map (`RIPPLE_MAP.md`) natively built-in, preventing unknown cascade errors during autonomous code refactoring by agents.
 7. **Automated Chaos Engineering**: Natively built fault-injection framework running steady-state resilience tests (e.g., simulating LLM timeouts and malformed responses) to mathematically guarantee graceful degradation against unpredictable AI failures.
 8. **Cell-Based Architecture (CBA)**: Physical path isolation governed by the 1-process=1-cell invariant. Implements multi-layered defense against path traversal and shell injection via `AppDataResolver` and shell guards.
-9. **GDPR/RTBF Compliance**: Guarantees complete physical data purge (via `forget_actor`) across up to 7 tables in a single atomic transaction, coupled with secure downstream deletion propagation (Zero-Trust Sync).
-10. **Aegis Sentinel**: An autonomous immune system actively monitoring WASM boundaries, autonomously generating LLM patches, verifying them with Kani, and executing real-time code HotSwaps to heal the system without downtime.
+9. **GDPR/RTBF & Content Compliance**: Guarantees complete physical data purge (via `forget_actor`) across up to 7 tables in a single atomic transaction, coupled with secure downstream deletion propagation (Zero-Trust Sync). Additionally, integrates an automated safety filter to detect and filter harmful content.
+10. **Aegis Sentinel**: Actively monitors WASM boundaries, autonomously generating LLM patches, verifying them with Kani, and executing real-time code HotSwaps to heal the system without downtime.
+11. **Adaptive Immune System**: An active defense system that detects input threat patterns and prevents learning rule drift before execution (forming a multi-layered immune structure with the post-incident **Aegis Sentinel**).
 
 ---
 
@@ -144,6 +146,10 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 1. **Strategic Planner & Scientist Loop**: The AI independently hypothesizes improvements, runs iterative self-reviews, and submits experimental jobs.
 2. **Watchtower Diagnostic Loop**: Autonomously extracts lessons from failed jobs, guaranteeing feedback goes into the next attempt (idempotent retries with injected repair hints).
 3. **Intelligence Layer (DreamState)**: A fully autonomous architecture where the AI autonomously generates experimental jobs or self-reflections during idle time, and self-discovers solutions via external MCP signals (ToolDiscovery) for unknown tasks.
+4. **Arena Battle**: An evaluation and verification environment where autonomous agents compete via skills or decision models to self-select the optimal strategy.
+5. **Society of Thought**: A multi-agent consensus engine where multiple decision-making agents discuss through prompts to reach an agreement.
+6. **Memory Crystallizer**: A memory organization system that distills key decisions and lessons from accumulated short-term experiences, crystallizing and compressing them into long-term memory (such as `MEMORY.md`). Features multi-layered OOM defense (via limits on processing skills, batch partitioning, and char length caps), XML-delimited prompt injection mitigation, and localized failure recovery to ensure resilience against LLM API disruptions.
+7. **TimesFM Forecast**: Integrates Google's TimesFM (Time-Series Foundation Model) to enable accurate forecasting of trends and asset demands within the autonomous economy.
 
 ---
 

@@ -6,11 +6,14 @@ describe('CTA Component', () => {
   const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
+    // Mock VITE_FORMSPREE_ID env var for form rendering tests
+    vi.stubEnv('VITE_FORMSPREE_ID', 'YOUR_FORM_ID');
     // Mock fetch to prevent real HTTP requests during test
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     globalThis.fetch = originalFetch;
   });
 
@@ -72,6 +75,16 @@ describe('CTA Component', () => {
     });
 
     consoleSpy.mockRestore();
+  });
+
+  it('does not render the subscription form when VITE_FORMSPREE_ID is not set', () => {
+    vi.stubEnv('VITE_FORMSPREE_ID', '');
+    render(<CTA />);
+    
+    expect(screen.getByText('Start building with Aiome today.')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Enter your work email')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Get Early Access' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Deploy Now/i })).toBeInTheDocument();
   });
 });
 

@@ -9,12 +9,13 @@
 <h1 align="center">Aiome (アイオーム)</h1>
 <p align="center">
   <strong>The Self-Healing AI Agent OS</strong><br>
-  <em>Written entirely by AI agents. 262,000+ lines of production Rust.</em><br><br>
+  <em>Written entirely by AI agents. 126,000+ lines of production Rust.</em><br><br>
   <a href="https://aiome.dev"><strong>aiome.dev (公式ウェブサイト)</strong></a><br><br>
   <strong>AIが自分たちで実装した、AIが安全に活動・進化するための「自律型オペレーティングシステム」</strong>
 </p>
 
 <p align="center">
+  <img src="https://github.com/motivationstudio-llc/aiome/workflows/CI/badge.svg" alt="CI Status">
   <img src="https://img.shields.io/badge/License-BUSL_1.1-blue.svg" alt="License: BUSL-1.1">
   <img src="https://img.shields.io/badge/Rust-1.85%2B-orange.svg" alt="Rust 1.85+">
   <img src="https://img.shields.io/badge/TLA%2B-Verified-0052cc.svg" alt="TLA+ Verified">
@@ -109,8 +110,8 @@ Aiome は、単なるエージェント・フレームワークを超えた、AI
 Aiome は堅牢性を担保するため、Rust の TypeState パターンを駆使し、レイヤーを厳重に分離しています。
 
 ```text
-apps/api-server      ← メインバイナリ (The Body / Management Engine)
-apps/watchtower      ← 外部チャネル連携 (The Soul / Discord & Telegram Bridge)
+apps/api-server      ← メインバイナリ + Watchtower (Body / Soul / Discord Bridge)
+apps/samsara-hub     ← P2P フェデレーション (Hub / CRDT 同期)
       ↓
 libs/core            ← ドメインロジック (Open)
       ↓
@@ -133,9 +134,10 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 5. **GlassWorm Shield**: 不可視Unicode文字列を利用したステルス攻撃やLLMポイズニングを防ぐ超高速サニタイザーの全周配備
 6. **Impact Analysis Protocol**: エージェントによる自律コード改修時の未知のカスケードエラーを防ぐ、`grep_search` ベースの依存追跡プロトコルとセマンティック依存マップ（`RIPPLE_MAP.md`）の標準搭載
 7. **Automated Chaos Engineering**: 意図的な障害注入（LLMタイムアウトや不正フォーマット）をテスト環境で自律実行し、「予測不能なAIの失敗」に対するシステムの縮退運転（Graceful Degradation）を完全に担保
-8. **Cell-Based Architecture (CBA)**: 1プロセス=1セルの不変条件に基づく物理的パス隔離。`AppDataResolver` と Shell ガードによるパストラバーサル・インジェクションの多層防御。
-9. **GDPR/RTBF Compliance**: 単一トランザクションで最大7テーブルの完全な物理パージ（`forget_actor`）と、安全な外部削除伝播（Zero-Trust Sync）を保証。
-10. **Aegis Sentinel**: WASM実行時のインシデントを常時監視・記録し、LLMによるパッチ生成とKaniによる形式検証を経て、システム稼働中にコードを自己修復・入れ替え（HotSwap）する自律型免疫システム。
+8. **Cell-Based Architecture (CBA)**: 1プロセス=1セルの不変条件に基づく物理的パス隔離。`AppDataResolver` と Shell ガードによるパストラバーサル・インジェクション of 多層防御。
+9. **GDPR/RTBF & Content Compliance**: 単一トランザクションで最大7テーブルの完全な物理パージ（`forget_actor`）と安全な外部削除伝播を保証。さらに、有害コンテンツを自動検知してフィルタリングする安全フィルターを搭載。
+10. **Aegis Sentinel**: WASM実行時のインシデントを常時監視・記録し、LLMによるパッチ生成とKaniによる形式検証を経て、システム稼働中にコードを自己修復・入れ替え（HotSwap）する事後修復システム。
+11. **Adaptive Immune System**: 実行前に入力脅威パターンを検知し、学習ルールのドリフトを防止する事前防御システム（事後修復の **Aegis Sentinel** とともに多層免疫システムを形成）。
 
 ---
 
@@ -144,6 +146,10 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 1. **Strategic Planner & Scientist Loop**: AI 自身が改善仮説を立て、反復的な自己レビューを経て実験ジョブを投入。
 2. **Watchtower Diagnostic Loop**: 失敗したジョブから自律的に教訓を抽出し、次回の試行へ確実にフィードバック（修復ヒントによる冪等再試行）。
 3. **Intelligence Layer (DreamState)**: アイドル時にAIが自律的に仮説検証や自己反省のジョブを生み出し、未知の課題には外部シグナルを用いた解決策（ToolDiscovery）を自己探索する完全自律アーキテクチャ。
+4. **Arena Battle**: 自律エージェント間でのスキルや意思決定モデルの競争を通じて、最適なモデルを自己選択する評価・検証環境。
+5. **Society of Thought**: 複数の意思決定エージェントがプロンプトを通じてディスカッションを行い、合意形成を行うマルチエージェント協調エンジン。
+6. **Memory Crystallizer**: 蓄積された短期経験から重要な決定や教訓を抽出し、長期記憶（MEMORY.md等）へと結晶化・圧縮する記憶整理システム。1サイクルあたりの最大スキル処理数・文字数制限およびバッチ分割処理による多層OOM防御と、XMLデリミタを用いたプロンプトインジェクション対策を標準搭載し、エラーの局所化スキップ制御によってAPI障害時も耐障害性を担保。
+7. **TimesFM Forecast**: 時系列予測基盤モデル（TimesFM）を統合し、トレンドや自律経済圏におけるアセット需要の精緻な予測を可能にする時系列予測エンジン。
 
 ---
 

@@ -11,7 +11,7 @@ members = [
     "libs/wasm-skills/terminal_exec",
     "libs/wasm-skills/fs_writer", "libs/napi-bridge",
     "apps/management-console/src-tauri",
-    "libs/aiome-contracts", "libs/aiome-core-contracts", "libs/soul", "apps/aiome-migrate", "apps/shadow-worker", "apps/aiome-node",
+    "libs/aiome-contracts", "libs/aiome-core-contracts", "libs/soul", "apps/aiome-migrate", "apps/shadow-worker", "apps/aiome-node", "libs/aiome-commerce",
 ]
 exclude = ["vendor/*"]
 resolver = "2"

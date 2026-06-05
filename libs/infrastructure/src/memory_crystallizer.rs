@@ -6,6 +6,7 @@
  */
 
 use crate::belief_consistency_gate::{BeliefCheckResult, BeliefConsistencyGate};
+use crate::cortex_synth::{SynthPair, SynthQualityJudge};
 use crate::job_queue::DistillationOps;
 use crate::slm_bridge::SlmBridge;
 use aiome_core_contracts::error::AiomeError;
@@ -17,6 +18,9 @@ use tokio::sync::Semaphore;
 use tracing::{info, warn};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+/// LLM が生成するファクトのカテゴリ分類。
+/// 現在はプロンプト出力のパース用に定義されており、
+/// 将来的に `run_distillation_cycle` 内で構造化パースに使用予定。
 pub enum FactCategory {
     Preference,
     Knowledge,
@@ -27,8 +31,6 @@ pub enum FactCategory {
 }
 
 /// 短期記憶から長期Karmaへの結晶化エンジン
-use crate::cortex_synth::{SynthPair, SynthQualityJudge};
-
 pub struct MemoryCrystallizer {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     ops: Arc<dyn DistillationOps>,
@@ -58,43 +60,61 @@ impl MemoryCrystallizer {
         }
     }
 
-    /// `run_distillation_cycle` を実行する
-    pub async fn run_distillation_cycle(&self) -> Result<(), Box<dyn std::error::Error>> {
+    /// 短期記憶（Raw Karma）を蒸留し、長期的な知恵（Distilled Fact）として結晶化する。
+    ///
+    /// 処理フロー:
+    /// 1. 閾値以上の Raw Karma を持つスキルを取得
+    /// 2. LLM でカテゴリ付きファクトに抽象化
+    /// 3. CortexSynth Quality Gate で品質検証
+    /// 4. Belief Consistency Gate で信念矛盾チェック
+    /// 5. 合格した結果を Distilled Karma として永続化
+    ///
+    /// # スキル処理上限
+    /// 1サイクルあたり最大 100 スキルまで処理し、過剰なリソース消費を防止する。
+    pub async fn run_distillation_cycle(&self) -> Result<(), AiomeError> {
         // 1. Skill-based Karma Distillation (Consolidating raw experiences)
         // Fetch skills that have 10+ raw karma entries
         let skills = self.ops.fetch_skills_for_distillation(10).await?;
-        for skill in skills {
+        // OOM / CPU 防御: 1サイクルあたりの処理スキル数を制限
+        const MAX_SKILLS_PER_CYCLE: usize = 100;
+        for skill in skills.iter().take(MAX_SKILLS_PER_CYCLE) {
             if let Ok(_permit) = self.semaphore.try_acquire() {
                 info!(
                     "💎 [MemoryCrystallizer] Crystallizing karma for skill: {}",
                     skill
                 );
-                let raw_karma = self.ops.fetch_raw_karma_for_skill(&skill).await?;
+                let raw_karma = self.ops.fetch_raw_karma_for_skill(skill).await?;
 
                 // VULN-63: OOM Prevention - process in batches of 50 to avoid massive string allocation
                 for raw_karma_chunk in raw_karma.chunks(50) {
+                    // 個別 lesson の長さを制限し、極端に大きな入力による OOM を防止
+                    const MAX_LESSON_CHARS: usize = 2000;
                     let lessons = raw_karma_chunk
                         .iter()
-                        .map(|(_, lesson)| format!("- {}", lesson))
+                        .map(|(_, lesson)| {
+                            let truncated: String = lesson.chars().take(MAX_LESSON_CHARS).collect();
+                            format!("- {}", truncated)
+                        })
                         .collect::<Vec<_>>()
                         .join("\n");
 
+                    // プロンプトインジェクション対策: XML デリミタでユーザーデータを分離
                     let prompt = format!(
-                        "以下の技能「{}」に関する生の教訓を抽象化し、本質的な知恵（Fact）に結晶化してください。\n\
+                        "以下の技能に関する生の教訓を抽象化し、本質的な知恵（Fact）に結晶化してください。\n\
                         また、各Factに対して以下のカテゴリのいずれかを割り当ててください：\n\
                         - Preference (ユーザーの好み)\n\
                         - Knowledge (技術的・一般的な知識)\n\
                         - Context (現在の状況・背景)\n\
                         - Behavior (エージェントの振る舞い方)\n\
                         - Goal (達成すべき目標)\n\n\
-                        教訓リスト:\n{}\n\n\
+                        <SKILL>{}</SKILL>\n\
+                        <LESSONS>\n{}\n</LESSONS>\n\n\
                         出力形式: [Category] 内容 の形式で短い箇条書き。日本語で出力せよ。",
                         skill, lessons
                     );
 
                     match self.provider.complete(&prompt, None).await {
                         Ok(resp) => {
-                            let _soul_hash = "v2_fact_categorized";
                             let ids: Vec<String> =
                                 raw_karma_chunk.iter().map(|(id, _)| id.clone()).collect();
 
@@ -130,7 +150,7 @@ impl MemoryCrystallizer {
                                 }
                             }
 
-                            // Phase 49: Belief Consistency Gate
+                            // Belief Consistency Gate: 結晶化内容が魂の信念と矛盾しないか検証
                             if let Some(gate) = &self.belief_gate {
                                 match gate.check_belief_consistency(&resp.content).await {
                                     Ok(BeliefCheckResult::Consistent) => {
@@ -180,10 +200,10 @@ impl MemoryCrystallizer {
 
                             self.ops
                                 .apply_distilled_karma(
-                                    &skill,
+                                    skill,
                                     &resp.content,
                                     &ids,
-                                    "v1",
+                                    "v2_fact_categorized",
                                     None,
                                     domain.as_deref(),
                                     None,
@@ -197,12 +217,19 @@ impl MemoryCrystallizer {
                         }
                         Err(e) => {
                             warn!(
-                                "⚠️ [MemoryCrystallizer] Failed to crystallize karma chunk for {}: {:?}",
-                                skill, e
+                                "⚠️ [MemoryCrystallizer] Failed to crystallize karma chunk for {} (chunk_size={}): {:?}",
+                                skill, raw_karma_chunk.len(), e
                             );
+                            // LLM 呼び出し失敗はチャンク単位でスキップ。
+                            // raw_karma は未消費のまま残り、次サイクルで再処理される。
                         }
                     }
                 }
+            } else {
+                info!(
+                    "⏸️ [MemoryCrystallizer] Semaphore exhausted, skipping skill: {}",
+                    skill
+                );
             }
         }
 
@@ -216,6 +243,7 @@ mod tests {
     use crate::job_queue::UniversalJobQueue;
     use crate::slm_bridge::SlmBridge;
     use aiome_core_contracts::llm::{LlmProvider, LlmResponse, StopReason};
+    use aiome_core_contracts::trajectory::TrajectoryStep;
     use async_trait::async_trait;
     use std::sync::Arc;
     use tokio::sync::Semaphore;
@@ -240,6 +268,73 @@ mod tests {
         }
         fn name(&self) -> &str {
             "mock"
+        }
+    }
+
+    /// LLM が常にエラーを返す Mock
+    #[derive(Debug)]
+    struct FailingLlm;
+    #[async_trait]
+    impl LlmProvider for FailingLlm {
+        async fn complete(
+            &self,
+            _prompt: &str,
+            _system: Option<&str>,
+        ) -> Result<LlmResponse, AiomeError> {
+            Err(AiomeError::Infrastructure {
+                reason: "LLM unavailable".to_string(),
+            })
+        }
+        async fn test_connection(&self) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        fn name(&self) -> &str {
+            "failing_mock"
+        }
+    }
+
+    /// run_distillation_cycle テスト用の Mock DistillationOps
+    #[derive(Debug, Default)]
+    struct MockDistillationOps {
+        skills: Vec<String>,
+        raw_karma: Vec<(String, String)>,
+        applied: std::sync::Mutex<Vec<(String, String)>>,
+    }
+
+    #[async_trait]
+    impl DistillationOps for MockDistillationOps {
+        async fn fetch_skills_for_distillation(
+            &self,
+            _threshold: i64,
+        ) -> Result<Vec<String>, AiomeError> {
+            Ok(self.skills.clone())
+        }
+        async fn fetch_raw_karma_for_skill(
+            &self,
+            _skill: &str,
+        ) -> Result<Vec<(String, String)>, AiomeError> {
+            Ok(self.raw_karma.clone())
+        }
+        async fn apply_distilled_karma(
+            &self,
+            skill: &str,
+            distilled_lesson: &str,
+            _old_karma_ids: &[String],
+            _soul_hash: &str,
+            _domain: Option<&str>,
+            _subtopic: Option<&str>,
+            _clone_origin_id: Option<&str>,
+        ) -> Result<(), AiomeError> {
+            self.applied
+                .lock()
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Mutex poisoned: {}", e),
+                })?
+                .push((skill.to_string(), distilled_lesson.to_string()));
+            Ok(())
+        }
+        async fn store_trajectory_step(&self, _step: TrajectoryStep) -> Result<(), AiomeError> {
+            Ok(())
         }
     }
 
@@ -272,5 +367,112 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    /// 正常系: スキルが存在し、LLM が成功する場合に結晶化が完了すること
+    #[tokio::test]
+    async fn test_distillation_cycle_success() {
+        let mock_ops = Arc::new(MockDistillationOps {
+            skills: vec!["rust_basics".to_string()],
+            raw_karma: vec![
+                ("k1".to_string(), "Error handling is crucial".to_string()),
+                ("k2".to_string(), "Use Result instead of panic".to_string()),
+            ],
+            ..Default::default()
+        });
+
+        let crystallizer = MemoryCrystallizer::new(
+            Arc::new(MockLlm),
+            mock_ops.clone() as Arc<dyn DistillationOps>,
+            Arc::new(Semaphore::new(1)),
+            None,
+            None,
+            None,
+        );
+
+        let result = crystallizer.run_distillation_cycle().await;
+        assert!(result.is_ok(), "Distillation cycle should succeed");
+
+        let applied = mock_ops.applied.lock().expect("lock");
+        assert_eq!(applied.len(), 1, "Should have applied 1 distilled karma");
+        assert_eq!(applied[0].0, "rust_basics");
+    }
+
+    /// 異常系: LLM エラー時にパニックせずチャンクをスキップすること
+    #[tokio::test]
+    async fn test_distillation_cycle_llm_failure_skips_chunk() {
+        let mock_ops = Arc::new(MockDistillationOps {
+            skills: vec!["failing_skill".to_string()],
+            raw_karma: vec![("k1".to_string(), "Some lesson".to_string())],
+            ..Default::default()
+        });
+
+        let crystallizer = MemoryCrystallizer::new(
+            Arc::new(FailingLlm),
+            mock_ops.clone() as Arc<dyn DistillationOps>,
+            Arc::new(Semaphore::new(1)),
+            None,
+            None,
+            None,
+        );
+
+        let result = crystallizer.run_distillation_cycle().await;
+        assert!(result.is_ok(), "LLM failure should not propagate as error");
+
+        let applied = mock_ops.applied.lock().expect("lock");
+        assert!(
+            applied.is_empty(),
+            "No karma should be applied on LLM failure"
+        );
+    }
+
+    /// エッジケース: スキルリストが空の場合、何も処理されないこと
+    #[tokio::test]
+    async fn test_distillation_cycle_no_skills() {
+        let mock_ops = Arc::new(MockDistillationOps::default());
+
+        let crystallizer = MemoryCrystallizer::new(
+            Arc::new(MockLlm),
+            mock_ops as Arc<dyn DistillationOps>,
+            Arc::new(Semaphore::new(1)),
+            None,
+            None,
+            None,
+        );
+
+        let result = crystallizer.run_distillation_cycle().await;
+        assert!(result.is_ok());
+    }
+
+    /// エッジケース: セマフォが枯渇している場合、スキルがスキップされること
+    #[tokio::test]
+    async fn test_distillation_cycle_semaphore_exhausted() {
+        let mock_ops = Arc::new(MockDistillationOps {
+            skills: vec!["blocked_skill".to_string()],
+            raw_karma: vec![("k1".to_string(), "lesson".to_string())],
+            ..Default::default()
+        });
+
+        // セマフォ容量 0 → try_acquire は常に失敗
+        let crystallizer = MemoryCrystallizer::new(
+            Arc::new(MockLlm),
+            mock_ops.clone() as Arc<dyn DistillationOps>,
+            Arc::new(Semaphore::new(0)),
+            None,
+            None,
+            None,
+        );
+
+        let result = crystallizer.run_distillation_cycle().await;
+        assert!(
+            result.is_ok(),
+            "Semaphore exhaustion should not cause error"
+        );
+
+        let applied = mock_ops.applied.lock().expect("lock");
+        assert!(
+            applied.is_empty(),
+            "No karma should be applied when semaphore is exhausted"
+        );
     }
 }

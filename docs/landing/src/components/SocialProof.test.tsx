@@ -7,8 +7,8 @@ describe('SocialProof Component', () => {
     render(<SocialProof />);
     
     // Check metric values
-    expect(screen.getByText('262,000+')).toBeInTheDocument();
-    expect(screen.getByText('700+')).toBeInTheDocument();
+    expect(screen.getByText('126,000+')).toBeInTheDocument();
+    expect(screen.getByText('4,000+')).toBeInTheDocument();
     expect(screen.getByText('0')).toBeInTheDocument();
   });
 
@@ -17,7 +17,7 @@ describe('SocialProof Component', () => {
     
     // Check labels
     expect(screen.getByText('lines of production Rust')).toBeInTheDocument();
-    expect(screen.getByText('E2E tests passing')).toBeInTheDocument();
+    expect(screen.getByText('automated tests passing')).toBeInTheDocument();
     expect(screen.getByText('runtime panics in production')).toBeInTheDocument();
   });
 });
