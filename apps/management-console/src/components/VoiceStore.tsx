@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ShoppingCart, Volume2, ShieldCheck, Crown } from "lucide-react";
 import { API_BASE, STRIPE_PRICE_ID } from "../config";
@@ -64,20 +64,15 @@ export default function VoiceStore() {
     isLoading: isRecharging,
     isPortalLoading: isManagingPortal,
     error: checkoutError
-  } = useCheckoutSession(STRIPE_PRICE_ID, agentId);
+  } = useCheckoutSession(STRIPE_PRICE_ID, agentId || undefined);
 
   useEffect(() => {
     if (checkoutError) {
       showToast('error', checkoutError);
     }
-  }, [checkoutError]);
+  }, [checkoutError, showToast]);
 
-  useEffect(() => {
-    fetchBalance();
-    fetchVoiceAssets();
-  }, [agentId]);
-
-  const fetchBalance = async () => {
+  const fetchBalance = useCallback(async () => {
     if (!agentId) return;
     try {
       const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/balance/${agentId}`);
@@ -90,9 +85,9 @@ export default function VoiceStore() {
     } catch (e) {
       setBalance(0);
     }
-  };
+  }, [agentId]);
 
-  const fetchVoiceAssets = async () => {
+  const fetchVoiceAssets = useCallback(async () => {
     try {
       const res = await authenticatedFetch(`${API_BASE}/api/v1/voice/list?scope=public`);
       if (res.ok) {
@@ -114,7 +109,12 @@ export default function VoiceStore() {
     } catch (e) {
       console.error("Failed to fetch voice assets", e);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchBalance();
+    fetchVoiceAssets();
+  }, [fetchBalance, fetchVoiceAssets]);
 
   const handlePurchase = async (asset: VoiceAsset) => {
     if (!agentId) return;
@@ -133,7 +133,7 @@ export default function VoiceStore() {
       });
 
       if (res.ok) {
-        setBalance(prev => prev - asset.price_coins);
+        await fetchBalance();
         showToast('success', t('voice.purchaseSuccess', { name: asset.name }));
       } else {
         const data = await res.json();

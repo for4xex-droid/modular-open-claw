@@ -36,22 +36,27 @@ impl X402Client {
         // テスト/デバッグビルドではモックキーを使用
         // 本番ビルドでは keyring クレートにより OS Keychain から取得（未実装のためエラー）
         #[cfg(any(test, debug_assertions))]
-        let private_key_hex =
-            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".to_string();
+        {
+            let private_key_hex =
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".to_string();
+            let signer = PrivateKeySigner::from_str(&private_key_hex)
+                .context("Invalid private key format")?;
+
+            Ok(Self {
+                rpc_url,
+                budget_cap,
+                signer,
+            })
+        }
 
         #[cfg(not(any(test, debug_assertions)))]
-        return Err(anyhow::anyhow!(
-            "X402Client private key management not implemented for production. Use OS Keychain integration."
-        ));
-
-        let signer =
-            PrivateKeySigner::from_str(&private_key_hex).context("Invalid private key format")?;
-
-        Ok(Self {
-            rpc_url,
-            budget_cap,
-            signer,
-        })
+        {
+            let _ = rpc_url;
+            let _ = budget_cap;
+            Err(anyhow::anyhow!(
+                "X402Client private key management not implemented for production. Use OS Keychain integration."
+            ))
+        }
     }
 }
 

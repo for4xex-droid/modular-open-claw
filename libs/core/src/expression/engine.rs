@@ -70,8 +70,35 @@ impl ExpressionEngine {
                     .trim()
                     .to_lowercase();
 
-                // Allow only a subset or clean it up if necessary.
-                emotion = em_str;
+                // SEC: Validate emotion against allowlist to prevent injection
+                const ALLOWED_EMOTIONS: &[&str] = &[
+                    "happy",
+                    "sad",
+                    "proud",
+                    "reflective",
+                    "curious",
+                    "frustrated",
+                    "calm",
+                    "excited",
+                    "grateful",
+                    "anxious",
+                    "hopeful",
+                    "determined",
+                    "contemplative",
+                    "inspired",
+                    "melancholic",
+                    "nostalgic",
+                    "peaceful",
+                    "energetic",
+                ];
+                if ALLOWED_EMOTIONS.contains(&em_str.as_str()) {
+                    emotion = em_str;
+                } else {
+                    tracing::warn!(
+                        "⚠️ [ExpressionEngine] Unknown emotion '{}', falling back to 'reflective'",
+                        em_str
+                    );
+                }
                 lines.pop(); // Remove the emotion line from content
             }
         }

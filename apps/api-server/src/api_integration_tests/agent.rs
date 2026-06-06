@@ -409,14 +409,14 @@ async fn test_synergy_demo_routes_visibility() {
     let auth = test_bearer();
 
     // 1. Synergy Test Routes
-    let resp = server
+    let _resp = server
         .post("/api/synergy/test/failure")
         .add_header(axum::http::header::AUTHORIZATION, &auth)
         .await;
 
     #[cfg(feature = "dev-routes")]
     assert_eq!(
-        resp.status_code(),
+        _resp.status_code(),
         axum::http::StatusCode::OK,
         "dev-routes is enabled, should return 200 OK"
     );
@@ -424,7 +424,7 @@ async fn test_synergy_demo_routes_visibility() {
     #[cfg(not(debug_assertions))]
     {
         assert_eq!(
-            resp.status_code(),
+            _resp.status_code(),
             axum::http::StatusCode::NOT_FOUND,
             "Synergy test routes must be 404 in non-debug builds"
         );

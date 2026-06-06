@@ -16,6 +16,7 @@ pub fn get_http_client() -> &'static reqwest::Client {
         reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(60))
             .pool_idle_timeout(std::time::Duration::from_secs(90))
+            .user_agent("aiome-api/1.0")
             // SEC-5 FIX: Global SSRF prevention via redirect blocking
             .redirect(reqwest::redirect::Policy::none())
             .build()

@@ -1,6 +1,47 @@
 ## [Unreleased]
 
+### Changed
+- **DB 行マッピング関数の DRY 統一 (Phase D)**:
+  - `libs/infrastructure/src/job_queue/federation.rs` [MODIFY]: `map_sqlite_row_to_karma` および `map_postgres_row_to_karma` を定義し、`do_export_federated_data` 内の重複マッピングを DRY 統一。また、テストコードにおける `karma_logs` テーブル作成スキーマに `is_private` および `is_archived` カラムを追記してテストの整合性を確保。
+  - `libs/infrastructure/src/artifact_store.rs` [MODIFY]: `map_edge_row_generic` を導入して `ArtifactEdge` の重複マッピングを DRY 統一。
+  - `libs/infrastructure/src/job_queue/settings.rs` [MODIFY]: `map_sqlite_row_to_setting` および `map_postgres_row_to_setting` を導入して `do_get_all_settings` のマッピング重複を DRY 統一。
+- **マジックナンバーの定数化 (Phase D)**:
+  - `libs/infrastructure/src/job_queue/swarm.rs` [MODIFY]: Clock Poisoning 閾値である 86400秒（1日）を `MAX_CLOCK_SKEW` 定数として定義しマジックナンバーを置換。
+- **セキュリティ・衛生・仕様書の更新 (Phase D)**:
+  - `docs/specs/SECURITY_WHITEPAPER.md` [MODIFY]: 更新日を 2026-06-07 に統一し、JSON 構造の変更に伴う typo の修正、および Biome 隔離保護に関するセキュリティ注記を追加。
+  - `docs/architecture/INFRASTRUCTURE_MODULES.md` [MODIFY]: `job_queue` のモジュール開発状態（Biome/Federation等）を実装完了状態へと更新。
+  - `.env.example` [MODIFY]: `ENFORCE_GUARDRAIL` のデフォルト値を `"true"` へ修正。
+  - `apps/samsara-hub/src/main.rs` [MODIFY]: ファイル先頭の `#![allow(dead_code)]` を削除し、ビルド警告を抑制。
+
 ### Added
+- **P2P Federation E2E 暗号化に向けた ADR 起票 (Phase P1-2)**:
+  - `docs/decisions/043-p2p-e2e-encryption.md` [NEW]: P2P連邦ネットワークにおけるエンドツーエンド暗号化（X25519 鍵共有と AES-256-GCM / AEAD を組み合わせたハイブリッド暗号方式）の設計決定を記述した ADR-043 を作成。
+- **is_protected DB カラム追加による DRM 保護の永続化 (Phase P1-1)**:
+  - `libs/infrastructure/migrations/sqlite/20260607000000_add_is_protected_to_artifacts.sql` [NEW] & `libs/infrastructure/migrations/postgres/20260607000000_add_is_protected_to_artifacts.sql` [NEW]: `ai_artifacts` テーブルに DRM 隔離フラグである `is_protected` カラムを追加するマイグレーションを作成。
+  - `libs/aiome-core-contracts/src/traits.rs` [MODIFY]: `ArtifactMeta` 構造体に `is_protected` フィールドを追加。
+  - `libs/infrastructure/src/artifact_store.rs` [MODIFY]: `save_artifact` 時の挿入パラメータに `is_protected` を追加して永続化。`read_artifact_file` の監査ログ処理において、ファイルパスの heuristics を DB カラム `meta.is_protected` に置き換え。
+
+### Changed
+- **DB 行マッピング関数の DRY 統一 (Phase P2-1)**:
+  - `libs/infrastructure/src/artifact_store.rs` [MODIFY]: `map_sqlite_row` と `map_postgres_row` の完全に重複していた SQL 行マッピング処理を、ジェネリック関数 `map_row_generic` に DRY 統一。
+
+### Security
+- **SecretRedactor のパフォーマンス評価と設計確認 (Phase P2-2)**:
+  - `libs/infrastructure/src/security/secret_redactor.rs`: `SecretRedactor` は ZST（ゼロサイズ型）かつ `static LazyLock<Regex>` で定義されており、毎呼び出しごとの `new()` インスタンス化はアロケーションが完全にゼロであるため、`OnceLock` 化を行わず現状の構成が Rust において最適かつ安全であることを確認。
+
+### Added
+- **Aiome × Nurture Monorepo 統合と Docker 化**:
+  - `Project-Nurture` リポジトリを `aiome` の `commercial/` ディレクトリとして完全に統合。
+  - ルート `Cargo.toml` の workspace members に Nurture クレートを追加し、単一 Monorepo を構築。
+  - Docker Compose 構成ファイルを `docker-compose.commercial.yml` に統合し、フルスタックビルドフローをシームレス化。
+  - `commercial/LICENSE` を新規作成し、商用エンジンのライセンスとして `BUSL-1.1` を適用。
+- **リリースビルドにおけるコンパイルエラーの修正**:
+  - `libs/aiome-commerce/src/x402.rs` の `new` 関数において、条件付きコンパイル (`#[cfg]`) のブロックを修正し、リリースビルド時の `private_key_hex` スコープエラーを回避。
+  - `commercial/libs/nurture-bridge/src/lib.rs` で、デバッグ用の `MockAuthManager` と `MockLlmProvider` の再エクスポートに条件付きコンパイル `#[cfg(any(test, debug_assertions))]` を適用。
+  - `commercial/apps/nurture-api/src/main.rs` で、`MockAuthManager` の初期化箇所を `#[cfg]` ブロックによるコンパイル時分岐に変更し、解決エラーを回避。
+  - `apps/api-server/src/bootstrap/helpers.rs` に `tracing::error` のインポートを追加し、`error!` マクロエラーを解消。
+  - `apps/api-server/src/mcp/http_client.rs` の `_localhost_allowed` 変数の不要なアンダースコアを削除し、スコープエラーを解消。
+  - `production.Dockerfile` および `distroless.Dockerfile` のビルド環境に `curl` パッケージを追加し、`utoipa-swagger-ui` のダウンロードエラーを解決。
 - **GitHub / LP 情報不整合修正および未記載機能の追記**:
   - `README.md` & `README_en.md`:
     - 実際のコード行数（約 126,000+ 行）への修正（`262,000+` → `126,000+`）。

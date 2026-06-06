@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Box,
@@ -62,6 +62,7 @@ interface Artifact {
   signature?: string;
   edges: ArtifactEdge[];
   created_at: string;
+  is_protected?: boolean;
 }
 
 const ArtifactVault = () => {
@@ -76,12 +77,7 @@ const ArtifactVault = () => {
   const [deletingArtifactId, setDeletingArtifactId] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchArtifacts();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [filter, searchTerm]);
+
 
   // Listen for JS bridge messages from the sandboxed iframe
   useEffect(() => {
@@ -105,7 +101,7 @@ const ArtifactVault = () => {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  const fetchArtifacts = async () => {
+  const fetchArtifacts = useCallback(async () => {
     setLoading(true);
     try {
       let url = `${API_BASE}/api/artifacts?limit=50`;
@@ -121,13 +117,23 @@ const ArtifactVault = () => {
           console.error("Unexpected artifacts response format:", typeof data);
           setArtifacts([]);
         }
+      } else {
+        console.error("Failed to fetch artifacts: HTTP", res.status);
+        setArtifacts([]);
       }
     } catch (e) {
       console.error("Failed to fetch artifacts", e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, searchTerm]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchArtifacts();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [fetchArtifacts]);
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -166,6 +172,31 @@ const ArtifactVault = () => {
   const handleDeleteRequest = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setDeletingArtifactId(id);
+  };
+
+  // SEC: Authenticated download to ensure auth tokens are sent with file requests
+  const handleDownload = async (artifactId: string, fileName: string) => {
+    try {
+      const res = await authenticatedFetch(
+        `${API_BASE}/api/artifacts/${artifactId}/files/${encodeURIComponent(fileName)}`
+      );
+      if (!res.ok) {
+        showToast('error', t('artifact.downloadFailed', { defaultValue: 'Download failed.' }));
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Failed to download artifact file", e);
+      showToast('error', t('artifact.downloadFailed', { defaultValue: 'Download failed.' }));
+    }
   };
 
   return (
@@ -223,6 +254,11 @@ const ArtifactVault = () => {
                 <div className="category-tag">
                   {getCategoryIcon(artifact.category)}
                   <span>{artifact.category.toUpperCase()}</span>
+                  {artifact.is_protected && (
+                    <span style={{ color: 'var(--accent-purple)', display: 'inline-flex', alignItems: 'center', gap: '2px', marginLeft: '6px' }} title={t('artifact.protected') || 'DRM Protected'}>
+                      <Shield size={12} />
+                    </span>
+                  )}
                 </div>
                 <div className="timestamp">
                   {new Date(artifact.created_at).toLocaleDateString()}
@@ -285,6 +321,12 @@ const ArtifactVault = () => {
                   <div className="category-tag">
                     {getCategoryIcon(selectedArtifact.category)}
                     <span>{selectedArtifact.category.toUpperCase()}</span>
+                    {selectedArtifact.is_protected && (
+                      <span style={{ color: 'var(--accent-purple)', display: 'inline-flex', alignItems: 'center', gap: '2px', marginLeft: '8px' }}>
+                        <Shield size={12} />
+                        <span>DRM Protected</span>
+                      </span>
+                    )}
                   </div>
                   <h2 style={{ margin: '0.4rem 0 0', fontSize: '1.5rem' }}>{selectedArtifact.title}</h2>
                 </div>
@@ -321,15 +363,13 @@ const ArtifactVault = () => {
                                <Eye size={16} />
                              </button>
                            )}
-                          <a
-                            href={`${API_BASE}/api/artifacts/${selectedArtifact.id}/files/${encodeURIComponent(file.name)}`}
-                            target="_blank"
-                            rel="noreferrer"
+                          <button
+                            onClick={() => handleDownload(selectedArtifact.id, file.name)}
                             className="icon-btn"
-                            style={{ color: 'var(--text-muted)', transition: 'color var(--speed-normal)' }}
+                            style={{ color: 'var(--text-muted)', transition: 'color var(--speed-normal)', background: 'none', border: 'none', cursor: 'pointer' }}
                           >
                             <Download size={16} />
-                          </a>
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -417,7 +457,7 @@ const ArtifactVault = () => {
                   title="HTML Preview"
                   src={`${API_BASE}/api/artifacts/${previewFile.artifact.id}/files/${encodeURIComponent(previewFile.file.name)}`}
                   style={{ width: '100%', height: '100%', border: 'none' }}
-                  sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" // allow-same-origin is intentionally omitted for security
+                  sandbox="allow-scripts" // allow-same-origin and allow-popups-to-escape-sandbox intentionally omitted for security
                 />
               </div>
             </motion.div>

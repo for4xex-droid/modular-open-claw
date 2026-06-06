@@ -1,3 +1,64 @@
+## Monorepo DRY リファクタリング・衛生改善および仕様書同期 (Phase D) (2026-06-07)
+- **変更内容**:
+    - `libs/infrastructure/src/job_queue/federation.rs` [MODIFY]: `map_sqlite_row_to_karma` / `map_postgres_row_to_karma` を導入して `FederatedKarma` 行マッピング重複を DRY 統一。テストデータベースのテーブル定義に `is_private` と `is_archived` を追加してテストの整合性を保証。
+    - `libs/infrastructure/src/artifact_store.rs` [MODIFY]: `map_edge_row_generic` を導入して `ArtifactEdge` 行マッピング重複を DRY 統一。
+    - `libs/infrastructure/src/job_queue/settings.rs` [MODIFY]: `map_sqlite_row_to_setting` / `map_postgres_row_to_setting` を導入して `do_get_all_settings` 行マッピング重複を DRY 統一。
+    - `libs/infrastructure/src/job_queue/swarm.rs` [MODIFY]: Clock Poisoning 閾値である 86400秒（1日）を `MAX_CLOCK_SKEW` 定数として定義しマジックナンバーを置換。
+    - `docs/specs/SECURITY_WHITEPAPER.md` [MODIFY]: 更新日を 2026-06-07 に統一、JSON構造の typo を修正、Biome 隔離保護に関するセキュリティ注記を追加。
+    - `docs/architecture/INFRASTRUCTURE_MODULES.md` [MODIFY]: `job_queue` の開発状態（Biome/Federation等）を実装完了状態へ同期。
+    - `.env.example` [MODIFY]: `ENFORCE_GUARDRAIL` のデフォルト値を `"true"` へ修正。
+    - `apps/samsara-hub/src/main.rs` [MODIFY]: 不要な `#![allow(dead_code)]` を削除し、コンパイラによる不要な警告抑制を排除。
+- **波及効果**:
+    - コードベース全体の重複が排除され、将来の DB カラム追加・変更に対する保守性が劇的に向上しました。
+    - 各仕様書が実際の実装状況と完全に一致し、設定ファイルのデフォルトが安全側（Fail-Closed）に倒されました。
+
+## ai_artifacts テーブルへの is_protected カラム追加、マッピング DRY 統一、および E2E 暗号化 ADR 起票 (2026-06-07)
+
+### 1. is_protected DB カラムの追加と永続化
+- **変更内容**:
+    - `libs/infrastructure/migrations/sqlite/20260607000000_add_is_protected_to_artifacts.sql` [NEW] & `libs/infrastructure/migrations/postgres/20260607000000_add_is_protected_to_artifacts.sql` [NEW]: `ai_artifacts` テーブルに DRM 隔離用フラグである `is_protected` カラムを追加するマイグレーションを新規作成。
+    - `libs/aiome-core-contracts/src/traits.rs` [MODIFY]: `ArtifactMeta` 構造体に `is_protected: bool` フィールドを追加。
+    - `libs/infrastructure/src/artifact_store.rs` [MODIFY]: `save_artifact` 内の INSERT 操作で `is_protected` をDBに保存。`read_artifact_file` における監査ログ（Audit Log）で、物理的なファイルチェックの heuristics を DB カラム `meta.is_protected` に置き換え。
+- **波及効果**:
+    - DRM 隔離フラグが物理データベースに保存され、成果物のロード時にメタデータから直接取得可能に。これにより、監査ログで「保護対象アセット」かどうかを高速かつ正確に判定可能になりました。
+    - テストファイル `artifact_store_tests.rs` や `oss_repository_indexer.rs` 内の `CREATE TABLE` 定義に `is_protected` を追加し、テスト実行時の一貫性を保証。
+
+### 2. SQL 行マッピング処理の DRY 統一
+- **変更内容**:
+    - `libs/infrastructure/src/artifact_store.rs` [MODIFY]: Sqlite 用・Postgres 用で重複していたマッピングロジックをジェネリック関数 `map_row_generic` に統一。
+- **波及効果**:
+    - データベース依存の実装コードが DRY になり、将来のフィールド追加・修正時のメンテナンスコストが劇的に削減されました。
+
+### 3. P2P E2E 暗号化 ADR の起票
+- **変更内容**:
+    - `docs/decisions/043-p2p-e2e-encryption.md` [NEW]: P2P連邦ネットワークにおけるエンドツーエンド暗号化（X25519 鍵共有と AES-256-GCM によるハイブリッド暗号方式）の設計書を作成。
+- **波及効果**:
+    - 将来的な連邦メッセージE2E暗号化の実装方針が明確になり、中継ハブ経由時のメッセージ暴露リスクに対する具体的な緩和戦略を定義。
+
+## Project NURTURE Monorepo 統合 & コンパイル警告・エラーの完全解消 (2026-06-07)
+
+### 1. Nurture 商用拡張モジュールの Monorepo 統合
+- **変更内容**:
+    - `Project-Nurture` リポジトリのソースコード全体を `aiome` リポジトリ内の `commercial/` 直下に移行。
+    - ルートの `Cargo.toml` の `members` に Nurture クレート群（`commercial/apps/nurture-api`, `commercial/libs/commerce-protocol`, `commercial/libs/nurture-bridge`, `commercial/libs/nurture-core`, `commercial/libs/nurture-infra`）を統合。
+- **波及効果**:
+    - 独立したリポジトリ境界がなくなり、同一 Cargo ワークスペース内で一括して依存解決、ビルド、テスト実行、Dockerビルドが可能に。
+    - パス依存関係が `../../../libs/...` に短縮・一元化。
+
+### 2. リリースビルド（`not(debug_assertions)`）時のコンパイルエラーの修正
+- **変更内容**:
+    - `libs/aiome-commerce/src/x402.rs` の `new` 関数において、リリースビルド時の `#[cfg]` 分岐で変数 `private_key_hex` がスコープ外になるバグを、アトリビュートをブロック全体に適用して修正。
+    - `commercial/libs/nurture-bridge/src/lib.rs` で、デバッグ用の `MockAuthManager` と `MockLlmProvider` をリリースビルド時にも再エクスポートしようとしていたインポートエラーを修正。
+    - `commercial/apps/nurture-api/src/main.rs` で `cfg!(debug_assertions)` に基づく動的初期化を行っていた箇所を、`#[cfg]` アトリビュートによる物理的なブロックコンパイル分岐に変更し、リリースコンパイル時に発生していた `MockAuthManager` 未定義エラーを解消。
+- **波及効果**:
+    - `cargo check --workspace` および本番用 Docker イメージ（`production.Dockerfile`, `distroless.Dockerfile`）のビルドが警告なしでクリーンに成功。
+
+### 3. api-server のマイナーバグ修正
+- **変更内容**:
+    - `apps/api-server/src/bootstrap/helpers.rs` における `tracing::error` インポートの欠如、および `apps/api-server/src/mcp/http_client.rs` における `localhost_allowed` と `_localhost_allowed` の命名揺れを修正。
+- **波及効果**:
+    - api-server がビルドエラーにならず正常に起動・機能することを確認。
+
 ## MemoryCrystallizer 堅牢化とエラー局所化（Reflexion 改良） (2026-06-05)
 
 ### 1. run_distillation_cycle の戻り値変更とエラーハンドリング改善

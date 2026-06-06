@@ -1,0 +1,61 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Project NURTURE Commercial API",
+    "description": "Commercial economy and marketplace API for Aiome",
+    "license": {
+      "name": "BSL 1.1"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/nurture/wallet/balance": {
+      "get": {
+        "summary": "Get current wallet balance",
+        "responses": { "200": { "description": "Wallet balance" } }
+      }
+    },
+    "/api/nurture/wallet/points": {
+      "get": {
+        "summary": "Get creator points for authenticated actor",
+        "responses": { "200": { "description": "Creator points account" } }
+      }
+    },
+    "/api/nurture/wallet/history": {
+      "get": {
+        "summary": "Get transaction history for authenticated actor",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer" },
+            "required": false
+          }
+        ],
+        "responses": { "200": { "description": "List of ledger entries" } }
+      }
+    },
+    "/api/nurture/marketplace/search": {
+      "get": {
+        "summary": "Search items in the marketplace",
+        "responses": { "200": { "description": "List of available items" } }
+      }
+    },
+    "/api/nurture/marketplace/buy": {
+      "post": {
+        "summary": "Purchase an item",
+        "responses": { 
+          "201": { "description": "Purchase successful" },
+          "400": { "description": "Bad Request or Insufficient Balance" },
+          "403": { "description": "Forbidden (CSAM Rejected)" }
+        }
+      }
+    },
+    "/api/v1/stripe/webhook": {
+      "post": {
+        "summary": "Stripe Webhook handler for coin top-ups",
+        "responses": { "200": { "description": "Webhook processed" } }
+      }
+    }
+  }
+}

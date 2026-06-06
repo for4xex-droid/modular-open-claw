@@ -12,7 +12,7 @@
 | `cortex_synth` | ドキュメント群からタスクに応じた高品質なJSONLデータセット（ShareGPT形式）を自律生成する教師データ蒸留エンジン。 | **実装完了** |
 | `auth` | OAuth 2.1 / JWT 検証 (`AuthManager`) を提供。ステートレスな認証基盤。**Phase 21** で `/api/v1/auth/authorize` 等のモックエンドポイントを実装。 | **実装完了 (Phase 8.2)** |
 | `a2ui` | LLM出力からリアクティブUIを動的にストリーミング生成する基盤（Generative UI）。型安全な `schema`、`A2uiValidator` による XSS/SSRF および深再帰(DoS)防御を提供。 | **Phase 0 完了** |
-| `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。 | 実装完了 |
+| `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。Embedding 検索、CSAM 非同期スキャン、RT-6 監査ログ（読み書き時の全アクセス記録）、PathSandbox によるパストラバーサル防御、DRM vault ディレクトリ分離を実装。PostgreSQL/SQLite 両対応。 | **強化完了** |
 | `buzz` | SNS等への自動投稿・スケジュール管理を行う自律型ワーカーおよび生成エンジン。 | **実装・堅牢化完了** |
 | `channel_bridge` | Discord/Telegram 等の外部チャンネルとの抽象化通信層。 | 実装完了 |
 | `circuit_breaker` | 外部APIのダウンタイムを検知し、安全に遮断。状態遷移時に `AlertManager` と非同期で連動し、トリップ時に Critical アラートを発火。 | 実装完了 |
@@ -39,13 +39,13 @@
 | `invariant_dag` | SHA-256 ハッシュチェーンによる因果関係の追跡と改ざん検知基盤。 | **Phase 48 完了** |
 | `immune_system` | 脅威シグネチャによる不審な挙動の監視と遮断。 | **強化完了** |
 | `cortex_file_projector` | ADR-025: Duke大学研究に基づき、Cortex Wiki記事をファイルシステム階層（カテゴリ/記事.md）として物理投影。`content_hash` 差分更新により冪等性を保証し、DreamState の Agent-Native Discovery モードで自律探索精度を向上。 | **ADR-025 実装完了** |
-| `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済。**Federation v1.5** で P2pSanitizer 防御壁を追加し、SamsaraHub へのペイロードを CSAM / Toxicity 動的ブロックリストで浄化。 | **強化完了** |
+| `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済。Biome 3メソッド（メッセージ永続化・評価値更新）及び Federation データ（ImmuneRule/ArenaMatch）のインポート・エクスポートを実装完了。P2pSanitizer による CSAM/Toxicity 動的ブロックを完備。 | **強化完了** |
 | `knowledge_indexer` | ドキュメントや過去の Karma を高速検索可能にインデックス。 | 実装完了 |
 | `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。ストリーミング通信時の Pre-execute Hook バイパス遮断および Ollama の LoRA 動内ビルダ統合済。**Phase v3/16** にて `EntropyGate` (Shannon Entropy 自動再質問)、`HumanizerFilter` (AI くささ除去)、`WritingContext` (コンテキスト別ルール適用) を実装しパイプラインを完成。静的 Regex パターンのパニックリスクを排除した `LazyLock` による堅牢化を完了。**Phase A** で最新モデルのユニットエコノミクス（コスト追跡）を実装。 | **第4世代進化** |
 | `lora_autotuner` | ロス履歴に基づき LoRA 学習のハイパーパラメータ（LR, Epochs, Rank）を自律調整するエンジン。 | **Phase 55 完了** |
 | `lora_marketplace` | LoRAアダプターファイルのSHA-256ハッシュ検証、エスクロー決済（CommerceEngine連携）、および分離されたファイル移動（PathSandbox）を提供する人格売買・流通インフラ。PostgreSQL/SQLite両対応。 | **実装完了** |
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。エラーのサイレント隠蔽(`let _ =`)を防止し軌跡可視化を強化。 | **強化完了** |
-| `oracle` | システム判断のための高度な論理推論エンジン。 | 実装完了 |
+| `oracle` | Multi-Judge consensus によるシステム判断の高度な論理推論エンジン。SoT Engine (Society of Thought) 委譲による多角的熟議、SSE イベントブリッジ連携、SEC-4 リフレクション回数上限（暴走防止）を実装。 | **強化完了** |
 | `output_filter` | RTK(Rust Token Killer)に着想を得たコマンド出力フィルタ。ボイラープレートや重複行を削減しLLMコンテキストを最適化。**Phase 3**で削減数を `ToolExecutionEvent::TokenSaved` として上層やSSE（Management Console）へ流す計測基盤を結合済。 | **Phase 3 完了** |
 | `publisher` | 成果物の自動公開（SNS, ブログ等）を管理。**Phase B/C** で WordPress REST API v2 アダプタを追加し、SEOコンテンツの自律パブリッシュを実装完了。**Phase 4** にて WordPress API トークンを排除し AbyssVault (Key Proxy) へ委譲するゼロトラストアーキテクチャへ進化。 | **Phase 4 完了** |
 | `rate_limiter` | エージェント単位のリクエスト頻度制御。DoS 攻撃や予期せぬAPI消費を防ぐ。 | **実装完了** |
@@ -83,7 +83,7 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-06-05 (Asia/Tokyo) - Alert notification pipeline, Polar webhook, Caddy headers integration, and dream_state modularization*
+*最終更新: 2026-06-07 (Asia/Tokyo) - Alert notification pipeline, Polar webhook, Caddy headers integration, dream_state modularization, and Biome/Federation implementation completion*
 
 ## Phase 6 Integration Notes
 

@@ -80,8 +80,8 @@ services:
   # === Nurture Economy Sidecar (R4-G1-1) ===
   nurture-api:
     build:
-      context: ../Project-Nurture
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: commercial/docker/nurture.Dockerfile
     environment:
       - CELL_ID=${CELL_ID:-cell-0}
       - DATABASE_URL=sqlite:///app/data/nurture.db

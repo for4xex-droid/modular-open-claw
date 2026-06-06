@@ -127,11 +127,11 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
 
     // Shared ReactMarkdown component overrides (DRY: used in both history and streaming renders)
     const markdownComponents = {
-        h1: ({node, ...props}: any) => <h1 style={{color: 'var(--accent-cyan)', fontSize: '1.5em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
-        h2: ({node, ...props}: any) => <h2 style={{color: 'var(--accent-purple)', fontSize: '1.2em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
-        h3: ({node, ...props}: any) => <h3 style={{fontSize: '1.1em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
-        a: ({node, ...props}: any) => <a style={{color: 'var(--accent-cyan)', textDecoration: 'underline'}} {...props} />,
-        code: ({node, className, children, ...props}: any) => {
+        h1: ({node, ...props}: React.ComponentPropsWithoutRef<'h1'> & { node?: unknown }) => <h1 style={{color: 'var(--accent-cyan)', fontSize: '1.5em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
+        h2: ({node, ...props}: React.ComponentPropsWithoutRef<'h2'> & { node?: unknown }) => <h2 style={{color: 'var(--accent-purple)', fontSize: '1.2em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
+        h3: ({node, ...props}: React.ComponentPropsWithoutRef<'h3'> & { node?: unknown }) => <h3 style={{fontSize: '1.1em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
+        a: ({node, ...props}: React.ComponentPropsWithoutRef<'a'> & { node?: unknown }) => <a style={{color: 'var(--accent-cyan)', textDecoration: 'underline'}} {...props} />,
+        code: ({node, className, children, ...props}: React.ComponentPropsWithoutRef<'code'> & { node?: unknown; children?: React.ReactNode }) => {
             const match = /language-(\w+)/.exec(className || '');
             if (match && match[1] === 'mermaid') {
                 return (
@@ -142,7 +142,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
             }
             return <code style={{background: 'var(--black-40)', padding: '0.2em 0.4em', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.9em'}} className={className} {...props}>{children}</code>;
         },
-        pre: ({node, ...props}: any) => <pre style={{background: 'var(--black-60)', padding: '1em', borderRadius: 'var(--radius-md)', overflowX: 'auto', marginBottom: '1em'}} {...props} />
+        pre: ({node, ...props}: React.ComponentPropsWithoutRef<'pre'> & { node?: unknown }) => <pre style={{background: 'var(--black-60)', padding: '1em', borderRadius: 'var(--radius-md)', overflowX: 'auto', marginBottom: '1em'}} {...props} />
     };
 
     return (
@@ -270,7 +270,12 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {bp.id} • Next: {bp.nextRun}</div>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                                            <div style={{ fontWeight: 600, color: 'var(--accent-emerald)' }}>{bp.roi}</div>
+                                            <div style={{ fontWeight: 600, color: 'var(--accent-emerald)' }}>
+                                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: '4px' }}>
+                                                     {t('agent.estimatedRoiLabel') || 'Estimated:'}
+                                                 </span>
+                                                 {bp.roi}
+                                             </div>
                                             <div style={{ 
                                                 padding: '0.2rem 0.6rem', 
                                                 borderRadius: '1rem', 

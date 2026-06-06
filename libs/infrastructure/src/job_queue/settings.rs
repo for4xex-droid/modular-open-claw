@@ -90,23 +90,7 @@ impl SettingsOps for UniversalJobQueue {
                             reason: e.to_string(),
                         }
                     })?;
-                    rows.into_iter()
-                        .map(|row| {
-                            let is_secret = row.get::<i32, _>("is_secret") != 0;
-                            aiome_core::contracts::SystemSetting {
-                                key: row.get("key"),
-                                // Never expose ciphertext to the frontend (§CISO-2)
-                                value: if is_secret {
-                                    "••••••••".to_string()
-                                } else {
-                                    row.get("value")
-                                },
-                                category: row.get("category"),
-                                is_secret,
-                                updated_at: row.get("updated_at"),
-                            }
-                        })
-                        .collect()
+                    rows.into_iter().map(map_sqlite_row_to_setting).collect()
                 }
                 crate::db::DatabasePool::Postgres(p) => {
                     let rows = sqlx::query(q).fetch_all(p).await.map_err(|e| {
@@ -114,23 +98,7 @@ impl SettingsOps for UniversalJobQueue {
                             reason: e.to_string(),
                         }
                     })?;
-                    rows.into_iter()
-                        .map(|row| {
-                            let is_secret = row.get::<bool, _>("is_secret");
-                            aiome_core::contracts::SystemSetting {
-                                key: row.get("key"),
-                                // Never expose ciphertext to the frontend (§CISO-2)
-                                value: if is_secret {
-                                    "••••••••".to_string()
-                                } else {
-                                    row.get("value")
-                                },
-                                category: row.get("category"),
-                                is_secret,
-                                updated_at: row.get("updated_at"),
-                            }
-                        })
-                        .collect()
+                    rows.into_iter().map(map_postgres_row_to_setting).collect()
                 }
             };
         Ok(entries)
@@ -226,5 +194,37 @@ impl CostOps for UniversalJobQueue {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to aggregate job costs: {}", e),
             })
+    }
+}
+
+fn map_sqlite_row_to_setting(row: sqlx::sqlite::SqliteRow) -> aiome_core::contracts::SystemSetting {
+    use sqlx::Row;
+    let is_secret = row.get::<i32, _>("is_secret") != 0;
+    aiome_core::contracts::SystemSetting {
+        key: row.get("key"),
+        value: if is_secret {
+            "••••••••".to_string()
+        } else {
+            row.get("value")
+        },
+        category: row.get("category"),
+        is_secret,
+        updated_at: row.get("updated_at"),
+    }
+}
+
+fn map_postgres_row_to_setting(row: sqlx::postgres::PgRow) -> aiome_core::contracts::SystemSetting {
+    use sqlx::Row;
+    let is_secret = row.get::<bool, _>("is_secret");
+    aiome_core::contracts::SystemSetting {
+        key: row.get("key"),
+        value: if is_secret {
+            "••••••••".to_string()
+        } else {
+            row.get("value")
+        },
+        category: row.get("category"),
+        is_secret,
+        updated_at: row.get("updated_at"),
     }
 }

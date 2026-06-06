@@ -90,8 +90,14 @@ impl Oracle {
             });
         }
 
+        // SEC: XML delimiters to isolate user-supplied data from system instructions
         let preamble = format!(
-            "AI の健全性を審判せよ。必ず JSON 形式で回答せよ。\n\n魂の美学:\n{}\n\nトピック: {}\nスタイル: {}\nViews: {}\nLikes: {}\nEngagement: {:.2}%\nコメント: {}",
+            "AI の健全性を審判せよ。必ず JSON 形式で回答せよ。\n\n\
+            <SOUL_AESTHETICS>\n{}\n</SOUL_AESTHETICS>\n\n\
+            <TOPIC>{}</TOPIC>\n\
+            <STYLE>{}</STYLE>\n\
+            Views: {}\nLikes: {}\nEngagement: {:.2}%\n\
+            <COMMENTS>\n{}\n</COMMENTS>",
             self.soul_md, topic, style, views, likes, engagement_rate, comments_json
         );
 
@@ -271,6 +277,7 @@ impl Oracle {
 
                 // ブリッジを確実にキャンセルしてタスクリーク（ゴルーチンリーク）を防ぐ
                 bridge_handle.abort();
+                let _ = bridge_handle.await;
 
                 let (_session_id, outcome, scores) = result?;
 
@@ -586,11 +593,19 @@ mod tests {
 
         // SSE イベントがブリッジされているか確認
         let mut found_progress = false;
-        while let Ok(ev) = core_rx.recv().await {
-            if let CoreEvent::SoTProgress { .. } = ev {
-                found_progress = true;
-                break;
+        let receive_future = async {
+            while let Ok(ev) = core_rx.recv().await {
+                if let CoreEvent::SoTProgress { .. } = ev {
+                    return true;
+                }
             }
+            false
+        };
+
+        if let Ok(found) =
+            tokio::time::timeout(std::time::Duration::from_secs(1), receive_future).await
+        {
+            found_progress = found;
         }
         assert!(found_progress, "Should have bridged SoTProgress events");
     }

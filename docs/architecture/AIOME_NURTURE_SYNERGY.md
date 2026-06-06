@@ -2,7 +2,7 @@
 
 > **自動生成元**: `/docs-gen` ワークフロー  
 > **最終更新**: 2026-06-03
-> **対象リポジトリ**: `aiome/` (OSS) + `Project-Nurture/` (商用拡張)
+> **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
 
@@ -11,7 +11,7 @@
 **Aiome** は自律型 AI エージェントのための「文明の OS」（OSS、BSL-1.1）。
 **Project NURTURE** は Aiome に経済的自我を注入する商用拡張モジュール（BSL-1.1）。
 
-2つは物理的に別リポジトリだが、設計上は「1つのシステム」として動作する。
+以前は物理的に別リポジトリだったが、現在は `aiome` の `commercial/` ディレクトリ配下に Monorepo として統合され、単一 Cargo ワークスペースで管理・ビルドされる。
 Aiome は NURTURE を知らなくても機能し、NURTURE は Aiome に依存する。
 
 ```
@@ -225,7 +225,7 @@ graph LR
         COMMERCE[aiome-commerce]
     end
 
-    subgraph "Project NURTURE (Project-Nurture/)"
+    subgraph "Project NURTURE (commercial/)"
         CP[commerce-protocol]
         NC[nurture-core]
         NI[nurture-infra]
@@ -240,10 +240,10 @@ graph LR
     NA --> NB
     NI --> NB
 
-    NI -->|"path = ../aiome/libs/core"| AC
-    NI -->|"path = ../aiome/libs/shared"| SH
-    NI -->|"path = ../aiome/libs/infrastructure"| INF
-    NB -->|"path = ../aiome/libs/aiome-core-contracts"| CONTRACTS
+    NI -->|"path = ../../../libs/core"| AC
+    NI -->|"path = ../../../libs/shared"| SH
+    NI -->|"path = ../../../libs/infrastructure"| INF
+    NB -->|"path = ../../../libs/aiome-core-contracts"| CONTRACTS
 
     style AC fill:#4CAF50,color:white
     style SH fill:#4CAF50,color:white

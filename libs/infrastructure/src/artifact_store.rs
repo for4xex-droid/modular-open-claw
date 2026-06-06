@@ -91,12 +91,35 @@ impl UniversalArtifactStore {
         format!("{:x}", hasher.finalize())
     }
 
-    // Helper to map Sqlite row to ArtifactMeta
+    // Helper macro to map rows to ArtifactMeta (DRY implementation)
+    // Works for both SqliteRow and PgRow using sqlx::Row trait methods
+    // extracts is_protected safely falling back to integer decoding if boolean decode fails (e.g. SQLite storage nuance)
     fn map_sqlite_row(row: sqlx::sqlite::SqliteRow) -> Result<ArtifactMeta, AiomeError> {
+        Self::map_row_generic(&row)
+    }
+
+    fn map_postgres_row(row: sqlx::postgres::PgRow) -> Result<ArtifactMeta, AiomeError> {
+        Self::map_row_generic(&row)
+    }
+
+    fn map_row_generic<'a, R>(row: &'a R) -> Result<ArtifactMeta, AiomeError>
+    where
+        R: sqlx::Row,
+        String: sqlx::Decode<'a, R::Database> + sqlx::Type<R::Database>,
+        bool: sqlx::Decode<'a, R::Database> + sqlx::Type<R::Database>,
+        i32: sqlx::Decode<'a, R::Database> + sqlx::Type<R::Database>,
+        &'a str: sqlx::ColumnIndex<R>,
+    {
         let cat_str: String = row.try_get("category").unwrap_or_default();
         let tags_json: String = row.try_get("tags").unwrap_or_default();
         let manifest_json: String = row.try_get("file_manifest").unwrap_or_default();
         let karma_json: String = row.try_get("karma_refs").unwrap_or_default();
+
+        let is_protected = row.try_get::<bool, _>("is_protected").unwrap_or_else(|_| {
+            row.try_get::<i32, _>("is_protected")
+                .map(|v| v != 0)
+                .unwrap_or(false)
+        });
 
         Ok(ArtifactMeta {
             id: row.try_get("id").unwrap_or_default(),
@@ -113,34 +136,29 @@ impl UniversalArtifactStore {
             signature: row.try_get("signature").unwrap_or_default(),
             text_content: row.try_get("text_content").unwrap_or_default(),
             edges: Vec::new(),
+            is_protected,
             created_at: row.try_get("created_at").unwrap_or_default(),
         })
     }
 
-    // Helper to map Postgres row to ArtifactMeta
-    fn map_postgres_row(row: sqlx::postgres::PgRow) -> Result<ArtifactMeta, AiomeError> {
-        let cat_str: String = row.try_get("category").unwrap_or_default();
-        let tags_json: String = row.try_get("tags").unwrap_or_default();
-        let manifest_json: String = row.try_get("file_manifest").unwrap_or_default();
-        let karma_json: String = row.try_get("karma_refs").unwrap_or_default();
-
-        Ok(ArtifactMeta {
+    fn map_edge_row_generic<'a, R>(row: &'a R) -> ArtifactEdge
+    where
+        R: sqlx::Row,
+        String: sqlx::Decode<'a, R::Database> + sqlx::Type<R::Database>,
+        &'a str: sqlx::ColumnIndex<R>,
+    {
+        ArtifactEdge {
             id: row.try_get("id").unwrap_or_default(),
-            title: row.try_get("title").unwrap_or_default(),
-            category: serde_json::from_str(&format!("\"{}\"", cat_str))
-                .unwrap_or(ArtifactCategory::Report),
-            tags: serde_json::from_str(&tags_json).unwrap_or_default(),
-            created_by: row.try_get("created_by").unwrap_or_default(),
-            dir_path: row.try_get("dir_path").unwrap_or_default(),
-            files: serde_json::from_str(&manifest_json).unwrap_or_default(),
-            karma_refs: serde_json::from_str(&karma_json).unwrap_or_default(),
-            job_ref: row.try_get("job_ref").unwrap_or_default(),
-            soul_version_hash: row.try_get("soul_version_hash").unwrap_or_default(),
-            signature: row.try_get("signature").unwrap_or_default(),
-            text_content: row.try_get("text_content").unwrap_or_default(),
-            edges: Vec::new(),
+            source_id: row.try_get("source_id").unwrap_or_default(),
+            target_id: row.try_get("target_id").unwrap_or_default(),
+            source_type: row.try_get("source_type").unwrap_or_default(),
+            relation: row.try_get("relation").unwrap_or_default(),
+            metadata: serde_json::from_str(
+                &row.try_get::<String, _>("metadata").unwrap_or_default(),
+            )
+            .unwrap_or_default(),
             created_at: row.try_get("created_at").unwrap_or_default(),
-        })
+        }
     }
 }
 
@@ -287,11 +305,11 @@ impl ArtifactStore for UniversalArtifactStore {
             .replace("\"", "");
 
         let q = format!(
-            "INSERT INTO ai_artifacts (id, title, category, tags, created_by, dir_path, file_manifest, karma_refs, job_ref, signature, embedding, text_content)
-             VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11})",
+            "INSERT INTO ai_artifacts (id, title, category, tags, created_by, dir_path, file_manifest, karma_refs, job_ref, signature, embedding, text_content, is_protected)
+             VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12})",
             self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4),
             self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9),
-            self.pool.ph(10), self.pool.ph(11)
+            self.pool.ph(10), self.pool.ph(11), self.pool.ph(12)
         );
 
         sql_exec!(
@@ -308,7 +326,8 @@ impl ArtifactStore for UniversalArtifactStore {
             req.job_ref,
             &signature,
             embedding_blob,
-            req.text_content
+            req.text_content,
+            req.is_protected
         )?;
 
         info!("📦 Artifact saved: {}", id);
@@ -480,7 +499,7 @@ impl ArtifactStore for UniversalArtifactStore {
             let details = serde_json::json!({
                 "artifact_id": id,
                 "filename": filename,
-                "protected": meta.dir_path.contains("vault") || meta.dir_path.contains(".abyss_vault"),
+                "protected": meta.is_protected,
             });
             if let Err(e) = logger
                 .log_event("ARTIFACT_READ", &meta.created_by, &details)
@@ -563,18 +582,7 @@ impl ArtifactStore for UniversalArtifactStore {
                         })?;
                 let mut results = Vec::new();
                 for r in rows {
-                    results.push(ArtifactEdge {
-                        id: r.try_get("id").unwrap_or_default(),
-                        source_id: r.try_get("source_id").unwrap_or_default(),
-                        target_id: r.try_get("target_id").unwrap_or_default(),
-                        source_type: r.try_get("source_type").unwrap_or_default(),
-                        relation: r.try_get("relation").unwrap_or_default(),
-                        metadata: serde_json::from_str(
-                            &r.try_get::<String, _>("metadata").unwrap_or_default(),
-                        )
-                        .unwrap_or_default(),
-                        created_at: r.try_get("created_at").unwrap_or_default(),
-                    });
+                    results.push(Self::map_edge_row_generic(&r));
                 }
                 Ok(results)
             }
@@ -589,18 +597,7 @@ impl ArtifactStore for UniversalArtifactStore {
                         })?;
                 let mut results = Vec::new();
                 for r in rows {
-                    results.push(ArtifactEdge {
-                        id: r.try_get("id").unwrap_or_default(),
-                        source_id: r.try_get("source_id").unwrap_or_default(),
-                        target_id: r.try_get("target_id").unwrap_or_default(),
-                        source_type: r.try_get("source_type").unwrap_or_default(),
-                        relation: r.try_get("relation").unwrap_or_default(),
-                        metadata: serde_json::from_str(
-                            &r.try_get::<String, _>("metadata").unwrap_or_default(),
-                        )
-                        .unwrap_or_default(),
-                        created_at: r.try_get("created_at").unwrap_or_default(),
-                    });
+                    results.push(Self::map_edge_row_generic(&r));
                 }
                 Ok(results)
             }

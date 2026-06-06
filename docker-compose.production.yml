@@ -87,8 +87,8 @@ services:
 
   nurture-api:
     build:
-      context: ../Project-Nurture
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: commercial/docker/nurture.Dockerfile
     environment:
       - PORT=3020
       - DATABASE_URL=sqlite:///app/data/nurture.db
@@ -100,7 +100,7 @@ services:
     depends_on:
       - key-proxy
     volumes:
-      - ../Project-Nurture/data:/app/data
+      - ./data/nurture:/app/data
     deploy:
       resources:
         limits:

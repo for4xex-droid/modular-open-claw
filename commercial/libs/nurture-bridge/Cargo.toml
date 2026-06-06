@@ -1,0 +1,13 @@
+[package]
+name = "nurture-bridge"
+version = "0.1.0"
+license = "BUSL-1.1"
+publish = false
+edition = "2021"
+
+[dependencies]
+shared = { path = "../../../libs/shared" }
+infrastructure = { path = "../../../libs/infrastructure" }
+aiome-core = { path = "../../../libs/core" }
+aiome-core-contracts = { path = "../../../libs/aiome-core-contracts" }
+async-trait = { workspace = true }

@@ -1,5 +1,4 @@
 #![cfg_attr(test, allow(clippy::unwrap_used))]
-#![allow(dead_code)]
 /*
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
@@ -29,7 +28,9 @@ use tracing::{error, info, warn};
 
 mod auth;
 mod handlers;
+#[cfg(test)]
 mod hub_auth_tests;
+#[cfg(test)]
 mod hub_discovery_tests;
 mod mdns_listener;
 mod models;
@@ -349,6 +350,7 @@ pub fn build_app(state: Arc<HubState>) -> Router {
         .with_state(state)
 }
 
+#[cfg(test)]
 mod hub_reliability_tests;
 #[cfg(test)]
 mod hub_ws_tests;

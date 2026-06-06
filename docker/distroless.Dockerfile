@@ -13,13 +13,15 @@ RUN npm run build
 
 
 # --- Build Stage ---
-FROM rust:1.85-slim-bookworm AS builder
+FROM rust:1.93-slim-bookworm AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     git \
+    protobuf-compiler \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

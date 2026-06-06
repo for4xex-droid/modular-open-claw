@@ -782,6 +782,7 @@ pub struct ArtifactMeta {
     pub signature: Option<String>,
     pub text_content: Option<String>,
     pub edges: Vec<ArtifactEdge>,
+    pub is_protected: bool,
     pub created_at: String,
 }
 

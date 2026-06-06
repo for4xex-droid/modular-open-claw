@@ -1,0 +1,43 @@
+[package]
+name = "nurture-api"
+version = "0.1.0"
+edition = "2021"
+license = "BUSL-1.1"
+publish = false
+
+[dependencies]
+aiome-core-contracts = { path = "../../../libs/aiome-core-contracts", features = ["grpc"] }
+commerce-protocol = { path = "../../libs/commerce-protocol", features = ["axum"] }
+nurture-core = { path = "../../libs/nurture-core" }
+nurture-infra = { path = "../../libs/nurture-infra" }
+nurture-bridge = { path = "../../libs/nurture-bridge" }
+axum = { workspace = true }
+tokio-util = { version = "0.7", features = ["rt"] }
+jsonwebtoken = { workspace = true }
+tower = { workspace = true }
+utoipa = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+sqlx = { workspace = true, features = ["sqlite", "chrono"] }
+anyhow = { workspace = true }
+dotenvy = "0.15"
+base64 = { workspace = true }
+secrecy = { workspace = true }
+tower-http = { version = "0.5", features = ["set-header", "limit", "timeout", "cors"] }
+subtle = "2"
+aws-config = "1.8.16"
+aws-sdk-s3 = "1.131.0"
+tonic = "0.12.3"
+futures-util = "0.3.32"
+async-stream = "0.3.6"
+
+[dev-dependencies]
+axum-test = "16"
+tempfile = "3"
+serial_test = "3"

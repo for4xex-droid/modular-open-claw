@@ -48,7 +48,15 @@ try {
     const path = require('path');
     const dir = path.join(__dirname, '..');
     const files = fs.readdirSync(dir);
-    const nodeFile = files.find((f: string) => f.endsWith('.node') && f.includes(platform) && f.includes(arch));
+    // SEC: Strict filename validation to prevent malicious .node injection (CWE-426)
+    const nodeFile = files.find((f: string) => {
+        if (!f.endsWith('.node')) return false;
+        if (!f.includes(platform) || !f.includes(arch)) return false;
+        // Reject filenames containing path separators (directory traversal)
+        if (f.includes('/') || f.includes('\\')) return false;
+        // Must start with a known, trusted prefix
+        return f.startsWith('sentinel') || f.startsWith('aiome');
+    });
     
     if (!nodeFile) {
         throw new Error("No .node file found in " + dir);

@@ -12,6 +12,12 @@ members = [
     "libs/wasm-skills/fs_writer", "libs/napi-bridge",
     "apps/management-console/src-tauri",
     "libs/aiome-contracts", "libs/aiome-core-contracts", "libs/soul", "apps/aiome-migrate", "apps/shadow-worker", "apps/aiome-node", "libs/aiome-commerce",
+    # === Nurture Commercial Engine ===
+    "commercial/apps/nurture-api",
+    "commercial/libs/commerce-protocol",
+    "commercial/libs/nurture-bridge",
+    "commercial/libs/nurture-core",
+    "commercial/libs/nurture-infra",
 ]
 exclude = ["vendor/*"]
 resolver = "2"
@@ -29,13 +35,18 @@ anyhow = "1.0"
 thiserror = "1.0"
 reqwest = { version = "0.12", features = ["json", "stream"] }
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "postgres", "uuid", "chrono"] }
-uuid = { version = "1.6", features = ["v4", "serde"] }
+uuid = { version = "1.6", features = ["v4", "v5", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 sysinfo = "0.33"
 config = "0.14"
 schemars = "0.8"
 unicode-normalization = "0.1"
-nix = { version = "0.27", features = ["process", "signal", "user", "fs", "ptrace", "resource"] }
+nix = { version = "0.27", features = ["process", "signal", "user", "fs", "ptrace", "resource", "mman"] }
+async-trait = "0.1"
+gltf = "1.4"
+jsonwebtoken = "9.2"
+dashmap = "6.1"
+async-stripe-webhook = "1.0.0-rc.5"
 tokio-util = { version = "0.7", features = ["codec", "io", "rt"] }
 secrecy = { version = "0.8", features = ["serde"] }
 jsonschema = { version = "0.17", default-features = false, features = ["resolve-file"] }

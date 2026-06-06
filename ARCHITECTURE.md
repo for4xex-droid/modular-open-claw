@@ -54,6 +54,10 @@ graph TD
     api-server --> aiome-core-contracts
     api-server --> aiome-contracts
     api-server --> aiome-commerce
+    api-server --> nurture-api
+    api-server --> nurture-core
+    api-server --> nurture-infra
+    api-server --> commerce-protocol
     api-server --> infrastructure
     samsara-hub --> aiome-core
     samsara-hub --> shared
@@ -90,6 +94,20 @@ graph TD
     aiome-commerce --> aiome-core-contracts
     aiome-commerce --> aiome-core
     aiome-commerce --> shared
+    nurture-api --> aiome-core-contracts
+    nurture-api --> commerce-protocol
+    nurture-api --> nurture-core
+    nurture-api --> nurture-infra
+    nurture-api --> nurture-bridge
+    nurture-bridge --> shared
+    nurture-bridge --> infrastructure
+    nurture-bridge --> aiome-core
+    nurture-bridge --> aiome-core-contracts
+    nurture-core --> commerce-protocol
+    nurture-infra --> aiome-core-contracts
+    nurture-infra --> nurture-bridge
+    nurture-infra --> commerce-protocol
+    nurture-infra --> nurture-core
 ```
 
 ## 4. Directory Map (Crates)
@@ -115,6 +133,11 @@ graph TD
 | `shadow-worker` | `apps/shadow-worker` | (Core Module) |
 | `aiome-node` | `apps/aiome-node` | (Core Module) |
 | `aiome-commerce` | `libs/aiome-commerce` | (Core Module) |
+| `nurture-api` | `commercial/apps/nurture-api` | (Core Module) |
+| `commerce-protocol` | `commercial/libs/commerce-protocol` | (Core Module) |
+| `nurture-bridge` | `commercial/libs/nurture-bridge` | (Core Module) |
+| `nurture-core` | `commercial/libs/nurture-core` | (Core Module) |
+| `nurture-infra` | `commercial/libs/nurture-infra` | (Core Module) |
 
 ## 5. Critical Environment Variables
 *(Auto-extracted from `.env.example`)*
@@ -123,4 +146,4 @@ API_SERVER_SECRET, NURTURE_INTERNAL_SECRET, NURTURE_API_URL, ALLOWED_ORIGINS, FE
 ```
 
 ---
-*Last Auto-Generated: 2026-06-05 UTC*
+*Last Auto-Generated: 2026-06-07 UTC*

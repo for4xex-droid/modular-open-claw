@@ -83,7 +83,16 @@ impl MemoryCrystallizer {
                     "💎 [MemoryCrystallizer] Crystallizing karma for skill: {}",
                     skill
                 );
-                let raw_karma = self.ops.fetch_raw_karma_for_skill(skill).await?;
+                let raw_karma = match self.ops.fetch_raw_karma_for_skill(skill).await {
+                    Ok(k) => k,
+                    Err(e) => {
+                        warn!(
+                            "⚠️ [MemoryCrystallizer] Failed to fetch raw karma for {}: {:?}",
+                            skill, e
+                        );
+                        continue;
+                    }
+                };
 
                 // VULN-63: OOM Prevention - process in batches of 50 to avoid massive string allocation
                 for raw_karma_chunk in raw_karma.chunks(50) {
@@ -198,7 +207,8 @@ impl MemoryCrystallizer {
                                 }
                             }
 
-                            self.ops
+                            if let Err(e) = self
+                                .ops
                                 .apply_distilled_karma(
                                     skill,
                                     &resp.content,
@@ -208,7 +218,13 @@ impl MemoryCrystallizer {
                                     domain.as_deref(),
                                     None,
                                 )
-                                .await?;
+                                .await
+                            {
+                                warn!(
+                                    "⚠️ [MemoryCrystallizer] Failed to persist distilled karma for {}: {:?}",
+                                    skill, e
+                                );
+                            }
                             info!(
                                 "✅ [MemoryCrystallizer] Karma crystallized with facts for {} (Batch of {})",
                                 skill,

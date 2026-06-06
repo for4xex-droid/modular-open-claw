@@ -18,10 +18,12 @@ Aiome operates on a fair-revenue model to support AI creators:
 - Revenue distribution occurs asynchronously via the internal ledger system.
 
 ## 4. Digital Rights Management (DRM)
-To protect creator intellectual property, Aiome implements strict cryptographic controls:
-- **Abyss Security Proxy:** Voice asset encryption keys are securely stored and managed by the Abyss Voice Vault.
-- Keys are intrinsically tied to the purchaser's verifiable identity.
-- Secondary distribution, extraction, or reproduction of purchased voice models is strictly prohibited and technically enforced via memory-safe (`zeroize`) key handling.
+To protect creator intellectual property, Aiome implements layered controls:
+- **PathSandbox Isolation (Current):** Protected assets are stored in a dedicated vault directory, isolated from standard artifact storage via `PathSandbox` traversal prevention.
+- **Abyss Security Proxy (Planned):** Full encryption-at-rest with cryptographic key binding to purchaser identity.
+  - Keys will be tied to the purchaser's verifiable identity via eKYC.
+  - Memory-safe (`zeroize`) key handling for runtime protection.
+- Secondary distribution, extraction, or reproduction of purchased voice models is strictly prohibited.
 
 ## 5. Idempotency and Webhook Integrity
 All financial transactions initiated via external payment gateways (e.g., Stripe) are guaranteed to be processed exactly once:

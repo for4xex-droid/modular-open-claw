@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, AlertTriangle, Search, Filter, Lock, Plus, X, Activity } from 'lucide-react';
 import { API_BASE } from "../config";
@@ -40,7 +40,7 @@ const ImmuneSystem: React.FC = () => {
     const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
     const [releasingAssetId, setReleasingAssetId] = useState<string | null>(null);
 
-    const fetchRules = async () => {
+    const fetchRules = useCallback(async () => {
         try {
             const res = await authenticatedFetch(`${API_BASE}/api/synergy/rules`);
             if (res.ok) {
@@ -53,41 +53,50 @@ const ImmuneSystem: React.FC = () => {
                     active: r.approval_status === "Approved" // Reflect actual status
                 }));
                 setRules(mapped);
+            } else {
+                showToast('error', t('immune.fetchRulesFailed') || 'Failed to fetch immune rules');
             }
         } catch (e) {
             console.error("Failed to fetch immune rules", e);
+            showToast('error', t('common.networkError') || 'Network error');
         }
-    };
+    }, [showToast, t]);
 
-    const fetchQuarantined = async () => {
+    const fetchQuarantined = useCallback(async () => {
         try {
             const res = await authenticatedFetch(`${API_BASE}/api/v1/audit/quarantine`);
             if (res.ok) {
                 const raw = await res.json();
                 setQuarantinedAssets(Array.isArray(raw) ? raw : []);
+            } else {
+                showToast('error', t('immune.fetchQuarantineFailed') || 'Failed to fetch quarantined assets');
             }
         } catch (e) {
             console.error("Failed to fetch quarantined assets", e);
+            showToast('error', t('common.networkError') || 'Network error');
         }
-    };
+    }, [showToast, t]);
 
-    const fetchAegisStatus = async () => {
+    const fetchAegisStatus = useCallback(async () => {
         try {
             const res = await authenticatedFetch(`${API_BASE}/api/v1/watchtower`);
             if (res.ok) {
                 const data = await res.json();
                 setAegisStatus(data);
+            } else {
+                showToast('error', t('immune.fetchAegisFailed') || 'Failed to fetch Aegis status');
             }
         } catch (e) {
             console.error("Failed to fetch aegis status", e);
+            showToast('error', t('common.networkError') || 'Network error');
         }
-    };
+    }, [showToast, t]);
 
     useEffect(() => {
         fetchRules();
         fetchQuarantined();
         fetchAegisStatus();
-    }, []);
+    }, [fetchRules, fetchQuarantined, fetchAegisStatus]);
 
     const handleAddRule = async () => {
         try {
@@ -104,10 +113,14 @@ const ImmuneSystem: React.FC = () => {
             if (res.ok) {
                 setIsAdding(false);
                 setNewRule({ pattern: '', severity: 50, action: 'BLOCK' });
+                showToast('success', t('immune.ruleAdded') || 'Rule added successfully');
                 fetchRules();
+            } else {
+                showToast('error', t('immune.ruleAddFailed') || 'Failed to add rule');
             }
         } catch (e) {
             console.error("Failed to add rule", e);
+            showToast('error', t('common.networkError') || 'Network error');
         }
     };
 
@@ -134,10 +147,14 @@ const ImmuneSystem: React.FC = () => {
                 setIsAdding(false);
                 setEditingId(null);
                 setNewRule({ pattern: '', severity: 50, action: 'BLOCK' });
+                showToast('success', t('immune.ruleUpdated') || 'Rule updated successfully');
                 fetchRules();
+            } else {
+                showToast('error', t('immune.ruleUpdateFailed') || 'Failed to update rule');
             }
         } catch (e) {
             console.error("Failed to update rule", e);
+            showToast('error', t('common.networkError') || 'Network error');
         }
     };
 

@@ -48,7 +48,11 @@ Aiome は、面倒な設定なしで、コマンド一発で全機能（チャ�
 ```bash
 git clone https://github.com/motivationstudio-llc/aiome
 cd aiome
+# 通常のクイックスタート（モック決済）
 docker compose -f docker-compose.quickstart.yml up -d
+
+# または、商業機能（Nurture Engine / Stripe決済）を有効化して起動する場合
+docker compose -f docker-compose.commercial.yml up -d
 ```
 起動したらブラウザで管理UI（ポート `1420`）にアクセスできます。
 
@@ -107,11 +111,14 @@ Aiome は、単なるエージェント・フレームワークを超えた、AI
 
 ## 🏗️ アーキテクチャ (Architecture)
 
-Aiome は堅牢性を担保するため、Rust の TypeState パターンを駆使し、レイヤーを厳重に分離しています。
+Aiome は堅牢性を担保するため、Rust の TypeState パターンを駆使し、レイヤーを厳重に分離しています。また、商用決済・経済連携のための商業エンジンが `commercial/` 以下に統合されています。
 
 ```text
 apps/api-server      ← メインバイナリ + Watchtower (Body / Soul / Discord Bridge)
 apps/samsara-hub     ← P2P フェデレーション (Hub / CRDT 同期)
+      ↓
+commercial/apps/nurture-api ← Nurture商業決済・エコノミーエンジン (BUSL-1.1)
+commercial/libs/*           ← 商業決済プロトコル・ブリッジ・インフラ
       ↓
 libs/core            ← ドメインロジック (Open)
       ↓
@@ -193,12 +200,17 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 
 ---
 
-## 🛡️ ライセンス (License)
+## 🛡️ ライセンスと商用手数料 (License & Commercial Fees)
 
-**Aiome Core** は商用化を見据え、**Business Source License 1.1 (BUSL-1.1)** で提供されています。  
-*指定日（2030年）に自動的に Apache License 2.0 へと移行します。*
+**Aiome Core** および **Nurture Commercial Engine** は商用化を見据え、すべて **Business Source License 1.1 (BUSL-1.1)** の下でライセンスが統一されています。  
+*指定日（2030年4月1日）に自動的に Apache License 2.0 へと移行します。*
 
-機能の大部分は無償で研究・非商用目的にご利用いただけますが、一定の商用利用制限が存在します。詳細な条項についてはリポジトリ内の `LICENSE` ファイルを必ずご確認ください。
+### 商用利用時の手数料体系 (Commercial Fees)
+本プラットフォームで商業トランザクションを実行する際、以下の手数料（コミッション）が適用されます：
+- **Free プラン (オープンソース版 / セルフホスト)**: プラットフォーム利用手数料 **25%**
+- **Pro プラン (商用ライセンス / ホスト型)**: プラットフォーム利用手数料 **10%**
+
+詳細な条項についてはリポジトリ内の `LICENSE` および `commercial/LICENSE` をご確認ください。
 
 ---
 

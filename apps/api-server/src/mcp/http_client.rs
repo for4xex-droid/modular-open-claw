@@ -26,7 +26,7 @@ async fn is_safe_url(url_str: &str) -> Result<()> {
     if let Some(host) = url.host_str() {
         if host == "localhost" || host == "127.0.0.1" || host == "::1" {
             #[cfg(not(debug_assertions))]
-            if !localhost_allowed {
+            if !_localhost_allowed {
                 return Err(anyhow!("🚨 [SECURITY] localhost MCP blocked in production. Set MCP_ALLOW_LOCALHOST=true to allow."));
             }
             return Ok(());
@@ -46,7 +46,7 @@ async fn is_safe_url(url_str: &str) -> Result<()> {
             let ip = normalize_ip(addr.ip());
             if ip.is_loopback() {
                 #[cfg(not(debug_assertions))]
-                if !localhost_allowed {
+                if !_localhost_allowed {
                     return Err(anyhow!("🚨 [SECURITY] Loopback IP blocked: {}", ip));
                 }
             } else {

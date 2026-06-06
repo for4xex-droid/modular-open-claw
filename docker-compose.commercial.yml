@@ -1,0 +1,157 @@
+
+services:
+  # The AIOME Pro Command Center (With Nurture Features)
+  api-server-pro:
+    build:
+      context: .
+      dockerfile: docker/production.Dockerfile
+      args:
+        BIN_NAME: api-server
+        FEATURES: nurture
+    environment:
+      - KEY_PROXY_URL=http://key-proxy:9999
+      # Deferred to v1.5
+      # - SAMSARA_HUB_REST=http://samsara-hub:3016
+      # - SAMSARA_HUB_WS=ws://samsara-hub:3016/api/v1/federation/ws
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
+      - VAULT_SECRET=${VAULT_SECRET}
+      - NURTURE_API_URL=http://nurture-api:3020
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - API_SERVER_SECRET=${API_SERVER_SECRET}
+      - NURTURE_INTERNAL_SECRET=${NURTURE_INTERNAL_SECRET}
+      # - FEDERATION_SECRET=${FEDERATION_SECRET}
+      - GEO_OPTIMIZER_URL=http://geo-optimizer:8080
+      - TIMESFM_SIDECAR_URL=http://timesfm-sidecar:3025
+      - GEO_ENABLED=${GEO_ENABLED:-true}
+      - SHADOW_CLONE_GRPC_HOST=${SHADOW_CLONE_GRPC_HOST:-localhost}
+      - SHADOW_CLONE_GRPC_PORT=${SHADOW_CLONE_GRPC_PORT:-50051}
+      - A2A_AUTH_TOKEN=${A2A_AUTH_TOKEN}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3015/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      nurture-api:
+        condition: service_healthy
+      key-proxy:
+        condition: service_started
+    restart: always
+    user: "1001:1001"
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - ./data/api:/app/data
+    ports:
+      - "3015:3015"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      default:
+        aliases:
+          - api-server  # nginx.conf uses proxy_pass http://api-server:3015
+
+  # Nurture Commercial Engine
+  nurture-api:
+    build:
+      context: .
+      dockerfile: commercial/docker/nurture.Dockerfile
+    environment:
+      - PORT=3020
+      - DATABASE_URL=sqlite:///app/data/nurture.db
+      - AIOME_API_URL=http://api-server-pro:3015
+      - NURTURE_INTERNAL_SECRET=${NURTURE_INTERNAL_SECRET}
+      - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - SHADOW_CLONE_GRPC_HOST=${SHADOW_CLONE_GRPC_HOST:-localhost}
+      - SHADOW_CLONE_GRPC_PORT=${SHADOW_CLONE_GRPC_PORT:-50051}
+      - A2A_AUTH_TOKEN=${A2A_AUTH_TOKEN}
+    volumes:
+      - ./data/nurture:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3020/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    user: "1001:1001"
+    ports:
+      - "3020:3020"
+
+  # Frontend Web UI (Vite SPA + Nginx)
+  management-console:
+    build:
+      context: ./apps/management-console
+      dockerfile: Dockerfile
+    depends_on:
+      api-server-pro:
+        condition: service_healthy
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    ports:
+      - "3000:80"
+
+  # Standard OSS Services
+  key-proxy:
+    image: aiome-key-proxy:latest # Assuming pre-built or from main compose
+    build:
+      context: .
+      dockerfile: docker/production.Dockerfile
+      args:
+        BIN_NAME: key-proxy
+    environment:
+      - VAULT_SECRET=${VAULT_SECRET}
+    cap_add:
+      - IPC_LOCK
+    security_opt:
+      - no-new-privileges:true
+    user: "1001:1001"
+    restart: always
+
+  # # Deferred to v1.5: Federation (Samsara Hub)
+  # samsara-hub:
+  #   image: aiome-samsara-hub:latest
+  #   build:
+  #     context: .
+  #     dockerfile: docker/production.Dockerfile
+  #     args:
+  #       BIN_NAME: samsara-hub
+  #   environment:
+  #     - PORT=3016
+  #     - DATABASE_URL=sqlite:///app/data/samsara_hub.db
+  #     - FEDERATION_SECRET=${FEDERATION_SECRET}
+  #   volumes:
+  #     - ./data/hub:/app/data
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   user: "1001:1001"
+  #   restart: always
+
+  geo-optimizer:
+    image: python:3.11-slim
+    command: python /app/geo_optimizer.py
+    volumes:
+      - ./libs/infrastructure/scripts:/app:ro
+    environment:
+      - GEO_CITABILITY_THRESHOLD=${GEO_CITABILITY_THRESHOLD:-80}
+    security_opt:
+      - no-new-privileges:true
+    user: "65534:65534"
+    read_only: true
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8080/openapi.json\")' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

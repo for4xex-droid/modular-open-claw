@@ -33,6 +33,7 @@ mod tests {
                     soul_version_hash TEXT,
                     embedding BLOB,
                     text_content TEXT,
+                    is_protected INTEGER NOT NULL DEFAULT 0,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )",
             )
@@ -85,6 +86,17 @@ mod tests {
         assert!(
             !artifacts_in_base.exists(),
             "Protected artifact should NOT be stored in the base directory"
+        );
+
+        // 検証: is_protected カラムがDBに保存され、正しく復元されるか？
+        let fetched = store
+            .fetch_artifact(&_id)
+            .await
+            .unwrap()
+            .expect("Should find saved artifact");
+        assert!(
+            fetched.is_protected,
+            "is_protected field should be persisted and retrieved as true"
         );
     }
 
@@ -169,7 +181,7 @@ mod tests {
         let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
         // Setup table
         if let DatabasePool::Sqlite(p) = &pool {
-            sqlx::query("CREATE TABLE ai_artifacts (id TEXT, title TEXT, category TEXT, tags TEXT, created_by TEXT, dir_path TEXT, file_manifest TEXT, karma_refs TEXT, job_ref TEXT, signature TEXT, soul_version_hash TEXT, embedding BLOB, text_content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").execute(p).await.unwrap();
+            sqlx::query("CREATE TABLE ai_artifacts (id TEXT, title TEXT, category TEXT, tags TEXT, created_by TEXT, dir_path TEXT, file_manifest TEXT, karma_refs TEXT, job_ref TEXT, signature TEXT, soul_version_hash TEXT, embedding BLOB, text_content TEXT, is_protected INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").execute(p).await.unwrap();
 
             // Insert 120 dummy records
             for i in 0..120 {
@@ -313,7 +325,7 @@ mod tests {
             .await
             .unwrap();
         if let crate::db::DatabasePool::Sqlite(p) = &pool {
-            sqlx::query("CREATE TABLE ai_artifacts (id TEXT PRIMARY KEY, title TEXT, category TEXT, tags TEXT, created_by TEXT, dir_path TEXT, file_manifest TEXT, karma_refs TEXT, job_ref TEXT, signature TEXT, soul_version_hash TEXT, embedding BLOB, text_content TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
+            sqlx::query("CREATE TABLE ai_artifacts (id TEXT PRIMARY KEY, title TEXT, category TEXT, tags TEXT, created_by TEXT, dir_path TEXT, file_manifest TEXT, karma_refs TEXT, job_ref TEXT, signature TEXT, soul_version_hash TEXT, embedding BLOB, text_content TEXT, is_protected INTEGER NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
                 .execute(p)
                 .await
                 .unwrap();

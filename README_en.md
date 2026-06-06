@@ -48,7 +48,11 @@ Skip the 10+ minute initial compilation locally by using our pre-built image run
 ```bash
 git clone https://github.com/motivationstudio-llc/aiome
 cd aiome
+# Standard Quickstart (Mocked payments)
 docker compose -f docker-compose.quickstart.yml up -d
+
+# Or, start in Commercial Mode (Nurture Engine / Live Stripe payments enabled)
+docker compose -f docker-compose.commercial.yml up -d
 ```
 Once started, access the Management UI via your browser at port `1420`.
 
@@ -107,11 +111,14 @@ It is the "skull, nervous system, and immune system" allowing the "wild genius (
 
 ## 🏗️ Architecture
 
-To guarantee robustness, Aiome heavily utilizes Rust's TypeState pattern to maintain strict layer isolation:
+To guarantee robustness, Aiome heavily utilizes Rust's TypeState pattern to maintain strict layer isolation. Furthermore, the commercial payment and economic sidecar engine is unified under the `commercial/` directories.
 
 ```text
 apps/api-server      ← Main Binary + Watchtower (Body / Soul / Discord Bridge)
 apps/samsara-hub     ← P2P Federation (Hub / CRDT Sync)
+      ↓
+commercial/apps/nurture-api ← Nurture Commercial Economy Engine (BUSL-1.1)
+commercial/libs/*           ← Commercial payment protocols, bridge, and infra
       ↓
 libs/core            ← Domain Logic (Open)
       ↓
@@ -193,12 +200,17 @@ With the public beta release of the product, we have established the following l
 
 ---
 
-## 🛡️ License
+## 🛡️ License & Commercial Fees
 
-**Aiome Core** is provided under the **Business Source License 1.1 (BUSL-1.1)** with an eye toward sustainable commercialization.  
-*It will automatically transition to the Apache License 2.0 on the specified change date (in 2030).*
+Both **Aiome Core** and **Nurture Commercial Engine** are unified under the **Business Source License 1.1 (BUSL-1.1)** to ensure sustainable open-source monetization.  
+*It will automatically transition to the Apache License 2.0 on the specified change date (April 1, 2030).*
 
-Most capabilities are available globally at no cost for research and non-commercial purposes, but specific commercial usage is restricted initially. Please ensure you review the `LICENSE` file in the repository for detailed terms.
+### Commercial Fee Structure
+When executing commercial transactions on this platform, the following commission rates apply:
+- **Free Plan (Open Source / Self-Hosted)**: **25%** platform fee.
+- **Pro Plan (Commercial License / Hosted)**: **10%** platform fee.
+
+Please ensure you review the `LICENSE` and `commercial/LICENSE` files in the repository for detailed terms.
 
 ---
 

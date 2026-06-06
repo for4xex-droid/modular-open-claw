@@ -1,0 +1,70 @@
+[graph]
+targets = []
+all-features = false
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+[advisories]
+ignore = [
+    # wasmtime v41.0.4 CVEs - 推移的依存 (extism v1.21.0 経由)
+    # Nurture は WASM プラグインを直接実行しないため攻撃面なし
+    # extism の wasmtime v43 対応リリースで自動解消予定
+    "RUSTSEC-2026-0085", # Panic when lifting flags
+    "RUSTSEC-2026-0086", # Host data leakage with 64-bit tables
+    "RUSTSEC-2026-0087", # segfault with f64x2.splat
+    "RUSTSEC-2026-0088", # Data leakage between pooling allocator
+    "RUSTSEC-2026-0089", # Host panic table.fill
+    "RUSTSEC-2026-0091", # OOB write transcoding strings
+    "RUSTSEC-2026-0092", # Panic misaligned UTF-16
+    "RUSTSEC-2026-0093", # Heap OOB read UTF-16
+    "RUSTSEC-2026-0094", # Improperly masked table.grow
+    "RUSTSEC-2026-0095", # Sandbox-escaping memory access (Winch)
+    "RUSTSEC-2026-0096", # Sandbox escape aarch64 Cranelift
+    "RUSTSEC-2026-0114", # Panic allocating table
+
+    # rustls-webpki - 推移的依存 (aws-sdk, serenity 経由)
+    "RUSTSEC-2026-0049", # CRL matching logic
+    "RUSTSEC-2026-0098", # URI name constraints
+    "RUSTSEC-2026-0099", # Wildcard name constraints  
+    "RUSTSEC-2026-0104", # CRL parsing panic
+
+    # Phase 2: Upstream / Unmaintained 依存の一時的許可
+    "RUSTSEC-2024-0370", # proc-macro-error (unmaintained)
+    "RUSTSEC-2024-0421", # idna (bastion-core 経由)
+    "RUSTSEC-2024-0436", # paste (unmaintained)
+    "RUSTSEC-2025-0017", # trust-dns-proto (bastion-core 経由)
+    "RUSTSEC-2025-0057", # fxhash (unmaintained)
+    "RUSTSEC-2025-0134", # rustls-pemfile (bastion-core 経由)
+]
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "0BSD",
+    "BSL-1.0",
+    "CC0-1.0",
+    "BUSL-1.1",
+    "MPL-2.0",
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.8
+
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+
+[sources]
+unknown-registry = "warn"
+unknown-git = "warn"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

@@ -1,0 +1,20 @@
+[package]
+name = "nurture-core"
+version = "0.1.0"
+edition = "2021"
+license = "BUSL-1.1"
+publish = false
+
+[dependencies]
+commerce-protocol = { path = "../commerce-protocol" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+rand.workspace = true
+
+[dev-dependencies]
+proptest = "1.4"
