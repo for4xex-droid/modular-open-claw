@@ -108,6 +108,25 @@ impl StripeCommerceEngine {
     }
 }
 
+trait IntoInfraError<T> {
+    fn map_infra_err(self) -> Result<T, AiomeError>;
+    fn map_infra_err_context(self, context: &str) -> Result<T, AiomeError>;
+}
+
+impl<T, E: std::fmt::Display> IntoInfraError<T> for Result<T, E> {
+    fn map_infra_err(self) -> Result<T, AiomeError> {
+        self.map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })
+    }
+
+    fn map_infra_err_context(self, context: &str) -> Result<T, AiomeError> {
+        self.map_err(|e| AiomeError::Infrastructure {
+            reason: format!("{}: {}", context, e),
+        })
+    }
+}
+
 #[derive(serde::Deserialize)]
 struct BalanceRes {
     balance: u64,
@@ -137,15 +156,10 @@ impl CommerceEngine for StripeCommerceEngine {
                 req = req.header("X-OxiLean-Proof-Certificate", cert_header);
             }
 
-            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+            let res = req.send().await.map_infra_err()?;
 
             if res.status().is_success() {
-                let body: BalanceRes =
-                    res.json().await.map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let body: BalanceRes = res.json().await.map_infra_err()?;
                 return Ok(body.balance);
             }
         }
@@ -316,15 +330,10 @@ impl CommerceEngine for StripeCommerceEngine {
                 req = req.header("X-OxiLean-Proof-Certificate", cert_header);
             }
 
-            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+            let res = req.send().await.map_infra_err()?;
 
             if res.status().is_success() {
-                let body: DailyStatsRes =
-                    res.json().await.map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let body: DailyStatsRes = res.json().await.map_infra_err()?;
                 return Ok(body.spent_today);
             }
         }
@@ -348,15 +357,10 @@ impl CommerceEngine for StripeCommerceEngine {
                 req = req.header("X-OxiLean-Proof-Certificate", cert_header);
             }
 
-            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+            let res = req.send().await.map_infra_err()?;
 
             if res.status().is_success() {
-                let body: DailyStatsRes =
-                    res.json().await.map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let body: DailyStatsRes = res.json().await.map_infra_err()?;
                 return Ok(body.daily_limit);
             }
         }
@@ -386,18 +390,14 @@ impl CommerceEngine for StripeCommerceEngine {
                 req = req.header("X-OxiLean-Proof-Certificate", cert_header);
             }
 
-            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+            let res = req.send().await.map_infra_err()?;
 
             if res.status().is_success() {
                 #[derive(serde::Deserialize)]
                 struct EscrowRes {
                     escrow_id: String,
                 }
-                let body: EscrowRes = res.json().await.map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
+                let body: EscrowRes = res.json().await.map_infra_err()?;
                 return Ok(body.escrow_id);
             } else {
                 return Err(AiomeError::Infrastructure {
@@ -433,9 +433,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 if self.is_mock {
                     Ok("escrow_mock".to_string())
                 } else {
-                    Err(AiomeError::Infrastructure {
-                        reason: format!("DB insertion failed: {}", e),
-                    })
+                    Err(e).map_infra_err_context("DB insertion failed")
                 }
             }
         }
@@ -457,15 +455,13 @@ impl CommerceEngine for StripeCommerceEngine {
                 req = req.header("X-OxiLean-Proof-Certificate", cert_header);
             }
 
-            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+            let res = req.send().await.map_infra_err()?;
 
             if res.status().is_success() {
-                let records: Vec<EscrowRecord> =
-                    res.json().await.map_err(|e| AiomeError::Infrastructure {
-                        reason: format!("Failed to parse escrow list: {}", e),
-                    })?;
+                let records: Vec<EscrowRecord> = res
+                    .json()
+                    .await
+                    .map_infra_err_context("Failed to parse escrow list")?;
                 return Ok(records);
             }
         }
@@ -478,42 +474,30 @@ impl CommerceEngine for StripeCommerceEngine {
         .bind(agent_id.to_string())
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to fetch escrows: {}", e),
-        })?;
+        .map_infra_err_context("Failed to fetch escrows")?;
 
         let records = rows
             .into_iter()
             .map(|row| -> Result<EscrowRecord, AiomeError> {
                 Ok(EscrowRecord {
-                    id: row.try_get("id").map_err(|e| AiomeError::Infrastructure {
-                        reason: format!("Failed to read escrow.id: {}", e),
-                    })?,
+                    id: row
+                        .try_get("id")
+                        .map_infra_err_context("Failed to read escrow.id")?,
                     payer_id: row
                         .try_get("payer_id")
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: format!("Failed to read escrow.payer_id: {}", e),
-                        })?,
+                        .map_infra_err_context("Failed to read escrow.payer_id")?,
                     order_id: row
                         .try_get("order_id")
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: format!("Failed to read escrow.order_id: {}", e),
-                        })?,
+                        .map_infra_err_context("Failed to read escrow.order_id")?,
                     amount: row
                         .try_get("amount")
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: format!("Failed to read escrow.amount: {}", e),
-                        })?,
+                        .map_infra_err_context("Failed to read escrow.amount")?,
                     status: row
                         .try_get("status")
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: format!("Failed to read escrow.status: {}", e),
-                        })?,
-                    created_at: row.try_get("created_at").map_err(|e| {
-                        AiomeError::Infrastructure {
-                            reason: format!("Failed to read escrow.created_at: {}", e),
-                        }
-                    })?,
+                        .map_infra_err_context("Failed to read escrow.status")?,
+                    created_at: row
+                        .try_get("created_at")
+                        .map_infra_err_context("Failed to read escrow.created_at")?,
                 })
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -543,9 +527,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 req = req.header("X-OxiLean-Proof-Certificate", cert_header);
             }
 
-            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+            let res = req.send().await.map_infra_err()?;
 
             if res.status().is_success() {
                 return Ok(());
@@ -576,9 +558,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 if self.is_mock {
                     return Ok(());
                 }
-                Err(AiomeError::Infrastructure {
-                    reason: format!("Failed to release escrow: {}", e),
-                })
+                Err(e).map_infra_err_context("Failed to release escrow")
             }
         }
     }
@@ -604,9 +584,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 req = req.header("X-OxiLean-Proof-Certificate", cert_header);
             }
 
-            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
-                reason: e.to_string(),
-            })?;
+            let res = req.send().await.map_infra_err()?;
 
             if res.status().is_success() {
                 return Ok(());
@@ -636,9 +614,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 if self.is_mock {
                     return Ok(());
                 }
-                Err(AiomeError::Infrastructure {
-                    reason: format!("Failed to refund escrow: {}", e),
-                })
+                Err(e).map_infra_err_context("Failed to refund escrow")
             }
         }
     }
@@ -730,20 +706,17 @@ impl CommerceEngine for StripeCommerceEngine {
                     agent_id.to_string(),
                 )]));
 
-            let customer = create_customer.send(&self.client).await.map_err(|e| {
-                AiomeError::Infrastructure {
-                    reason: format!("Failed to create Stripe customer: {}", e),
-                }
-            })?;
+            let customer = create_customer
+                .send(&self.client)
+                .await
+                .map_infra_err_context("Failed to create Stripe customer")?;
 
             sqlx::query("INSERT INTO stripe_customers (agent_id, customer_id) VALUES (?, ?)")
                 .bind(agent_id.to_string())
                 .bind(customer.id.as_str())
                 .execute(&self.pool)
                 .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
+                .map_infra_err()?;
 
             customer.id
         };
@@ -761,13 +734,10 @@ impl CommerceEngine for StripeCommerceEngine {
             .cancel_url(cancel_url)
             .line_items(vec![line_item]);
 
-        let session =
-            create_session
-                .send(&self.client)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Failed to create Stripe checkout session: {}", e),
-                })?;
+        let session = create_session
+            .send(&self.client)
+            .await
+            .map_infra_err_context("Failed to create Stripe checkout session")?;
 
         match session.url {
             Some(url) => Ok(url),
@@ -797,17 +767,11 @@ impl CommerceEngine for StripeCommerceEngine {
                 .bind(agent_id.to_string())
                 .fetch_optional(&self.pool)
                 .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
+                .map_infra_err()?;
 
         let customer_id = if let Some(row) = existing_customer {
             tracing::info!("✅ [Stripe] Found existing customer: {}", row.0);
-            row.0
-                .parse::<stripe_core::CustomerId>()
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?
+            row.0.parse::<stripe_core::CustomerId>().map_infra_err()?
         } else {
             let desc = format!("Agent Soul: {}", agent_id);
             let create_customer = stripe_core::customer::CreateCustomer::new()
@@ -817,14 +781,10 @@ impl CommerceEngine for StripeCommerceEngine {
                     agent_id.to_string(),
                 )]));
 
-            let customer = match create_customer.send(&self.client).await {
-                Ok(c) => c,
-                Err(e) => {
-                    return Err(AiomeError::Infrastructure {
-                        reason: format!("Stripe Customer creation failed: {}", e),
-                    })
-                }
-            };
+            let customer = create_customer
+                .send(&self.client)
+                .await
+                .map_infra_err_context("Stripe Customer creation failed")?;
 
             // Save to DB
             sqlx::query("INSERT INTO stripe_customers (agent_id, customer_id) VALUES (?, ?)")
@@ -832,9 +792,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 .bind(customer.id.to_string())
                 .execute(&self.pool)
                 .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Failed to save customer: {}", e),
-                })?;
+                .map_infra_err_context("Failed to save customer")?;
 
             tracing::info!("✅ [Stripe] Created new customer: {}", customer.id);
             customer.id
@@ -855,15 +813,14 @@ impl CommerceEngine for StripeCommerceEngine {
                 agent_id.to_string(),
             )]));
 
-        match create_sub.send(&self.client).await {
-            Ok(sub) => {
+        create_sub
+            .send(&self.client)
+            .await
+            .map_infra_err_context("Stripe Subscription creation failed")
+            .map(|sub| {
                 tracing::info!("✅ [Stripe] Subscription created: {}", sub.id);
-                Ok(sub.id.to_string())
-            }
-            Err(e) => Err(AiomeError::Infrastructure {
-                reason: format!("Stripe Subscription creation failed: {}", e),
-            }),
-        }
+                sub.id.to_string()
+            })
     }
     async fn cancel_subscription(
         &self,
@@ -876,16 +833,12 @@ impl CommerceEngine for StripeCommerceEngine {
 
         let sub_id = subscription_id
             .parse::<stripe_billing::SubscriptionId>()
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Invalid subscription ID format: {}", e),
-            })?;
+            .map_infra_err_context("Invalid subscription ID format")?;
 
         stripe_billing::subscription::CancelSubscription::new(sub_id)
             .send(&self.client)
             .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Stripe cancel subscription failed: {}", e),
-            })?;
+            .map_infra_err_context("Stripe cancel subscription failed")?;
 
         tracing::info!("✅ [Stripe] Subscription cancelled: {}", subscription_id);
         Ok(())
@@ -904,9 +857,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 .bind(agent_id.to_string())
                 .fetch_optional(&self.pool)
                 .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("DB lookup failed for customer: {}", e),
-                })?;
+                .map_infra_err_context("DB lookup failed for customer")?;
 
         let Some((customer_id_str,)) = customer_id else {
             return Ok(aiome_core_contracts::commerce::SubscriptionStatus::None);
@@ -919,13 +870,10 @@ impl CommerceEngine for StripeCommerceEngine {
             })?;
         let list_params = stripe_billing::subscription::ListSubscription::new().customer(cust_id);
 
-        let list_res =
-            list_params
-                .send(&self.client)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Stripe list subscriptions failed: {}", e),
-                })?;
+        let list_res = list_params
+            .send(&self.client)
+            .await
+            .map_infra_err_context("Stripe list subscriptions failed")?;
 
         if let Some(sub) = list_res.data.first() {
             Ok(map_stripe_status(sub.status.clone()))
@@ -962,19 +910,14 @@ impl CommerceEngine for StripeCommerceEngine {
                 req = req.header("X-OxiLean-Proof-Certificate", cert_header);
             }
 
-            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
-                reason: format!("HTTP error: {}", e),
-            })?;
+            let res = req.send().await.map_infra_err_context("HTTP error")?;
 
             if res.status().is_success() {
                 #[derive(serde::Deserialize)]
                 struct TransferRes {
                     transaction_id: String,
                 }
-                let body: TransferRes =
-                    res.json().await.map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let body: TransferRes = res.json().await.map_infra_err()?;
                 return Ok(body.transaction_id);
             } else {
                 let status = res.status();
@@ -1100,9 +1043,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 req = req.header("X-OxiLean-Proof-Certificate", cert_header);
             }
 
-            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
-                reason: format!("HTTP error: {}", e),
-            })?;
+            let res = req.send().await.map_infra_err_context("HTTP error")?;
 
             if res.status().is_success() {
                 return Ok(());
@@ -1145,9 +1086,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 req = req.header("X-OxiLean-Proof-Certificate", cert_header);
             }
 
-            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
-                reason: format!("HTTP error: {}", e),
-            })?;
+            let res = req.send().await.map_infra_err_context("HTTP error")?;
 
             if res.status().is_success() {
                 return Ok(());
@@ -1187,15 +1126,11 @@ impl CommerceEngine for StripeCommerceEngine {
                 req = req.header("X-OxiLean-Proof-Certificate", cert_header);
             }
 
-            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
-                reason: format!("HTTP error: {}", e),
-            })?;
+            let res = req.send().await.map_infra_err_context("HTTP error")?;
 
             if res.status().is_success() {
                 let body: aiome_core_contracts::commerce::PointsBalance =
-                    res.json().await.map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                    res.json().await.map_infra_err()?;
                 return Ok(body);
             } else {
                 let status = res.status();
@@ -1244,15 +1179,11 @@ impl CommerceEngine for StripeCommerceEngine {
                 req = req.header("X-OxiLean-Proof-Certificate", cert_header);
             }
 
-            let res = req.send().await.map_err(|e| AiomeError::Infrastructure {
-                reason: format!("HTTP error: {}", e),
-            })?;
+            let res = req.send().await.map_infra_err_context("HTTP error")?;
 
             if res.status().is_success() {
                 let body: Vec<aiome_core_contracts::commerce::TransactionRecord> =
-                    res.json().await.map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                    res.json().await.map_infra_err()?;
                 return Ok(body);
             } else {
                 let status = res.status();
@@ -1286,9 +1217,7 @@ impl CommerceEngine for StripeCommerceEngine {
                 .bind(agent_id.to_string())
                 .fetch_optional(&self.pool)
                 .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("DB lookup failed for customer: {}", e),
-                })?;
+                .map_infra_err_context("DB lookup failed for customer")?;
 
         let Some((customer_id_str,)) = customer_id else {
             return Err(AiomeError::NotFound {
@@ -1308,9 +1237,7 @@ impl CommerceEngine for StripeCommerceEngine {
             .locale(stripe_billing::BillingPortalSessionLocale::Ja)
             .send(&self.client)
             .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Stripe billing portal session creation failed: {}", e),
-            })?;
+            .map_infra_err_context("Stripe billing portal session creation failed")?;
 
         Ok(session.url)
     }

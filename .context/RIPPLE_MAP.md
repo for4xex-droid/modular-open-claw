@@ -1,3 +1,10 @@
+## StripeCommerceEngine エラーハンドリングの DRY 統一 (Phase D8) (2026-06-07)
+- **変更内容**:
+    - `libs/aiome-commerce/src/stripe.rs` [MODIFY]: 共通エラー変換トレイト `IntoInfraError` を定義し、ファイル内の 30 箇所以上の重複していた `AiomeError::Infrastructure` エラーハンドリングブロックを `.map_infra_err()` および `.map_infra_err_context("context")` に DRY 統一。
+- **波及効果**:
+    - コードベース内の冗長なボイラープレートエラーマッピングが排除され、コードの可読性が大幅に向上するとともに、将来のエラーハンドリング変更時の一元化が容易になりました。
+    - 49 件の既存の commerce テストおよび Zero-Trust などの関連テストを正常系・異常注入（Negative Test）にて検証し、すべて健全にパスすることを確認しました。
+
 ## Monorepo DRY リファクタリング・衛生改善および仕様書同期 (Phase D) (2026-06-07)
 - **変更内容**:
     - `libs/infrastructure/src/job_queue/federation.rs` [MODIFY]: `map_sqlite_row_to_karma` / `map_postgres_row_to_karma` を導入して `FederatedKarma` 行マッピング重複を DRY 統一。テストデータベースのテーブル定義に `is_private` と `is_archived` を追加してテストの整合性を保証。

@@ -1,6 +1,8 @@
 ## [Unreleased]
 
 ### Changed
+- **StripeCommerceEngine エラーハンドリングの DRY 統一 (Phase D8)**:
+  - `libs/aiome-commerce/src/stripe.rs` [MODIFY]: 共通エラー変換トレイト `IntoInfraError` を導入。30箇所以上存在していた冗長な `AiomeError::Infrastructure` エラー変換処理を、共通ヘルパー関数 `map_infra_err()` および `map_infra_err_context()` に DRY 統一。
 - **DB 行マッピング関数の DRY 統一 (Phase D)**:
   - `libs/infrastructure/src/job_queue/federation.rs` [MODIFY]: `map_sqlite_row_to_karma` および `map_postgres_row_to_karma` を定義し、`do_export_federated_data` 内の重複マッピングを DRY 統一。また、テストコードにおける `karma_logs` テーブル作成スキーマに `is_private` および `is_archived` カラムを追記してテストの整合性を確保。
   - `libs/infrastructure/src/artifact_store.rs` [MODIFY]: `map_edge_row_generic` を導入して `ArtifactEdge` の重複マッピングを DRY 統一。
