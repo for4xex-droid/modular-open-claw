@@ -15,7 +15,7 @@ use chrono::Utc;
 use commerce_protocol::identity::ActorId;
 use nurture_core::ledger::EconomyLedger;
 use nurture_core::license::{AssetLicense, LicenseStore};
-use sqlx::{Row, SqlitePool};
+use sqlx::SqlitePool;
 use std::sync::Arc;
 use uuid::Uuid;
 

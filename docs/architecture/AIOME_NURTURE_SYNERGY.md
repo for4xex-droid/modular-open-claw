@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-06-07
+> **最終更新**: 2026-06-08
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -262,7 +262,7 @@ graph LR
 
 | NURTURE 側ファイル | 使用する Aiome シンボル |
 |-------------------|---------------------|
-| `economy/bridge.rs` | `aiome_core::commerce::CommerceEngine`, `aiome_core::error::AiomeError`, `aiome_core::traits::JobQueue` |
+| `economy/bridge/` | `aiome_core::commerce::CommerceEngine`, `aiome_core::error::AiomeError`, `aiome_core::traits::JobQueue` |
 | `economy/karma_forge.rs` | `aiome_core::contracts::KarmaEntry`, `aiome_core::traits::JobQueue`, `aiome_core::error::AiomeError` |
 | `economy/karma_immune_filter.rs` | `aiome_core::contracts::KarmaEntry` |
 | `sidecar/clone_manager.rs` | `aiome_core::contracts::KarmaEntry`, `aiome_core::traits::JobQueue` |
