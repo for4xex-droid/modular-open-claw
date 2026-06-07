@@ -66,34 +66,15 @@ impl SettingsOps for UniversalJobQueue {
         category: &str,
         is_secret: bool,
     ) -> Result<(), AiomeError> {
-        let q = match &self.pool {
-            crate::db::DatabasePool::Sqlite(_) => format!(
-                "INSERT OR REPLACE INTO system_settings \
-                 (key, value, category, is_secret, updated_at) \
-                 VALUES ({0}, {1}, {2}, {3}, {4})",
-                self.pool.ph(0),
-                self.pool.ph(1),
-                self.pool.ph(2),
-                self.pool.ph(3),
-                self.pool.now_fn()
-            ),
-            crate::db::DatabasePool::Postgres(_) => format!(
-                "INSERT INTO system_settings \
-                 (key, value, category, is_secret, updated_at) \
-                 VALUES ({0}, {1}, {2}, {3}, {4}) \
-                 ON CONFLICT (key) DO UPDATE SET \
-                 value = EXCLUDED.value, \
-                 category = EXCLUDED.category, \
-                 is_secret = EXCLUDED.is_secret, \
-                 updated_at = EXCLUDED.updated_at",
-                self.pool.ph(0),
-                self.pool.ph(1),
-                self.pool.ph(2),
-                self.pool.ph(3),
-                self.pool.now_fn()
-            ),
-        };
-        sql_exec!(&self.pool, &q, key, value, category, is_secret as i32).map_err(|e| {
+        sql_exec!(
+            &self.pool,
+            sqlite: "INSERT OR REPLACE INTO system_settings (key, value, category, is_secret, updated_at) VALUES (?, ?, ?, ?, datetime('now'))",
+            pg: "INSERT INTO system_settings (key, value, category, is_secret, updated_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, category = EXCLUDED.category, is_secret = EXCLUDED.is_secret, updated_at = EXCLUDED.updated_at",
+            key,
+            value,
+            category,
+            is_secret as i32
+        ).map_err(|e| {
             AiomeError::Infrastructure {
                 reason: format!("Update setting failed: {}", e),
             }

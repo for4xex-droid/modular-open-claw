@@ -183,14 +183,18 @@ impl TaskConductor for BrowserConductor {
                                     .and_then(|d| d.get("message"))
                                     .and_then(|m| m.as_str())
                                     .unwrap_or("");
-                                let _ = progress_tx
+                                if progress_tx
                                     .send(TaskEvent::Progress {
                                         job_id: job.id.clone(),
                                         conductor_id: "browser-use".into(),
                                         percent: Some(50),
                                         message: msg.to_string(),
                                     })
-                                    .await;
+                                    .await
+                                    .is_err()
+                                {
+                                    tracing::debug!("[Browser] Progress receiver dropped");
+                                }
                             }
                             "completed" => {
                                 final_result = parsed

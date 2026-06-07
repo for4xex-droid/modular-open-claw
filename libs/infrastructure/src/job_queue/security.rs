@@ -168,7 +168,16 @@ impl SecurityOps for UniversalJobQueue {
                 })?;
 
                 // ブロードキャスト
-                let _ = self.event_bus.send(SystemEvent::ActorForgotten(agent_id));
+                if self
+                    .event_bus
+                    .send(SystemEvent::ActorForgotten(agent_id))
+                    .is_err()
+                {
+                    tracing::warn!(
+                        "[Security] No subscribers for ActorForgotten event (agent={})",
+                        agent_id
+                    );
+                }
 
                 Ok(())
             }
@@ -243,7 +252,16 @@ impl SecurityOps for UniversalJobQueue {
                 })?;
 
                 // ブロードキャスト
-                let _ = self.event_bus.send(SystemEvent::ActorForgotten(agent_id));
+                if self
+                    .event_bus
+                    .send(SystemEvent::ActorForgotten(agent_id))
+                    .is_err()
+                {
+                    tracing::warn!(
+                        "[Security] No subscribers for ActorForgotten event (agent={})",
+                        agent_id
+                    );
+                }
 
                 Ok(())
             }

@@ -6,6 +6,7 @@
  */
 
 use crate::db::DatabasePool;
+use crate::{sql_exec, sql_fetch_optional_map};
 use aiome_core::error::AiomeError;
 use aiome_core_contracts::traits::KarmaRegistry;
 use sqlx::Row;
@@ -43,28 +44,16 @@ impl SupportFeedbackCollector {
             "UPDATE support_incidents SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2"
         };
 
-        match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                sqlx::query(query_update_sqlite)
-                    .bind(status)
-                    .bind(incident_id)
-                    .execute(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: format!("Failed to update incident feedback: {}", e),
-                    })?;
-            }
-            DatabasePool::Postgres(p) => {
-                sqlx::query(query_update_pg)
-                    .bind(status)
-                    .bind(incident_id)
-                    .execute(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: format!("Failed to update incident feedback: {}", e),
-                    })?;
-            }
-        }
+        sql_exec!(
+            &self.pool,
+            sqlite: query_update_sqlite,
+            pg: query_update_pg,
+            status,
+            incident_id
+        )
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to update incident feedback: {}", e),
+        })?;
 
         // 2. Resolve karma log ID through agent_diagnoses
         let query_find_karma = r#"
@@ -76,24 +65,14 @@ impl SupportFeedbackCollector {
             LIMIT 1
         "#;
 
-        let karma_id_opt = match &self.pool {
-            DatabasePool::Sqlite(p) => sqlx::query(query_find_karma)
-                .bind(incident_id)
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Failed to query associated karma: {}", e),
-                })?
-                .map(|row| row.get::<String, _>("karma_id")),
-            DatabasePool::Postgres(p) => sqlx::query(query_find_karma)
-                .bind(incident_id)
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: format!("Failed to query associated karma: {}", e),
-                })?
-                .map(|row| row.get::<String, _>("karma_id")),
-        };
+        let karma_id_opt = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: query_find_karma,
+            |row| Ok::<String, AiomeError>(row.get::<String, _>("karma_id")),
+            pg: query_find_karma,
+            |row| Ok::<String, AiomeError>(row.get::<String, _>("karma_id")),
+            incident_id
+        )?;
 
         // 3. Adjust Karma weight if associated karma is found
         if let Some(karma_id) = karma_id_opt {

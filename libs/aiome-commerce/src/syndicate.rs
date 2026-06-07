@@ -8,6 +8,7 @@ use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::syndicate::{Guild, GuildMember, SyndicateOps};
 use async_trait::async_trait;
 use shared::db::DatabasePool;
+use shared::{sql_exec, sql_fetch_all_map, sql_fetch_optional_map};
 use sqlx::Row;
 use tracing::error;
 use uuid::Uuid;
@@ -34,42 +35,21 @@ impl SyndicateOps for UniversalSyndicateStore {
         let id_str = id.to_string();
         let owner_str = owner_id.to_string();
 
-        match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                sqlx::query(
-                    "INSERT INTO guilds (id, name, description, owner_id) VALUES (?, ?, ?, ?)",
-                )
-                .bind(&id_str)
-                .bind(&name)
-                .bind(&description)
-                .bind(&owner_str)
-                .execute(p)
-                .await
-                .map_err(|e| {
-                    error!("Failed to create guild: {}", e);
-                    AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    }
-                })?;
+        sql_exec!(
+            &self.pool,
+            sqlite: "INSERT INTO guilds (id, name, description, owner_id) VALUES (?, ?, ?, ?)",
+            pg: "INSERT INTO guilds (id, name, description, owner_id) VALUES ($1, $2, $3, $4)",
+            &id_str,
+            &name,
+            &description,
+            &owner_str
+        )
+        .map_err(|e| {
+            error!("Failed to create guild: {}", e);
+            AiomeError::Infrastructure {
+                reason: e.to_string(),
             }
-            DatabasePool::Postgres(p) => {
-                sqlx::query(
-                    "INSERT INTO guilds (id, name, description, owner_id) VALUES ($1, $2, $3, $4)",
-                )
-                .bind(&id_str)
-                .bind(&name)
-                .bind(&description)
-                .bind(&owner_str)
-                .execute(p)
-                .await
-                .map_err(|e| {
-                    error!("Failed to create guild: {}", e);
-                    AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    }
-                })?;
-            }
-        }
+        })?;
 
         // Add owner as a member with 'admin' role
         self.add_member(id, owner_id, "admin".to_string(), owner_id)
@@ -83,30 +63,14 @@ impl SyndicateOps for UniversalSyndicateStore {
         let requester_str = requester_id.to_string();
 
         // Security check: Only owner can delete
-        let owner_id_str = match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = ?")
-                    .bind(&guild_id_str)
-                    .fetch_optional(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-
-                row.map(|r| r.get::<String, _>("owner_id"))
-            }
-            DatabasePool::Postgres(p) => {
-                let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = $1")
-                    .bind(&guild_id_str)
-                    .fetch_optional(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-
-                row.map(|r| r.get::<String, _>("owner_id"))
-            }
-        };
+        let owner_id_str = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: "SELECT owner_id FROM guilds WHERE id = ?",
+            |row| Ok::<String, AiomeError>(row.get::<String, _>("owner_id")),
+            pg: "SELECT owner_id FROM guilds WHERE id = $1",
+            |row| Ok::<String, AiomeError>(row.get::<String, _>("owner_id")),
+            &guild_id_str
+        )?;
 
         if let Some(owner_id) = owner_id_str {
             if owner_id != requester_str {
@@ -120,26 +84,15 @@ impl SyndicateOps for UniversalSyndicateStore {
             });
         }
 
-        match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                sqlx::query("DELETE FROM guilds WHERE id = ?")
-                    .bind(&guild_id_str)
-                    .execute(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-            DatabasePool::Postgres(p) => {
-                sqlx::query("DELETE FROM guilds WHERE id = $1")
-                    .bind(&guild_id_str)
-                    .execute(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-        }
+        sql_exec!(
+            &self.pool,
+            sqlite: "DELETE FROM guilds WHERE id = ?",
+            pg: "DELETE FROM guilds WHERE id = $1",
+            &guild_id_str
+        )
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
 
         Ok(())
     }
@@ -155,30 +108,14 @@ impl SyndicateOps for UniversalSyndicateStore {
         let agent_id_str = agent_id.to_string();
         let requester_str = requester_id.to_string();
 
-        let owner_id_str = match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = ?")
-                    .bind(&guild_id_str)
-                    .fetch_optional(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-
-                row.map(|r| r.get::<String, _>("owner_id"))
-            }
-            DatabasePool::Postgres(p) => {
-                let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = $1")
-                    .bind(&guild_id_str)
-                    .fetch_optional(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-
-                row.map(|r| r.get::<String, _>("owner_id"))
-            }
-        };
+        let owner_id_str = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: "SELECT owner_id FROM guilds WHERE id = ?",
+            |row| Ok::<String, AiomeError>(row.get::<String, _>("owner_id")),
+            pg: "SELECT owner_id FROM guilds WHERE id = $1",
+            |row| Ok::<String, AiomeError>(row.get::<String, _>("owner_id")),
+            &guild_id_str
+        )?;
 
         if let Some(owner_id) = owner_id_str {
             if owner_id != requester_str && agent_id_str != owner_id {
@@ -192,30 +129,17 @@ impl SyndicateOps for UniversalSyndicateStore {
             });
         }
 
-        match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                sqlx::query("INSERT OR REPLACE INTO guild_members (guild_id, agent_id, role) VALUES (?, ?, ?)")
-                    .bind(&guild_id_str)
-                    .bind(&agent_id_str)
-                    .bind(&role)
-                    .execute(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-            DatabasePool::Postgres(p) => {
-                sqlx::query("INSERT INTO guild_members (guild_id, agent_id, role) VALUES ($1, $2, $3) ON CONFLICT (guild_id, agent_id) DO UPDATE SET role = EXCLUDED.role")
-                    .bind(&guild_id_str)
-                    .bind(&agent_id_str)
-                    .bind(&role)
-                    .execute(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-        }
+        sql_exec!(
+            &self.pool,
+            sqlite: "INSERT OR REPLACE INTO guild_members (guild_id, agent_id, role) VALUES (?, ?, ?)",
+            pg: "INSERT INTO guild_members (guild_id, agent_id, role) VALUES ($1, $2, $3) ON CONFLICT (guild_id, agent_id) DO UPDATE SET role = EXCLUDED.role",
+            &guild_id_str,
+            &agent_id_str,
+            &role
+        )
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
 
         Ok(())
     }
@@ -230,28 +154,14 @@ impl SyndicateOps for UniversalSyndicateStore {
         let agent_id_str = agent_id.to_string();
         let requester_str = requester_id.to_string();
 
-        let owner_id_str = match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = ?")
-                    .bind(&guild_id_str)
-                    .fetch_optional(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                row.map(|r| r.get::<String, _>("owner_id"))
-            }
-            DatabasePool::Postgres(p) => {
-                let row = sqlx::query("SELECT owner_id FROM guilds WHERE id = $1")
-                    .bind(&guild_id_str)
-                    .fetch_optional(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                row.map(|r| r.get::<String, _>("owner_id"))
-            }
-        };
+        let owner_id_str = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: "SELECT owner_id FROM guilds WHERE id = ?",
+            |row| Ok::<String, AiomeError>(row.get::<String, _>("owner_id")),
+            pg: "SELECT owner_id FROM guilds WHERE id = $1",
+            |row| Ok::<String, AiomeError>(row.get::<String, _>("owner_id")),
+            &guild_id_str
+        )?;
 
         if let Some(owner_id) = owner_id_str {
             if owner_id != requester_str && agent_id_str != requester_str {
@@ -270,162 +180,118 @@ impl SyndicateOps for UniversalSyndicateStore {
             });
         }
 
-        match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                sqlx::query("DELETE FROM guild_members WHERE guild_id = ? AND agent_id = ?")
-                    .bind(&guild_id_str)
-                    .bind(&agent_id_str)
-                    .execute(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-            DatabasePool::Postgres(p) => {
-                sqlx::query("DELETE FROM guild_members WHERE guild_id = $1 AND agent_id = $2")
-                    .bind(&guild_id_str)
-                    .bind(&agent_id_str)
-                    .execute(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-        }
+        sql_exec!(
+            &self.pool,
+            sqlite: "DELETE FROM guild_members WHERE guild_id = ? AND agent_id = ?",
+            pg: "DELETE FROM guild_members WHERE guild_id = $1 AND agent_id = $2",
+            &guild_id_str,
+            &agent_id_str
+        )
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
 
         Ok(())
     }
 
     async fn fetch_guilds(&self) -> Result<Vec<Guild>, AiomeError> {
-        let mut guilds = Vec::new();
-        match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                let rows =
-                    sqlx::query("SELECT id, name, description, owner_id, created_at FROM guilds")
-                        .fetch_all(p)
-                        .await
-                        .map_err(|e| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                for row in rows {
-                    let id = Uuid::parse_str(row.get("id")).map_err(|e| {
-                        error!(guild_id_raw = %row.get::<String, _>("id"), "Corrupted guild id in DB");
-                        AiomeError::Infrastructure {
-                            reason: format!("Invalid guild id: {}", e),
-                        }
-                    })?;
-                    let owner_id = Uuid::parse_str(row.get("owner_id")).map_err(|e| {
-                        error!(owner_id_raw = %row.get::<String, _>("owner_id"), "Corrupted owner_id in DB");
-                        AiomeError::Infrastructure {
-                            reason: format!("Invalid owner_id: {}", e),
-                        }
-                    })?;
-                    guilds.push(Guild {
-                        id,
-                        name: row.get("name"),
-                        description: row.get("description"),
-                        owner_id,
-                        created_at: row.get("created_at"),
-                    });
-                }
+        sql_fetch_all_map!(
+            &self.pool,
+            sqlite: "SELECT id, name, description, owner_id, created_at FROM guilds",
+            |row| {
+                let id = Uuid::parse_str(row.get("id")).map_err(|e| {
+                    error!(guild_id_raw = %row.get::<String, _>("id"), "Corrupted guild id in DB");
+                    AiomeError::Infrastructure {
+                        reason: format!("Invalid guild id: {}", e),
+                    }
+                })?;
+                let owner_id = Uuid::parse_str(row.get("owner_id")).map_err(|e| {
+                    error!(owner_id_raw = %row.get::<String, _>("owner_id"), "Corrupted owner_id in DB");
+                    AiomeError::Infrastructure {
+                        reason: format!("Invalid owner_id: {}", e),
+                    }
+                })?;
+                Ok::<_, AiomeError>(Guild {
+                    id,
+                    name: row.get("name"),
+                    description: row.get("description"),
+                    owner_id,
+                    created_at: row.get("created_at"),
+                })
+            },
+            pg: "SELECT id::TEXT, name::TEXT, description::TEXT, owner_id::TEXT, created_at::TEXT FROM guilds",
+            |row| {
+                let id = Uuid::parse_str(row.get("id")).map_err(|e| {
+                    error!(guild_id_raw = %row.get::<String, _>("id"), "Corrupted guild id in DB (postgres)");
+                    AiomeError::Infrastructure {
+                        reason: format!("Invalid guild id: {}", e),
+                    }
+                })?;
+                let owner_id = Uuid::parse_str(row.get("owner_id")).map_err(|e| {
+                    error!(owner_id_raw = %row.get::<String, _>("owner_id"), "Corrupted owner_id in DB (postgres)");
+                    AiomeError::Infrastructure {
+                        reason: format!("Invalid owner_id: {}", e),
+                    }
+                })?;
+                Ok::<_, AiomeError>(Guild {
+                    id,
+                    name: row.get("name"),
+                    description: row.get("description"),
+                    owner_id,
+                    created_at: row.get("created_at"),
+                })
             }
-            DatabasePool::Postgres(p) => {
-                let rows = sqlx::query("SELECT id::TEXT, name::TEXT, description::TEXT, owner_id::TEXT, created_at::TEXT FROM guilds")
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                for row in rows {
-                    let id = Uuid::parse_str(row.get("id")).map_err(|e| {
-                        error!(guild_id_raw = %row.get::<String, _>("id"), "Corrupted guild id in DB (postgres)");
-                        AiomeError::Infrastructure {
-                            reason: format!("Invalid guild id: {}", e),
-                        }
-                    })?;
-                    let owner_id = Uuid::parse_str(row.get("owner_id")).map_err(|e| {
-                        error!(owner_id_raw = %row.get::<String, _>("owner_id"), "Corrupted owner_id in DB (postgres)");
-                        AiomeError::Infrastructure {
-                            reason: format!("Invalid owner_id: {}", e),
-                        }
-                    })?;
-                    guilds.push(Guild {
-                        id,
-                        name: row.get("name"),
-                        description: row.get("description"),
-                        owner_id,
-                        created_at: row.get("created_at"),
-                    });
-                }
-            }
-        }
-        Ok(guilds)
+        )
     }
 
     async fn fetch_members(&self, guild_id: Uuid) -> Result<Vec<GuildMember>, AiomeError> {
         let guild_id_str = guild_id.to_string();
-        let mut members = Vec::new();
-        match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query("SELECT guild_id, agent_id, role, joined_at FROM guild_members WHERE guild_id = ?")
-                    .bind(&guild_id_str)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                for row in rows {
-                    let parsed_guild_id = Uuid::parse_str(row.get("guild_id")).map_err(|e| {
-                        error!(guild_id_raw = %row.get::<String, _>("guild_id"), "Corrupted guild_id in guild_members");
-                        AiomeError::Infrastructure {
-                            reason: format!("Invalid guild_id: {}", e),
-                        }
-                    })?;
-                    let parsed_agent_id = Uuid::parse_str(row.get("agent_id")).map_err(|e| {
-                        error!(agent_id_raw = %row.get::<String, _>("agent_id"), "Corrupted agent_id in guild_members");
-                        AiomeError::Infrastructure {
-                            reason: format!("Invalid agent_id: {}", e),
-                        }
-                    })?;
-                    members.push(GuildMember {
-                        guild_id: parsed_guild_id,
-                        agent_id: parsed_agent_id,
-                        role: row.get("role"),
-                        joined_at: row.get("joined_at"),
-                    });
-                }
-            }
-            DatabasePool::Postgres(p) => {
-                let rows = sqlx::query("SELECT guild_id::TEXT, agent_id::TEXT, role::TEXT, joined_at::TEXT FROM guild_members WHERE guild_id = $1")
-                    .bind(&guild_id_str)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                for row in rows {
-                    let parsed_guild_id = Uuid::parse_str(row.get("guild_id")).map_err(|e| {
-                        error!(guild_id_raw = %row.get::<String, _>("guild_id"), "Corrupted guild_id in guild_members (postgres)");
-                        AiomeError::Infrastructure {
-                            reason: format!("Invalid guild_id: {}", e),
-                        }
-                    })?;
-                    let parsed_agent_id = Uuid::parse_str(row.get("agent_id")).map_err(|e| {
-                        error!(agent_id_raw = %row.get::<String, _>("agent_id"), "Corrupted agent_id in guild_members (postgres)");
-                        AiomeError::Infrastructure {
-                            reason: format!("Invalid agent_id: {}", e),
-                        }
-                    })?;
-                    members.push(GuildMember {
-                        guild_id: parsed_guild_id,
-                        agent_id: parsed_agent_id,
-                        role: row.get("role"),
-                        joined_at: row.get("joined_at"),
-                    });
-                }
-            }
-        }
-        Ok(members)
+        sql_fetch_all_map!(
+            &self.pool,
+            sqlite: "SELECT guild_id, agent_id, role, joined_at FROM guild_members WHERE guild_id = ?",
+            |row| {
+                let parsed_guild_id = Uuid::parse_str(row.get("guild_id")).map_err(|e| {
+                    error!(guild_id_raw = %row.get::<String, _>("guild_id"), "Corrupted guild_id in guild_members");
+                    AiomeError::Infrastructure {
+                        reason: format!("Invalid guild_id: {}", e),
+                    }
+                })?;
+                let parsed_agent_id = Uuid::parse_str(row.get("agent_id")).map_err(|e| {
+                    error!(agent_id_raw = %row.get::<String, _>("agent_id"), "Corrupted agent_id in guild_members");
+                    AiomeError::Infrastructure {
+                        reason: format!("Invalid agent_id: {}", e),
+                    }
+                })?;
+                Ok::<_, AiomeError>(GuildMember {
+                    guild_id: parsed_guild_id,
+                    agent_id: parsed_agent_id,
+                    role: row.get("role"),
+                    joined_at: row.get("joined_at"),
+                })
+            },
+            pg: "SELECT guild_id::TEXT, agent_id::TEXT, role::TEXT, joined_at::TEXT FROM guild_members WHERE guild_id = $1",
+            |row| {
+                let parsed_guild_id = Uuid::parse_str(row.get("guild_id")).map_err(|e| {
+                    error!(guild_id_raw = %row.get::<String, _>("guild_id"), "Corrupted guild_id in guild_members (postgres)");
+                    AiomeError::Infrastructure {
+                        reason: format!("Invalid guild_id: {}", e),
+                    }
+                })?;
+                let parsed_agent_id = Uuid::parse_str(row.get("agent_id")).map_err(|e| {
+                    error!(agent_id_raw = %row.get::<String, _>("agent_id"), "Corrupted agent_id in guild_members (postgres)");
+                    AiomeError::Infrastructure {
+                        reason: format!("Invalid agent_id: {}", e),
+                    }
+                })?;
+                Ok::<_, AiomeError>(GuildMember {
+                    guild_id: parsed_guild_id,
+                    agent_id: parsed_agent_id,
+                    role: row.get("role"),
+                    joined_at: row.get("joined_at"),
+                })
+            },
+            &guild_id_str
+        )
     }
 }
 

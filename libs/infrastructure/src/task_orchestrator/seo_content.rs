@@ -97,14 +97,18 @@ impl TaskConductor for SeoContentConductor {
         let mut geo_passed = true;
 
         if self.geo_enabled {
-            let _ = progress_tx
+            if progress_tx
                 .send(TaskEvent::Progress {
                     job_id: job.id.clone(),
                     conductor_id: self.conductor_name().to_string(),
                     message: "Running Generative Engine Optimization (GEO) audit...".to_string(),
                     percent: Some(80),
                 })
-                .await;
+                .await
+                .is_err()
+            {
+                tracing::debug!("[SEO] Progress receiver dropped during GEO audit");
+            }
 
             let payload = serde_json::json!({
                 "content": final_content,
@@ -130,65 +134,89 @@ impl TaskConductor for SeoContentConductor {
                                 final_content = optimized.to_string();
                             }
 
-                            let _ = progress_tx
+                            if progress_tx
                                 .send(TaskEvent::QualityGate {
                                     job_id: job.id.clone(),
                                     score,
                                     passed: geo_passed,
                                     conductor: self.conductor_name().to_string(),
                                 })
-                                .await;
+                                .await
+                                .is_err()
+                            {
+                                tracing::debug!(
+                                    "[SEO] Progress receiver dropped during QualityGate"
+                                );
+                            }
                         }
                         Err(e) => {
                             tracing::warn!(
                                 "GEO Optimizer returned invalid JSON (graceful degradation): {}",
                                 e
                             );
-                            let _ = progress_tx
+                            if progress_tx
                                 .send(TaskEvent::QualityGate {
                                     job_id: job.id.clone(),
                                     score: 0,
                                     passed: true, // graceful degradation: don't block on parse error
                                     conductor: self.conductor_name().to_string(),
                                 })
-                                .await;
+                                .await
+                                .is_err()
+                            {
+                                tracing::debug!("[SEO] Progress receiver dropped during QualityGate (JSON fallback)");
+                            }
                         }
                     }
                 }
                 Err(e) => {
                     tracing::warn!("GEO Optimizer audit failed (graceful degradation): {}", e);
                     // Emit QualityGate with score 0 + passed=true to signal unavailability
-                    let _ = progress_tx
+                    if progress_tx
                         .send(TaskEvent::QualityGate {
                             job_id: job.id.clone(),
                             score: 0,
                             passed: true, // graceful degradation: publish despite GEO unavailability
                             conductor: self.conductor_name().to_string(),
                         })
-                        .await;
+                        .await
+                        .is_err()
+                    {
+                        tracing::debug!(
+                            "[SEO] Progress receiver dropped during QualityGate (GEO unavailable)"
+                        );
+                    }
                 }
                 Ok(resp) => {
                     tracing::warn!(
                         "GEO Optimizer returned error status (graceful degradation): {}",
                         resp.status()
                     );
-                    let _ = progress_tx
+                    if progress_tx
                         .send(TaskEvent::QualityGate {
                             job_id: job.id.clone(),
                             score: 0,
                             passed: true, // graceful degradation: publish despite GEO error
                             conductor: self.conductor_name().to_string(),
                         })
-                        .await;
+                        .await
+                        .is_err()
+                    {
+                        tracing::debug!(
+                            "[SEO] Progress receiver dropped during QualityGate (GEO error)"
+                        );
+                    }
                 }
             }
         }
 
         if !geo_passed {
-            let _ = progress_tx.send(TaskEvent::AwaitingInput {
+            if progress_tx.send(TaskEvent::AwaitingInput {
                 job_id: job.id.clone(),
                 reason: "GEO Score below threshold. Content requires correction to improve citability.".to_string(),
-            }).await;
+            }).await.is_err() {
+                tracing::debug!("[SEO] Progress receiver dropped during AwaitingInput");
+            }
             return Err(AiomeError::Infrastructure {
                 reason: format!(
                     "GEO optimization failed to meet the threshold of {}. \
@@ -212,14 +240,18 @@ impl TaskConductor for SeoContentConductor {
             }
         }
 
-        let _ = progress_tx
+        if progress_tx
             .send(TaskEvent::Progress {
                 job_id: job.id.clone(),
                 conductor_id: self.conductor_name().to_string(),
                 message: "SEO Content Generation complete.".to_string(),
                 percent: Some(100),
             })
-            .await;
+            .await
+            .is_err()
+        {
+            tracing::debug!("[SEO] Progress receiver dropped during completion");
+        }
 
         Ok((final_content, None))
     }

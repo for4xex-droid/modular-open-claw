@@ -95,14 +95,18 @@ impl TaskConductor for GeoAuditConductor {
                         optimized_content = optimized.to_string();
                     }
 
-                    let _ = progress_tx
+                    if progress_tx
                         .send(TaskEvent::QualityGate {
                             job_id: job.id.clone(),
                             score,
                             passed: geo_passed,
                             conductor: self.conductor_name().to_string(),
                         })
-                        .await;
+                        .await
+                        .is_err()
+                    {
+                        tracing::debug!("[GEO] Progress receiver dropped during QualityGate");
+                    }
 
                     if !geo_passed {
                         return Err(AiomeError::Infrastructure {

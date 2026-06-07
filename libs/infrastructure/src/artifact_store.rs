@@ -22,8 +22,8 @@ use uuid::Uuid;
 
 use crate::db::DatabasePool;
 use crate::polar_quant::PolarQuantEncoder;
-use crate::sql_exec;
 use crate::vector_ops::cosine_similarity;
+use crate::{sql_exec, sql_fetch_all_map, sql_fetch_optional_map};
 
 use crate::vector_ops::{StandardVectorOps, VectorOps};
 
@@ -437,32 +437,14 @@ impl ArtifactStore for UniversalArtifactStore {
 
     async fn fetch_artifact(&self, id: &str) -> Result<Option<ArtifactMeta>, AiomeError> {
         let q = format!("SELECT * FROM ai_artifacts WHERE id = {}", self.pool.ph(0));
-        let meta = match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                let row = sqlx::query(&q).bind(id).fetch_optional(p).await.map_err(
-                    |e: sqlx::Error| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    },
-                )?;
-                if let Some(r) = row {
-                    Some(Self::map_sqlite_row(r)?)
-                } else {
-                    None
-                }
-            }
-            DatabasePool::Postgres(p) => {
-                let row = sqlx::query(&q).bind(id).fetch_optional(p).await.map_err(
-                    |e: sqlx::Error| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    },
-                )?;
-                if let Some(r) = row {
-                    Some(Self::map_postgres_row(r)?)
-                } else {
-                    None
-                }
-            }
-        };
+        let meta = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: &q,
+            |row| Self::map_sqlite_row(row),
+            pg: &q,
+            |row| Self::map_postgres_row(row),
+            id
+        )?;
 
         if let Some(mut m) = meta {
             m.edges = self.get_artifact_edges(id).await.unwrap_or_default();
@@ -570,38 +552,15 @@ impl ArtifactStore for UniversalArtifactStore {
             "SELECT * FROM artifact_edges WHERE source_id = {0} OR target_id = {0}",
             self.pool.ph(0)
         );
-        match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                let rows =
-                    sqlx::query(&q)
-                        .bind(id)
-                        .fetch_all(p)
-                        .await
-                        .map_err(|e: sqlx::Error| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                let mut results = Vec::new();
-                for r in rows {
-                    results.push(Self::map_edge_row_generic(&r));
-                }
-                Ok(results)
-            }
-            DatabasePool::Postgres(p) => {
-                let rows =
-                    sqlx::query(&q)
-                        .bind(id)
-                        .fetch_all(p)
-                        .await
-                        .map_err(|e: sqlx::Error| AiomeError::Infrastructure {
-                            reason: e.to_string(),
-                        })?;
-                let mut results = Vec::new();
-                for r in rows {
-                    results.push(Self::map_edge_row_generic(&r));
-                }
-                Ok(results)
-            }
-        }
+        let results = sql_fetch_all_map!(
+            &self.pool,
+            sqlite: &q,
+            |row| Ok::<ArtifactEdge, AiomeError>(Self::map_edge_row_generic(&row)),
+            pg: &q,
+            |row| Ok::<ArtifactEdge, AiomeError>(Self::map_edge_row_generic(&row)),
+            id
+        )?;
+        Ok(results)
     }
 
     async fn add_artifact_edge(&self, edge: ArtifactEdge) -> Result<(), AiomeError> {

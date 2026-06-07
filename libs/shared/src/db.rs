@@ -318,6 +318,64 @@ macro_rules! sql_scalar {
     }};
 }
 
+/// Helper macro to fetch all rows and map them with closures
+#[macro_export]
+macro_rules! sql_fetch_all_map {
+    ($pool:expr, sqlite: $sql_sqlite:expr, |$row_sqlite:ident| $map_sqlite:expr, pg: $sql_pg:expr, |$row_pg:ident| $map_pg:expr $(, $arg:expr)*) => {{
+        let f = || async {
+            match $pool {
+                $crate::db::DatabasePool::Sqlite(p) => {
+                    let rows = sqlx::query($sql_sqlite)$(.bind($arg))*.fetch_all(p).await
+                        .map_err(|e| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })?;
+                    let mut result = Vec::with_capacity(rows.len());
+                    for $row_sqlite in rows {
+                        result.push($map_sqlite?);
+                    }
+                    Ok::<_, $crate::reexport::AiomeError>(result)
+                }
+                $crate::db::DatabasePool::Postgres(p) => {
+                    let rows = sqlx::query($sql_pg)$(.bind($arg))*.fetch_all(p).await
+                        .map_err(|e| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })?;
+                    let mut result = Vec::with_capacity(rows.len());
+                    for $row_pg in rows {
+                        result.push($map_pg?);
+                    }
+                    Ok::<_, $crate::reexport::AiomeError>(result)
+                }
+            }
+        };
+        f().await
+    }};
+}
+
+/// Helper macro to fetch an optional row and map it with closures
+#[macro_export]
+macro_rules! sql_fetch_optional_map {
+    ($pool:expr, sqlite: $sql_sqlite:expr, |$row_sqlite:ident| $map_sqlite:expr, pg: $sql_pg:expr, |$row_pg:ident| $map_pg:expr $(, $arg:expr)*) => {{
+        let f = || async {
+            match $pool {
+                $crate::db::DatabasePool::Sqlite(p) => {
+                    let row_opt = sqlx::query($sql_sqlite)$(.bind($arg))*.fetch_optional(p).await
+                        .map_err(|e| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })?;
+                    match row_opt {
+                        Some($row_sqlite) => Ok::<Option<_>, $crate::reexport::AiomeError>(Some($map_sqlite?)),
+                        None => Ok::<Option<_>, $crate::reexport::AiomeError>(None),
+                    }
+                }
+                $crate::db::DatabasePool::Postgres(p) => {
+                    let row_opt = sqlx::query($sql_pg)$(.bind($arg))*.fetch_optional(p).await
+                        .map_err(|e| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })?;
+                    match row_opt {
+                        Some($row_pg) => Ok::<Option<_>, $crate::reexport::AiomeError>(Some($map_pg?)),
+                        None => Ok::<Option<_>, $crate::reexport::AiomeError>(None),
+                    }
+                }
+            }
+        };
+        f().await
+    }};
+}
+
 /// Helper macro to execute a query against either SQLite or PostgreSQL
 /// Supports both single SQL string and dual dialect strings (sqlite:, pg:).
 #[macro_export]
@@ -780,5 +838,45 @@ mod tests {
         assert!(res.is_err(), "Backup to nonexistent dir must fail");
 
         pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_sql_fetch_map_macros() {
+        let pool = DatabasePool::new_sqlite(":memory:").await.unwrap();
+
+        let _ = sql_exec!(
+            &pool,
+            "CREATE TABLE map_test (id INTEGER PRIMARY KEY, val TEXT)"
+        );
+        let _ = sql_exec!(
+            &pool,
+            "INSERT INTO map_test (val) VALUES (?)",
+            "mapped_value".to_string()
+        );
+
+        // test sql_fetch_optional_map
+        use sqlx::Row;
+        let opt_res = sql_fetch_optional_map!(
+            &pool,
+            sqlite: "SELECT val FROM map_test WHERE id = ?",
+            |row| Ok::<String, AiomeError>(row.get::<String, _>("val")),
+            pg: "SELECT val FROM map_test WHERE id = $1",
+            |row| Ok::<String, AiomeError>(row.get::<String, _>("val")),
+            1_i64
+        )
+        .unwrap();
+        assert_eq!(opt_res, Some("mapped_value".to_string()));
+
+        // test sql_fetch_all_map
+        let all_res = sql_fetch_all_map!(
+            &pool,
+            sqlite: "SELECT val FROM map_test",
+            |row| Ok::<String, AiomeError>(row.get::<String, _>("val")),
+            pg: "SELECT val FROM map_test",
+            |row| Ok::<String, AiomeError>(row.get::<String, _>("val"))
+        )
+        .unwrap();
+        assert_eq!(all_res.len(), 1);
+        assert_eq!(all_res[0], "mapped_value".to_string());
     }
 }

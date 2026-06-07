@@ -385,7 +385,13 @@ impl KarmaOps for UniversalJobQueue {
 
         let update_q = format!("UPDATE karma_logs SET last_applied_at = {0}, apply_count = apply_count + 1 WHERE id = {1}", self.pool.ph(0), self.pool.ph(1));
         for id in ids_to_update {
-            let _ = sql_exec!(&self.pool, &update_q, &now, &id);
+            if let Err(e) = sql_exec!(&self.pool, &update_q, &now, &id) {
+                tracing::warn!(
+                    "[Karma] Failed to update apply_count for karma_id={}: {}",
+                    id,
+                    e
+                );
+            }
         }
 
         Ok(result)

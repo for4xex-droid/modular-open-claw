@@ -566,4 +566,195 @@ mod tests {
         assert_eq!(prompt, 0);
         assert_eq!(completion, 0);
     }
+
+    // --- Phase 4 TDD: Additional edge-case tests ---
+
+    #[test]
+    fn test_map_err_formats_display() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file missing");
+        let napi_err = map_err(io_err);
+        let reason = napi_err.reason;
+        assert!(
+            reason.contains("file missing"),
+            "map_err must preserve the original error message. Got: {}",
+            reason
+        );
+    }
+
+    #[test]
+    fn test_check_dangerous_patterns_case_insensitive() {
+        // Mixed case variants must still be caught
+        assert!(check_dangerous_patterns("RM -RF /tmp").is_some());
+        assert!(check_dangerous_patterns("Chmod 777 /var").is_some());
+        assert!(check_dangerous_patterns("Cat /Etc/Shadow").is_some());
+        assert!(check_dangerous_patterns("SHUTDOWN").is_some());
+        assert!(check_dangerous_patterns("Reboot").is_some());
+    }
+
+    #[test]
+    fn test_check_dangerous_patterns_embedded_in_longer_string() {
+        // Patterns embedded within larger strings must still be detected
+        assert!(
+            check_dangerous_patterns("please rm -rf /home/user && echo done").is_some(),
+            "rm -rf embedded in a longer command must be caught"
+        );
+        assert!(
+            check_dangerous_patterns("sudo chmod 777 /var/www/html").is_some(),
+            "chmod 777 with sudo prefix must be caught"
+        );
+    }
+
+    #[test]
+    fn test_check_dangerous_patterns_safe_substrings() {
+        // Words that contain dangerous words as substrings should NOT match
+        // "shutdown" regex is broad — it matches "shutdown" as a substring
+        // This test documents current behavior
+        assert_eq!(
+            check_dangerous_patterns("rebooted yesterday"),
+            Some("(?i)reboot")
+        );
+        // "chmod" without "777" should be safe
+        assert_eq!(check_dangerous_patterns("chmod 644 file.txt"), None);
+        // "rm" without "-rf" should be safe
+        assert_eq!(check_dangerous_patterns("rm file.txt"), None);
+    }
+
+    #[test]
+    fn test_check_dangerous_patterns_empty_and_whitespace() {
+        assert_eq!(check_dangerous_patterns(""), None);
+        assert_eq!(check_dangerous_patterns("   "), None);
+        assert_eq!(check_dangerous_patterns("\n\t"), None);
+    }
+
+    #[test]
+    fn test_parse_watchtower_usage_negative_values() {
+        // Negative values should be handled (as_u64 returns None for negatives)
+        let json = r#"{"prompt_tokens": -5, "completion_tokens": -10}"#;
+        let (prompt, completion) = parse_watchtower_usage(json);
+        assert_eq!(prompt, 0, "Negative prompt_tokens must default to 0");
+        assert_eq!(
+            completion, 0,
+            "Negative completion_tokens must default to 0"
+        );
+    }
+
+    #[test]
+    fn test_parse_watchtower_usage_null_values() {
+        let json = r#"{"prompt_tokens": null, "completion_tokens": null}"#;
+        let (prompt, completion) = parse_watchtower_usage(json);
+        assert_eq!(prompt, 0);
+        assert_eq!(completion, 0);
+    }
+
+    #[test]
+    fn test_parse_watchtower_usage_string_values() {
+        // String values where numbers are expected
+        let json = r#"{"prompt_tokens": "abc", "completion_tokens": "def"}"#;
+        let (prompt, completion) = parse_watchtower_usage(json);
+        assert_eq!(prompt, 0, "String values must default to 0");
+        assert_eq!(completion, 0, "String values must default to 0");
+    }
+
+    #[test]
+    fn test_parse_watchtower_usage_float_values() {
+        // Float values — as_u64 returns None for floats
+        let json = r#"{"prompt_tokens": 10.5, "completion_tokens": 20.3}"#;
+        let (prompt, completion) = parse_watchtower_usage(json);
+        assert_eq!(prompt, 0, "Float values must default to 0 via as_u64");
+        assert_eq!(completion, 0, "Float values must default to 0 via as_u64");
+    }
+
+    #[test]
+    fn test_parse_watchtower_usage_zero_values() {
+        let json = r#"{"prompt_tokens": 0, "completion_tokens": 0}"#;
+        let (prompt, completion) = parse_watchtower_usage(json);
+        assert_eq!(prompt, 0);
+        assert_eq!(completion, 0);
+    }
+
+    #[test]
+    fn test_parse_watchtower_usage_large_values() {
+        let json = r#"{"prompt_tokens": 999999999, "completion_tokens": 888888888}"#;
+        let (prompt, completion) = parse_watchtower_usage(json);
+        assert_eq!(prompt, 999999999);
+        assert_eq!(completion, 888888888);
+    }
+
+    #[test]
+    fn test_parse_watchtower_usage_empty_json_object() {
+        let json = "{}";
+        let (prompt, completion) = parse_watchtower_usage(json);
+        assert_eq!(prompt, 0);
+        assert_eq!(completion, 0);
+    }
+
+    #[test]
+    fn test_parse_watchtower_usage_json_array() {
+        // An array is valid JSON but not an object with expected keys
+        let json = "[1, 2, 3]";
+        let (prompt, completion) = parse_watchtower_usage(json);
+        assert_eq!(prompt, 0);
+        assert_eq!(completion, 0);
+    }
+
+    #[test]
+    fn test_build_distill_prompt_empty_messages() {
+        let prompt = build_distill_prompt("", true);
+        assert!(prompt.contains("成功"));
+        assert!(prompt.contains("教訓"));
+    }
+
+    #[test]
+    fn test_build_distill_prompt_large_json() {
+        let large = "x".repeat(10_000);
+        let prompt = build_distill_prompt(&large, false);
+        assert!(prompt.contains("失敗"));
+        assert!(
+            prompt.contains(&large),
+            "Large payload must be included verbatim"
+        );
+    }
+
+    #[test]
+    fn test_build_distill_prompt_special_characters() {
+        let json = r#"[{"role":"user","content":"Hello \"world\" \n\t"}]"#;
+        let prompt = build_distill_prompt(json, true);
+        assert!(
+            prompt.contains(json),
+            "Special characters must be preserved"
+        );
+    }
+
+    #[test]
+    fn test_tool_check_response_defaults() {
+        let resp = ToolCheckResponse {
+            blocked: false,
+            reason: None,
+            new_params: None,
+        };
+        assert!(!resp.blocked);
+        assert!(resp.reason.is_none());
+        assert!(resp.new_params.is_none());
+    }
+
+    #[test]
+    fn test_tool_check_response_blocked() {
+        let resp = ToolCheckResponse {
+            blocked: true,
+            reason: Some("dangerous pattern detected".to_string()),
+            new_params: None,
+        };
+        assert!(resp.blocked);
+        assert_eq!(resp.reason.as_deref(), Some("dangerous pattern detected"));
+    }
+
+    #[test]
+    fn test_subagent_spawn_response_variants() {
+        for status in &["ok", "blocked", "quarantined"] {
+            let resp = SubagentSpawnResponse {
+                status: status.to_string(),
+            };
+            assert_eq!(resp.status, *status);
+        }
+    }
 }

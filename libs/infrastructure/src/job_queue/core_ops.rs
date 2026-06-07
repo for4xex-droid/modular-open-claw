@@ -92,21 +92,10 @@ impl CoreOps for UniversalJobQueue {
             .map(|m| serde_json::to_string(&m).unwrap_or_else(|_| "{}".to_string()))
             .unwrap_or_else(|| "{}".to_string());
         let agent_id_str = agent_id.map(|uid| uid.to_string());
-        let q = match &self.pool {
-            crate::db::DatabasePool::Sqlite(_) => format!(
-                "INSERT INTO jobs (id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, priority, created_at, updated_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10})",
-                self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4),
-                self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10)
-            ),
-            crate::db::DatabasePool::Postgres(_) => format!(
-                "INSERT INTO jobs (id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, priority, created_at, updated_at) VALUES ({0}, {1}, {2}, {3}, {4}::jsonb, {5}::jsonb, {6}, {7}, {8}, {9}::timestamptz, {10}::timestamptz)",
-                self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4),
-                self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10)
-            ),
-        };
         sql_exec!(
             &self.pool,
-            &q,
+            sqlite: "INSERT INTO jobs (id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            pg: "INSERT INTO jobs (id, category, topic, style_name, karma_directives, permission_manifest, agent_id, status, priority, created_at, updated_at) VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9, $10::timestamptz, $11::timestamptz)",
             &id,
             category,
             topic,

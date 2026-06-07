@@ -42,6 +42,20 @@ macro_rules! sql_fetch_optional {
 }
 
 #[macro_export]
+macro_rules! sql_fetch_all_map {
+    ($($arg:tt)*) => {
+        ::shared::sql_fetch_all_map!($($arg)*)
+    };
+}
+
+#[macro_export]
+macro_rules! sql_fetch_optional_map {
+    ($($arg:tt)*) => {
+        ::shared::sql_fetch_optional_map!($($arg)*)
+    };
+}
+
+#[macro_export]
 macro_rules! sql_tx_exec {
     ($($arg:tt)*) => {
         ::shared::sql_tx_exec!($($arg)*)

@@ -108,25 +108,37 @@ impl SoTEngine {
             "🧠 [SoT] Protocol selected: {:?} (auto={})",
             protocol, config.auto_protocol
         );
-        let _ = self.event_tx.send(SoTEvent::ProtocolSelected {
-            session_id: session_id.clone(),
-            protocol: protocol.clone(),
-            reason: if config.auto_protocol {
-                format!(
-                    "Auto-selected based on provider capability: {}",
-                    self.primary_provider.name()
-                )
-            } else {
-                "Explicitly configured".to_string()
-            },
-        });
+        if self
+            .event_tx
+            .send(SoTEvent::ProtocolSelected {
+                session_id: session_id.clone(),
+                protocol: protocol.clone(),
+                reason: if config.auto_protocol {
+                    format!(
+                        "Auto-selected based on provider capability: {}",
+                        self.primary_provider.name()
+                    )
+                } else {
+                    "Explicitly configured".to_string()
+                },
+            })
+            .is_err()
+        {
+            tracing::debug!("[SoT] No event subscribers for ProtocolSelected");
+        }
 
         // 1. Session Start Event
-        let _ = self.event_tx.send(SoTEvent::SessionStart {
-            session_id: session_id.clone(),
-            config: config.clone(),
-            trigger,
-        });
+        if self
+            .event_tx
+            .send(SoTEvent::SessionStart {
+                session_id: session_id.clone(),
+                config: config.clone(),
+                trigger,
+            })
+            .is_err()
+        {
+            tracing::debug!("[SoT] No event subscribers for SessionStart");
+        }
 
         let num_thinkers = config.num_thinkers.clamp(1, 8);
         let mut current_content = String::new();
@@ -180,11 +192,17 @@ impl SoTEngine {
             //  Critic スコアリング (P-2, P-11) — プロトコル共通
             //  論文の知見: Critic は「ロール」ではなく「構造化された品質ゲート」
             // ──────────────────────────────────────────────────────
-            let _ = self.event_tx.send(SoTEvent::RoleStart {
-                session_id: session_id.clone(),
-                role: "Critic".to_string(),
-                round,
-            });
+            if self
+                .event_tx
+                .send(SoTEvent::RoleStart {
+                    session_id: session_id.clone(),
+                    role: "Critic".to_string(),
+                    round,
+                })
+                .is_err()
+            {
+                tracing::debug!("[SoT] No event subscribers for RoleStart(Critic)");
+            }
 
             let scores = self
                 .evaluate_scores(&current_content, &config.scoring_criteria)
@@ -208,12 +226,18 @@ impl SoTEngine {
                     .unwrap_or(false)
             });
 
-            let _ = self.event_tx.send(SoTEvent::Score {
-                session_id: session_id.clone(),
-                round,
-                scores: scores.clone(),
-                all_passed,
-            });
+            if self
+                .event_tx
+                .send(SoTEvent::Score {
+                    session_id: session_id.clone(),
+                    round,
+                    scores: scores.clone(),
+                    all_passed,
+                })
+                .is_err()
+            {
+                tracing::debug!("[SoT] No event subscribers for Score");
+            }
 
             if all_passed {
                 final_outcome = SoTOutcome::AllCriteriaPassed;
@@ -266,11 +290,17 @@ impl SoTEngine {
         }
 
         // 2. Session End Event
-        let _ = self.event_tx.send(SoTEvent::SessionEnd {
-            session_id: session_id.clone(),
-            outcome: final_outcome.clone(),
-            total_tokens: 0,
-        });
+        if self
+            .event_tx
+            .send(SoTEvent::SessionEnd {
+                session_id: session_id.clone(),
+                outcome: final_outcome.clone(),
+                total_tokens: 0,
+            })
+            .is_err()
+        {
+            tracing::debug!("[SoT] No event subscribers for SessionEnd");
+        }
 
         Ok((session_id, final_outcome, last_scores))
     }
@@ -377,29 +407,47 @@ impl SoTEngine {
                     "🤚 [SoT] Thinker {} voluntarily abstained (Dochkina Self-Abstention)",
                     thinker_idx + 1
                 );
-                let _ = self.event_tx.send(SoTEvent::ThinkerAbstained {
-                    session_id: session_id.to_string(),
-                    thinker_index: thinker_idx,
-                    round,
-                });
+                if self
+                    .event_tx
+                    .send(SoTEvent::ThinkerAbstained {
+                        session_id: session_id.to_string(),
+                        thinker_index: thinker_idx,
+                        round,
+                    })
+                    .is_err()
+                {
+                    tracing::debug!("[SoT] No event subscribers for ThinkerAbstained");
+                }
                 continue;
             }
 
             // ロール名の抽出
             let (role_name, content) = extract_role_and_content(&resp.content, thinker_idx);
 
-            let _ = self.event_tx.send(SoTEvent::RoleStart {
-                session_id: session_id.to_string(),
-                role: role_name.clone(),
-                round,
-            });
-            let _ = self.event_tx.send(SoTEvent::RoleOutput {
-                session_id: session_id.to_string(),
-                role: role_name.clone(),
-                round,
-                content: content.clone(),
-                token_count: 0,
-            });
+            if self
+                .event_tx
+                .send(SoTEvent::RoleStart {
+                    session_id: session_id.to_string(),
+                    role: role_name.clone(),
+                    round,
+                })
+                .is_err()
+            {
+                tracing::debug!("[SoT] No event subscribers for RoleStart");
+            }
+            if self
+                .event_tx
+                .send(SoTEvent::RoleOutput {
+                    session_id: session_id.to_string(),
+                    role: role_name.clone(),
+                    round,
+                    content: content.clone(),
+                    token_count: 0,
+                })
+                .is_err()
+            {
+                tracing::debug!("[SoT] No event subscribers for RoleOutput");
+            }
 
             accumulated_outputs.push((role_name, content));
         }
@@ -445,11 +493,17 @@ impl SoTEngine {
             )
         };
 
-        let _ = self.event_tx.send(SoTEvent::RoleStart {
-            session_id: session_id.to_string(),
-            role: role.to_string(),
-            round,
-        });
+        if self
+            .event_tx
+            .send(SoTEvent::RoleStart {
+                session_id: session_id.to_string(),
+                role: role.to_string(),
+                round,
+            })
+            .is_err()
+        {
+            tracing::debug!("[SoT] No event subscribers for RoleStart");
+        }
 
         let thinker_req = aiome_core_contracts::llm::LlmRequest {
             messages: vec![
@@ -474,13 +528,19 @@ impl SoTEngine {
             .await?;
         let output = thinker_res.content.clone();
 
-        let _ = self.event_tx.send(SoTEvent::RoleOutput {
-            session_id: session_id.to_string(),
-            role: role.to_string(),
-            round,
-            content: output.clone(),
-            token_count: 0,
-        });
+        if self
+            .event_tx
+            .send(SoTEvent::RoleOutput {
+                session_id: session_id.to_string(),
+                role: role.to_string(),
+                round,
+                content: output.clone(),
+                token_count: 0,
+            })
+            .is_err()
+        {
+            tracing::debug!("[SoT] No event subscribers for RoleOutput");
+        }
 
         Ok(output)
     }

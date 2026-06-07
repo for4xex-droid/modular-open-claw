@@ -197,53 +197,11 @@ impl FederationOps for UniversalJobQueue {
         matches: Vec<ArenaMatch>,
     ) -> Result<(), AiomeError> {
         for karma in karmas {
-            let q = match &self.pool {
-                crate::db::DatabasePool::Sqlite(_) => format!(
-                    "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, is_federated, clone_origin_id, lamport_clock, node_id, signature, created_at, last_applied_at) \
-                     VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}) \
-                     ON CONFLICT (id) DO UPDATE SET \
-                     job_id = EXCLUDED.job_id, \
-                     karma_type = EXCLUDED.karma_type, \
-                     related_skill = EXCLUDED.related_skill, \
-                     lesson = EXCLUDED.lesson, \
-                     weight = EXCLUDED.weight, \
-                     soul_version_hash = EXCLUDED.soul_version_hash, \
-                     is_federated = EXCLUDED.is_federated, \
-                     clone_origin_id = EXCLUDED.clone_origin_id, \
-                     lamport_clock = EXCLUDED.lamport_clock, \
-                     node_id = EXCLUDED.node_id, \
-                     signature = EXCLUDED.signature, \
-                     created_at = EXCLUDED.created_at, \
-                     last_applied_at = EXCLUDED.last_applied_at \
-                     WHERE karma_logs.lamport_clock < EXCLUDED.lamport_clock",
-                     self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11), self.pool.ph(12), self.pool.ph(13)
-                ),
-                crate::db::DatabasePool::Postgres(_) => format!(
-                    "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, is_federated, clone_origin_id, lamport_clock, node_id, signature, created_at, last_applied_at) \
-                     VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}) \
-                     ON CONFLICT (id) DO UPDATE SET \
-                     job_id = EXCLUDED.job_id, \
-                     karma_type = EXCLUDED.karma_type, \
-                     related_skill = EXCLUDED.related_skill, \
-                     lesson = EXCLUDED.lesson, \
-                     weight = EXCLUDED.weight, \
-                     soul_version_hash = EXCLUDED.soul_version_hash, \
-                     is_federated = EXCLUDED.is_federated, \
-                     clone_origin_id = EXCLUDED.clone_origin_id, \
-                     lamport_clock = EXCLUDED.lamport_clock, \
-                     node_id = EXCLUDED.node_id, \
-                     signature = EXCLUDED.signature, \
-                     created_at = EXCLUDED.created_at, \
-                     last_applied_at = EXCLUDED.last_applied_at \
-                     WHERE karma_logs.lamport_clock < EXCLUDED.lamport_clock",
-                     self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11), self.pool.ph(12), self.pool.ph(13)
-                ),
-            };
-
             let karma_id = karma.id.clone();
             crate::sql_exec!(
                 &self.pool,
-                &q,
+                sqlite: "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, is_federated, clone_origin_id, lamport_clock, node_id, signature, created_at, last_applied_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET job_id = EXCLUDED.job_id, karma_type = EXCLUDED.karma_type, related_skill = EXCLUDED.related_skill, lesson = EXCLUDED.lesson, weight = EXCLUDED.weight, soul_version_hash = EXCLUDED.soul_version_hash, is_federated = EXCLUDED.is_federated, clone_origin_id = EXCLUDED.clone_origin_id, lamport_clock = EXCLUDED.lamport_clock, node_id = EXCLUDED.node_id, signature = EXCLUDED.signature, created_at = EXCLUDED.created_at, last_applied_at = EXCLUDED.last_applied_at WHERE karma_logs.lamport_clock < EXCLUDED.lamport_clock",
+                pg: "INSERT INTO karma_logs (id, job_id, karma_type, related_skill, lesson, weight, soul_version_hash, is_federated, clone_origin_id, lamport_clock, node_id, signature, created_at, last_applied_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) ON CONFLICT (id) DO UPDATE SET job_id = EXCLUDED.job_id, karma_type = EXCLUDED.karma_type, related_skill = EXCLUDED.related_skill, lesson = EXCLUDED.lesson, weight = EXCLUDED.weight, soul_version_hash = EXCLUDED.soul_version_hash, is_federated = EXCLUDED.is_federated, clone_origin_id = EXCLUDED.clone_origin_id, lamport_clock = EXCLUDED.lamport_clock, node_id = EXCLUDED.node_id, signature = EXCLUDED.signature, created_at = EXCLUDED.created_at, last_applied_at = EXCLUDED.last_applied_at WHERE karma_logs.lamport_clock < EXCLUDED.lamport_clock",
                 karma.id,
                 karma.job_id,
                 karma.karma_type,
@@ -251,7 +209,7 @@ impl FederationOps for UniversalJobQueue {
                 karma.lesson,
                 karma.weight,
                 karma.soul_version_hash,
-                1, // is_federated
+                1,
                 karma.clone_origin_id,
                 karma.lamport_clock as i64,
                 karma.node_id,
@@ -271,51 +229,17 @@ impl FederationOps for UniversalJobQueue {
                 _ => "Pending",
             };
 
-            let q = match &self.pool {
-                crate::db::DatabasePool::Sqlite(_) => format!(
-                    "INSERT INTO immune_rules (id, pattern, severity, action, status, is_federated, lamport_clock, node_id, signature, created_at) \
-                     VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}) \
-                     ON CONFLICT (id) DO UPDATE SET \
-                     pattern = EXCLUDED.pattern, \
-                     severity = EXCLUDED.severity, \
-                     action = EXCLUDED.action, \
-                     status = EXCLUDED.status, \
-                     is_federated = EXCLUDED.is_federated, \
-                     lamport_clock = EXCLUDED.lamport_clock, \
-                     node_id = EXCLUDED.node_id, \
-                     signature = EXCLUDED.signature, \
-                     created_at = EXCLUDED.created_at \
-                     WHERE immune_rules.lamport_clock < EXCLUDED.lamport_clock",
-                     self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9)
-                ),
-                crate::db::DatabasePool::Postgres(_) => format!(
-                    "INSERT INTO immune_rules (id, pattern, severity, action, status, is_federated, lamport_clock, node_id, signature, created_at) \
-                     VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}) \
-                     ON CONFLICT (id) DO UPDATE SET \
-                     pattern = EXCLUDED.pattern, \
-                     severity = EXCLUDED.severity, \
-                     action = EXCLUDED.action, \
-                     status = EXCLUDED.status, \
-                     is_federated = EXCLUDED.is_federated, \
-                     lamport_clock = EXCLUDED.lamport_clock, \
-                     node_id = EXCLUDED.node_id, \
-                     signature = EXCLUDED.signature, \
-                     created_at = EXCLUDED.created_at \
-                     WHERE immune_rules.lamport_clock < EXCLUDED.lamport_clock",
-                     self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9)
-                ),
-            };
-
             let rule_id = rule.id.clone();
             crate::sql_exec!(
                 &self.pool,
-                &q,
+                sqlite: "INSERT INTO immune_rules (id, pattern, severity, action, status, is_federated, lamport_clock, node_id, signature, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET pattern = EXCLUDED.pattern, severity = EXCLUDED.severity, action = EXCLUDED.action, status = EXCLUDED.status, is_federated = EXCLUDED.is_federated, lamport_clock = EXCLUDED.lamport_clock, node_id = EXCLUDED.node_id, signature = EXCLUDED.signature, created_at = EXCLUDED.created_at WHERE immune_rules.lamport_clock < EXCLUDED.lamport_clock",
+                pg: "INSERT INTO immune_rules (id, pattern, severity, action, status, is_federated, lamport_clock, node_id, signature, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT (id) DO UPDATE SET pattern = EXCLUDED.pattern, severity = EXCLUDED.severity, action = EXCLUDED.action, status = EXCLUDED.status, is_federated = EXCLUDED.is_federated, lamport_clock = EXCLUDED.lamport_clock, node_id = EXCLUDED.node_id, signature = EXCLUDED.signature, created_at = EXCLUDED.created_at WHERE immune_rules.lamport_clock < EXCLUDED.lamport_clock",
                 rule.id,
                 rule.pattern,
                 rule.severity as i32,
                 rule.action,
                 status_str,
-                1, // is_federated
+                1,
                 rule.lamport_clock as i64,
                 rule.node_id,
                 rule.signature,
@@ -327,25 +251,11 @@ impl FederationOps for UniversalJobQueue {
         }
 
         for mat in matches {
-            let q = match &self.pool {
-                crate::db::DatabasePool::Sqlite(_) => format!(
-                    "INSERT INTO arena_history (id, skill_a, skill_b, topic, output_a, output_b, winner, reasoning, created_at) \
-                     VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}) \
-                     ON CONFLICT (id) DO NOTHING",
-                     self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8)
-                ),
-                crate::db::DatabasePool::Postgres(_) => format!(
-                    "INSERT INTO arena_history (id, skill_a, skill_b, topic, output_a, output_b, winner, reasoning, created_at) \
-                     VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}) \
-                     ON CONFLICT (id) DO NOTHING",
-                     self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8)
-                ),
-            };
-
             let match_id = mat.id.clone();
             crate::sql_exec!(
                 &self.pool,
-                &q,
+                sqlite: "INSERT INTO arena_history (id, skill_a, skill_b, topic, output_a, output_b, winner, reasoning, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING",
+                pg: "INSERT INTO arena_history (id, skill_a, skill_b, topic, output_a, output_b, winner, reasoning, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (id) DO NOTHING",
                 mat.id,
                 mat.skill_a,
                 mat.skill_b,
@@ -365,12 +275,13 @@ impl FederationOps for UniversalJobQueue {
     }
 
     async fn do_get_peer_sync_time(&self, peer_url: &str) -> Result<Option<String>, AiomeError> {
-        let q = format!(
-            "SELECT last_sync_at FROM peer_sync_times WHERE peer_url = {}",
-            self.pool.ph(0)
-        );
-        let opt: Option<(String,)> =
-            crate::sql_fetch_optional!(&self.pool, (String,), &q, peer_url)?;
+        let opt: Option<(String,)> = crate::sql_fetch_optional!(
+            &self.pool,
+            (String,),
+            sqlite: "SELECT last_sync_at FROM peer_sync_times WHERE peer_url = ?",
+            pg: "SELECT last_sync_at FROM peer_sync_times WHERE peer_url = $1",
+            peer_url
+        )?;
         Ok(opt.map(|r| r.0))
     }
 
@@ -379,17 +290,13 @@ impl FederationOps for UniversalJobQueue {
         peer_url: &str,
         sync_time: &str,
     ) -> Result<(), AiomeError> {
-        let q = match &self.pool {
-            crate::db::DatabasePool::Sqlite(_) => format!(
-                "INSERT OR REPLACE INTO peer_sync_times (peer_url, last_sync_at) VALUES ({}, {})",
-                self.pool.ph(0), self.pool.ph(1)
-            ),
-            crate::db::DatabasePool::Postgres(_) => format!(
-                "INSERT INTO peer_sync_times (peer_url, last_sync_at) VALUES ({}, {}) ON CONFLICT(peer_url) DO UPDATE SET last_sync_at = EXCLUDED.last_sync_at",
-                self.pool.ph(0), self.pool.ph(1)
-            ),
-        };
-        crate::sql_exec!(&self.pool, &q, peer_url, sync_time).map(|_| ())
+        crate::sql_exec!(
+            &self.pool,
+            sqlite: "INSERT OR REPLACE INTO peer_sync_times (peer_url, last_sync_at) VALUES (?, ?)",
+            pg: "INSERT INTO peer_sync_times (peer_url, last_sync_at) VALUES ($1, $2) ON CONFLICT(peer_url) DO UPDATE SET last_sync_at = EXCLUDED.last_sync_at",
+            peer_url,
+            sync_time
+        ).map(|_| ())
     }
 
     async fn do_fetch_unfederated_data(
@@ -460,21 +367,25 @@ impl FederationOps for UniversalJobQueue {
         rule_ids: Vec<String>,
     ) -> Result<(), AiomeError> {
         for id in karma_ids {
-            let q = format!(
-                "UPDATE karma_logs SET is_federated = 1 WHERE id = {}",
-                self.pool.ph(0)
-            );
-            crate::sql_exec!(&self.pool, &q, id).map_err(|e| AiomeError::Infrastructure {
+            crate::sql_exec!(
+                &self.pool,
+                sqlite: "UPDATE karma_logs SET is_federated = 1 WHERE id = ?",
+                pg: "UPDATE karma_logs SET is_federated = 1 WHERE id = $1",
+                &id
+            )
+            .map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;
         }
 
         for id in rule_ids {
-            let q = format!(
-                "UPDATE immune_rules SET is_federated = 1 WHERE id = {}",
-                self.pool.ph(0)
-            );
-            crate::sql_exec!(&self.pool, &q, id).map_err(|e| AiomeError::Infrastructure {
+            crate::sql_exec!(
+                &self.pool,
+                sqlite: "UPDATE immune_rules SET is_federated = 1 WHERE id = ?",
+                pg: "UPDATE immune_rules SET is_federated = 1 WHERE id = $1",
+                &id
+            )
+            .map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;
         }

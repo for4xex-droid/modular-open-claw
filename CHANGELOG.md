@@ -1,6 +1,28 @@
 ## [Unreleased]
 
 ### Changed
+- **God Module 分割 (Phase 2)**:
+  - `commercial/libs/nurture-infra/src/economy/bridge.rs` (2,364行) ➔ ディレクトリ化して機能・テストごとに分割:
+    - `bridge/mod.rs` [NEW]: `NurtureCommerceBridge` 構造体定義、コンストラクタ、および Merkle 監査・エスクロー等のビジネスロジックヘルパーメソッド群を配置。
+    - `bridge/commerce_impl.rs` [NEW]: `CommerceEngine` トレイト実装部分を分離。
+    - `bridge/tests.rs` [NEW]: 単体テストモジュール `mod tests` を独立。
+  - `libs/aiome-commerce/src/stripe.rs` (1,929行) ➔ ディレクトリ化してテストを分割:
+    - `stripe/mod.rs` [NEW]: `StripeCommerceEngine` 定義および `CommerceEngine` トレイト実装部分を配置。
+    - `stripe/tests.rs` [NEW]: 単体テストモジュール `mod tests` を独立。
+- **DB重複コードのDRY改善 (Phase 1 / Batch 1B)**:
+  - `libs/shared/src/db.rs` [MODIFY]: map系 dual-mode マクロ `sql_fetch_all_map!` と `sql_fetch_optional_map!` を追加。
+  - `libs/infrastructure/src/db.rs` [MODIFY]: 上記 map系マクロの re-export を追加。
+  - `libs/aiome-commerce/src/syndicate.rs` [MODIFY]: `create_guild`, `delete_guild`, `add_member`, `remove_member`, `fetch_guilds`, `fetch_members` 内の冗長な `match &self.pool` ブロックを `sql_exec!` および新設の map系マクロに置換・集約。
+  - `libs/infrastructure/src/support/feedback.rs` [MODIFY]: `handle_feedback` 内の `match &self.pool` を `sql_exec!` および `sql_fetch_optional_map!` に置換。
+  - `libs/infrastructure/src/lora_marketplace.rs` [MODIFY]: `purchase`, `complete_purchase`, `delist` 内の `match &self.pool` をマクロ置換（動的 binding の `list_listings` 1 箇所を除き全て DRY 化）。
+  - `libs/infrastructure/src/artifact_store.rs` [MODIFY]: `fetch_artifact` と `get_artifact_edges` 内の `match &self.pool` をマクロ置換。
+- **DB重複コードのDRY改善 (Phase 1 / Batch 1A)**:
+  - `libs/infrastructure/src/job_queue/core_ops.rs` [MODIFY]: `do_enqueue` での `match &self.pool` を除去し、`sql_exec!` dual-mode マクロに統合。
+  - `libs/infrastructure/src/job_queue/settings.rs` [MODIFY]: `do_set_setting` での `match &self.pool` を `sql_exec!` dual-mode マクロに統合。
+  - `libs/infrastructure/src/job_queue/harness_registry.rs` [MODIFY]: `store_harness_record` での `match &self.pool` を除去し、`sql_exec!` dual-mode マクロに統合。
+  - `libs/infrastructure/src/job_queue/mod.rs` [MODIFY]: `store_system_state` での `match &self.pool` を除去し、`sql_exec!` dual-mode マクロに統合。
+  - `libs/infrastructure/src/job_queue/federation.rs` [MODIFY]: `do_import_federated_data` 内の 3 箇所の match（`karma_logs`、`immune_rules`、`arena_history`）、`do_get_peer_sync_time`、`do_update_peer_sync_time`、および `do_mark_as_federated` での `match &self.pool` を除去し、`sql_exec!` / `sql_fetch_optional!` などの dual-mode マクロに統合。
+  - `libs/infrastructure/src/job_queue/swarm.rs` [MODIFY]: `do_store_biome_message` と `do_record_global_api_success` での `match &self.pool` を除去し、`sql_exec!` dual-mode マクロに統合。
 - リポジトリ衛生: `.codeql-db/`(2,636ファイル/200MB+)、`__pycache__/`、カバレッジ出力等の追跡を除去し、`.gitignore` を強化
 - `enforce_dag.py`: optional 依存をDAGチェックから除外するロジックを追加
 - `release-preflight.md`: strategy docs 正規表現の誤検知修正、sandbox_exec スキップ、ファイル数上限を2,500に更新

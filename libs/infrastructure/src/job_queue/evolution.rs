@@ -74,7 +74,12 @@ impl EvolutionOps for UniversalJobQueue {
             self.pool.now_fn()
         );
         sql_exec!(&self.pool, &q, amount)?;
-        let _ = self.do_sync_samsara_level().await;
+        if let Err(e) = self.do_sync_samsara_level().await {
+            tracing::warn!(
+                "[Evolution] Failed to sync samsara level (will retry on next exp gain): {}",
+                e
+            );
+        }
         Ok(())
     }
 

@@ -18,21 +18,6 @@ pub struct HarnessOps;
 #[async_trait]
 impl HarnessRegistryOps for UniversalJobQueue {
     async fn store_harness_record(&self, record: &HarnessRecord) -> Result<(), AiomeError> {
-        let q = match &self.pool {
-            DatabasePool::Sqlite(_) => {
-                format!(
-                    "INSERT OR REPLACE INTO harness_registry (id, domain, description, code_payload, status, version, agent_id, fire_count, false_positive_count, severity, created_at, last_fired_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11})",
-                    self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11)
-                )
-            }
-            DatabasePool::Postgres(_) => {
-                format!(
-                    "INSERT INTO harness_registry (id, domain, description, code_payload, status, version, agent_id, fire_count, false_positive_count, severity, created_at, last_fired_at) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}) ON CONFLICT (id) DO UPDATE SET domain=EXCLUDED.domain, description=EXCLUDED.description, code_payload=EXCLUDED.code_payload, status=EXCLUDED.status, version=EXCLUDED.version, agent_id=EXCLUDED.agent_id, fire_count=EXCLUDED.fire_count, false_positive_count=EXCLUDED.false_positive_count, severity=EXCLUDED.severity, last_fired_at=EXCLUDED.last_fired_at",
-                    self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7), self.pool.ph(8), self.pool.ph(9), self.pool.ph(10), self.pool.ph(11)
-                )
-            }
-        };
-
         let agent_id_str = record.agent_id.map(|u| u.to_string());
         let fire_count = record.fire_count as i64;
         let false_positive_count = record.false_positive_count as i64;
@@ -40,7 +25,8 @@ impl HarnessRegistryOps for UniversalJobQueue {
 
         crate::sql_exec!(
             &self.pool,
-            &q,
+            sqlite: "INSERT OR REPLACE INTO harness_registry (id, domain, description, code_payload, status, version, agent_id, fire_count, false_positive_count, severity, created_at, last_fired_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            pg: "INSERT INTO harness_registry (id, domain, description, code_payload, status, version, agent_id, fire_count, false_positive_count, severity, created_at, last_fired_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (id) DO UPDATE SET domain=EXCLUDED.domain, description=EXCLUDED.description, code_payload=EXCLUDED.code_payload, status=EXCLUDED.status, version=EXCLUDED.version, agent_id=EXCLUDED.agent_id, fire_count=EXCLUDED.fire_count, false_positive_count=EXCLUDED.false_positive_count, severity=EXCLUDED.severity, last_fired_at=EXCLUDED.last_fired_at",
             &record.id,
             &record.domain,
             &record.description,

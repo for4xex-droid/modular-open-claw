@@ -10,6 +10,7 @@
 //! エスクロー決済・SHA-256 完全性検証・PathSandbox によるファイル隔離を
 //! 組み合わせ、LoRA アダプターの出品・購入・転送を安全に仲介する。
 
+use crate::{sql_exec, sql_fetch_optional_map};
 use aiome_core_contracts::commerce::CommerceEngine;
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::lora_marketplace::{
@@ -17,7 +18,6 @@ use aiome_core_contracts::lora_marketplace::{
 };
 use async_trait::async_trait;
 use shared::db::DatabasePool;
-use shared::sql_exec;
 use sqlx::Row;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -331,36 +331,25 @@ impl LoraMarketplace for UniversalLoraMarketplace {
             self.pool.ph(0)
         );
 
-        let (seller_id_str, price, status_str) = match &self.pool {
-            DatabasePool::Sqlite(pool) => {
-                let row = sqlx::query(&q)
-                    .bind(&listing_id_str)
-                    .fetch_one(pool)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: format!("Listing not found: {}", e),
-                    })?;
-                (
-                    row.get::<String, _>("seller_id"),
-                    row.get::<i64, _>("price_coins"),
-                    row.get::<String, _>("status"),
-                )
-            }
-            DatabasePool::Postgres(pool) => {
-                let row = sqlx::query(&q)
-                    .bind(&listing_id_str)
-                    .fetch_one(pool)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: format!("Listing not found: {}", e),
-                    })?;
-                (
-                    row.get::<String, _>("seller_id"),
-                    row.get::<i64, _>("price_coins"),
-                    row.get::<String, _>("status"),
-                )
-            }
-        };
+        let (seller_id_str, price, status_str) = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: &q,
+            |row| Ok::<(String, i64, String), AiomeError>((
+                row.get::<String, _>("seller_id"),
+                row.get::<i64, _>("price_coins"),
+                row.get::<String, _>("status"),
+            )),
+            pg: &q,
+            |row| Ok::<(String, i64, String), AiomeError>((
+                row.get::<String, _>("seller_id"),
+                row.get::<i64, _>("price_coins"),
+                row.get::<String, _>("status"),
+            )),
+            &listing_id_str
+        )?
+        .ok_or_else(|| AiomeError::Infrastructure {
+            reason: "Listing not found".into(),
+        })?;
 
         // SEC: ステータス検証
         if status_str != "Open" {
@@ -386,24 +375,12 @@ impl LoraMarketplace for UniversalLoraMarketplace {
             self.pool.ph(0)
         );
 
-        let rows_affected = match &self.pool {
-            DatabasePool::Sqlite(pool) => sqlx::query(&q_update)
-                .bind(&listing_id.to_string())
-                .execute(pool)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
+        let rows_affected =
+            sql_exec!(&self.pool, &q_update, listing_id.to_string()).map_err(|e| {
+                AiomeError::Infrastructure {
                     reason: e.to_string(),
-                })?
-                .rows_affected(),
-            DatabasePool::Postgres(pool) => sqlx::query(&q_update)
-                .bind(&listing_id.to_string())
-                .execute(pool)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?
-                .rows_affected(),
-        };
+                }
+            })?;
 
         if rows_affected == 0 {
             // Race condition: listing was already purchased or delisted
@@ -504,44 +481,33 @@ impl LoraMarketplace for UniversalLoraMarketplace {
             model_family,
             buyer_id_str,
             seller_id_str,
-        ): PurchaseRow = match &self.pool {
-            DatabasePool::Sqlite(pool) => {
-                let row = sqlx::query(&q)
-                    .bind(&purchase_id_str)
-                    .fetch_one(pool)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: format!("Purchase not found: {}", e),
-                    })?;
-                (
-                    row.get("p_status"),
-                    row.get("escrow_id"),
-                    row.get("adapter_path"),
-                    row.get("adapter_hash"),
-                    row.get("model_family"),
-                    row.get("buyer_id"),
-                    row.get("seller_id"),
-                )
-            }
-            DatabasePool::Postgres(pool) => {
-                let row = sqlx::query(&q)
-                    .bind(&purchase_id_str)
-                    .fetch_one(pool)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: format!("Purchase not found: {}", e),
-                    })?;
-                (
-                    row.get("p_status"),
-                    row.get("escrow_id"),
-                    row.get("adapter_path"),
-                    row.get("adapter_hash"),
-                    row.get("model_family"),
-                    row.get("buyer_id"),
-                    row.get("seller_id"),
-                )
-            }
-        };
+        ): PurchaseRow = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: &q,
+            |row| Ok::<PurchaseRow, AiomeError>((
+                row.get("p_status"),
+                row.get("escrow_id"),
+                row.get("adapter_path"),
+                row.get("adapter_hash"),
+                row.get("model_family"),
+                row.get("buyer_id"),
+                row.get("seller_id"),
+            )),
+            pg: &q,
+            |row| Ok::<PurchaseRow, AiomeError>((
+                row.get("p_status"),
+                row.get("escrow_id"),
+                row.get("adapter_path"),
+                row.get("adapter_hash"),
+                row.get("model_family"),
+                row.get("buyer_id"),
+                row.get("seller_id"),
+            )),
+            &purchase_id_str
+        )?
+        .ok_or_else(|| AiomeError::Infrastructure {
+            reason: "Purchase not found".into(),
+        })?;
 
         if p_status != "Escrowed" {
             return Err(AiomeError::Infrastructure {
@@ -566,34 +532,21 @@ impl LoraMarketplace for UniversalLoraMarketplace {
 
         if actual_hash != expected_hash {
             // Reopen listing - refetch listing_id from purchase
-            let listing_id: String = match &self.pool {
-                DatabasePool::Sqlite(pool) => {
-                    let r = sqlx::query(&format!(
-                        "SELECT listing_id FROM lora_purchases WHERE id = {}",
-                        self.pool.ph(0)
-                    ))
-                    .bind(&purchase_id.to_string())
-                    .fetch_one(pool)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                    r.get("listing_id")
-                }
-                DatabasePool::Postgres(pool) => {
-                    let r = sqlx::query(&format!(
-                        "SELECT listing_id FROM lora_purchases WHERE id = {}",
-                        self.pool.ph(0)
-                    ))
-                    .bind(&purchase_id.to_string())
-                    .fetch_one(pool)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-                    r.get("listing_id")
-                }
-            };
+            let q_get_listing = format!(
+                "SELECT listing_id FROM lora_purchases WHERE id = {}",
+                self.pool.ph(0)
+            );
+            let listing_id = sql_fetch_optional_map!(
+                &self.pool,
+                sqlite: &q_get_listing,
+                |row| Ok::<String, AiomeError>(row.get("listing_id")),
+                pg: &q_get_listing,
+                |row| Ok::<String, AiomeError>(row.get("listing_id")),
+                purchase_id.to_string()
+            )?
+            .ok_or_else(|| AiomeError::Infrastructure {
+                reason: "Purchase not found".into(),
+            })?;
 
             // Update purchase status FIRST
             let q_refund = format!(
@@ -714,26 +667,15 @@ impl LoraMarketplace for UniversalLoraMarketplace {
             self.pool.ph(0), self.pool.ph(1)
         );
 
-        let rows_affected = match &self.pool {
-            DatabasePool::Sqlite(pool) => sqlx::query(&q)
-                .bind(listing_id.to_string())
-                .bind(seller_id.to_string())
-                .execute(pool)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?
-                .rows_affected(),
-            DatabasePool::Postgres(pool) => sqlx::query(&q)
-                .bind(listing_id.to_string())
-                .bind(seller_id.to_string())
-                .execute(pool)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?
-                .rows_affected(),
-        };
+        let rows_affected = sql_exec!(
+            &self.pool,
+            &q,
+            listing_id.to_string(),
+            seller_id.to_string()
+        )
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
 
         if rows_affected == 0 {
             return Err(AiomeError::Infrastructure {

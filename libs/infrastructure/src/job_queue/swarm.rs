@@ -175,15 +175,10 @@ impl SwarmOps for UniversalJobQueue {
         &self,
         message: &aiome_core_contracts::biome::BiomeMessage,
     ) -> Result<(), AiomeError> {
-        let q = format!(
-            "INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) \
-             VALUES ({}, {}, {}, {}, {}, {}, {}, {})",
-            self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.ph(4), self.pool.ph(5), self.pool.ph(6), self.pool.ph(7)
-        );
-
         crate::sql_exec!(
             &self.pool,
-            &q,
+            sqlite: "INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            pg: "INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
             &message.sender_pubkey,
             &message.recipient_pubkey,
             &message.topic_id,
@@ -378,7 +373,9 @@ impl SwarmOps for UniversalJobQueue {
                 "⚠️ Potential Clock Poisoning attempt or severe skew detected: {} vs {}",
                 remote_clock, current
             );
-            let _ = tx.rollback().await;
+            if let Err(e) = tx.rollback().await {
+                tracing::error!("[Swarm] Transaction rollback failed: {}", e);
+            }
             return Ok(current as u64);
         }
 
@@ -433,16 +430,10 @@ impl SwarmOps for UniversalJobQueue {
     }
 
     async fn do_record_global_api_success(&self) -> Result<(), AiomeError> {
-        let sqlite_q = format!(
-            "INSERT OR REPLACE INTO system_state (key, value, updated_at) VALUES (?, ?, {})",
-            self.pool.now_fn()
-        );
-        let pg_q = format!("INSERT INTO system_state (key, value, updated_at) VALUES ($1, $2, {}) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at", self.pool.now_fn());
-
         crate::sql_exec!(
             &self.pool,
-            sqlite: &sqlite_q,
-            pg: &pg_q,
+            sqlite: "INSERT OR REPLACE INTO system_state (key, value, updated_at) VALUES (?, ?, datetime('now'))",
+            pg: "INSERT INTO system_state (key, value, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at",
             "consecutive_api_failures",
             "0"
         )?;
@@ -491,7 +482,9 @@ impl UniversalJobQueue {
         .map(|r| r.0);
 
         if let Some(val) = opt {
-            let _ = tx.rollback().await;
+            if let Err(e) = tx.rollback().await {
+                tracing::error!("[Swarm] Transaction rollback failed: {}", e);
+            }
             return Ok(val);
         }
 
@@ -563,7 +556,9 @@ impl UniversalJobQueue {
         .map(|r| r.0);
 
         if let Some(val) = opt {
-            let _ = tx.rollback().await;
+            if let Err(e) = tx.rollback().await {
+                tracing::error!("[Swarm] Transaction rollback failed: {}", e);
+            }
             return uuid::Uuid::parse_str(&val).map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Corrupt system_agent_id: {}", e),
             });
