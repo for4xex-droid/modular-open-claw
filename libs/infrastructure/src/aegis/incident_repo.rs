@@ -45,34 +45,18 @@ impl IncidentRepository {
             }
         };
 
-        match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                sqlx::query(query)
-                    .bind(&id)
-                    .bind(skill_name)
-                    .bind(wasm_hash)
-                    .bind(input_payload)
-                    .bind(stack_trace)
-                    .execute(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: format!("Failed to insert incident: {}", e),
-                    })?;
-            }
-            DatabasePool::Postgres(p) => {
-                sqlx::query(query)
-                    .bind(&id)
-                    .bind(skill_name)
-                    .bind(wasm_hash)
-                    .bind(input_payload)
-                    .bind(stack_trace)
-                    .execute(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: format!("Failed to insert incident: {}", e),
-                    })?;
-            }
-        }
+        crate::sql_exec!(
+            &self.pool,
+            query,
+            &id,
+            skill_name,
+            wasm_hash,
+            input_payload,
+            stack_trace
+        )
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to insert incident: {}", e),
+        })?;
 
         Ok(id)
     }
@@ -80,7 +64,8 @@ impl IncidentRepository {
     pub async fn compute_weekly_stats(&self) -> Result<WeeklyStats, AiomeError> {
         let (total, distinct, unresolved, top_skill) = match &self.pool {
             DatabasePool::Sqlite(p) => {
-                let row = sqlx::query(
+                let row = crate::sql_fetch_raw_one!(
+                    p,
                     r#"
                     SELECT
                         (SELECT COUNT(*) FROM aegis_incidents WHERE created_at >= datetime('now', '-7 days')) as total,
@@ -88,10 +73,7 @@ impl IncidentRepository {
                         (SELECT COUNT(*) FROM aegis_incidents WHERE status IN ('Open', 'Analyzing', 'PatchGenerated', 'KaniVerifying')) as unresolved,
                         (SELECT skill_name FROM aegis_incidents WHERE created_at >= datetime('now', '-7 days') GROUP BY skill_name ORDER BY COUNT(*) DESC LIMIT 1) as top_skill
                     "#
-                )
-                .fetch_one(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                )?;
 
                 (
                     row.try_get::<i64, _>("total").unwrap_or(0),
@@ -102,7 +84,8 @@ impl IncidentRepository {
                 )
             }
             DatabasePool::Postgres(p) => {
-                let row = sqlx::query(
+                let row = crate::sql_fetch_raw_one!(
+                    p,
                     r#"
                     SELECT
                         (SELECT COUNT(*) FROM aegis_incidents WHERE created_at >= NOW() - INTERVAL '7 days') as total,
@@ -110,10 +93,7 @@ impl IncidentRepository {
                         (SELECT COUNT(*) FROM aegis_incidents WHERE status IN ('Open', 'Analyzing', 'PatchGenerated', 'KaniVerifying')) as unresolved,
                         (SELECT skill_name FROM aegis_incidents WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY skill_name ORDER BY COUNT(*) DESC LIMIT 1) as top_skill
                     "#
-                )
-                .fetch_one(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure { reason: e.to_string() })?;
+                )?;
 
                 (
                     row.try_get::<i64, _>("total").unwrap_or(0),
@@ -136,22 +116,12 @@ impl IncidentRepository {
     pub async fn fetch_incident(&self, id: &str) -> Result<Option<IncidentRecord>, AiomeError> {
         let query = "SELECT * FROM aegis_incidents WHERE id = $1";
         let row_opt = match &self.pool {
-            DatabasePool::Sqlite(p) => sqlx::query(query)
-                .bind(id)
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?
-                .map(|r| self.map_row_sqlite(r)),
-            DatabasePool::Postgres(p) => sqlx::query(query)
-                .bind(id)
-                .fetch_optional(p)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?
-                .map(|r| self.map_row_postgres(r)),
+            DatabasePool::Sqlite(p) => {
+                crate::sql_fetch_raw_optional!(p, query, id)?.map(|r| self.map_row_sqlite(r))
+            }
+            DatabasePool::Postgres(p) => {
+                crate::sql_fetch_raw_optional!(p, query, id)?.map(|r| self.map_row_postgres(r))
+            }
         };
 
         match row_opt {
@@ -169,25 +139,13 @@ impl IncidentRepository {
         let mut incidents = Vec::new();
         match &self.pool {
             DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(query)
-                    .bind(limit)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let rows = crate::sql_fetch_raw!(p, query, limit)?;
                 for r in rows {
                     incidents.push(self.map_row_sqlite(r)?);
                 }
             }
             DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(query)
-                    .bind(limit)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let rows = crate::sql_fetch_raw!(p, query, limit)?;
                 for r in rows {
                     incidents.push(self.map_row_postgres(r)?);
                 }
@@ -200,49 +158,13 @@ impl IncidentRepository {
         let status_str = status.to_string();
         let query =
             "UPDATE aegis_incidents SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2";
-        match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                sqlx::query(query)
-                    .bind(&status_str)
-                    .bind(id)
-                    .execute(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-            DatabasePool::Postgres(p) => {
-                sqlx::query(query)
-                    .bind(&status_str)
-                    .bind(id)
-                    .execute(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
-            }
-        }
+        crate::sql_exec!(&self.pool, query, &status_str, id).map(|_| ())?;
         Ok(())
     }
 
     pub async fn increment_retry_count(&self, id: &str) -> Result<(), AiomeError> {
         let query = "UPDATE aegis_incidents SET retry_count = retry_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1";
-        match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                sqlx::query(query).bind(id).execute(p).await.map_err(|e| {
-                    AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    }
-                })?;
-            }
-            DatabasePool::Postgres(p) => {
-                sqlx::query(query).bind(id).execute(p).await.map_err(|e| {
-                    AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    }
-                })?;
-            }
-        }
+        crate::sql_exec!(&self.pool, query, id).map(|_| ())?;
         Ok(())
     }
 

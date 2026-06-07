@@ -9,7 +9,7 @@
 <h1 align="center">Aiome (アイオーム)</h1>
 <p align="center">
   <strong>The Self-Healing AI Agent OS</strong><br>
-  <em>Written entirely by AI agents. 126,000+ lines of production Rust.</em><br><br>
+  <em>Written entirely by AI agents. 280,000+ lines of production Rust.</em><br><br>
   <a href="https://aiome.dev"><strong>aiome.dev (公式ウェブサイト)</strong></a><br><br>
   <strong>AIが自分たちで実装した、AIが安全に活動・進化するための「自律型オペレーティングシステム」</strong>
 </p>
@@ -101,7 +101,7 @@ Aiome は、単なるエージェント・フレームワークを超えた、AI
 - 🏪 **LoRA Marketplace**: エージェントの性格（LoRAアダプター）をエスクロー決済・ファイル分離サンドボックス経由で安全に取引・共有できる人格流通プラットフォーム。
 - 📣 **Buzz Protocol (Autonomous SNS Worker)**: トレンドAPIやLLMと連動し、指定したスケジュールと日次クォータに基づいて自律的にコンテンツをドラフト・投稿するバックグラウンドワーカー。投稿前に人間が内容を審査する（Approve/Reject）インターフェースも備え、安全なソーシャル発信を実現。
 - 🛡️ **Autonomous Support System (自律サポートシステム)**: Discord などの外部チャネルと完全に統合された、インシデントの自動分類・回答生成・エスカレーションおよびフィードバックループの自動化システム。Botの応答に自動的にチケットID（`[TICKET:uuid]`）を埋め込み、ユーザーによる「✅（解決）」や「❌（未解決）」といったリアクション検知（API削減のためのOnceLockによるBotIDキャッシュ、およびLazyLockによる正規表現キャッシュ完備）を通じて、Karma Registryの重み（長期記憶の重要度）をリアルタイムに自動調整・自己進化する。
-- 📡 **TrendSonar Integration**: X API や SERP など外部からのトレンドシグナルをリアルタイム摂取。`FuturesUnordered` による並行フェッチと、`429 Retry-After` 応答に対する高度な自律ハンドリングを備え、完全なスレッドストール防止とAPIクオータ保護を実現。動的なファクトリによる再構成で、再起動不要 of 安全なトークン反映をサポート。
+- 📡 **TrendSonar Integration**: X API や SERP など外部からのトレンドシグナルをリアルタイム摂取。`FuturesUnordered` による並行フェッチと、`429 Retry-After` 応答に対する高度な自律ハンドリングを備え、完全なスレッドストール防止とAPIクオータ保護を実現。動的なファクトリによる再構成で、再起動不要の安全なトークン反映をサポート。
 - 🔌 **Dynamic MCP Federation**: Model Context Protocol (MCP) をフルサポート。**「GitHub Issue の自動トリアージ」「Notion 知識ベースとの双方向連携」「Web検索による最新情報のリアルタイム収集」** など、標準提供される公式MCPパッケージを即座にマウント可能。GUIダッシュボードを通じたシームレスな統合と、パストラバーサルや不正スキームを防ぐ厳格なセキュリティバリデーションを備える。
 - 🎨 **Premium Management Console**: 100% トークン駆動の UI システム。`tokens.css` による中央管理により、生の色指定（HEX/RGBA）を完全に排除。リアルタイムのセキュリティ承認フロー（AwaitingInput Overlay）を含む、防弾仕様の管理システム。
 
@@ -141,7 +141,7 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 5. **GlassWorm Shield**: 不可視Unicode文字列を利用したステルス攻撃やLLMポイズニングを防ぐ超高速サニタイザーの全周配備
 6. **Impact Analysis Protocol**: エージェントによる自律コード改修時の未知のカスケードエラーを防ぐ、`grep_search` ベースの依存追跡プロトコルとセマンティック依存マップ（`RIPPLE_MAP.md`）の標準搭載
 7. **Automated Chaos Engineering**: 意図的な障害注入（LLMタイムアウトや不正フォーマット）をテスト環境で自律実行し、「予測不能なAIの失敗」に対するシステムの縮退運転（Graceful Degradation）を完全に担保
-8. **Cell-Based Architecture (CBA)**: 1プロセス=1セルの不変条件に基づく物理的パス隔離。`AppDataResolver` と Shell ガードによるパストラバーサル・インジェクション of 多層防御。
+8. **Cell-Based Architecture (CBA)**: 1プロセス=1セルの不変条件に基づく物理的パス隔離。`AppDataResolver` と Shell ガードによるパストラバーサル・インジェクションの多層防御。
 9. **GDPR/RTBF & Content Compliance**: 単一トランザクションで最大7テーブルの完全な物理パージ（`forget_actor`）と安全な外部削除伝播を保証。さらに、有害コンテンツを自動検知してフィルタリングする安全フィルターを搭載。
 10. **Aegis Sentinel**: WASM実行時のインシデントを常時監視・記録し、LLMによるパッチ生成とKaniによる形式検証を経て、システム稼働中にコードを自己修復・入れ替え（HotSwap）する事後修復システム。
 11. **Adaptive Immune System**: 実行前に入力脅威パターンを検知し、学習ルールのドリフトを防止する事前防御システム（事後修復の **Aegis Sentinel** とともに多層免疫システムを形成）。

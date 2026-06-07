@@ -56,6 +56,7 @@ export default function VoiceStore() {
   const { showToast } = useToast();
   const [assets, setAssets] = useState<VoiceAsset[]>(mockAssets);
   const [balance, setBalance] = useState<number>(0);
+  const [balanceError, setBalanceError] = useState(false);
   const [purchasing, setPurchasing] = useState<string | null>(null);
 
   const {
@@ -75,15 +76,17 @@ export default function VoiceStore() {
   const fetchBalance = useCallback(async () => {
     if (!agentId) return;
     try {
+      setBalanceError(false);
       const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/balance/${agentId}`);
       if (res.ok) {
         const data = await res.json();
         setBalance(typeof data?.balance === 'number' ? data.balance : 0);
       } else {
-        setBalance(0);
+        setBalanceError(true);
       }
     } catch (e) {
-      setBalance(0);
+      console.error("Failed to fetch balance", e);
+      setBalanceError(true);
     }
   }, [agentId]);
 
@@ -101,9 +104,7 @@ export default function VoiceStore() {
             author: String(item.creator_id ?? ''),
             tags: ["voice", "api"],
           }));
-          if (mappedAssets.length > 0) {
-            setAssets(mappedAssets);
-          }
+          setAssets(mappedAssets.length > 0 ? mappedAssets : []);
         }
       }
     } catch (e) {
@@ -136,8 +137,14 @@ export default function VoiceStore() {
         await fetchBalance();
         showToast('success', t('voice.purchaseSuccess', { name: asset.name }));
       } else {
-        const data = await res.json();
-        showToast('error', data.message || t('voice.insufficientFunds') || 'Insufficient funds');
+        let message = t('voice.insufficientFunds') || 'Insufficient funds';
+        try {
+          const data = await res.json();
+          if (data?.message) message = data.message;
+        } catch {
+          message = `${t('common.error') || 'Error'}: ${res.status} ${res.statusText}`;
+        }
+        showToast('error', message);
       }
     } catch (e) {
       showToast('error', t('common.networkError'));
@@ -169,8 +176,8 @@ export default function VoiceStore() {
         }}>
           <div>
             <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase" }}>{t('voice.walletBalance')}</span>
-            <div style={{ fontWeight: "bold", color: "var(--accent-cyan)", fontSize: "1.2rem" }}>
-              {balance.toLocaleString()} KC
+            <div style={{ fontWeight: "bold", color: balanceError ? "var(--accent-rose)" : "var(--accent-cyan)", fontSize: "1.2rem" }}>
+              {balanceError ? (t('common.error') || '—') : `${balance.toLocaleString()} KC`}
             </div>
           </div>
           <button 

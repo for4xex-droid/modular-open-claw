@@ -9,7 +9,7 @@
 <h1 align="center">Aiome</h1>
 <p align="center">
   <strong>The Self-Healing AI Agent OS</strong><br>
-  <em>Written entirely by AI agents. 126,000+ lines of production Rust.</em><br><br>
+  <em>Written entirely by AI agents. 280,000+ lines of production Rust.</em><br><br>
   <a href="https://aiome.dev"><strong>aiome.dev (Official Website)</strong></a><br><br>
   <strong>An Autonomous Operating System built by AI, for AI to operate and evolve safely.</strong>
 </p>

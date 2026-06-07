@@ -218,7 +218,7 @@ const HomePage: React.FC<HomePageProps> = ({
                         isViewerOpen={isViewerOpen}
                         modelUrl={modelUrl}
                         avatarState={avatarState}
-                        mode={mode as any}
+                        mode={mode}
                         sessionSavedChars={sessionSavedChars}
                     />
                     <Suspense fallback={null}>
@@ -315,7 +315,7 @@ const HomePage: React.FC<HomePageProps> = ({
                 onClose={() => setIsViewerOpen(false)}
                 modelUrl={modelUrl}
                 avatarState={avatarState}
-                mode={mode as any}
+                mode={mode}
             />
         </div>
     );

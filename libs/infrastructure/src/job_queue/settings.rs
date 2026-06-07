@@ -67,8 +67,31 @@ impl SettingsOps for UniversalJobQueue {
         is_secret: bool,
     ) -> Result<(), AiomeError> {
         let q = match &self.pool {
-            crate::db::DatabasePool::Sqlite(_) => format!("INSERT OR REPLACE INTO system_settings (key, value, category, is_secret, updated_at) VALUES ({0}, {1}, {2}, {3}, {4})", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.now_fn()),
-            crate::db::DatabasePool::Postgres(_) => format!("INSERT INTO system_settings (key, value, category, is_secret, updated_at) VALUES ({0}, {1}, {2}, {3}, {4}) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, category = EXCLUDED.category, is_secret = EXCLUDED.is_secret, updated_at = EXCLUDED.updated_at", self.pool.ph(0), self.pool.ph(1), self.pool.ph(2), self.pool.ph(3), self.pool.now_fn()),
+            crate::db::DatabasePool::Sqlite(_) => format!(
+                "INSERT OR REPLACE INTO system_settings \
+                 (key, value, category, is_secret, updated_at) \
+                 VALUES ({0}, {1}, {2}, {3}, {4})",
+                self.pool.ph(0),
+                self.pool.ph(1),
+                self.pool.ph(2),
+                self.pool.ph(3),
+                self.pool.now_fn()
+            ),
+            crate::db::DatabasePool::Postgres(_) => format!(
+                "INSERT INTO system_settings \
+                 (key, value, category, is_secret, updated_at) \
+                 VALUES ({0}, {1}, {2}, {3}, {4}) \
+                 ON CONFLICT (key) DO UPDATE SET \
+                 value = EXCLUDED.value, \
+                 category = EXCLUDED.category, \
+                 is_secret = EXCLUDED.is_secret, \
+                 updated_at = EXCLUDED.updated_at",
+                self.pool.ph(0),
+                self.pool.ph(1),
+                self.pool.ph(2),
+                self.pool.ph(3),
+                self.pool.now_fn()
+            ),
         };
         sql_exec!(&self.pool, &q, key, value, category, is_secret as i32).map_err(|e| {
             AiomeError::Infrastructure {
@@ -113,62 +136,46 @@ impl SettingsOps for UniversalJobQueue {
     }
 }
 
+async fn aggregate_cost_by_interval(
+    jq: &UniversalJobQueue,
+    unit: &str,
+    value: i64,
+) -> Result<f64, AiomeError> {
+    let value = value.max(0);
+    let res_opt = match &jq.pool {
+        crate::db::DatabasePool::Sqlite(p) => {
+            let sql_modifier = format!("-{} {}", value, unit);
+            sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > datetime('now', ?)")
+                .bind(sql_modifier)
+                .fetch_one(p)
+                .await
+                .map(|row| row.get::<Option<f64>, _>(0))
+        }
+        crate::db::DatabasePool::Postgres(p) => {
+            let interval = format!("{} {}", value, unit);
+            sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > NOW() - $1::interval")
+                .bind(interval)
+                .fetch_one(p)
+                .await
+                .map(|row| row.get::<Option<f64>, _>(0))
+        }
+    };
+
+    res_opt
+        .map(|opt| opt.unwrap_or(0.0))
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to aggregate {} costs: {}", unit, e),
+        })
+}
+
 #[async_trait]
 impl CostOps for UniversalJobQueue {
     async fn aggregate_cost_hours(&self, hours: i64) -> Result<f64, AiomeError> {
-        let hours = hours.max(0);
-        let res_opt = match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => {
-                let sql_modifier = format!("-{} hours", hours);
-                sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > datetime('now', ?)")
-                    .bind(sql_modifier)
-                    .fetch_one(p)
-                    .await
-                    .map(|row| row.get::<Option<f64>, _>(0))
-            }
-            crate::db::DatabasePool::Postgres(p) => {
-                let interval = format!("{} hours", hours);
-                sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > NOW() - $1::interval")
-                    .bind(interval)
-                    .fetch_one(p)
-                    .await
-                    .map(|row| row.get::<Option<f64>, _>(0))
-            }
-        };
-
-        res_opt
-            .map(|opt| opt.unwrap_or(0.0))
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to aggregate hours costs: {}", e),
-            })
+        aggregate_cost_by_interval(self, "hours", hours).await
     }
 
     async fn aggregate_cost_days(&self, days: i64) -> Result<f64, AiomeError> {
-        let days = days.max(0);
-        let res_opt = match &self.pool {
-            crate::db::DatabasePool::Sqlite(p) => {
-                let sql_modifier = format!("-{} days", days);
-                sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > datetime('now', ?)")
-                    .bind(sql_modifier)
-                    .fetch_one(p)
-                    .await
-                    .map(|row| row.get::<Option<f64>, _>(0))
-            }
-            crate::db::DatabasePool::Postgres(p) => {
-                let interval = format!("{} days", days);
-                sqlx::query("SELECT SUM(estimated_cost_usd) FROM resource_usage_logs WHERE created_at > NOW() - $1::interval")
-                    .bind(interval)
-                    .fetch_one(p)
-                    .await
-                    .map(|row| row.get::<Option<f64>, _>(0))
-            }
-        };
-
-        res_opt
-            .map(|opt| opt.unwrap_or(0.0))
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to aggregate days costs: {}", e),
-            })
+        aggregate_cost_by_interval(self, "days", days).await
     }
 
     async fn aggregate_cost_by_job(&self, job_id: &str) -> Result<f64, AiomeError> {
@@ -192,39 +199,51 @@ impl CostOps for UniversalJobQueue {
         res_opt
             .map(|opt| opt.unwrap_or(0.0))
             .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to aggregate job costs: {}", e),
+                reason: format!("Failed to aggregate costs for job '{}': {}", job_id, e),
             })
+    }
+}
+
+fn build_setting(
+    key: String,
+    value: String,
+    category: String,
+    is_secret: bool,
+    updated_at: String,
+) -> aiome_core::contracts::SystemSetting {
+    aiome_core::contracts::SystemSetting {
+        key,
+        value: if is_secret {
+            "••••••••".to_string()
+        } else {
+            value
+        },
+        category,
+        is_secret,
+        updated_at,
     }
 }
 
 fn map_sqlite_row_to_setting(row: sqlx::sqlite::SqliteRow) -> aiome_core::contracts::SystemSetting {
     use sqlx::Row;
     let is_secret = row.get::<i32, _>("is_secret") != 0;
-    aiome_core::contracts::SystemSetting {
-        key: row.get("key"),
-        value: if is_secret {
-            "••••••••".to_string()
-        } else {
-            row.get("value")
-        },
-        category: row.get("category"),
+    build_setting(
+        row.get("key"),
+        row.get("value"),
+        row.get("category"),
         is_secret,
-        updated_at: row.get("updated_at"),
-    }
+        row.get("updated_at"),
+    )
 }
 
 fn map_postgres_row_to_setting(row: sqlx::postgres::PgRow) -> aiome_core::contracts::SystemSetting {
     use sqlx::Row;
     let is_secret = row.get::<bool, _>("is_secret");
-    aiome_core::contracts::SystemSetting {
-        key: row.get("key"),
-        value: if is_secret {
-            "••••••••".to_string()
-        } else {
-            row.get("value")
-        },
-        category: row.get("category"),
+    build_setting(
+        row.get("key"),
+        row.get("value"),
+        row.get("category"),
         is_secret,
-        updated_at: row.get("updated_at"),
-    }
+        row.get("updated_at"),
+    )
 }

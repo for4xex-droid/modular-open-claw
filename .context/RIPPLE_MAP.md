@@ -1,3 +1,37 @@
+## 統合修正計画 v5.2 技術的負債解消と環境・エラー型の整備 (2026-06-07)
+
+### 1. DB クエリマクロ（`sql_fetch_raw!` ファミリー）の導入と DRY 化
+- **変更内容**:
+    - `libs/shared/src/db.rs` [MODIFY]: `sql_fetch_raw!`, `sql_fetch_raw_optional!`, `sql_fetch_raw_one!`, `sql_scalar!` の 4 つの DB クエリマクロを新規導入。
+    - `libs/infrastructure/src/db.rs` [MODIFY]: 上記マクロの re-export を追加。
+    - `libs/infrastructure/src/job_queue/federation.rs` [MODIFY], `libs/infrastructure/src/aegis/incident_repo.rs` [MODIFY], `libs/infrastructure/src/soul_store.rs` [MODIFY]: 既存の冗長な `match &self.pool` 分岐クエリ処理（計54箇所）をマクロに置換し、ボイラープレートを大幅に削減。
+- **波及効果**:
+    - DB方言（Sqlite/Postgres）のプールの分岐が共通マクロ内にカプセル化され、同一コードが複数箇所に増殖するのを防止。
+    - 行マッピング（Row mapping）ロジックは呼び出し元に残るため、コンパイル時の型安全性を維持。
+
+### 2. `let _ =` エラー黙殺パターンのトリアージと安全なハンドリング
+- **変更内容**:
+    - `logging.rs` [MODIFY], `autonomous_demo.rs` [MODIFY], `tool_call_router.rs` [MODIFY], `stream.rs` [MODIFY], `routes/karma.rs` [MODIFY], `skill_handler.rs` [MODIFY], `routes/expression.rs` [MODIFY], `bootstrap/preflight.rs` [MODIFY], `docker_conductor.rs` [MODIFY]: 合計 21 箇所でエラーがサイレントに無視されていた箇所（DB 操作、FS操作、サブプロセス制御など）に対し、`tracing::warn!`/`tracing::error!` / `eprintln!` 警告ログの出力、または `// DropSafe` コメントを付与。
+- **波及効果**:
+    - ディスク満杯時や DB 不具合、コンテナ操作失敗時などの隠れた不具合が可視化され、サイレントなデータ消失を防止。
+
+### 3. 環境変数検証およびエラー型のドキュメント化 (Phase 5)
+- **変更内容**:
+    - `.env.example` [MODIFY]: 不要な `OTHER_VAR=my_value` ダミー変数をクリーンアップし、環境変数の検証完了（QW-1）に関する注記を追記。
+    - `docs/architecture/error_handling.md` [NEW]: Aiome システムの 10 種類のエラー型の役割・責務を整理し、新規エラー追加の制限ルール（既存のエラー型へのバリアント追加を優先する）を明記した設計ドキュメントを新設。
+    - `libs/aiome-contracts/src/error.rs` [MODIFY]: 新規エラー追加禁止および設計ドキュメントへのリンクを明記する警告コメントを追加。
+- **波及効果**:
+    - 開発者が各エラー型の責務を把握しやすくなり、エラー型の不要な乱立を未然に防止。
+
+## settings.rs & GraphView.tsx - Reflexion 95点未満ファイルのTDD修正 (2026-06-07)
+- **変更内容**:
+    - `libs/infrastructure/src/job_queue/settings.rs` [MODIFY]: SQLite/Postgres の行マッピング処理を共通ヘルパー関数 `build_setting` に DRY 統一。`aggregate_cost_hours` / `aggregate_cost_days` に存在していた SQL クエリ呼び出しの重複を `aggregate_cost_by_interval` ヘルパー関数に抽出・共通化。長すぎる SQL を複数行に改行。
+    - `libs/infrastructure/src/job_queue/tests.rs` [MODIFY]: `test_sqlite_settings_row_masking` と `test_sqlite_settings_cost_aggregation` のテストを新規追加し、マスク処理とコスト集計の正常性を TDD サイクルで検証。
+    - `apps/management-console/src/components/GraphView.tsx` [MODIFY]: `vis-network` から `Node`/`Edge` 型をインポートし、DataSet を型安全化。`karmaData.nodes`/`edges` の API レスポンスに `Array.isArray()` による存在チェック of 安全ガードを追加。非同期初期化時の `containerRef.current` NULL 安全検証を追加。`Math.max(0, nodeCount - artifactCount)` による負の値防止。Layers ボタンに「Artifactsの表示レイヤトグル機能」をステート制御で追加実装。
+- **波及効果**:
+    - 2つのファイルの Reflexion スコアがそれぞれ 95点以上に向上し、ソースコードの品質・安全性・保守性が改善されました。
+    - フロントエンドの `Layers` ボタンにより、ユーザーが不要なノード（成果物）を非表示にできるインタラクティブな機能が追加されました。
+
 ## StripeCommerceEngine エラーハンドリングの DRY 統一 (Phase D8) (2026-06-07)
 - **変更内容**:
     - `libs/aiome-commerce/src/stripe.rs` [MODIFY]: 共通エラー変換トレイト `IntoInfraError` を定義し、ファイル内の 30 箇所以上の重複していた `AiomeError::Infrastructure` エラーハンドリングブロックを `.map_infra_err()` および `.map_infra_err_context("context")` に DRY 統一。

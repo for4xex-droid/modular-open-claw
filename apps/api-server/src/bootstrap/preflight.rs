@@ -111,7 +111,13 @@ pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
 
     let gig_artifacts = resolver.resolve("gig_artifacts");
     if !gig_artifacts.exists() {
-        let _ = std::fs::create_dir_all(&gig_artifacts);
+        if let Err(e) = std::fs::create_dir_all(&gig_artifacts) {
+            tracing::error!(
+                "Failed to create gig_artifacts directory {}: {}",
+                gig_artifacts.display(),
+                e
+            );
+        }
     }
 
     let cancel_token = tokio_util::sync::CancellationToken::new();

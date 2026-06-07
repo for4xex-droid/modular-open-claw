@@ -204,7 +204,13 @@ pub async fn generate_expression(
 
                     if !audio_buffer.is_empty() {
                         let audio_dir = state.config.resolver.resolve("audio");
-                        let _ = std::fs::create_dir_all(&audio_dir);
+                        if let Err(e) = std::fs::create_dir_all(&audio_dir) {
+                            tracing::error!(
+                                "Failed to create audio directory {}: {}",
+                                audio_dir.display(),
+                                e
+                            );
+                        }
 
                         let ext = if tts_prov == "xtts" { "wav" } else { "mp3" };
                         let path = audio_dir.join(format!("{}.{}", expression.id, ext));

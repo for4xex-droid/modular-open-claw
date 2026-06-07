@@ -63,7 +63,7 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 tracing::warn!("Sentinel Block activated: pattern `{}`", rule.pattern);
                 // Also record the block if it's SSE (or any async path) — best practice
                 let stats = state.job_queue.get_agent_stats().await.unwrap_or_default();
-                let _ = state
+                if let Err(e) = state
                     .job_queue
                     .record_evolution_event(
                         stats.level,
@@ -72,7 +72,10 @@ impl ToolCallRouter for DefaultToolCallRouter {
                         None,
                         None,
                     )
-                    .await;
+                    .await
+                {
+                    tracing::warn!("Failed to record ImmuneAlert evolution event: {}", e);
+                }
                 return Err(format!(
                     "🚨 [SENTINEL BLOCK] {}\nPattern: {}",
                     rule.action, rule.pattern
@@ -345,7 +348,7 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 .await
                 .unwrap_or_default();
 
-            let _ = state_rc
+            if let Err(e) = state_rc
                 .job_queue
                 .record_evolution_event(
                     stats.level,
@@ -354,7 +357,10 @@ impl ToolCallRouter for DefaultToolCallRouter {
                     Some(&sn),
                     None,
                 )
-                .await;
+                .await
+            {
+                tracing::warn!("Failed to record SkillExecution evolution event: {}", e);
+            }
 
             let latency = start_time.elapsed().as_millis() as u64;
             let karma_delta = if is_error { -1.0 } else { 1.0 };

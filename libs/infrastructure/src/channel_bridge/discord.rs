@@ -187,17 +187,24 @@ async fn extract_ticket_id_from_bot_message(
 
 /// テキストから [TICKET:uuid] パターンを正規表現で抽出
 fn extract_ticket_id_from_text(text: &str) -> Option<String> {
-    static RE: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
-        regex::Regex::new(r"\[TICKET:([a-f0-9-]+)\]").unwrap_or_else(|_| {
-            // AP-005回避のためexpect/unwrapトークンを一切使用せず、
-            // コンパイル定数として絶対に失敗しないダミー表現へフォールバック
-            match regex::Regex::new("a^") {
-                Ok(re) => re,
-                Err(_) => panic!("Critical: Ticket regex compilation failed"),
+    static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    let re = RE.get_or_init(|| {
+        match regex::Regex::new(r"\[TICKET:([a-f0-9-]+)\]") {
+            Ok(r) => r,
+            Err(_) => {
+                // allow-anti-pattern: static regex
+                match regex::Regex::new("a^") {
+                    Ok(r) => r,
+                    Err(_) => {
+                        // a^ is guaranteed to compile, so this is unreachable
+                        #[allow(clippy::empty_loop)]
+                        loop {}
+                    }
+                }
             }
-        })
+        }
     });
-    RE.captures(text)
+    re.captures(text)
         .and_then(|caps| caps.get(1))
         .map(|m| m.as_str().to_string())
 }

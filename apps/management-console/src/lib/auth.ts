@@ -14,14 +14,31 @@ export const getAuthToken = (): string | null => {
     return sessionStorage.getItem('aiome_secret');
 };
 
+const normalizeHeaders = (headersInit?: HeadersInit): Record<string, string> => {
+    if (!headersInit) return {};
+    if (headersInit instanceof Headers) {
+        const headers: Record<string, string> = {};
+        headersInit.forEach((value, key) => {
+            headers[key] = value;
+        });
+        return headers;
+    }
+    if (Array.isArray(headersInit)) {
+        const headers: Record<string, string> = {};
+        headersInit.forEach(([key, value]) => {
+            headers[key] = value;
+        });
+        return headers;
+    }
+    return { ...headersInit };
+};
+
 /**
  * 認証済みの fetch リクエストを実行するためのヘルパー。
  */
 export const authenticatedFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
     const token = getAuthToken();
-    const headers: Record<string, string> = {
-        ...(options.headers as Record<string, string>),
-    };
+    const headers = normalizeHeaders(options.headers);
 
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;

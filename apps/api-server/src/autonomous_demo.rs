@@ -71,8 +71,12 @@ impl AutonomousDemo {
         for (table, _) in &gig_tables {
             let q1 = format!("DROP TRIGGER IF EXISTS audit_insert_{}", table);
             let q2 = format!("DROP TRIGGER IF EXISTS audit_update_{}", table);
-            let _ = sql_exec!(&*pool, &q1);
-            let _ = sql_exec!(&*pool, &q2);
+            if let Err(e) = sql_exec!(&*pool, &q1) {
+                tracing::warn!("Failed to drop audit insert trigger for {}: {}", table, e);
+            }
+            if let Err(e) = sql_exec!(&*pool, &q2) {
+                tracing::warn!("Failed to drop audit update trigger for {}: {}", table, e);
+            }
         }
 
         // Run demo (result captured so triggers are always restored)
@@ -101,8 +105,20 @@ impl AutonomousDemo {
                      hex(randomblob(16))); END;",
                     table, pk
                 );
-                let _ = sql_exec!(&*pool, &q_insert);
-                let _ = sql_exec!(&*pool, &q_update);
+                if let Err(e) = sql_exec!(&*pool, &q_insert) {
+                    tracing::error!(
+                        "CRITICAL: Failed to restore insert trigger for {}: {}",
+                        table,
+                        e
+                    );
+                }
+                if let Err(e) = sql_exec!(&*pool, &q_update) {
+                    tracing::error!(
+                        "CRITICAL: Failed to restore update trigger for {}: {}",
+                        table,
+                        e
+                    );
+                }
             }
         }
 
@@ -132,7 +148,9 @@ impl AutonomousDemo {
             "gig_intents",
         ] {
             let q = format!("DELETE FROM {}", table);
-            let _ = sql_exec!(pool, &q);
+            if let Err(e) = sql_exec!(pool, &q) {
+                tracing::warn!("Failed to cleanup table {}: {}", table, e);
+            }
             sleep(Duration::from_millis(50)).await; // yield between deletes
         }
         sleep(Duration::from_secs(2)).await;
@@ -357,6 +375,7 @@ impl AutonomousDemo {
                 "timestamp": Utc::now().to_rfc3339()
             }),
         };
+        // DropSafe: 受信側がcloseされている場合は無視
         let _ = state.event_sender.send(event);
     }
 }

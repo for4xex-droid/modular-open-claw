@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { Network } from "vis-network";
+import { Network, Node as VisNode, Edge as VisEdge } from "vis-network";
 import { DataSet } from "vis-data";
 import { GitMerge, ZoomIn, ZoomOut, RefreshCw, Layers } from 'lucide-react';
 import { API_BASE } from "../config";
@@ -16,16 +16,25 @@ import { useGraphTheme } from '../hooks/useGraphTheme';
 
 import { cssVar } from '../utils/cssVar';
 
+interface ArtifactData {
+    id: string;
+    title: string;
+    category: string;
+    karma_refs?: string[];
+}
+
 const GraphView: React.FC = () => {
     const containerRef = useRef<HTMLDivElement>(null);
     const networkRef = useRef<Network | null>(null);
     const [nodeCount, setNodeCount] = useState(0);
     const [artifactCount, setArtifactCount] = useState(0);
+    const [showArtifacts, setShowArtifacts] = useState(true);
     const { t } = useTranslation();
     const theme = useGraphTheme();
 
     useEffect(() => {
-        if (!containerRef.current) return;
+        const container = containerRef.current;
+        if (!container) return;
 
         const initGraph = async () => {
             try {
@@ -43,8 +52,12 @@ const GraphView: React.FC = () => {
                 const karmaData = await karmaRes.json();
                 const artifacts = await artifactRes.json();
 
+                // Double check container existence before creating Network instance
+                if (!containerRef.current) return;
+
                 // 1. Process Memory Nodes/Edges
-                const nodes = new DataSet<any>(karmaData.nodes.map((n: GraphNode) => ({
+                const safeNodes = Array.isArray(karmaData?.nodes) ? karmaData.nodes : [];
+                const nodes = new DataSet<VisNode>(safeNodes.map((n: GraphNode) => ({
                     ...n,
                     color: {
                         background: n.group === 'karma_local' ? theme.nodes.karmaLocal.background : theme.nodes.karmaForeign.background,
@@ -59,46 +72,50 @@ const GraphView: React.FC = () => {
                     size: 20 + (n.label.length / 5)
                 })));
 
-                const edges = new DataSet<any>(karmaData.edges.map((e: GraphEdge) => ({
+                const safeEdges = Array.isArray(karmaData?.edges) ? karmaData.edges : [];
+                const edges = new DataSet<VisEdge>(safeEdges.map((e: GraphEdge) => ({
                     ...e,
                     color: { color: theme.edges.default.color, highlight: theme.edges.default.highlight },
                     width: 1,
                     smooth: { type: 'continuous' }
                 })));
 
-                // 2. Add Artifact Nodes
+                // 2. Add Artifact Nodes if toggled
                 const safeArtifacts = Array.isArray(artifacts) ? artifacts : [];
                 setArtifactCount(safeArtifacts.length);
-                safeArtifacts.forEach((art: any) => {
-                    nodes.add({
-                        id: art.id,
-                        label: `📦 ${art.title}`,
-                        group: 'artifact',
-                        color: {
-                            background: theme.nodes.artifact.background,
-                            border: theme.nodes.artifact.border,
-                            highlight: { background: theme.nodes.artifact.highlight.background, border: theme.nodes.artifact.highlight.border }
-                        },
-                        font: { color: theme.nodes.artifact.font, size: 13, bold: true },
-                        shape: 'diamond',
-                        size: 25,
-                        title: `Category: ${art.category}`
-                    });
 
-                    // Add edges from Memory refs if present
-                    if (art.karma_refs) {
-                        art.karma_refs.forEach((karmaId: string) => {
-                            edges.add({
-                                from: karmaId,
-                                to: art.id,
-                                label: 'materialized',
-                                color: { color: theme.edges.materialized.color },
-                                dashes: true,
-                                width: 1
-                            });
+                if (showArtifacts) {
+                    safeArtifacts.forEach((art: ArtifactData) => {
+                        nodes.add({
+                            id: art.id,
+                            label: `📦 ${art.title}`,
+                            group: 'artifact',
+                            color: {
+                                background: theme.nodes.artifact.background,
+                                border: theme.nodes.artifact.border,
+                                highlight: { background: theme.nodes.artifact.highlight.background, border: theme.nodes.artifact.highlight.border }
+                            },
+                            font: { color: theme.nodes.artifact.font, size: 13, bold: "bold" },
+                            shape: 'diamond',
+                            size: 25,
+                            title: `Category: ${art.category}`
                         });
-                    }
-                });
+
+                        // Add edges from Memory refs if present
+                        if (art.karma_refs) {
+                            art.karma_refs.forEach((karmaId: string) => {
+                                edges.add({
+                                    from: karmaId,
+                                    to: art.id,
+                                    label: 'materialized',
+                                    color: { color: theme.edges.materialized.color },
+                                    dashes: true,
+                                    width: 1
+                                });
+                            });
+                        }
+                    });
+                }
 
                 setNodeCount(nodes.length);
 
@@ -126,7 +143,7 @@ const GraphView: React.FC = () => {
                     }
                 };
 
-                networkRef.current = new Network(containerRef.current!, { nodes, edges }, options);
+                networkRef.current = new Network(container, { nodes, edges }, options);
             } catch (e) {
                 console.error("Graph failed to load", e);
             }
@@ -137,7 +154,7 @@ const GraphView: React.FC = () => {
         return () => {
             networkRef.current?.destroy();
         };
-    }, [theme]);
+    }, [theme, showArtifacts, t]);
 
     const zoomIn = () => networkRef.current?.moveTo({ scale: (networkRef.current?.getScale() || 1) * 1.2 });
     const zoomOut = () => networkRef.current?.moveTo({ scale: (networkRef.current?.getScale() || 1) / 1.2 });
@@ -152,8 +169,8 @@ const GraphView: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
                     <div style={{ display: 'flex', gap: '1rem' }}>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{nodeCount - artifactCount} {t('graph.karma')}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-rose)' }}>{artifactCount} {t('graph.artifacts')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{Math.max(0, nodeCount - (showArtifacts ? artifactCount : 0))} {t('graph.karma')}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-rose)' }}>{showArtifacts ? artifactCount : 0} {t('graph.artifacts')}</div>
                     </div>
                     <button className="nav-item" style={{ margin: 0, padding: '0.4rem 0.75rem' }} onClick={fit}>
                         <RefreshCw size={14} /> {t('graph.reCenter')}
@@ -178,7 +195,21 @@ const GraphView: React.FC = () => {
                     <ZoomOut size={18} />
                 </button>
                 <button
-                    style={{ width: '40px', height: '40px', background: 'var(--bg-glass-heavy)', border: '1px solid var(--border-glass)', borderRadius: '8px', color: cssVar('--text-primary', 'var(--text-primary)'), cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onClick={() => setShowArtifacts(!showArtifacts)}
+                    style={{
+                        width: '40px',
+                        height: '40px',
+                        background: showArtifacts ? 'var(--accent-cyan-15)' : 'var(--bg-glass-heavy)',
+                        border: showArtifacts ? '1px solid var(--accent-cyan)' : '1px solid var(--border-glass)',
+                        borderRadius: '8px',
+                        color: showArtifacts ? 'var(--accent-cyan)' : cssVar('--text-primary', 'var(--text-primary)'),
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s ease-in-out'
+                    }}
+                    title={showArtifacts ? (t('graph.hideArtifacts') || "Hide Artifacts") : (t('graph.showArtifacts') || "Show Artifacts")}
                 >
                     <Layers size={18} />
                 </button>

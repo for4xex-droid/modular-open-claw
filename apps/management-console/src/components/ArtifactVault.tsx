@@ -115,18 +115,21 @@ const ArtifactVault = () => {
           setArtifacts(data);
         } else {
           console.error("Unexpected artifacts response format:", typeof data);
+          showToast('error', t('artifact.unexpectedFormat') || 'Unexpected response format');
           setArtifacts([]);
         }
       } else {
         console.error("Failed to fetch artifacts: HTTP", res.status);
+        showToast('error', t('artifact.fetchFailed') || 'Failed to fetch artifacts');
         setArtifacts([]);
       }
     } catch (e) {
       console.error("Failed to fetch artifacts", e);
+      showToast('error', t('common.networkError') || 'Network error');
     } finally {
       setLoading(false);
     }
-  }, [filter, searchTerm]);
+  }, [filter, searchTerm, showToast, t]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -148,7 +151,7 @@ const ArtifactVault = () => {
     }
   };
 
-  const executeDeleteArtifact = async () => {
+  const executeDeleteArtifact = useCallback(async () => {
     if (!deletingArtifactId) return;
 
     try {
@@ -167,15 +170,15 @@ const ArtifactVault = () => {
       console.error("Failed to delete artifact", e);
       showToast('error', t('artifact.deleteFailed', { defaultValue: 'Failed to delete artifact.' }));
     }
-  };
+  }, [deletingArtifactId, selectedArtifact, showToast, t]);
 
-  const handleDeleteRequest = (e: React.MouseEvent, id: string) => {
+  const handleDeleteRequest = useCallback((e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setDeletingArtifactId(id);
-  };
+  }, []);
 
   // SEC: Authenticated download to ensure auth tokens are sent with file requests
-  const handleDownload = async (artifactId: string, fileName: string) => {
+  const handleDownload = useCallback(async (artifactId: string, fileName: string) => {
     try {
       const res = await authenticatedFetch(
         `${API_BASE}/api/artifacts/${artifactId}/files/${encodeURIComponent(fileName)}`
@@ -197,7 +200,7 @@ const ArtifactVault = () => {
       console.error("Failed to download artifact file", e);
       showToast('error', t('artifact.downloadFailed', { defaultValue: 'Download failed.' }));
     }
-  };
+  }, [showToast, t]);
 
   return (
     <div className="vault-container">

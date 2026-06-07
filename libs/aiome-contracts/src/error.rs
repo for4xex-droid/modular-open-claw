@@ -5,6 +5,10 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+/// [新規エラー追加の制限ルール]
+/// コードベースの一貫性を維持するため、新規に独自のカスタムエラー型を定義することは原則禁止されています。
+/// 例外的な追加が必要な場合は、必ず人間による設計レビューを得てください。
+/// 詳細は `docs/architecture/error_handling.md` を参照してください。
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 

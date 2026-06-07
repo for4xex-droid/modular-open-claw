@@ -146,10 +146,16 @@ pub async fn execute_forge_command(
                         .await
                         {
                             Ok(dest_path) => {
-                                // Deliver Metadata (Simple copy for now)
                                 let meta_dest =
                                     skills_dir.join(format!("{}.meta.json", req.skill_name));
-                                let _ = std::fs::copy(meta_src, meta_dest);
+                                if let Err(e) = std::fs::copy(&meta_src, &meta_dest) {
+                                    tracing::warn!(
+                                        "Failed to copy metadata from {} to {}: {}",
+                                        meta_src.display(),
+                                        meta_dest.display(),
+                                        e
+                                    );
+                                }
 
                                 state.wasm_skill_manager.invalidate_cache(&req.skill_name);
                                 state.wasm_skill_manager.hot_reload_skills();

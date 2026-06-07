@@ -52,13 +52,15 @@ pub async fn trigger_agent_chat_stream(
             Ok(Some(rule)) => {
                 tracing::warn!("Sentinel Block activated in SSE: pattern `{}`", rule.pattern);
                 let stats = state.job_queue.get_agent_stats().await.unwrap_or_default();
-                let _ = state.job_queue.record_evolution_event(
+                if let Err(e) = state.job_queue.record_evolution_event(
                     stats.level,
                     "ImmuneAlert",
                     &format!("Block: {} (Pattern: {})", rule.action, rule.pattern),
                     None,
                     None
-                ).await;
+                ).await {
+                    tracing::warn!("Failed to record ImmuneAlert evolution event in SSE: {}", e);
+                }
                 yield Ok::<Event, Infallible>(Event::default().event("security_block").data(format!("🚨 [SENTINEL BLOCK] {}\nPattern: {}", rule.action, rule.pattern)));
                 return;
             }

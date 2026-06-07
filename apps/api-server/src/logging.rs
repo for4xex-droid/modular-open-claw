@@ -28,7 +28,7 @@ impl DbLoggerLayer {
 
         tokio::spawn(async move {
             // Ensure table exists
-            let _ = sqlx::query(
+            if let Err(e) = sqlx::query(
                 "CREATE TABLE IF NOT EXISTS app_logs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -38,17 +38,23 @@ impl DbLoggerLayer {
                 )",
             )
             .execute(&pool)
-            .await;
+            .await
+            {
+                eprintln!("Failed to initialize logging database table: {}", e);
+            }
 
             while let Some(entry) = rx.recv().await {
                 // Ignore inserts if queue is too large or db fails (silent drop for logging layer)
-                let _ =
+                if let Err(e) =
                     sqlx::query("INSERT INTO app_logs (level, target, message) VALUES (?, ?, ?)")
                         .bind(entry.level)
                         .bind(entry.target)
                         .bind(entry.message)
                         .execute(&pool)
-                        .await;
+                        .await
+                {
+                    eprintln!("Failed to write log to database: {}", e);
+                }
             }
         });
 
@@ -79,7 +85,7 @@ impl<S: Subscriber> Layer<S> for DbLoggerLayer {
             message: masked_message,
         };
 
-        // Fire and forget (don't block the actual thread emitting log)
+        // DropSafe: 受信側 close またはバッファ満杯による drop は許容
         let _ = self.tx.try_send(entry);
     }
 }

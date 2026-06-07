@@ -56,13 +56,17 @@ const mapVitalityEvent = (event: VitalityEvent, index: number, t: (key: string) 
         case 'sot_progress': {
             let msg = t('storyFlow.sot.sessionStart') || 'Thinking in progress';
             if (d && d.type) {
-                const innerData = d.data as any;
+                interface SoTInnerData {
+                    round?: string | number;
+                    protocol?: string;
+                }
+                const innerData = d.data as SoTInnerData;
                 switch (d.type) {
                     case 'SessionStart': msg = t('storyFlow.sot.sessionStart') || `Started deliberation session`; break;
-                    case 'RoleStart': msg = (t('storyFlow.sot.roleStart') || `Role started thinking`).replace('{{round}}', innerData?.round || '?'); break;
-                    case 'RoleOutput': msg = (t('storyFlow.sot.roleOutput') || `Role finished thinking`).replace('{{round}}', innerData?.round || '?'); break;
-                    case 'Score': msg = (t('storyFlow.sot.score') || `Evaluation scores received`).replace('{{round}}', innerData?.round || '?'); break;
-                    case 'ThinkerAbstained': msg = (t('storyFlow.sot.abstained') || `A thinker voluntarily abstained`).replace('{{round}}', innerData?.round || '?'); break;
+                    case 'RoleStart': msg = (t('storyFlow.sot.roleStart') || `Role started thinking`).replace('{{round}}', String(innerData?.round ?? '?')); break;
+                    case 'RoleOutput': msg = (t('storyFlow.sot.roleOutput') || `Role finished thinking`).replace('{{round}}', String(innerData?.round ?? '?')); break;
+                    case 'Score': msg = (t('storyFlow.sot.score') || `Evaluation scores received`).replace('{{round}}', String(innerData?.round ?? '?')); break;
+                    case 'ThinkerAbstained': msg = (t('storyFlow.sot.abstained') || `A thinker voluntarily abstained`).replace('{{round}}', String(innerData?.round ?? '?')); break;
                     case 'ProtocolSelected': msg = (t('storyFlow.sot.protocolSelected') || `Protocol selected:`).replace('{{protocol}}', innerData?.protocol || '?'); break;
                     case 'SessionEnd': msg = t('storyFlow.sot.sessionEnd') || `Session ended`; break;
                 }

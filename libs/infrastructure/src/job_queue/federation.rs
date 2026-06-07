@@ -92,24 +92,12 @@ impl FederationOps for UniversalJobQueue {
 
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(&q_karma)
-                    .bind(since_ts)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let rows = crate::sql_fetch_raw!(p, &q_karma, since_ts)?;
                 for r in rows {
                     fed_karmas.push(map_sqlite_row_to_karma(&r, "unknown"));
                 }
 
-                let rows_rules = sqlx::query(&q_rules)
-                    .bind(since_ts)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let rows_rules = crate::sql_fetch_raw!(p, &q_rules, since_ts)?;
                 for r in rows_rules {
                     fed_rules.push(ImmuneRule {
                         id: r.try_get("id").unwrap_or_default(),
@@ -135,13 +123,7 @@ impl FederationOps for UniversalJobQueue {
                     });
                 }
 
-                let rows_matches = sqlx::query(&q_matches)
-                    .bind(since_ts)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let rows_matches = crate::sql_fetch_raw!(p, &q_matches, since_ts)?;
                 for r in rows_matches {
                     fed_matches.push(ArenaMatch {
                         id: r.try_get("id").unwrap_or_default(),
@@ -157,24 +139,12 @@ impl FederationOps for UniversalJobQueue {
                 }
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(&q_karma)
-                    .bind(since_ts)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let rows = crate::sql_fetch_raw!(p, &q_karma, since_ts)?;
                 for r in rows {
                     fed_karmas.push(map_postgres_row_to_karma(&r, "unknown"));
                 }
 
-                let rows_rules = sqlx::query(&q_rules)
-                    .bind(since_ts)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let rows_rules = crate::sql_fetch_raw!(p, &q_rules, since_ts)?;
                 for r in rows_rules {
                     fed_rules.push(ImmuneRule {
                         id: r.try_get("id").unwrap_or_default(),
@@ -200,13 +170,7 @@ impl FederationOps for UniversalJobQueue {
                     });
                 }
 
-                let rows_matches = sqlx::query(&q_matches)
-                    .bind(since_ts)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let rows_matches = crate::sql_fetch_raw!(p, &q_matches, since_ts)?;
                 for r in rows_matches {
                     fed_matches.push(ArenaMatch {
                         id: r.try_get("id").unwrap_or_default(),
@@ -435,21 +399,13 @@ impl FederationOps for UniversalJobQueue {
         let mut karmas = Vec::new();
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(q_karma).fetch_all(p).await.map_err(|e| {
-                    AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    }
-                })?;
+                let rows = crate::sql_fetch_raw!(p, q_karma)?;
                 for r in rows {
                     karmas.push(map_sqlite_row_to_karma(&r, "self"));
                 }
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(q_karma).fetch_all(p).await.map_err(|e| {
-                    AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    }
-                })?;
+                let rows = crate::sql_fetch_raw!(p, q_karma)?;
                 for r in rows {
                     karmas.push(map_postgres_row_to_karma(&r, "self"));
                 }
@@ -460,11 +416,7 @@ impl FederationOps for UniversalJobQueue {
         let mut rules = Vec::new();
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(q_rules).fetch_all(p).await.map_err(|e| {
-                    AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    }
-                })?;
+                let rows = crate::sql_fetch_raw!(p, q_rules)?;
                 for r in rows {
                     rules.push(ImmuneRule {
                         id: r.try_get("id").unwrap_or_default(),
@@ -481,11 +433,7 @@ impl FederationOps for UniversalJobQueue {
                 }
             }
             crate::db::DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(q_rules).fetch_all(p).await.map_err(|e| {
-                    AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    }
-                })?;
+                let rows = crate::sql_fetch_raw!(p, q_rules)?;
                 for r in rows {
                     rules.push(ImmuneRule {
                         id: r.try_get("id").unwrap_or_default(),

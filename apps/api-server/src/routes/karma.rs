@@ -46,7 +46,7 @@ pub async fn trigger_failure_demo(
 ) -> Result<Json<serde_json::Value>, AppError> {
     info!("🧪 [DemoHandler] Triggering failure demo and storing karma...");
 
-    let _ = state
+    if let Err(e) = state
         .job_queue
         .enqueue(
             "Demo",
@@ -57,7 +57,10 @@ pub async fn trigger_failure_demo(
             None,
             0,
         )
-        .await;
+        .await
+    {
+        tracing::warn!("Failed to enqueue failure demo job: {}", e);
+    }
     let job_id = "demo-job-123";
     let real_job_id = state
         .job_queue

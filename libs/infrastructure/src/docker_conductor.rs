@@ -172,7 +172,12 @@ impl DockerConductor {
 
         let yaml_path = temp_dir.join("agent.yaml");
         if let Err(e) = std::fs::write(&yaml_path, agent_yaml) {
-            let _ = std::fs::remove_dir_all(&temp_dir);
+            if let Err(err) = std::fs::remove_dir_all(&temp_dir) {
+                tracing::warn!(
+                    "Failed to cleanup temp dir after yaml write failure: {}",
+                    err
+                );
+            }
             return Err(AiomeError::Infrastructure {
                 reason: format!("Failed to write agent config: {}", e),
             });
@@ -181,7 +186,11 @@ impl DockerConductor {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let _ = std::fs::set_permissions(&yaml_path, std::fs::Permissions::from_mode(0o600));
+            if let Err(err) =
+                std::fs::set_permissions(&yaml_path, std::fs::Permissions::from_mode(0o600))
+            {
+                tracing::warn!("Failed to set permissions on agent.yaml: {}", err);
+            }
         }
 
         // One-time Token generation for gRPC Authorization
@@ -210,7 +219,12 @@ impl DockerConductor {
         {
             Ok(_) => {}
             Err(_) => {
-                let _ = std::fs::remove_dir_all(&temp_dir);
+                if let Err(err) = std::fs::remove_dir_all(&temp_dir) {
+                    tracing::warn!(
+                        "Failed to cleanup temp dir after version cmd failure: {}",
+                        err
+                    );
+                }
                 return Err(AiomeError::Infrastructure {
                     reason: format!(
                         "Container runtime check failed for: {}",
@@ -247,10 +261,17 @@ impl DockerConductor {
             "{} network create --driver bridge aiome-internal",
             self.container_runtime
         );
-        let _ = self
+        if let Err(err) = self
             .bastion
             .safe_exec_with_profile(&network_cmd, SandboxProfile::Strict)
-            .await;
+            .await
+        {
+            // Note: network already exists might be fine, but we log a warning for visibility
+            tracing::warn!(
+                "Network creation command returned error (might already exist): {:?}",
+                err
+            );
+        }
 
         // Gap R: Write secrets to ephemeral env-file instead of CLI args (Threat #39 mitigation)
         // GEMINI_API_KEY is no longer written. Instead, KEY_PROXY_URL is brokered.
@@ -281,8 +302,11 @@ impl DockerConductor {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let _ =
-                std::fs::set_permissions(&env_file_path, std::fs::Permissions::from_mode(0o600));
+            if let Err(err) =
+                std::fs::set_permissions(&env_file_path, std::fs::Permissions::from_mode(0o600))
+            {
+                tracing::warn!("Failed to set permissions on env_file_path: {}", err);
+            }
         }
 
         // Detached Container Execution (gRPC Server) - Gap I, J, L, N, R, S
@@ -304,10 +328,17 @@ impl DockerConductor {
             .await;
 
         // Immediately wipe env-file after container start (secrets no longer needed on host)
-        let _ = std::fs::remove_file(&env_file_path);
+        if let Err(err) = std::fs::remove_file(&env_file_path) {
+            tracing::warn!("Failed to remove ephemeral env-file: {}", err);
+        }
 
         if let Err(e) = container_start_result {
-            let _ = std::fs::remove_dir_all(&temp_dir);
+            if let Err(err) = std::fs::remove_dir_all(&temp_dir) {
+                tracing::warn!(
+                    "Failed to cleanup temp dir after container start failure: {}",
+                    err
+                );
+            }
             return Err(AiomeError::Infrastructure {
                 reason: format!("Failed to start shadow worker container: {:?}", e),
             });

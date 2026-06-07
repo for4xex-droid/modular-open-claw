@@ -71,7 +71,7 @@ import { isAuthenticated } from "./lib/auth";
 import { useAvatarState } from "./hooks/useAvatarState";
 import { AiomeSkeleton } from "./components/common/AiomeSkeleton";
 import { useDisplayMode } from "./hooks/useDisplayMode";
-import { AgentStats, VitalityUIEvent, Karma, SoTEvent } from "./types";
+import { AgentStats, VitalityUIEvent, Karma, SoTEvent, ImmuneAlertEvent, AegisSentinelEvent, InspirationEvent } from "./types";
 import { useSystemVitality } from "./hooks/useSystemVitality";
 import { useViewMode } from "./hooks/useViewMode";
 import { useTokenHealth } from "./hooks/useTokenHealth";
@@ -148,12 +148,12 @@ function App() {
         break;
       }
       case 'immune_alert': {
-        const d = data as any;
+        const d = data as ImmuneAlertEvent;
         addEvent(t('event.securityAlert'), d.description || t('event.anomalyDetected'), 'var(--accent-rose)', <Shield size={16} />);
         break;
       }
       case 'aegis_sentinel': {
-        const d = data as any;
+        const d = data as AegisSentinelEvent;
         const color = d.level === 'Critical' ? 'var(--accent-rose)' : 'var(--accent-amber)';
         addEvent(t('event.aegisSentinel'), d.message || t('event.aegisAlert'), color, <Shield size={16} />);
         break;
@@ -167,7 +167,7 @@ function App() {
         break;
       }
       case 'inspiration': {
-        const d = data as any;
+        const d = data as InspirationEvent;
         addEvent(t('event.inspiration'), d.description || t('event.creativeSpark'), 'var(--accent-rose)', <BrainCircuit size={16} />);
         break;
       }

@@ -61,9 +61,10 @@ export const AiaaOnboardingWizard = () => {
       const responseData = await res.json();
       setStripeLink(responseData.url);
       setStep(3);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error generating checkout link:', err);
-      setError((t('aiaa.checkoutError') || 'Error generating checkout link') + ': ' + err.message);
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      setError((t('aiaa.checkoutError') || 'Error generating checkout link') + ': ' + errMsg);
     } finally {
       setIsLoading(false);
     }

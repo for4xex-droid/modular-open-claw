@@ -121,6 +121,30 @@ impl SwarmOps for UniversalJobQueue {
             self.pool.ph(0), self.pool.ph(1)
         );
 
+        /// Converts raw sqlx rows into a Vec of JSON values.
+        /// Macro is required because SqliteRow and PgRow are distinct types
+        /// that share the same `try_get` API but differ in their Database associated type.
+        macro_rules! biome_rows_to_json {
+            ($rows:expr) => {{
+                let mut results = Vec::with_capacity($rows.len());
+                for r in $rows {
+                    let lamport: i64 = r.try_get("lamport_clock").unwrap_or(0);
+                    results.push(serde_json::json!({
+                        "sender_pubkey": r.try_get::<String, _>("sender_pubkey").unwrap_or_default(),
+                        "recipient_pubkey": r.try_get::<String, _>("recipient_pubkey").unwrap_or_default(),
+                        "topic_id": r.try_get::<String, _>("topic_id").unwrap_or_default(),
+                        "content": r.try_get::<String, _>("content").unwrap_or_default(),
+                        "karma_root_cid": r.try_get::<String, _>("karma_root_cid").unwrap_or_default(),
+                        "signature": r.try_get::<String, _>("signature").unwrap_or_default(),
+                        "lamport_clock": lamport as u64,
+                        "encryption": r.try_get::<String, _>("encryption").unwrap_or_default(),
+                        "created_at": r.try_get::<String, _>("created_at").unwrap_or_default(),
+                    }));
+                }
+                results
+            }};
+        }
+
         match &self.pool {
             crate::db::DatabasePool::Sqlite(p) => {
                 let rows = sqlx::query(&q)
@@ -131,22 +155,7 @@ impl SwarmOps for UniversalJobQueue {
                     .map_err(|e| AiomeError::Infrastructure {
                         reason: e.to_string(),
                     })?;
-                let mut results = Vec::new();
-                for r in rows {
-                    let lamport: i64 = r.try_get("lamport_clock").unwrap_or(0);
-                    results.push(serde_json::json!({
-                        "sender_pubkey": r.try_get::<String, _>("sender_pubkey").unwrap_or_default(),
-                        "recipient_pubkey": r.try_get::<String, _>("recipient_pubkey").unwrap_or_default(),
-                        "topic_id": r.try_get::<String, _>("topic_id").unwrap_or_default(),
-                        "content": r.try_get::<String, _>("content").unwrap_or_default(),
-                        "karma_root_cid": r.try_get::<String, _>("karma_root_cid").unwrap_or_default(),
-                        "signature": r.try_get::<String, _>("signature").unwrap_or_default(),
-                        "lamport_clock": lamport as u64,
-                        "encryption": r.try_get::<String, _>("encryption").unwrap_or_default(),
-                        "created_at": r.try_get::<String, _>("created_at").unwrap_or_default(),
-                    }));
-                }
-                Ok(results)
+                Ok(biome_rows_to_json!(rows))
             }
             crate::db::DatabasePool::Postgres(p) => {
                 let rows = sqlx::query(&q)
@@ -157,22 +166,7 @@ impl SwarmOps for UniversalJobQueue {
                     .map_err(|e| AiomeError::Infrastructure {
                         reason: e.to_string(),
                     })?;
-                let mut results = Vec::new();
-                for r in rows {
-                    let lamport: i64 = r.try_get("lamport_clock").unwrap_or(0);
-                    results.push(serde_json::json!({
-                        "sender_pubkey": r.try_get::<String, _>("sender_pubkey").unwrap_or_default(),
-                        "recipient_pubkey": r.try_get::<String, _>("recipient_pubkey").unwrap_or_default(),
-                        "topic_id": r.try_get::<String, _>("topic_id").unwrap_or_default(),
-                        "content": r.try_get::<String, _>("content").unwrap_or_default(),
-                        "karma_root_cid": r.try_get::<String, _>("karma_root_cid").unwrap_or_default(),
-                        "signature": r.try_get::<String, _>("signature").unwrap_or_default(),
-                        "lamport_clock": lamport as u64,
-                        "encryption": r.try_get::<String, _>("encryption").unwrap_or_default(),
-                        "created_at": r.try_get::<String, _>("created_at").unwrap_or_default(),
-                    }));
-                }
-                Ok(results)
+                Ok(biome_rows_to_json!(rows))
             }
         }
     }

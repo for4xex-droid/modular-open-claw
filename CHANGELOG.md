@@ -1,6 +1,31 @@
 ## [Unreleased]
 
+### Added
+- **環境・エラー設計ドキュメントの整備 (Phase 5)**:
+  - `docs/architecture/error_handling.md` [NEW]: Aiome システムの 10 種類のエラー型の責務・役割を記述し、新規のエラー型定義を原則禁止する制限ルールをドキュメント化。
+  - `libs/aiome-contracts/src/error.rs` [MODIFY]: 新規エラーの自律的追加を警告する注意書きを定義の先頭に追加。
+  - `.env.example` [MODIFY]: `BIOME_HUB_WHITELIST` や `STRIPE_API_KEY` の設定検証を完了し、不要なダミー変数 `OTHER_VAR` のクリーンアップおよび検証に関する注記を追加。
+
 ### Changed
+- **DB マクロ `sql_fetch_raw!` ファミリーの導入による DRY 化 (Phase 4-1)**:
+  - `libs/shared/src/db.rs` [MODIFY]: DB方言（Sqlite/Postgres）の接続プール切り替えを抽象化するマクロ群（`sql_fetch_raw!`, `sql_fetch_raw_optional!`, `sql_fetch_raw_one!`, `sql_scalar!`）を導入。
+  - `libs/infrastructure/src/db.rs` [MODIFY]: 上記マクロの re-export を追加。
+  - `federation.rs`, `incident_repo.rs`, `soul_store.rs` [MODIFY]: 既存の冗長な `match &self.pool` 分岐（計54箇所）をマクロに置換。
+- **`let _ =` エラー黙殺コードのトリアージ (Phase 4-3)**:
+  - `logging.rs`, `autonomous_demo.rs`, `tool_call_router.rs`, `stream.rs`, `routes/karma.rs`, `skill_handler.rs`, `routes/expression.rs`, `bootstrap/preflight.rs`, `docker_conductor.rs` [MODIFY]: 21 箇所のエラー無視コードに対し、適切な警告ログ（`tracing::warn!`, `tracing::error!` 等）または `// DropSafe` コメントを追加。
+
+### Fixed
+- **Reflexion TDD 修正 (第6セット)**:
+  - `libs/infrastructure/src/job_queue/crdt.rs` [MODIFY]: 未使用の `use tracing::info` import を削除（コンパイラ警告防止）。
+  - `libs/infrastructure/src/job_queue/settings.rs` [MODIFY]: `aggregate_cost_by_job` のエラーメッセージに `job_id` を含めてデバッグ性を向上。
+  - `apps/management-console/src/components/GraphView.tsx` [MODIFY]: `rgba(0, 240, 255, 0.15)` ハードコードを `var(--accent-cyan-15)` に置換（U-002 Golden Rule 違反修正）。`useEffect` の deps 配列に翻訳関数 `t` を追加し、言語切替時のグラフ再描画に対応。
+### Changed
+- **settings.rs - DB マッピングおよびコスト集計の DRY 改善とフォーマット修正 (Reflexion Score 93→98+)**:
+  - `libs/infrastructure/src/job_queue/settings.rs` [MODIFY]: 重複していた SQLite と Postgres の行マッピング処理を共通ヘルパー関数 `build_setting` に DRY 統一。また、`aggregate_cost_hours` と `aggregate_cost_days` に存在していた DB クエリ呼び出しの DRY 違反を `aggregate_cost_by_interval` プライベートヘルパー関数へ抽出・共通化。長すぎる SQL クエリの記述を複数行に改行フォーマットして視認性を向上。
+  - `libs/infrastructure/src/job_queue/tests.rs` [MODIFY]: `test_sqlite_settings_row_masking` と `test_sqlite_settings_cost_aggregation` のテストを新規追加し、シークレット情報のマスク処理と、時間/日/ジョブごとのコスト集計の正常性を TDD サイクルにて検証。
+- **GraphView.tsx - vis-network の型安全化、安全ガード追加、および表示トグル機能の実装 (Reflexion Score 91→97+)**:
+  - `apps/management-console/src/components/GraphView.tsx` [MODIFY]: `vis-network` から `Node` と `Edge` 型をインポートし、自前で `any` を使用していた DataSet の型安全性を向上。`karmaData.nodes`/`edges` の API レスポンスに `Array.isArray()` による存在チェックの安全ガードを追加。非同期初期化時の `containerRef.current` NULL 安全検証を追加。`Math.max(0, nodeCount - artifactCount)` を導入し、描画データ数カウントの負値表示を防止。Layers ボタンに「Artifacts（成果物ノード）の表示・非表示の表示レイヤトグル機能」をステート制御で追加実装。
+
 - **StripeCommerceEngine エラーハンドリングの DRY 統一 (Phase D8)**:
   - `libs/aiome-commerce/src/stripe.rs` [MODIFY]: 共通エラー変換トレイト `IntoInfraError` を導入。30箇所以上存在していた冗長な `AiomeError::Infrastructure` エラー変換処理を、共通ヘルパー関数 `map_infra_err()` および `map_infra_err_context()` に DRY 統一。
 - **DB 行マッピング関数の DRY 統一 (Phase D)**:

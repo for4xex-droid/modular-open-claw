@@ -183,13 +183,7 @@ impl UniversalSoulStore {
 
         match &self.pool {
             DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(&q)
-                    .bind(soul_id)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let rows = crate::sql_fetch_raw!(p, &q, soul_id)?;
                 let mut results = Vec::new();
                 for r in rows {
                     results.push(ArchivedLoraModel {
@@ -203,13 +197,7 @@ impl UniversalSoulStore {
                 Ok(results)
             }
             DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(&q)
-                    .bind(soul_id)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let rows = crate::sql_fetch_raw!(p, &q, soul_id)?;
                 let mut results = Vec::new();
                 for r in rows {
                     let id_val: i64 = try_extract_i64_from_pg_row(&r, "id");
@@ -260,14 +248,7 @@ impl UniversalSoulStore {
 
         match &self.pool {
             DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(&q)
-                    .bind(soul_id)
-                    .bind(limit)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e: sqlx::Error| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let rows = crate::sql_fetch_raw!(p, &q, soul_id, limit)?;
                 let mut results = Vec::new();
                 for r in rows {
                     let markers_json: String = r.get("somatic_markers_json");
@@ -282,14 +263,7 @@ impl UniversalSoulStore {
                 Ok(results)
             }
             DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(&q)
-                    .bind(soul_id)
-                    .bind(limit)
-                    .fetch_all(p)
-                    .await
-                    .map_err(|e: sqlx::Error| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    })?;
+                let rows = crate::sql_fetch_raw!(p, &q, soul_id, limit)?;
                 let mut results = Vec::new();
                 for r in rows {
                     let markers_json: String = r.get("somatic_markers_json");
@@ -313,20 +287,8 @@ impl UniversalSoulStore {
             self.pool.ph(0)
         );
         let exists: bool = match &self.pool {
-            DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
-                .bind(hash)
-                .fetch_one(p)
-                .await
-                .map_err(|e: sqlx::Error| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
-            DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
-                .bind(hash)
-                .fetch_one(p)
-                .await
-                .map_err(|e: sqlx::Error| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?,
+            DatabasePool::Sqlite(p) => crate::sql_scalar!(p, &q, hash)?,
+            DatabasePool::Postgres(p) => crate::sql_scalar!(p, &q, hash)?,
         };
         Ok(exists)
     }
@@ -431,24 +393,14 @@ impl UniversalSoulStore {
 
         let soul = match &self.pool {
             DatabasePool::Sqlite(p) => {
-                let row = sqlx::query(&q).bind(id).fetch_optional(p).await.map_err(
-                    |e: sqlx::Error| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    },
-                )?;
-                if let Some(r) = row {
+                if let Some(r) = crate::sql_fetch_raw_optional!(p, &q, id)? {
                     Some(self.map_sqlite_row(r, id)?)
                 } else {
                     None
                 }
             }
             DatabasePool::Postgres(p) => {
-                let row = sqlx::query(&q).bind(id).fetch_optional(p).await.map_err(
-                    |e: sqlx::Error| AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    },
-                )?;
-                if let Some(r) = row {
+                if let Some(r) = crate::sql_fetch_raw_optional!(p, &q, id)? {
                     Some(self.map_postgres_row(r, id)?)
                 } else {
                     None
@@ -512,19 +464,11 @@ impl aiome_core_contracts::traits::SoulStore for UniversalSoulStore {
         use sqlx::Row;
         match &self.pool {
             DatabasePool::Sqlite(p) => {
-                let row = sqlx::query(q).fetch_optional(p).await.map_err(|e| {
-                    AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    }
-                })?;
+                let row = crate::sql_fetch_raw_optional!(p, q)?;
                 Ok(row.map(|r| (r.get(0), r.get(1))))
             }
             DatabasePool::Postgres(p) => {
-                let row = sqlx::query(q).fetch_optional(p).await.map_err(|e| {
-                    AiomeError::Infrastructure {
-                        reason: e.to_string(),
-                    }
-                })?;
+                let row = crate::sql_fetch_raw_optional!(p, q)?;
                 Ok(row.map(|r| (r.get(0), r.get(1))))
             }
         }

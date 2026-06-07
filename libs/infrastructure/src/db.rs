@@ -68,3 +68,31 @@ macro_rules! sql_tx_fetch_optional {
         ::shared::sql_tx_fetch_optional!($($arg)*)
     };
 }
+
+#[macro_export]
+macro_rules! sql_fetch_raw {
+    ($($arg:tt)*) => {
+        ::shared::sql_fetch_raw!($($arg)*)
+    };
+}
+
+#[macro_export]
+macro_rules! sql_fetch_raw_optional {
+    ($($arg:tt)*) => {
+        ::shared::sql_fetch_raw_optional!($($arg)*)
+    };
+}
+
+#[macro_export]
+macro_rules! sql_fetch_raw_one {
+    ($($arg:tt)*) => {
+        ::shared::sql_fetch_raw_one!($($arg)*)
+    };
+}
+
+#[macro_export]
+macro_rules! sql_scalar {
+    ($($arg:tt)*) => {
+        ::shared::sql_scalar!($($arg)*)
+    };
+}

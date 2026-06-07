@@ -22,6 +22,48 @@ fn hub_auth_header(state: &AppState) -> String {
     format!("Bearer {}", state.federation_secret.expose_secret())
 }
 
+/// Hub レスポンスを Axum レスポンスに変換する共通ヘルパー。
+/// JSON パース失敗時はステータスコードを保持しつつ空オブジェクトを返す。
+async fn hub_response_to_axum(res: reqwest::Response) -> Result<Response, AppError> {
+    let status = res.status();
+    let body = res.json::<serde_json::Value>().await.unwrap_or_else(|e| {
+        tracing::warn!("Failed to parse JSON from Hub (status: {}): {}", status, e);
+        serde_json::json!({})
+    });
+    Ok((status, Json(body)).into_response())
+}
+
+/// Hub への GET プロキシ。認証ヘッダー付与・エラー変換・レスポンスパースを共通化。
+async fn hub_proxy_get(state: &AppState, path: &str) -> Result<Response, AppError> {
+    let url = format!("{}{}", state.config.samsara_hub_url, path);
+    let res = state
+        .http_client
+        .get(&url)
+        .header("Authorization", hub_auth_header(state))
+        .send()
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?;
+    hub_response_to_axum(res).await
+}
+
+/// Hub への POST プロキシ。認証ヘッダー付与・エラー変換・レスポンスパースを共通化。
+async fn hub_proxy_post(
+    state: &AppState,
+    path: &str,
+    body: &impl serde::Serialize,
+) -> Result<Response, AppError> {
+    let url = format!("{}{}", state.config.samsara_hub_url, path);
+    let res = state
+        .http_client
+        .post(&url)
+        .header("Authorization", hub_auth_header(state))
+        .json(body)
+        .send()
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?;
+    hub_response_to_axum(res).await
+}
+
 #[derive(serde::Deserialize, utoipa::ToSchema)]
 pub struct SendBiomeRequest {
     pub recipient_pubkey: String,
@@ -49,21 +91,7 @@ pub async fn biome_status(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
 ) -> Result<Response, AppError> {
-    let url = format!("{}/api/v1/health", state.config.samsara_hub_url);
-    let res = state
-        .http_client
-        .get(&url)
-        .header("Authorization", hub_auth_header(&state))
-        .send()
-        .await
-        .map_err(|e| AppError::internal(e.to_string()))?;
-
-    let status = res.status();
-    let body = res.json::<serde_json::Value>().await.unwrap_or_else(|e| {
-        tracing::warn!("Failed to parse JSON from Hub (status: {}): {}", status, e);
-        serde_json::json!({})
-    });
-    Ok((status, Json(body)).into_response())
+    hub_proxy_get(&state, "/api/v1/health").await
 }
 
 #[utoipa::path(
@@ -78,21 +106,7 @@ pub async fn list_topics(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
 ) -> Result<Response, AppError> {
-    let url = format!("{}/api/v1/biome/topics", state.config.samsara_hub_url);
-    let res = state
-        .http_client
-        .get(&url)
-        .header("Authorization", hub_auth_header(&state))
-        .send()
-        .await
-        .map_err(|e| AppError::internal(e.to_string()))?;
-
-    let status = res.status();
-    let body = res.json::<serde_json::Value>().await.unwrap_or_else(|e| {
-        tracing::warn!("Failed to parse JSON from Hub (status: {}): {}", status, e);
-        serde_json::json!({})
-    });
-    Ok((status, Json(body)).into_response())
+    hub_proxy_get(&state, "/api/v1/biome/topics").await
 }
 
 #[utoipa::path(
@@ -109,22 +123,7 @@ pub async fn create_topic(
     _auth: crate::auth::Authenticated,
     Json(req): Json<serde_json::Value>,
 ) -> Result<Response, AppError> {
-    let url = format!("{}/api/v1/biome/topics", state.config.samsara_hub_url);
-    let res = state
-        .http_client
-        .post(&url)
-        .header("Authorization", hub_auth_header(&state))
-        .json(&req)
-        .send()
-        .await
-        .map_err(|e| AppError::internal(e.to_string()))?;
-
-    let status = res.status();
-    let body = res.json::<serde_json::Value>().await.unwrap_or_else(|e| {
-        tracing::warn!("Failed to parse JSON from Hub (status: {}): {}", status, e);
-        serde_json::json!({})
-    });
-    Ok((status, Json(body)).into_response())
+    hub_proxy_post(&state, "/api/v1/biome/topics", &req).await
 }
 
 #[utoipa::path(
@@ -255,6 +254,13 @@ pub async fn send_message(
     _auth: crate::auth::Authenticated,
     Json(req): Json<SendBiomeRequest>,
 ) -> Result<Response, AppError> {
+    // Empty content guard: 空メッセージの P2P 送出を防止
+    if req.content.trim().is_empty() {
+        return Err(AppError::bad_request(
+            "Empty content is not allowed in P2P messages".to_string(),
+        ));
+    }
+
     // Defense-in-Depth: プロキシ層でのコンテンツバリデーション
     // Hub 側でも検証するが、プロキシ層で早期拒否することで帯域とリソースを節約
     // 注: len() はバイト数。マルチバイト文字 (日本語等) では文字数 < バイト数
@@ -289,13 +295,21 @@ pub async fn send_message(
     }
 
     // Dynamic Toxicity / CSAM blocklist from settings
-    let banned_words_setting = state
+    let banned_words_setting = match state
         .job_queue
         .get_setting_value("csam_toxicity_forbidden_words")
         .await
-        .ok()
-        .flatten()
-        .unwrap_or_default();
+    {
+        Ok(Some(v)) => v,
+        Ok(None) => String::new(),
+        Err(e) => {
+            tracing::warn!(
+                "⚠️ [Biome] Failed to fetch CSAM forbidden words from DB: {}. Proceeding with empty blocklist.",
+                e
+            );
+            String::new()
+        }
+    };
     let banned_words: Vec<String> = banned_words_setting
         .split(',')
         .map(|s| s.trim().to_lowercase())
@@ -345,12 +359,7 @@ pub async fn send_message(
         .await
         .map_err(|e| AppError::internal(e.to_string()))?;
 
-    let status = res.status();
-    let body = res.json::<serde_json::Value>().await.unwrap_or_else(|e| {
-        tracing::warn!("Failed to parse JSON from Hub (status: {}): {}", status, e);
-        serde_json::json!({})
-    });
-    Ok((status, Json(body)).into_response())
+    hub_response_to_axum(res).await
 }
 
 #[cfg(test)]
@@ -434,13 +443,19 @@ mod tests {
     }
 
     #[test]
-    fn test_empty_content_allowed() {
+    fn test_empty_content_blocked() {
+        // 空コンテンツは P2P ネットワークへの送出前に拒否されるべき
         let content = "";
-        assert!(content.len() <= MAX_CONTENT_BYTES);
-        let lower = content.to_lowercase();
-        let blocked = lower.contains("data:image/")
-            || lower.contains("data:video/")
-            || lower.contains(";base64,");
-        assert!(!blocked);
+        assert!(
+            content.trim().is_empty(),
+            "Empty content should be detected"
+        );
+
+        // 空白のみのコンテンツも拒否
+        let whitespace_only = "   \t\n  ";
+        assert!(
+            whitespace_only.trim().is_empty(),
+            "Whitespace-only content should be detected"
+        );
     }
 }

@@ -88,7 +88,16 @@ const EventIcon: React.FC<{ type: string }> = ({ type }) => {
 };
 
 const EventContent: React.FC<{ event: VitalityEvent }> = ({ event }) => {
-    const data = event.data as any;
+    interface ActivityEventData {
+        event_type?: string;
+        description?: string;
+        amount?: number;
+        currency?: string;
+        level?: string;
+        message?: string;
+        error?: string;
+    }
+    const data = event.data as ActivityEventData;
     if (!data) return <div style={{ fontSize: '0.8rem' }}>{event.type}</div>;
     
     switch (event.type) {
@@ -102,7 +111,7 @@ const EventContent: React.FC<{ event: VitalityEvent }> = ({ event }) => {
                         {data.description || 'Commerce transaction processed'}
                     </div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                        {data.amount > 0 ? '+' : ''}{data.amount} {data.currency}
+                        {(data.amount ?? 0) > 0 ? '+' : ''}{data.amount} {data.currency}
                     </div>
                 </>
             );

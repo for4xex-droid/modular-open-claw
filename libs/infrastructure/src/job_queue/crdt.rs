@@ -10,7 +10,7 @@ use aiome_core::error::AiomeError;
 use async_trait::async_trait;
 use automerge::{transaction::Transactable, AutoCommit, ReadDoc};
 use sqlx::Row;
-use tracing::{error, info};
+use tracing::error;
 
 #[async_trait]
 /// `CrdtOps` トレイト

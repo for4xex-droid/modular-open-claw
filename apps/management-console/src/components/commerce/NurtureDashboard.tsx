@@ -84,9 +84,13 @@ export default function NurtureDashboard() {
       } else if (histRes.status !== 403) {
         throw new Error("Failed to load transaction history.");
       }
-    } catch (e: any) {
-      if (e.name === 'AbortError') return;
-      setError(e.message || "Failed to connect to Nurture Engine.");
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        if (e.name === 'AbortError') return;
+        setError(e.message || "Failed to connect to Nurture Engine.");
+      } else {
+        setError("Failed to connect to Nurture Engine.");
+      }
     } finally {
       setIsLoading(false);
     }

@@ -282,6 +282,42 @@ impl DatabasePool {
     }
 }
 
+/// Helper macro to fetch all rows dynamically
+#[macro_export]
+macro_rules! sql_fetch_raw {
+    ($pool:expr, $sql:expr $(, $arg:expr)*) => {{
+        sqlx::query($sql)$(.bind($arg))*.fetch_all($pool).await
+            .map_err(|e| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+    }};
+}
+
+/// Helper macro to fetch an optional row dynamically
+#[macro_export]
+macro_rules! sql_fetch_raw_optional {
+    ($pool:expr, $sql:expr $(, $arg:expr)*) => {{
+        sqlx::query($sql)$(.bind($arg))*.fetch_optional($pool).await
+            .map_err(|e| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+    }};
+}
+
+/// Helper macro to fetch one row dynamically
+#[macro_export]
+macro_rules! sql_fetch_raw_one {
+    ($pool:expr, $sql:expr $(, $arg:expr)*) => {{
+        sqlx::query($sql)$(.bind($arg))*.fetch_one($pool).await
+            .map_err(|e| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+    }};
+}
+
+/// Helper macro to query scalar values
+#[macro_export]
+macro_rules! sql_scalar {
+    ($pool:expr, $sql:expr $(, $arg:expr)*) => {{
+        sqlx::query_scalar($sql)$(.bind($arg))*.fetch_one($pool).await
+            .map_err(|e| $crate::reexport::AiomeError::Infrastructure { reason: e.to_string() })
+    }};
+}
+
 /// Helper macro to execute a query against either SQLite or PostgreSQL
 /// Supports both single SQL string and dual dialect strings (sqlite:, pg:).
 #[macro_export]

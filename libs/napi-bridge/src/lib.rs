@@ -104,12 +104,7 @@ pub async fn karma_distill_turn(messages_json: String, success: bool) -> Result<
     }
 
     // 2. Extract lesson using LLM
-    let prompt = format!(
-        "以下のエージェント間の対話履歴（JSON）を分析し、将来同じタスクを行う際の「教訓（知恵）」を1つ抽出してください。\n\
-        実行結果の成否: {}\n\n履歴:\n{}\n\n出力形式: 教訓1行のみ。簡潔に日本語で答えよ。",
-        if success { "成功" } else { "失敗" },
-        messages_json
-    );
+    let prompt = build_distill_prompt(&messages_json, success);
 
     match llm
         .complete(
@@ -279,32 +274,15 @@ pub async fn immune_check_tool(tool_name: String, params: String) -> Result<Tool
 
     // 1. Baseline RegExp Check (Sentinel Layer 1.5 - No DB needed)
     // catch obvious dangerous patterns quickly using cached RegExp instances
-    static DANGEROUS_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
-    let patterns = DANGEROUS_PATTERNS.get_or_init(|| {
-        // These are static literal patterns — Regex::new cannot fail on them.
-        // Using expect() instead of process::exit() to preserve backtraces if
-        // a future refactor introduces a malformed pattern.
-        vec![
-            Regex::new(r"(?i)rm\s+-rf").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
-            Regex::new(r"(?i)chmod\s+777").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
-            Regex::new(r"(?i)cat\s+/etc/shadow").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
-            Regex::new(r"(?i)shutdown").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
-            Regex::new(r"(?i)reboot").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
-            Regex::new(r#"(?i)":\s*".*";"#).expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
-        ]
-    });
-
-    for re in patterns {
-        if re.is_match(&params) {
-            return Ok(ToolCheckResponse {
-                blocked: true,
-                reason: Some(format!(
-                    "[SENTINEL] Baseline Violation: Blocked dangerous pattern in tool params: {}",
-                    re.as_str()
-                )),
-                new_params: None,
-            });
-        }
+    if let Some(pattern) = check_dangerous_patterns(&params) {
+        return Ok(ToolCheckResponse {
+            blocked: true,
+            reason: Some(format!(
+                "[SENTINEL] Baseline Violation: Blocked dangerous pattern in tool params: {}",
+                pattern
+            )),
+            new_params: None,
+        });
     }
 
     // 2. Complex Adaptive Check (Requires DB & LLM)
@@ -448,28 +426,16 @@ pub async fn karma_flush_session(session_id: String) -> Result<()> {
 /// `watchtower_track_usage` 関数
 pub async fn watchtower_track_usage(usage: String) -> Result<()> {
     // LLMトークン消費量の本格記録 (モック解消)
-    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&usage) {
-        let prompt = parsed
-            .get("prompt_tokens")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0);
-        let completion = parsed
-            .get("completion_tokens")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0);
-
-        if prompt > 0 || completion > 0 {
-            tracing::info!(
-                "📊 [Watchtower] Usage tracked: {} prompt tokens, {} completion tokens.",
-                prompt,
-                completion
-            );
-            // Future persistence into sns_metrics_history or similar metrics store.
-        } else {
-            tracing::debug!("watchtower_track_usage: {}", usage);
-        }
+    let (prompt, completion) = parse_watchtower_usage(&usage);
+    if prompt > 0 || completion > 0 {
+        tracing::info!(
+            "📊 [Watchtower] Usage tracked: {} prompt tokens, {} completion tokens.",
+            prompt,
+            completion
+        );
+        // Future persistence into sns_metrics_history or similar metrics store.
     } else {
-        tracing::debug!("watchtower_track_usage (raw): {}", usage);
+        tracing::debug!("watchtower_track_usage: {}", usage);
     }
     Ok(())
 }
@@ -495,4 +461,109 @@ pub async fn karma_geodesic_importance(query: String) -> Result<f64> {
     let slm = get_slm_bridge().await.map_err(map_err)?;
     let importance = slm.calculate_importance(&query).await.map_err(map_err)?;
     Ok(importance)
+}
+
+// --- Pure Helper Functions for Unit Testing ---
+
+fn build_distill_prompt(messages_json: &str, success: bool) -> String {
+    format!(
+        "以下のエージェント間の対話履歴（JSON）を分析し、将来同じタスクを行う際の「教訓（知恵）」を1つ抽出してください。\n\
+        実行結果の成否: {}\n\n履歴:\n{}\n\n出力形式: 教訓1行のみ。簡潔に日本語で答えよ。",
+        if success { "成功" } else { "失敗" },
+        messages_json
+    )
+}
+
+fn check_dangerous_patterns(params: &str) -> Option<&'static str> {
+    static DANGEROUS_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
+    let patterns = DANGEROUS_PATTERNS.get_or_init(|| {
+        vec![
+            Regex::new(r"(?i)rm\s+-rf").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
+            Regex::new(r"(?i)chmod\s+777").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
+            Regex::new(r"(?i)cat\s+/etc/shadow").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
+            Regex::new(r"(?i)shutdown").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
+            Regex::new(r"(?i)reboot").expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
+            Regex::new(r#"(?i)":\s*".*";"#).expect("BUG: invalid regex literal"), // allow-anti-pattern: static regex
+        ]
+    });
+
+    for re in patterns {
+        if re.is_match(params) {
+            return Some(re.as_str());
+        }
+    }
+    None
+}
+
+fn parse_watchtower_usage(usage: &str) -> (u64, u64) {
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(usage) {
+        let prompt = parsed
+            .get("prompt_tokens")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let completion = parsed
+            .get("completion_tokens")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        (prompt, completion)
+    } else {
+        (0, 0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_distill_prompt() {
+        let json = r#"[{"role": "user", "content": "hello"}]"#;
+        let prompt_success = build_distill_prompt(json, true);
+        assert!(prompt_success.contains("成功"));
+        assert!(prompt_success.contains(json));
+
+        let prompt_fail = build_distill_prompt(json, false);
+        assert!(prompt_fail.contains("失敗"));
+    }
+
+    #[test]
+    fn test_check_dangerous_patterns() {
+        assert_eq!(check_dangerous_patterns("safe params"), None);
+        assert_eq!(check_dangerous_patterns("rm -rf /"), Some("(?i)rm\\s+-rf"));
+        assert_eq!(
+            check_dangerous_patterns("CHMOD 777 file"),
+            Some("(?i)chmod\\s+777")
+        );
+        assert_eq!(
+            check_dangerous_patterns("cat /etc/shadow"),
+            Some("(?i)cat\\s+/etc/shadow")
+        );
+        assert_eq!(
+            check_dangerous_patterns("shutdown now"),
+            Some("(?i)shutdown")
+        );
+        assert_eq!(check_dangerous_patterns("REBOOT"), Some("(?i)reboot"));
+        assert_eq!(
+            check_dangerous_patterns(r#"test ": "attack";"#),
+            Some("(?i)\":\\s*\".*\";")
+        );
+    }
+
+    #[test]
+    fn test_parse_watchtower_usage() {
+        let valid_json = r#"{"prompt_tokens": 120, "completion_tokens": 80}"#;
+        let (prompt, completion) = parse_watchtower_usage(valid_json);
+        assert_eq!(prompt, 120);
+        assert_eq!(completion, 80);
+
+        let invalid_json = "invalid";
+        let (prompt, completion) = parse_watchtower_usage(invalid_json);
+        assert_eq!(prompt, 0);
+        assert_eq!(completion, 0);
+
+        let missing_keys = r#"{"other_key": 100}"#;
+        let (prompt, completion) = parse_watchtower_usage(missing_keys);
+        assert_eq!(prompt, 0);
+        assert_eq!(completion, 0);
+    }
 }

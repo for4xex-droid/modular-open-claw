@@ -178,3 +178,16 @@ export type A2uiEnvelope =
     | { type: "createSurface"; surface: A2uiSurface }
     | { type: "updateComponents"; surfaceId: string; components: A2uiComponent[] }
     | { type: "deleteSurface"; surfaceId: string };
+
+export interface ImmuneAlertEvent {
+    description?: string;
+}
+
+export interface AegisSentinelEvent {
+    level?: string;
+    message?: string;
+}
+
+export interface InspirationEvent {
+    description?: string;
+}

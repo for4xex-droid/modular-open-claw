@@ -235,12 +235,10 @@ pub async fn update_setting(
     // Phase 2-D: Synchronize Feature Flag Cache
     if payload.key.starts_with("feature_flag.") {
         if let Some(cache) = state.feature_flags_cache.as_opt() {
-            let actual_flag = payload
-                .key
-                .strip_prefix("feature_flag.")
-                .unwrap_or(&payload.key);
-            let bool_val = payload.value == "true" || payload.value == "1";
-            cache.insert(actual_flag.to_string(), bool_val).await;
+            if let Some(actual_flag) = payload.key.strip_prefix("feature_flag.") {
+                let bool_val = payload.value == "true" || payload.value == "1";
+                cache.insert(actual_flag.to_string(), bool_val).await;
+            }
         }
     }
 

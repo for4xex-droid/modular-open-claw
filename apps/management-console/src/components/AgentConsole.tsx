@@ -35,6 +35,8 @@ interface RoiStats {
     instances: Array<{ id: string, name: string, status: string, nextRun: string, roi: string }>;
 }
 
+const SAVINGS_PER_TASK = 5;
+
 interface ArtifactRecord {
     id: string;
     category?: string;
@@ -105,7 +107,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                     
                     setStats({
                         tasksExecuted: tasksCount,
-                        savings: tasksCount * 5, // Simple $5 saving per automated task
+                        savings: tasksCount * SAVINGS_PER_TASK, // Use constant saving per automated task
                         activeBlueprints: blueprints.length,
                         instances: blueprints.map(bp => ({
                             id: bp.id,
@@ -244,7 +246,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('agent.lifetimeMetrics') || 'Lifetime metrics'}</div>
                         </div>
                         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><DollarSign size={16} /> {t('agent.estimatedSavings') || 'Estimated Savings'}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><DollarSign size={16} /> {t('agent.estimatedSavings') || 'Estimated Savings'} (推定値)</div>
                             <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-emerald)' }}>${stats ? stats.savings.toLocaleString() : '...'}</div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--accent-emerald)' }}>{t('agent.basedOnVolume') || 'Based on task volume'}</div>
                         </div>

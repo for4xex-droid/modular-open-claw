@@ -1425,3 +1425,99 @@ async fn test_sqlite_job_queue_peer_sync_time_empty_url() {
         "Empty URL should be retrievable after insert"
     );
 }
+
+#[tokio::test]
+async fn test_sqlite_settings_row_masking() {
+    let (jq, _tmp) = create_test_queue().await;
+
+    // シークレット設定を追加
+    jq.update_setting("api_key", "super-secret-key", "api", true)
+        .await
+        .unwrap();
+
+    // 通常の設定を追加
+    jq.update_setting("api_url", "https://api.example.com", "api", false)
+        .await
+        .unwrap();
+
+    let all = jq.fetch_all_settings().await.unwrap();
+
+    // シークレット設定がマスクされていることをアサート
+    let key_setting = all.iter().find(|s| s.key == "api_key").unwrap();
+    assert_eq!(key_setting.value, "••••••••");
+    assert!(key_setting.is_secret);
+
+    // 通常設定がそのままであることをアサート
+    let url_setting = all.iter().find(|s| s.key == "api_url").unwrap();
+    assert_eq!(url_setting.value, "https://api.example.com");
+    assert!(!url_setting.is_secret);
+}
+
+#[tokio::test]
+async fn test_sqlite_settings_cost_aggregation() {
+    use super::CostOps;
+    let (jq, _tmp) = create_test_queue().await;
+
+    // 0 であることを確認
+    let initial_hours = jq.aggregate_cost_hours(24).await.unwrap();
+    let initial_days = jq.aggregate_cost_days(30).await.unwrap();
+    let initial_job = jq.aggregate_cost_by_job("test-job").await.unwrap();
+    assert_eq!(initial_hours, 0.0);
+    assert_eq!(initial_days, 0.0);
+    assert_eq!(initial_job, 0.0);
+
+    // テスト用のジョブを作成して外部キー制約を満たす
+    let job_id1 = jq
+        .enqueue("Task", "Topic1", "Style", None, None, None, 0)
+        .await
+        .unwrap();
+    let job_id2 = jq
+        .enqueue("Task", "Topic2", "Style", None, None, None, 0)
+        .await
+        .unwrap();
+
+    // テスト用のリソースログを挿入
+    let pool = jq.pool.get_sqlite_pool().unwrap();
+    sqlx::query("INSERT INTO resource_usage_logs (job_id, provider_name, model_name, usage_type, amount, estimated_cost_usd, created_at) VALUES (?, 'p', 'm', 't', 10, 0.15, datetime('now'))")
+        .bind(&job_id1)
+        .execute(pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO resource_usage_logs (job_id, provider_name, model_name, usage_type, amount, estimated_cost_usd, created_at) VALUES (?, 'p', 'm', 't', 20, 0.35, datetime('now', '-2 hours'))")
+        .bind(&job_id1)
+        .execute(pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO resource_usage_logs (job_id, provider_name, model_name, usage_type, amount, estimated_cost_usd, created_at) VALUES (?, 'p', 'm', 't', 30, 1.50, datetime('now', '-10 days'))")
+        .bind(&job_id2)
+        .execute(pool)
+        .await
+        .unwrap();
+
+    // 過去 24 時間の集計
+    let hours_24 = jq.aggregate_cost_hours(24).await.unwrap();
+    // 0.15 + 0.35 = 0.50
+    assert_eq!(hours_24, 0.50);
+
+    // 過去 5 時間の集計
+    let hours_5 = jq.aggregate_cost_hours(5).await.unwrap();
+    // 0.15 + 0.35 = 0.50 (both within 5 hours)
+    assert_eq!(hours_5, 0.50);
+
+    // 過去 1 時間の集計
+    let hours_1 = jq.aggregate_cost_hours(1).await.unwrap();
+    // 0.15 (0.35 is 2 hours ago)
+    assert_eq!(hours_1, 0.15);
+
+    // 過去 30 日の集計
+    let days_30 = jq.aggregate_cost_days(30).await.unwrap();
+    // 0.15 + 0.35 + 1.50 = 2.00
+    assert_eq!(days_30, 2.00);
+
+    // 特定のジョブの集計
+    let job_cost = jq.aggregate_cost_by_job(&job_id1).await.unwrap();
+    // 0.15 + 0.35 = 0.50
+    assert_eq!(job_cost, 0.50);
+}

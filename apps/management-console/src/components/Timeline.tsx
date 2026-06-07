@@ -29,28 +29,34 @@ const Timeline: React.FC = () => {
     const [events, setEvents] = useState<TimelineEvent[]>([]);
     const [selfNodeId, setSelfNodeId] = useState<string>("");
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
+            setError(null);
             try {
-                // Fetch node id
-                const healthRes = await authenticatedFetch(`${API_BASE}/api/health`);
+                // Fetch all data in parallel for reduced latency
+                const [healthRes, karmaRes, evoRes] = await Promise.all([
+                    authenticatedFetch(`${API_BASE}/api/health`),
+                    authenticatedFetch(`${API_BASE}/api/synergy/karma`),
+                    authenticatedFetch(`${API_BASE}/api/system/evolution`),
+                ]);
+
+                // Process health response
                 if (healthRes.ok) {
                     const health = await healthRes.json();
                     setSelfNodeId(typeof health?.node_id === 'string' ? health.node_id : '');
                 }
 
-                // Fetch Karma
-                const karmaRes = await authenticatedFetch(`${API_BASE}/api/synergy/karma`);
+                // Process karma response
                 let karmas: Record<string, unknown>[] = [];
                 if (karmaRes.ok) {
                     const karmasRaw = await karmaRes.json();
                     karmas = Array.isArray(karmasRaw) ? karmasRaw : [];
                 }
 
-                // Fetch Evolution
-                const evoRes = await authenticatedFetch(`${API_BASE}/api/system/evolution`);
+                // Process evolution response
                 let evos: Record<string, unknown>[] = [];
                 if (evoRes.ok) {
                     const evosRaw = await evoRes.json();
@@ -80,7 +86,9 @@ const Timeline: React.FC = () => {
 
                 setEvents(merged);
             } catch (e) {
+                const message = e instanceof Error ? e.message : 'Unknown error';
                 console.error("Failed to fetch timeline data", e);
+                setError(message);
             } finally {
                 setLoading(false);
             }
@@ -105,6 +113,12 @@ const Timeline: React.FC = () => {
                 {loading ? (
                     <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                         <div className="ani-pulse">{t('timeline.syncing')}</div>
+                    </div>
+                ) : error ? (
+                    <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--accent-red, #ff6b6b)' }}>
+                        <Zap size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                        <p>{t('timeline.error') || 'Failed to load timeline data'}</p>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{error}</p>
                     </div>
                 ) : events.length === 0 ? (
                     <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -132,8 +146,8 @@ const Timeline: React.FC = () => {
                                     <motion.div
                                         initial={{ opacity: 0, x: -20 }}
                                         animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: i * 0.05 }}
-                                        key={e.id || i}
+                                        transition={{ delay: Math.min(i * 0.05, 2) }}
+                                        key={e.id || `timeline-${e._type}-${i}`}
                                         style={{ display: 'flex', gap: '1.5rem', paddingLeft: '0.5rem' }}
                                     >
                                         <div style={{

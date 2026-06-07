@@ -39,7 +39,7 @@
 | `invariant_dag` | SHA-256 ハッシュチェーンによる因果関係の追跡と改ざん検知基盤。 | **Phase 48 完了** |
 | `immune_system` | 脅威シグネチャによる不審な挙動の監視と遮断。 | **強化完了** |
 | `cortex_file_projector` | ADR-025: Duke大学研究に基づき、Cortex Wiki記事をファイルシステム階層（カテゴリ/記事.md）として物理投影。`content_hash` 差分更新により冪等性を保証し、DreamState の Agent-Native Discovery モードで自律探索精度を向上。 | **ADR-025 実装完了** |
-| `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済。Biome 3メソッド（メッセージ永続化・評価値更新）及び Federation データ（ImmuneRule/ArenaMatch）のインポート・エクスポートを実装完了。P2pSanitizer による CSAM/Toxicity 動的ブロックを完備。 | **強化完了** |
+| `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済。Biome 3メソッド（メッセージ永続化・評価値更新）及び Federation データ（ImmuneRule/ArenaMatch）のインポート・エクスポートを実装完了。P2pSanitizer による CSAM/Toxicity 動的ブロックを完備。DBクエリ DRY マクロの適用、および `let _ =` エラー黙殺コードのトリアージを完了。 | **強化完了** |
 | `knowledge_indexer` | ドキュメントや過去の Karma を高速検索可能にインデックス。 | 実装完了 |
 | `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。ストリーミング通信時の Pre-execute Hook バイパス遮断および Ollama の LoRA 動内ビルダ統合済。**Phase v3/16** にて `EntropyGate` (Shannon Entropy 自動再質問)、`HumanizerFilter` (AI くささ除去)、`WritingContext` (コンテキスト別ルール適用) を実装しパイプラインを完成。静的 Regex パターンのパニックリスクを排除した `LazyLock` による堅牢化を完了。**Phase A** で最新モデルのユニットエコノミクス（コスト追跡）を実装。 | **第4世代進化** |
 | `lora_autotuner` | ロス履歴に基づき LoRA 学習のハイパーパラメータ（LR, Epochs, Rank）を自律調整するエンジン。 | **Phase 55 完了** |
@@ -83,7 +83,7 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-06-07 (Asia/Tokyo) - Alert notification pipeline, Polar webhook, Caddy headers integration, dream_state modularization, and Biome/Federation implementation completion*
+*最終更新: 2026-06-07 (Asia/Tokyo) - DBクエリマクロ導入によるDRY化, `let _ =` トリアージ, 環境変数整理およびエラー設計ドキュメントの整備完了*
 
 ## Phase 6 Integration Notes
 

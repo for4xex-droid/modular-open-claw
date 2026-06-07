@@ -33,9 +33,10 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ code, classNam
                 border: 'var(--border-glass)'
             });
             return { svg: sanitizeSVG(rendered), error: null };
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Mermaid parsing failed:", err);
-            return { svg: null, error: err.message || 'Unknown error' };
+            const errMsg = err instanceof Error ? err.message : 'Unknown error';
+            return { svg: null, error: errMsg };
         }
     }, [code]);
 

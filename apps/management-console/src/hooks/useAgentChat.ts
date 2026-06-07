@@ -66,7 +66,11 @@ export const useAgentChat = (): UseAgentChatReturn => {
 
     useEffect(() => {
         if (lastEvent?.type === 'proactive_talk') {
-            const message = (lastEvent.data as any)?.message;
+            interface ProactiveTalkData {
+                message?: string;
+            }
+            const data = lastEvent.data as ProactiveTalkData | string | undefined;
+            const message = typeof data === 'string' ? data : data?.message;
             if (message) {
                 setHistory(prev => {
                     // Prevent duplicate consecutive messages
