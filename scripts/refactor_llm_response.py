@@ -48,9 +48,11 @@ def process_file(filepath):
         print(f"Updated {filepath}")
 
 def main():
+    from pathlib import Path
+    base_dir = Path(__file__).resolve().parents[1]
     dirs = [
-        "/Users/motista/Desktop/antigravity/aiome/libs",
-        "/Users/motista/Desktop/antigravity/aiome/apps/api-server/src",
+        str(base_dir / "libs"),
+        str(base_dir / "apps/api-server/src"),
     ]
     for d in dirs:
         for root, _, files in os.walk(d):

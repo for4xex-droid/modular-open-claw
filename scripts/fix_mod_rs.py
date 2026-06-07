@@ -1,6 +1,7 @@
 import os
+from pathlib import Path
 
-filepath = "/Users/motista/Desktop/antigravity/aiome/libs/core/src/llm_provider/mod.rs"
+filepath = Path(__file__).resolve().parents[1] / "libs/core/src/llm_provider/mod.rs"
 
 with open(filepath, "r") as f:
     content = f.read()

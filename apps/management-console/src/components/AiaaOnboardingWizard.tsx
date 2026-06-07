@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Briefcase, Link as LinkIcon, CheckCircle, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
 import { authenticatedFetch } from '../lib/auth';
-import { API_BASE } from '../config';
+import { API_BASE, STRIPE_PRICE_ID } from '../config';
 import { useTranslation } from '../i18n';
 
 interface DiscoveryData {
@@ -48,7 +48,7 @@ export const AiaaOnboardingWizard = () => {
         },
         body: JSON.stringify({
           agent_id: '00000000-0000-0000-0000-000000000000', // Dummy agent ID for onboarding
-          price_id: 'price_dummy',
+          price_id: STRIPE_PRICE_ID,
           success_url: `${window.location.origin}/checkout/success`,
           cancel_url: `${window.location.origin}/checkout/cancel`
         })

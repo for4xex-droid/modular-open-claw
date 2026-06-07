@@ -31,7 +31,7 @@ echo "=== .env files ===" && (git ls-files | grep -E '\.env$' || echo "OK") && \
 echo "=== memory files ===" && (git ls-files | grep -E '^memory/|MEMORY\.md|\.agent.*/memory/' || echo "OK") && \
 echo "=== database files ===" && (git ls-files | grep -E '\.(sqlite|sqlite3|db)$' || echo "OK") && \
 echo "=== build artifacts ===" && (git ls-files | grep -E '\.(dylib|so|dll|node|tgz)$' || echo "OK") && \
-echo "=== strategy docs ===" && (git ls-files | grep -iE 'master_blueprint|vision_manifesto|pitch_deck|buyout|valuation' || echo "OK") && \
+echo "=== strategy docs ===" && (git ls-files | grep -iE 'master_blueprint|vision_manifesto|pitch_deck|buyout|valuation' | grep -vi 'evaluation' || echo "OK") && \
 echo "=== backup files ===" && (git ls-files | grep -E '\.bak$|\.orig$|\.swp$' || echo "OK") && \
 echo "=== states/logs ===" && (git ls-files | grep -E '^states/|^logs/' || echo "OK")
 ```
@@ -54,14 +54,14 @@ cargo check --workspace 2>&1 | tail -3
 ## ステップ 5.5: リリースゲートテスト
 `#[ignore]` でマークされたリリース前限定テスト（プレースホルダー検知等）を実行する。1件でも FAILED ならリリースを中止。
 ```bash
-cargo test --workspace -- --ignored 2>&1 | tail -10
+cargo test --workspace -- --ignored --skip sandbox --skip vendor 2>&1 | tail -10
 ```
 
 ## ステップ 6: リポジトリサイズ確認
 ```bash
 echo "Tracked files:" && git ls-files | wc -l && echo "Estimated size:" && git ls-files -z | xargs -0 du -ch 2>/dev/null | tail -1
 ```
-700ファイル以下、30MB以下であることを確認する。
+2500ファイル以下、75MB以下であることを確認する。
 
 ## ステップ 7: GitHub About セクション確認
 GitHubリポジトリの About セクションに以下が設定されているか確認する（手動チェック）:

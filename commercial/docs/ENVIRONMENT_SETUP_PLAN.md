@@ -1,7 +1,7 @@
 # 🏗️ Project NURTURE — 環境構築計画（完全版）
 
-> **対象**: `/Users/motista/Desktop/antigravity/Project-Nurture`  
-> **依存先**: `/Users/motista/Desktop/antigravity/modular-open-claw` (Aiome OSS)  
+> **対象**: `../Project-Nurture` (商用拡張リポジトリ)  
+> **依存先**: `../aiome` (Aiome OSSリポジトリ)  
 > **策定日**: 2026-03-14
 
 ---

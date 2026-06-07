@@ -1,6 +1,23 @@
 ## [Unreleased]
 
 ### Changed
+- リポジトリ衛生: `.codeql-db/`(2,636ファイル/200MB+)、`__pycache__/`、カバレッジ出力等の追跡を除去し、`.gitignore` を強化
+- `enforce_dag.py`: optional 依存をDAGチェックから除外するロジックを追加
+- `release-preflight.md`: strategy docs 正規表現の誤検知修正、sandbox_exec スキップ、ファイル数上限を2,500に更新
+
+### Fixed
+- gitleaks 誤検知 18件（e2e mock JWT 11件 + test API key 4件 + CodeQL cache 3件）を `.gitleaksignore` で抑制
+- 12ファイルのローカルパス `/Users/` 漏洩を修正（スクリプト3件の相対パス化、ドキュメント5件のリンク修正）
+
+### Added
+- **P0ブロッカー修正（収益化準備度向上）**:
+  - `/internal/validate-activity` ルートおよびハンドラを追加し、OxiLean証明書による認証下でエージェントのアクティビティポリシー検証を実行可能に。
+  - フロントエンドの `AiaaOnboardingWizard` に残存していた `price_dummy` のハードコードを `config.ts` の `STRIPE_PRICE_ID` へ置換。
+  - OpenAPIの paths および schemas の定義に、不足していた決済関連の5つのエンドポイントを登録。
+  - Stripeの連携手順を記述した設定手順書 `docs/operations/stripe-setup.md` を新規作成。
+  - `.env.example` のStripe関連の環境変数定義についてドキュメントコメントを明確化。
+
+### Changed
 - LP/README: コード行数を `146,000+`、テスト数を `3,500+` に更新
 - LP: Economy / HowItWorks / Architecture セクション新設、Features を 3→6 に拡張
 - LP: Hero subtitle に自律経済圏の訴求を追加

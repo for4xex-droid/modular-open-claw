@@ -5,3 +5,27 @@ eaadf4ba22df17aed531d35802f82979a3e29dc8:apps/aiome-node/src/main.rs:generic-api
 eaadf4ba22df17aed531d35802f82979a3e29dc8:libs/aiome-contracts/src/a2a/agent_card.rs:generic-api-key:62
 eaadf4ba22df17aed531d35802f82979a3e29dc8:libs/aiome-contracts/src/a2a/agent_card.rs:generic-api-key:87
 3d97bf121690c8bd3f62d49fc9f7821b99e7b11e:test_forge.sh:curl-auth-header:29
+
+# e2e test mock JWT tokens (not real secrets - uses mock_sig/mock_signature suffix)
+3a01c7d6f3bf3808eab02653a00c7bea470c5326:apps/management-console/e2e/cortex_suggestions.spec.ts:jwt:11
+3a01c7d6f3bf3808eab02653a00c7bea470c5326:apps/management-console/e2e/demo.spec.ts:jwt:15
+3a01c7d6f3bf3808eab02653a00c7bea470c5326:apps/management-console/e2e/token_savings.spec.ts:jwt:8
+3a01c7d6f3bf3808eab02653a00c7bea470c5326:apps/management-console/e2e/test_sot_event.spec.ts:jwt:10
+3a01c7d6f3bf3808eab02653a00c7bea470c5326:apps/management-console/e2e/home_v2.spec.ts:jwt:13
+3a01c7d6f3bf3808eab02653a00c7bea470c5326:apps/management-console/e2e/ui_wave1.spec.ts:jwt:12
+3a01c7d6f3bf3808eab02653a00c7bea470c5326:apps/management-console/e2e/cortex_view.spec.ts:jwt:42
+3a01c7d6f3bf3808eab02653a00c7bea470c5326:apps/management-console/e2e/screencast.spec.ts:jwt:21
+3a01c7d6f3bf3808eab02653a00c7bea470c5326:apps/management-console/e2e/ui_fixes.spec.ts:jwt:16
+3a01c7d6f3bf3808eab02653a00c7bea470c5326:apps/management-console/e2e/home_v2.spec.ts:jwt:51
+3a01c7d6f3bf3808eab02653a00c7bea470c5326:apps/management-console/e2e/ui_fixes.spec.ts:jwt:64
+
+# Rust source - test/sample API key patterns (dummy values in test helpers)
+2e3026260d13bd6ec24e4058dba99d7e6d6dedc1:apps/aiome-node/src/main.rs:generic-api-key:272
+61dafdee4f7b7d1e491d95c1812dd7cb717cda46:libs/infrastructure/src/security.rs:generic-api-key:786
+61dafdee4f7b7d1e491d95c1812dd7cb717cda46:libs/shared/src/security.rs:generic-api-key:312
+dcc3c0272f6306f1002db0183834378c65ed48cc:libs/infrastructure/src/grpc/a2a_grpc_client.rs:generic-api-key:304
+
+# .codeql-db cache (removed from tracking but persists in git history)
+61dafdee4f7b7d1e491d95c1812dd7cb717cda46:.codeql-db/db-rust/default/cache/cached-strings/pools/0/pageDump/page-000000002:generic-api-key:1
+61dafdee4f7b7d1e491d95c1812dd7cb717cda46:.codeql-db/db-rust/default/cache/cached-strings/pools/0/pageDump/page-000000003:generic-api-key:9
+61dafdee4f7b7d1e491d95c1812dd7cb717cda46:.codeql-db/db-rust/default/pools/0/pageDump/page-000000003:generic-api-key:66

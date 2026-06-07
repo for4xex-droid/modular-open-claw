@@ -38,6 +38,11 @@ def main():
         for dep in pkg.get("dependencies", []):
             dep_name = dep["name"]
             
+            # Optional dependencies are feature-gated and not always resolved;
+            # they do not represent a hard architectural coupling.
+            if dep.get("optional", False):
+                continue
+            
             # Find the dependency package in workspace if it's a workspace member
             # Note: cargo metadata dependencies array does not contain manifest_path directly, 
             # so we match by name.

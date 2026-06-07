@@ -24,24 +24,24 @@ Deep Audit v2 で発見された **Federation 層のハリボテ化**、**scrub_
 
 ### 即時修正（CRITICAL — 1日以内）
 
-#### [MODIFY] [auth.rs](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/routes/auth.rs)
+#### [MODIFY] [auth.rs](../../apps/api-server/src/routes/auth.rs)
 - **問題:** L223 の `std::env::var("API_SERVER_SECRET")` が bootstrap の `scrub_env` と矛盾し、アカウント削除APIが常に失敗する
 - **修正:** `AppState.api_server_secret: Arc<SecretString>` を使用。`delete_account_handler` に `State(state)` から取得するように変更
 
-#### [MODIFY] [forecast.rs](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/routes/forecast.rs)
+#### [MODIFY] [forecast.rs](../../apps/api-server/src/routes/forecast.rs)
 - **問題:** L42 の `series_id` がエスケープなしに URL 文字列結合（SSRF/URL Injection）、L39 の `Client::new()` がコネクション枯渇リスク
 - **修正:** `url::form_urlencoded` でパラメータエスケープ、`aiome_core::http::get_http_client()` に置換
 
-#### [MODIFY] [main.rs](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/main.rs) + [samsara-hub main.rs](file:///Users/motista/Desktop/antigravity/aiome/apps/samsara-hub/src/main.rs)
+#### [MODIFY] [main.rs](../../apps/api-server/src/main.rs) + [samsara-hub main.rs](../../apps/samsara-hub/src/main.rs)
 - **問題:** `panic!()` が残存（CWE-209 情報漏洩リスク）
 - **修正:** `error!()` + `std::process::exit(1)` パターンに統一
 
 ### 構造整理（HIGH — 1日）
 
-#### [MODIFY] [docker_conductor.rs](file:///Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/docker_conductor.rs)
+#### [MODIFY] [docker_conductor.rs](../../libs/infrastructure/src/docker_conductor.rs)
 - Podman 互換のポート割り当て（`portpicker` クレート導入 or ホスト側の動的取得）
 
-#### [MODIFY] [federation.rs](file:///Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/job_queue/federation.rs)
+#### [MODIFY] [federation.rs](../../libs/infrastructure/src/job_queue/federation.rs)
 - 5つのスタブメソッドに `tracing::warn!("Federation stub: not implemented")` + 明示的なドキュメントコメントを追加
 - Phase 4 で本実装する設計意図を ADR として記録
 

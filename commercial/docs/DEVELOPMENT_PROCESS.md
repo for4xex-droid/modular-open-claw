@@ -501,7 +501,7 @@ antigravity/
 
 ```bash
 # 両リポ横断ビルド確認（最も重要なコマンド）
-cd /Users/motista/Desktop/antigravity/modular-open-claw
+cd ../../
 cargo check --workspace && \
 PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 cargo check \
   --manifest-path ../Project-Nurture/Cargo.toml --workspace && \

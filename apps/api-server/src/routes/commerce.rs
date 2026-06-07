@@ -7,6 +7,7 @@
 
 use crate::error::AppError;
 use crate::AppState;
+use aiome_core_contracts::commerce::SubscriptionStatus;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -324,6 +325,16 @@ fn resolve_price_id<'a>(alias: &'a str, configured: Option<&'a str>) -> &'a str 
 }
 
 /// [POST] /api/v1/commerce/subscription/create
+#[utoipa::path(
+    post,
+    path = "/api/v1/commerce/subscription/create",
+    request_body = CreateSubscriptionRequest,
+    responses(
+        (status = 200, description = "Subscription created successfully", body = SubscriptionResponse),
+        (status = 403, description = "Unauthorized access or missing eKYC")
+    ),
+    security(("api_key" = []))
+)]
 pub async fn create_subscription(
     State(state): State<AppState>,
     auth: crate::auth::Authenticated,
@@ -370,6 +381,16 @@ pub async fn create_subscription(
 }
 
 /// [POST] /api/v1/commerce/subscription/cancel
+#[utoipa::path(
+    post,
+    path = "/api/v1/commerce/subscription/cancel",
+    request_body = CancelSubscriptionRequest,
+    responses(
+        (status = 200, description = "Subscription cancelled successfully"),
+        (status = 403, description = "Unauthorized access or missing eKYC")
+    ),
+    security(("api_key" = []))
+)]
 pub async fn cancel_subscription(
     State(state): State<AppState>,
     auth: crate::auth::BanExemptAuthenticated,
@@ -408,7 +429,19 @@ pub async fn cancel_subscription(
     Ok(StatusCode::OK)
 }
 
-/// [GET] /api/v1/commerce/subscription/:agent_id
+/// [GET] /api/v1/commerce/subscription/{agent_id}
+#[utoipa::path(
+    get,
+    path = "/api/v1/commerce/subscription/{agent_id}",
+    responses(
+        (status = 200, description = "Subscription status", body = SubscriptionStatus),
+        (status = 403, description = "Unauthorized access")
+    ),
+    params(
+        ("agent_id" = String, Path, description = "The unique ID of the agent")
+    ),
+    security(("api_key" = []))
+)]
 pub async fn get_subscription_status(
     State(state): State<AppState>,
     auth: crate::auth::Authenticated,

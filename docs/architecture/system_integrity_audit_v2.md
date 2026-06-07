@@ -41,7 +41,7 @@ graph TD
 
 ### T1-3: 🆕 Federation 層が**ハリボテ**
 
-[federation.rs](file:///Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/job_queue/federation.rs) の以下のメソッドが空の `Ok(())` / `Ok(Vec::new())` を返しているだけ：
+[federation.rs](../../libs/infrastructure/src/job_queue/federation.rs) の以下のメソッドが空の `Ok(())` / `Ok(Vec::new())` を返しているだけ：
 
 | メソッド | 行 | 状態 |
 |:---|:---:|:---|
@@ -59,7 +59,7 @@ graph TD
 
 ### T1-4: 🆕 NAPI Bridge の `state.rs` — 独立したシークレット管理
 
-[napi-bridge/state.rs](file:///Users/motista/Desktop/antigravity/aiome/libs/napi-bridge/src/state.rs) が `api-server/bootstrap/` とは**完全に独立した**初期化パスで以下を行う：
+[napi-bridge/state.rs](../../libs/napi-bridge/src/state.rs) が `api-server/bootstrap/` とは**完全に独立した**初期化パスで以下を行う：
 
 - L22: `std::env::var("AIOME_DB_PATH")` で独自のDBプール作成
 - L77-125: `std::env::var("GEMINI_API_KEY")` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` を直接読み取り
@@ -75,7 +75,7 @@ graph TD
 
 ### T2-1: `samsara-hub/main.rs` — 2,320行の God Object（DDL インライン）
 
-[samsara-hub/main.rs](file:///Users/motista/Desktop/antigravity/aiome/apps/samsara-hub/src/main.rs) がルーティング、DB初期化（DDL）、WebSocket処理、認証、メンテナンスを**全て1ファイルに**格納。`init_hub_db()` だけで330行のインライン SQL DDL（SQLite + Postgres 分岐のフル重複）。
+[samsara-hub/main.rs](../../apps/samsara-hub/src/main.rs) がルーティング、DB初期化（DDL）、WebSocket処理、認証、メンテナンスを**全て1ファイルに**格納。`init_hub_db()` だけで330行のインライン SQL DDL（SQLite + Postgres 分岐のフル重複）。
 
 **影響:** スキーマ変更時に SQLite と Postgres の DDL を手動で同期する必要があり、不整合が入りやすい。
 
@@ -85,7 +85,7 @@ graph TD
 
 ### T2-3: `UniversalJobQueue` — 14トレイトの God Trait実装
 
-[job_queue/mod.rs](file:///Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/job_queue/mod.rs) の `UniversalJobQueue` は以下の **14のトレイト** を実装している：
+[job_queue/mod.rs](../../libs/infrastructure/src/job_queue/mod.rs) の `UniversalJobQueue` は以下の **14のトレイト** を実装している：
 
 ```
 TaskRegistry, DistillationOps, AuditStore, ChatStore, KarmaRegistry,

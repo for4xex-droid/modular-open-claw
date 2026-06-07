@@ -39,7 +39,8 @@ def remove_bg(input_path, output_path, bg_color_range, fuzz=30):
     print()
 
 def main():
-    base = "/Users/motista/Desktop/antigravity/aiome/docs/assets/logo"
+    from pathlib import Path
+    base = str(Path(__file__).parent)
     out_dir = os.path.join(base, "transparent")
     os.makedirs(out_dir, exist_ok=True)
     

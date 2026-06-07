@@ -39,6 +39,7 @@ pub fn internal_routes() -> Router {
         )
         .route("/instant-refund", post(instant_refund))
         .route("/lora-train", post(internal_lora_train))
+        .route("/validate-activity", post(internal_validate_activity))
         .nest("/asset", crate::routes::asset::asset_routes())
         .layer(middleware::from_fn(require_oxp_certificate))
 }
@@ -1041,6 +1042,35 @@ async fn internal_lora_train(
         Ok(job_id) => (StatusCode::ACCEPTED, Json(LoraTrainResponse { job_id })).into_response(),
         Err(e) => {
             tracing::error!(error = %e, "Failed to enqueue lora-train job");
+            map_commerce_error(e)
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ValidateActivityRequest {
+    pub actor_id: Uuid,
+    pub activity_type: String,
+    pub amount: u64,
+}
+
+async fn internal_validate_activity(
+    Extension(state): Extension<SharedState>,
+    Json(payload): Json<ValidateActivityRequest>,
+) -> impl IntoResponse {
+    use nurture_bridge::commerce::CommerceEngine;
+    match state
+        .commerce_engine
+        .validate_activity(payload.actor_id, &payload.activity_type, payload.amount)
+        .await
+    {
+        Ok(_) => (
+            StatusCode::OK,
+            Json(serde_json::json!({"status": "success"})),
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, "Activity validation failed");
             map_commerce_error(e)
         }
     }

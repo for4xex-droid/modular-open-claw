@@ -920,3 +920,111 @@ async fn test_internal_api_lora_train() {
     // Initially fails with 404 Not Found since endpoint is missing
     assert_eq!(res.status_code(), StatusCode::ACCEPTED);
 }
+
+#[tokio::test]
+async fn test_internal_api_validate_activity() {
+    let (server, _tdir) = setup_test_server().await;
+    let actor_id = Uuid::new_v4();
+
+    let cert = OxiLeanProofCertificate::generate(
+        "test-edge-node".to_string(),
+        950,
+        chrono::Utc::now().to_rfc3339(),
+        "test_secret_key",
+    );
+    let cert_b64 = base64::Engine::encode(
+        &base64::engine::general_purpose::STANDARD,
+        serde_json::to_string(&cert).unwrap(),
+    );
+
+    // 先にコインをチャージして残高を増やす
+    let charge_payload = json!({
+        "actor_id": actor_id,
+        "amount": 500,
+        "currency": "coin",
+        "stripe_event_id": "evt_validate_activity_test",
+        "idempotency_key": "idemp_validate_activity_test"
+    });
+    let charge_res = server
+        .post("/internal/coin-charge")
+        .add_header(
+            header::HeaderName::from_static("x-oxilean-proof-certificate"),
+            header::HeaderValue::from_str(&cert_b64).unwrap(),
+        )
+        .json(&charge_payload)
+        .await;
+    assert_eq!(charge_res.status_code(), StatusCode::OK);
+
+    let payload = json!({
+        "actor_id": actor_id,
+        "activity_type": "generation",
+        "amount": 100
+    });
+
+    let res = server
+        .post("/internal/validate-activity")
+        .add_header(
+            header::HeaderName::from_static("x-oxilean-proof-certificate"),
+            header::HeaderValue::from_str(&cert_b64).unwrap(),
+        )
+        .json(&payload)
+        .await;
+
+    // GREENフェーズで 200 OK (MockCommerceEngineが常にOk(())を返すため) が返ることを期待。
+    assert_eq!(res.status_code(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_internal_api_validate_activity_missing_cert() {
+    let (server, _tdir) = setup_test_server().await;
+    let actor_id = Uuid::new_v4();
+
+    let payload = json!({
+        "actor_id": actor_id,
+        "activity_type": "generation",
+        "amount": 100
+    });
+
+    // 証明書なし (Missing Header) -> 403 Forbidden
+    let res = server
+        .post("/internal/validate-activity")
+        .json(&payload)
+        .await;
+
+    assert_eq!(res.status_code(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_internal_api_validate_activity_invalid_type() {
+    let (server, _tdir) = setup_test_server().await;
+    let actor_id = Uuid::new_v4();
+
+    let cert = OxiLeanProofCertificate::generate(
+        "test-edge-node".to_string(),
+        950,
+        chrono::Utc::now().to_rfc3339(),
+        "test_secret_key",
+    );
+    let cert_b64 = base64::Engine::encode(
+        &base64::engine::general_purpose::STANDARD,
+        serde_json::to_string(&cert).unwrap(),
+    );
+
+    let payload = json!({
+        "actor_id": actor_id,
+        "activity_type": "invalid_type_xyz",
+        "amount": 100
+    });
+
+    let res = server
+        .post("/internal/validate-activity")
+        .add_header(
+            header::HeaderName::from_static("x-oxilean-proof-certificate"),
+            header::HeaderValue::from_str(&cert_b64).unwrap(),
+        )
+        .json(&payload)
+        .await;
+
+    // 不正なactivity_type -> 400 or 500 (200 OK にはならない)
+    assert_ne!(res.status_code(), StatusCode::OK);
+}

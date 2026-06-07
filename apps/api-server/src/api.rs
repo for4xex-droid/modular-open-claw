@@ -65,6 +65,11 @@ use utoipa::OpenApi;
         crate::routes::commerce::execute_purchase,
         crate::routes::commerce::list_escrows,
         crate::routes::commerce::release_escrow,
+        crate::routes::commerce::create_subscription,
+        crate::routes::commerce::cancel_subscription,
+        crate::routes::commerce::get_subscription_status,
+        crate::routes::commerce::create_checkout_session,
+        crate::routes::commerce::create_portal_session,
         // Gift
         crate::routes::gift::send_gift,
         crate::routes::gift::get_gift_policy,
@@ -160,6 +165,14 @@ use utoipa::OpenApi;
             aiome_core_contracts::commerce::TransactionRecord,
             crate::routes::commerce::WithdrawRequest,
             crate::routes::commerce::TransferRequest,
+            crate::routes::commerce::CreateSubscriptionRequest,
+            crate::routes::commerce::SubscriptionResponse,
+            crate::routes::commerce::CancelSubscriptionRequest,
+            aiome_core_contracts::commerce::SubscriptionStatus,
+            crate::routes::commerce::CreateCheckoutSessionRequest,
+            crate::routes::commerce::CreateCheckoutSessionResponse,
+            crate::routes::commerce::CreatePortalSessionRequest,
+            crate::routes::commerce::CreatePortalSessionResponse,
             aiome_core_contracts::commerce::GiftRequest,
             crate::routes::gift::GiftResponse,
             crate::routes::gift::GiftPolicyResponse,
@@ -301,6 +314,31 @@ mod tests {
     fn test_openapi_schema_generation() {
         let schema = ApiDoc::openapi().to_pretty_json().unwrap();
         assert!(!schema.is_empty());
+
+        // Ensure the 5 commerce endpoints are permanently registered in OpenAPI paths
+        let schema_json: serde_json::Value = serde_json::from_str(&schema).unwrap();
+        let paths = schema_json["paths"].as_object().expect("paths object");
+
+        assert!(
+            paths.contains_key("/api/v1/commerce/subscription/create"),
+            "Missing subscription create"
+        );
+        assert!(
+            paths.contains_key("/api/v1/commerce/subscription/cancel"),
+            "Missing subscription cancel"
+        );
+        assert!(
+            paths.contains_key("/api/v1/commerce/subscription/{agent_id}"),
+            "Missing subscription get"
+        );
+        assert!(
+            paths.contains_key("/api/v1/commerce/checkout-session/create"),
+            "Missing checkout session create"
+        );
+        assert!(
+            paths.contains_key("/api/v1/commerce/customer-portal/create"),
+            "Missing customer portal create"
+        );
 
         let docs_dir = std::path::Path::new("../../docs");
         if !docs_dir.exists() {

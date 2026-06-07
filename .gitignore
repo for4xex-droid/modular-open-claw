@@ -116,3 +116,21 @@ tools/mlit-mcp/
 # Promo video artifacts
 promo_trailer_draft.mp4
 scripts/capture_*.js
+
+# CodeQL database (generated, >200MB)
+.codeql-db/
+
+# Python cache
+__pycache__/
+*.pyc
+.coverage
+
+# Scratch / temporary analysis files
+scratch_*.py
+errors.txt
+full_*_scan.txt
+test_db
+test_logic
+
+# SARIF results (can be regenerated)
+*.sarif
