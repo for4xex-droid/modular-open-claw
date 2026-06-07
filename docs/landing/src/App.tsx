@@ -4,9 +4,11 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { SocialProof } from './components/SocialProof';
 import { Features } from './components/Features';
+import { HowItWorks } from './components/HowItWorks';
+import { Economy } from './components/Economy';
 import { CodePreview } from './components/CodePreview';
 import { LiveDemo } from './components/LiveDemo';
-import { Security } from './components/Security';
+import { Architecture } from './components/Architecture';
 import { Showcase } from './components/Showcase';
 import { Pricing } from './components/Pricing';
 import { CTA } from './components/CTA';
@@ -42,9 +44,11 @@ function App() {
         <Hero />
         <SocialProof />
         <Features />
+        <HowItWorks />
+        <Economy />
         <CodePreview />
         <LiveDemo />
-        <Security />
+        <Architecture />
         <Showcase />
         <Pricing />
         <CTA />

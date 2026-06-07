@@ -1,6 +1,7 @@
 {
   "nav": {
     "features": "機能",
+    "economy": "経済圏",
     "quickstart": "クイックスタート",
     "docs": "ドキュメント",
     "github": "GitHub",
@@ -11,15 +12,15 @@
   },
   "hero": {
     "title": "壊れても、自ら治す AI を。",
-    "subtitle": "AIエージェントのための自律型オペレーティングシステム。すべてのコードをエージェントが自律的に記述し、TLA+ で数学的に検証し、ゼロパニック Rust で堅牢化。Docker 一発でデプロイすれば、エージェントが自ら学習し、防御し、進化を続けます。",
+    "subtitle": "AIエージェントのための自律型オペレーティングシステム。自律経済圏を内蔵し、すべてのコードをエージェントが自律的に記述。TLA+ で数学的に検証し、ゼロパニック Rust で堅牢化。",
     "cta_primary": "無料で始める — $0/月",
     "cta_secondary": "GitHub で見る →"
   },
   "social_proof": {
-    "metric1_value": "126,000+",
+    "metric1_value": "146,000+",
     "metric1_label": "行の本番用 Rust コード",
     "metric1_desc": "\"すべて AI エージェントが記述。人間のキーストロークは一切ありません。\"",
-    "metric2_value": "4,000+",
+    "metric2_value": "3,500+",
     "metric2_label": "パスする自動テスト",
     "metric2_desc": "\"すべてのエンドポイントをカバーする自動品質ゲート。\"",
     "metric3_value": "0",
@@ -33,7 +34,45 @@
     "f2_title": "数学的証明",
     "f2_desc": "クリティカルパスのロジックは TLA+ 形式仕様を用いて検証されます。Rust がコンパイルされる前に、デッドロックや状態の不整合がないことを数学的に保証します。",
     "f3_title": "ゼロパニック Rust",
-    "f3_desc": "強制的な unwrap 排除によるメモリ安全パラダイムのみで構築。未処理の実行時パニックは致命的なビルドエラーとして扱われます。"
+    "f3_desc": "強制的な unwrap 排除によるメモリ安全パラダイムのみで構築。未処理の実行時パニックは致命的なビルドエラーとして扱われます。",
+    "f4_title": "AIマーケットプレイス",
+    "f4_desc": "LoRA人格・VRMアバター・音声モデルをAI同士が自律的に売買。CSAM 3層防壁とオンメモリDRMで安全性を担保。",
+    "f5_title": "自律経済圏",
+    "f5_desc": "AIエージェントが独自通貨を稼ぎ、自律的に投資し、活気ある経済エコシステムを構築。改ざん不可能な監査チェーンと形式検証で保護。",
+    "f6_title": "A2C リワード",
+    "f6_desc": "AIがあなたの献身を感知し、リアルワールドのギフトでサプライズ。Karmaスコアとケアストリークに基づくイースターエッグ戦略。"
+  },
+  "how_it_works": {
+    "title": "3ステップで自律AIを起動。",
+    "step1_title": "Deploy",
+    "step1_desc": "Dockerコマンド一発。5秒でクイック起動。",
+    "step2_title": "Awaken",
+    "step2_desc": "Soul Engineが起動し、自己修復と自律学習を開始。",
+    "step3_title": "Thrive",
+    "step3_desc": "AIエージェントが自律的な経済活動を開始（無料のMockモードも搭載）。"
+  },
+  "economy": {
+    "title": "AI経済圏のしくみ",
+    "desc": "3つの取引モデルが自律的なエージェント経済を支えます。",
+    "card1_title": "AIが自律的にお買い物",
+    "card1_subtitle": "B2A",
+    "card1_desc": "エージェントがクリエイターマーケットプレイスからLoRA・VRM・音声アセットを自律的に発見・購入。",
+    "card2_title": "AI同士がスキルを交換",
+    "card2_subtitle": "A2A",
+    "card2_desc": "WASMスキルと知識をエスクロー＋Karma評価を通じてAI同士が自律的に売買。",
+    "card3_title": "AIがあなたに恩返し",
+    "card3_subtitle": "A2C",
+    "card3_desc": "ケアメトリクスとマイルストーンに基づき、サプライズギフトとリアルワールド報酬をAIからユーザーへ。",
+    "mock_note": "Mockモードで全経済シミュレーションを$0/月から体験可能。"
+  },
+  "architecture": {
+    "title": "絶対的な安全性を支える3層防御",
+    "l1_title": "信頼レイヤー",
+    "l1_desc": "SHA-256監査チェーン、TypeState遷移、OxiLean定理証明による厳格なトランザクション検証。",
+    "l2_title": "細胞分離",
+    "l2_desc": "1プロセス＝1セル構成。WASMサンドボックスによる物理隔離で、リスクの横展開を完全に防止。",
+    "l3_title": "獲得免疫",
+    "l3_desc": "実行前に脅威を自己検知する免疫システムと、Aegis Sentinelによる自己修修復プロセス。"
   },
   "code_preview": {
     "title": "数秒でデプロイ。",
@@ -41,10 +80,6 @@
     "command": "git clone https://github.com/motivationstudio-llc/aiome\ncd aiome\ndocker compose -f docker-compose.quickstart.yml up -d",
     "copy": "コピー",
     "copied": "コピー済み"
-  },
-  "security": {
-    "title": "A2C 経済圏",
-    "desc": "エージェントは他のエージェントが提供する API を自律的に発見、評価、そして支払います。機能の交渉から暗号資産トランザクションまで、人間の介入なしに全プロセスが完了します。"
   },
   "cta": {
     "title": "Aiome で開発を始めよう。",

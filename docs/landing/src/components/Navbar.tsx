@@ -22,8 +22,9 @@ export function Navbar() {
 
   const navLinks = [
     { href: '#features', label: t('nav.features'), external: false },
+    { href: '#economy', label: t('nav.economy'), external: false },
     { href: '#quickstart', label: t('nav.quickstart'), external: false },
-    { href: 'https://github.com/motivationstudio-llc/aiome/wiki', label: t('nav.docs'), external: true },
+    { href: 'https://github.com/motivationstudio-llc/aiome#-ドキュメント-documentation', label: t('nav.docs'), external: true },
     { href: 'https://github.com/motivationstudio-llc/aiome', label: t('nav.github'), external: true },
   ];
 

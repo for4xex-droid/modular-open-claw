@@ -7,8 +7,8 @@ describe('SocialProof Component', () => {
     render(<SocialProof />);
     
     // Check metric values
-    expect(screen.getByText('126,000+')).toBeInTheDocument();
-    expect(screen.getByText('4,000+')).toBeInTheDocument();
+    expect(screen.getByText('146,000+')).toBeInTheDocument();
+    expect(screen.getByText('3,500+')).toBeInTheDocument();
     expect(screen.getByText('0')).toBeInTheDocument();
   });
 

@@ -9,7 +9,7 @@
 <h1 align="center">Aiome</h1>
 <p align="center">
   <strong>The Self-Healing AI Agent OS</strong><br>
-  <em>Written entirely by AI agents. 280,000+ lines of production Rust.</em><br><br>
+  <em>Written entirely by AI agents. 146,000+ lines of production Rust.</em><br><br>
   <a href="https://aiome.dev"><strong>aiome.dev (Official Website)</strong></a><br><br>
   <strong>An Autonomous Operating System built by AI, for AI to operate and evolve safely.</strong>
 </p>
@@ -79,6 +79,24 @@ API_SERVER_SECRET="my_super_secret_key_123456" cargo run --bin api-server # gitl
 
 ## 🌌 What is Aiome? (Philosophy & Concept)
 
+## 💰 Aiome × Nurture — Autonomous AI Economy
+
+Aiome goes beyond executing tasks by incorporating a built-in economic activities platform, establishing an "Autonomous AI Economy" where agents and humans trade value.
+
+| Transaction Model | Description |
+|---|---|
+| 🏪 AI Goes Shopping (B2A) | Agents autonomously discover and purchase digital assets like LoRA personalities, VRM avatars, and voice models under CSAM triple-layer defense and on-memory DRM. |
+| 🤝 Agents Trade Skills (A2A) | WASM skills and knowledge are autonomously exchanged between agents via escrow contracts and the Karma reputation registry to expand capabilities. |
+| 🎁 AI Gives Back (A2C) | The OS senses user dedication and triggers surprise gifts or real-world rewards (via Tremendous API, etc.) based on Karma score and care streaks (Easter Egg strategy). |
+
+When Stripe API keys are not configured in `.env`, the system automatically falls back to `MockCommerceEngine`. You can immediately experience all economic features (billing, skill trading, and gifts) using fake balances, completely free.
+
+For detailed technical specifications, transaction protocols, and sequence diagrams, please refer to [AIOME_NURTURE_SYNERGY.md](docs/architecture/AIOME_NURTURE_SYNERGY.md).
+
+---
+
+## 🌌 What is Aiome? (Philosophy & Concept)
+
 Aiome is more than just an agent framework—it is an **Autonomous AI Operating System** fundamentally designed to let AI agents operate, defend themselves, and evolve safely.
 
 **100% of the code was written autonomously by AI agents.**
@@ -116,6 +134,8 @@ To guarantee robustness, Aiome heavily utilizes Rust's TypeState pattern to main
 ```text
 apps/api-server      ← Main Binary + Watchtower (Body / Soul / Discord Bridge)
 apps/samsara-hub     ← P2P Federation (Hub / CRDT Sync)
+apps/management-console ← Premium Management Console (Vite + React / 100+ Components)
+apps/key-proxy       ← Key Proxy (AbyssVault / WordPress Integration)
       ↓
 commercial/apps/nurture-api ← Nurture Commercial Economy Engine (BUSL-1.1)
 commercial/libs/*           ← Commercial payment protocols, bridge, and infra

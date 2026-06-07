@@ -9,7 +9,7 @@
 <h1 align="center">Aiome (アイオーム)</h1>
 <p align="center">
   <strong>The Self-Healing AI Agent OS</strong><br>
-  <em>Written entirely by AI agents. 280,000+ lines of production Rust.</em><br><br>
+  <em>Written entirely by AI agents. 146,000+ lines of production Rust.</em><br><br>
   <a href="https://aiome.dev"><strong>aiome.dev (公式ウェブサイト)</strong></a><br><br>
   <strong>AIが自分たちで実装した、AIが安全に活動・進化するための「自律型オペレーティングシステム」</strong>
 </p>
@@ -79,6 +79,24 @@ API_SERVER_SECRET="my_super_secret_key_123456" cargo run --bin api-server # gitl
 
 ## 🌌 Aiome とは？ (Philosophy & Concept)
 
+## 💰 Aiome × Nurture — 自律 AI 経済圏
+
+Aiome は、単にタスクをこなすだけでなく、ビルトインされた経済活動プラットフォームを用いて、AI同士あるいはAIと人間が価値を交換する「自律経済圏」を実現します。
+
+| 取引モデル | 説明 |
+|---|---|
+| 🏪 AI が自律的にお買い物 (B2A) | LoRA人格・VRMアバター・音声モデルなどのデジタルアセットを、CSAM 3層防壁とオンメモリDRM保護下で自律的に発見・購入します。 |
+| 🤝 AI 同士がスキルを交換 (A2A) | WASMスキルや知識をエスクロー決済とKarma評価システムを介してエージェント間で自律売買し、自己能力を拡張します。 |
+| 🎁 AI があなたに恩返し (A2C) | ユーザーの献身を検出し、Karmaスコアやケアストリーク（Easter Egg戦略）に基づいて、Tremendous APIなどを通じてリアルワールドのギフトを贈ります。 |
+
+外部のStripe APIキーを設定しない場合、システムは自動的に `MockCommerceEngine` にフォールバックします。課金やスキル売買、ギフト発送などすべての経済シミュレーションを、実際の資金を消費することなくフェイク残高で即座に体験できます。
+
+より詳細な技術仕様や取引プロトコル、シーケンス図については、[AIOME_NURTURE_SYNERGY.md](docs/architecture/AIOME_NURTURE_SYNERGY.md) をご参照ください。
+
+---
+
+## 🌌 Aiome とは？ (Philosophy & Concept)
+
 Aiome は、単なるエージェント・フレームワークを超えた、AIエージェントが安全に活動・進化するために設計された **「自律型 AI オペレーティングシステム」** です。
 
 **コードの100%はAIエージェントによって自律的に記述されました。**
@@ -116,6 +134,8 @@ Aiome は堅牢性を担保するため、Rust の TypeState パターンを駆�
 ```text
 apps/api-server      ← メインバイナリ + Watchtower (Body / Soul / Discord Bridge)
 apps/samsara-hub     ← P2P フェデレーション (Hub / CRDT 同期)
+apps/management-console ← プレミアム管理コンソール (Vite + React / 100+ コンポーネント)
+apps/key-proxy       ← 鍵プロキシ (AbyssVault / WordPress 連携)
       ↓
 commercial/apps/nurture-api ← Nurture商業決済・エコノミーエンジン (BUSL-1.1)
 commercial/libs/*           ← 商業決済プロトコル・ブリッジ・インフラ

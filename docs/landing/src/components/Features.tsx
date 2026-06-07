@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Cpu, ShieldCheck, Zap } from 'lucide-react';
+import { Cpu, ShieldCheck, Zap, Store, Coins, Gift } from 'lucide-react';
 
 export function Features() {
   const { t } = useTranslation();
@@ -8,7 +8,10 @@ export function Features() {
   const features = [
     { id: 1, icon: Cpu, colSpan: "md:col-span-2" },
     { id: 2, icon: ShieldCheck, colSpan: "md:col-span-1" },
-    { id: 3, icon: Zap, colSpan: "md:col-span-3" },
+    { id: 3, icon: Zap, colSpan: "md:col-span-1" },
+    { id: 4, icon: Store, colSpan: "md:col-span-2" },
+    { id: 5, icon: Coins, colSpan: "md:col-span-2" },
+    { id: 6, icon: Gift, colSpan: "md:col-span-1" },
   ];
 
   return (

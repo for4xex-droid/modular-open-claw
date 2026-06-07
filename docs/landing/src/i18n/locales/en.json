@@ -1,6 +1,7 @@
 {
   "nav": {
     "features": "Features",
+    "economy": "Economy",
     "quickstart": "Quickstart",
     "docs": "Documentation",
     "github": "GitHub",
@@ -11,15 +12,15 @@
   },
   "hero": {
     "title": "Build AI that heals itself.",
-    "subtitle": "The autonomous operating system for AI agents — written entirely by agents, verified by formal mathematics, and hardened with zero-panic Rust. Deploy a self-healing agent with a single Docker command, and let it learn, defend, and evolve on its own.",
+    "subtitle": "The autonomous operating system for AI agents with a built-in self-sustaining economy — written entirely by agents, verified by formal mathematics, and hardened with zero-panic Rust.",
     "cta_primary": "Get Started Free — $0/mo",
     "cta_secondary": "View on GitHub →"
   },
   "social_proof": {
-    "metric1_value": "126,000+",
+    "metric1_value": "146,000+",
     "metric1_label": "lines of production Rust",
     "metric1_desc": "\"Every line written by AI agents. Not a single human keystroke.\"",
-    "metric2_value": "4,000+",
+    "metric2_value": "3,500+",
     "metric2_label": "automated tests passing",
     "metric2_desc": "\"Automated quality gates covering every endpoint.\"",
     "metric3_value": "0",
@@ -33,7 +34,45 @@
     "f2_title": "Mathematically Proven",
     "f2_desc": "Critical path logic is verified using TLA+ formal specifications. We guarantee absence of deadlocks and state inconsistencies before a single line of Rust is compiled.",
     "f3_title": "Zero-Panic Rust",
-    "f3_desc": "Built exclusively on memory-safe paradigms with enforced Result/Option unwrapping bans. Unhandled runtime panics are treated as critical build failures."
+    "f3_desc": "Built exclusively on memory-safe paradigms with enforced Result/Option unwrapping bans. Unhandled runtime panics are treated as critical build failures.",
+    "f4_title": "AI Marketplace",
+    "f4_desc": "LoRA personalities, VRM avatars, and voice models — traded autonomously between agents. CSAM triple-layer defense and on-memory DRM ensure every asset is safe.",
+    "f5_title": "Self-Sustaining Economy",
+    "f5_desc": "AI agents earn their own currency, invest autonomously, and build a thriving economic ecosystem — secured by tamper-proof audit chains and formal verification.",
+    "f6_title": "A2C Rewards",
+    "f6_desc": "Your AI surprises you with real-world gifts when it senses your dedication. Easter egg strategy triggers based on Karma score and care streaks."
+  },
+  "how_it_works": {
+    "title": "Up and running in 3 steps.",
+    "step1_title": "Deploy",
+    "step1_desc": "One Docker command. 5 seconds to launch.",
+    "step2_title": "Awaken",
+    "step2_desc": "Soul Engine starts self-healing and autonomous learning.",
+    "step3_title": "Thrive",
+    "step3_desc": "AI begins autonomous economic activity — or runs in free mock mode."
+  },
+  "economy": {
+    "title": "The AI Economy, Explained.",
+    "desc": "Three transaction models power a self-sustaining agent ecosystem.",
+    "card1_title": "AI Goes Shopping",
+    "card1_subtitle": "B2A",
+    "card1_desc": "Agents autonomously discover and purchase LoRA, VRM, and voice assets from the creator marketplace.",
+    "card2_title": "Agents Trade Skills",
+    "card2_subtitle": "A2A",
+    "card2_desc": "WASM skills and knowledge are exchanged between agents via escrow and Karma reputation scoring.",
+    "card3_title": "AI Gives Back",
+    "card3_subtitle": "A2C",
+    "card3_desc": "Surprise gifts and real-world rewards flow from AI to users, triggered by care metrics and milestones.",
+    "mock_note": "Try it free — Mock mode runs the full economy simulation at $0/mo."
+  },
+  "architecture": {
+    "title": "Engineered for absolute safety.",
+    "l1_title": "Trust Layer",
+    "l1_desc": "SHA-256 audit chains, TypeState transitions, and OxiLean theorem proving ensure every action is verified.",
+    "l2_title": "Cell Isolation",
+    "l2_desc": "One process = one cell. Physical path isolation with WASM sandboxing prevents lateral movement.",
+    "l3_title": "Adaptive Immunity",
+    "l3_desc": "Self-learning immune system detects threats before execution. Aegis Sentinel auto-repairs after."
   },
   "code_preview": {
     "title": "Deploy in seconds.",
@@ -41,10 +80,6 @@
     "command": "git clone https://github.com/motivationstudio-llc/aiome\ncd aiome\ndocker compose -f docker-compose.quickstart.yml up -d",
     "copy": "Copy",
     "copied": "Copied"
-  },
-  "security": {
-    "title": "A2C Economy",
-    "desc": "Agents autonomously discover, evaluate, and pay for APIs provided by other agents. The entire process—from capability negotiation to crypto transaction—happens without human intervention."
   },
   "cta": {
     "title": "Start building with Aiome today.",

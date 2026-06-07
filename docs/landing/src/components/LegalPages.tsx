@@ -120,7 +120,7 @@ export function TokushohoPage() {
   const { t } = useTranslation();
 
   return (
-    <LegalLayout title={t('footer.tokushoho', '特定商取引法に基づく表記')} lastUpdated="2026-06-01">
+    <LegalLayout title={t('footer.tokushoho', '特定商取引法に基づく表記')} lastUpdated="2026-06-07">
       <table className="w-full text-left border-collapse border border-white/10 rounded-2xl overflow-hidden bg-brand-surface/20">
         <tbody>
           <tr className="border-b border-white/5">
@@ -129,19 +129,19 @@ export function TokushohoPage() {
           </tr>
           <tr className="border-b border-white/5">
             <th className="p-4 bg-white/5 text-white font-semibold">販売業者</th>
-            <td className="p-4">motivationstudio, LLC（合同会社モチベーションスタジオ）</td>
+            <td className="p-4">motivationstudio, LLC（モチベーションスタジオ合同会社）</td>
           </tr>
           <tr className="border-b border-white/5">
             <th className="p-4 bg-white/5 text-white font-semibold">運営責任者</th>
-            <td className="p-4">合同会社モチベーションスタジオ 代表社員</td>
+            <td className="p-4">モチベーションスタジオ合同会社 代表社員</td>
           </tr>
           <tr className="border-b border-white/5">
             <th className="p-4 bg-white/5 text-white font-semibold">所在地</th>
-            <td className="p-4">東京都渋谷区（※詳細な住所はご請求に応じて遅滞なく電子メール等で提供いたします）</td>
+            <td className="p-4">京都府京都市（※詳細な住所はご請求に応じて遅滞なく電子メール等で提供いたします）</td>
           </tr>
           <tr className="border-b border-white/5">
             <th className="p-4 bg-white/5 text-white font-semibold">メールアドレス</th>
-            <td className="p-4">support@motivationstudio.dev（問い合わせ先メールアドレス）</td>
+            <td className="p-4">project.aiome@gmail.com（問い合わせ先メールアドレス）</td>
           </tr>
           <tr className="border-b border-white/5">
             <th className="p-4 bg-white/5 text-white font-semibold">販売価格</th>

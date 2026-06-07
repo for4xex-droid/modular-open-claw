@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+### Changed
+- LP/README: コード行数を `146,000+`、テスト数を `3,500+` に更新
+- LP: Economy / HowItWorks / Architecture セクション新設、Features を 3→6 に拡張
+- LP: Hero subtitle に自律経済圏の訴求を追加
+- LP: Security セクションを Architecture セクションに置換（3層安全性の訴求）
+- Project-Nurture README を Aiome monorepo へのリダイレクト案内に変更
+- README: 「Aiome × Nurture — 自律 AI 経済圏」セクションを新設
+- LP/TOKUSHOHO: 特定商取引法に基づく表記の日本語法人名（モチベーションスタジオ合同会社）、所在地（京都府京都市）、メールアドレス（project.aiome@gmail.com）を最新情報へ修正
+
 ### Added
 - **環境・エラー設計ドキュメントの整備 (Phase 5)**:
   - `docs/architecture/error_handling.md` [NEW]: Aiome システムの 10 種類のエラー型の責務・役割を記述し、新規のエラー型定義を原則禁止する制限ルールをドキュメント化。
