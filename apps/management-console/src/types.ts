@@ -191,3 +191,38 @@ export interface AegisSentinelEvent {
 export interface InspirationEvent {
     description?: string;
 }
+
+export interface SettingEntry {
+    key: string;
+    value: string;
+    category: string;
+    is_secret: boolean;
+    updated_at: string;
+}
+
+export type ViewMode = 'beginner' | 'intermediate' | 'advanced';
+
+export interface CausalGraphNode {
+    id: string;
+    step: TrajectoryStep;
+}
+
+export interface CausalGraphResponse {
+    nodes: CausalGraphNode[];
+    edges: { from: string; to: string; [key: string]: unknown }[];
+}
+
+// Rust の a2ui::schema 構造に追従
+export interface A2uiMetric {
+    label: string;
+    value: number;
+}
+
+export interface A2uiTimelineEvent {
+    time: string;
+    title: string;
+}
+
+
+
+

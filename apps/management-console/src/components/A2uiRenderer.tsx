@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 import React, { useState, useCallback } from 'react';
-import { A2uiEnvelope, A2uiComponent, A2uiSurface } from '../types';
+import { A2uiEnvelope, A2uiComponent, A2uiSurface, A2uiMetric, A2uiTimelineEvent } from '../types';
 import { useTokenHealth } from '../hooks/useTokenHealth';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
@@ -207,12 +207,12 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                 </pre>
             );
         case 'chart':
-            const metrics = Array.isArray(component.props?.metrics) ? component.props.metrics : [];
+            const metrics: A2uiMetric[] = Array.isArray(component.props?.metrics) ? component.props.metrics : [];
             return (
                 <div style={{ padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', margin: '0.5rem 0' }}>
                     {component.props?.title ? <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--text-primary)', fontSize: '0.9rem' }}>{String(component.props.title)}</h4> : null}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {metrics.map((m: any, i: number) => (
+                        {metrics.map((m: A2uiMetric, i: number) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <span style={{ width: '80px', fontSize: '0.75rem', color: 'var(--text-secondary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{m.label}</span>
                                 <div style={{ flex: 1, height: '6px', background: 'var(--white-10)', borderRadius: '3px', overflow: 'hidden' }}>
@@ -225,18 +225,18 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                 </div>
             );
         case 'dataTable':
-            const cols = Array.isArray(component.props?.columns) ? component.props.columns : [];
-            const rows = Array.isArray(component.props?.rows) ? component.props.rows : [];
+            const cols: string[] = Array.isArray(component.props?.columns) ? component.props.columns : [];
+            const rows: Record<string, unknown>[] = Array.isArray(component.props?.rows) ? component.props.rows : [];
             return (
                 <div style={{ overflowX: 'auto', margin: '0.5rem 0', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-sm)' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                         <thead style={{ background: 'var(--white-05)' }}>
-                            <tr>{cols.map((c: any, i: number) => <th key={i} style={{ padding: '0.5rem', textAlign: 'left', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-glass)' }}>{c}</th>)}</tr>
+                            <tr>{cols.map((c: string, i: number) => <th key={i} style={{ padding: '0.5rem', textAlign: 'left', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-glass)' }}>{c}</th>)}</tr>
                         </thead>
                         <tbody>
-                            {rows.map((row: any, i: number) => (
+                            {rows.map((row: Record<string, unknown>, i: number) => (
                                 <tr key={i} style={{ borderBottom: '1px solid var(--border-glass-dim)' }}>
-                                    {cols.map((c: any, j: number) => <td key={j} style={{ padding: '0.5rem', color: 'var(--text-primary)' }}>{row[c]}</td>)}
+                                    {cols.map((c: string, j: number) => <td key={j} style={{ padding: '0.5rem', color: 'var(--text-primary)' }}>{String(row[c] ?? '')}</td>)}
                                 </tr>
                             ))}
                         </tbody>
@@ -252,10 +252,10 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                 </span>
             );
         case 'timeline':
-            const events = Array.isArray(component.props?.events) ? component.props.events : [];
+            const events: A2uiTimelineEvent[] = Array.isArray(component.props?.events) ? component.props.events : [];
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', margin: '0.5rem 0', paddingLeft: '0.5rem', borderLeft: '2px solid var(--border-glass)' }}>
-                    {events.map((ev: any, i: number) => (
+                    {events.map((ev: A2uiTimelineEvent, i: number) => (
                         <div key={i} style={{ position: 'relative', paddingLeft: '1rem' }}>
                             <div style={{ position: 'absolute', left: '-0.6rem', top: '0.25rem', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-cyan)' }} />
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{ev.time}</div>

@@ -843,7 +843,7 @@ dependencies = [
  "secrecy",
  "serde",
  "serde_json",
- "serial_test",
+ "serial_test 3.4.0",
  "sha2 0.10.9",
  "shared",
  "soul",
@@ -6846,7 +6846,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "serenity",
- "serial_test",
+ "serial_test 3.4.0",
  "sha2 0.10.9",
  "shared",
  "soul",
@@ -8064,6 +8064,7 @@ dependencies = [
  "reqwest 0.12.28",
  "serde",
  "serde_json",
+ "serial_test 2.0.0",
  "shared",
  "tokio",
  "tracing",
@@ -8409,7 +8410,7 @@ dependencies = [
  "secrecy",
  "serde",
  "serde_json",
- "serial_test",
+ "serial_test 3.4.0",
  "sqlx",
  "subtle",
  "tempfile",
@@ -11384,6 +11385,20 @@ dependencies = [
 
 [[package]]
 name = "serial_test"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e56dd856803e253c8f298af3f4d7eb0ae5e23a737252cd90bb4f3b435033b2d"
+dependencies = [
+ "dashmap 5.5.3",
+ "futures",
+ "lazy_static",
+ "log",
+ "parking_lot",
+ "serial_test_derive 2.0.0",
+]
+
+[[package]]
+name = "serial_test"
 version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "911bd979bf1070a3f3aa7b691a3b3e9968f339ceeec89e08c280a8a22207a32f"
@@ -11394,7 +11409,18 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "scc",
- "serial_test_derive",
+ "serial_test_derive 3.4.0",
+]
+
+[[package]]
+name = "serial_test_derive"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91d129178576168c589c9ec973feedf7d3126c01ac2bf08795109aa35b69fb8f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -11577,7 +11603,7 @@ dependencies = [
  "secrecy",
  "serde",
  "serde_json",
- "serial_test",
+ "serial_test 3.4.0",
  "sha2 0.10.9",
  "sqlx",
  "subtle",

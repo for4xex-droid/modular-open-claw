@@ -757,4 +757,54 @@ mod tests {
             assert_eq!(resp.status, *status);
         }
     }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_ffi_karma_bootstrap() {
+        std::env::set_var("AIOME_DB_PATH", "sqlite::memory:?cache=shared");
+        let res = karma_bootstrap("session_123".to_string()).await;
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_ffi_karma_ingest_and_get_directives() {
+        std::env::set_var("AIOME_DB_PATH", "sqlite::memory:?cache=shared");
+        let msg = r#"{"role": "user", "content": "hello core"}"#;
+        let res = karma_ingest("session_123".to_string(), msg.to_string()).await;
+        assert!(res.is_ok());
+
+        let directives = get_karma_directives("hello".to_string(), "skill_abc".to_string()).await;
+        assert!(directives.is_ok());
+        assert_eq!(directives.unwrap(), "");
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_ffi_quarantine_check_spawn() {
+        std::env::set_var("AIOME_DB_PATH", "sqlite::memory:?cache=shared");
+        let res = quarantine_check_spawn("session_123".to_string()).await;
+        assert!(res.is_ok());
+        let spawn_resp = res.unwrap();
+        assert!(
+            spawn_resp.status == "ok"
+                || spawn_resp.status == "blocked"
+                || spawn_resp.status == "quarantined"
+        );
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_ffi_immune_check_tool() {
+        std::env::set_var("AIOME_DB_PATH", "sqlite::memory:?cache=shared");
+        let res = immune_check_tool("bash".to_string(), "rm -rf /".to_string()).await;
+        assert!(res.is_ok());
+        let check_resp = res.unwrap();
+        assert!(check_resp.blocked);
+        assert!(check_resp.reason.unwrap().contains("Baseline Violation"));
+
+        let res_safe = immune_check_tool("bash".to_string(), "ls".to_string()).await;
+        assert!(res_safe.is_ok());
+        assert!(!res_safe.unwrap().blocked);
+    }
 }

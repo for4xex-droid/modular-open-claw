@@ -96,6 +96,14 @@ export const useAgentChat = (): UseAgentChatReturn => {
         return newId;
     });
 
+interface HistoryMessageResponse {
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    metadata?: {
+        reasoning?: string;
+    };
+}
+
     useEffect(() => {
         const loadHistory = async () => {
             try {
@@ -103,7 +111,7 @@ export const useAgentChat = (): UseAgentChatReturn => {
                 if (resp.ok) {
                     const data = await resp.json();
                     if (data.messages && Array.isArray(data.messages)) {
-                        setHistory(data.messages.map((m: any) => ({
+                        setHistory(data.messages.map((m: HistoryMessageResponse) => ({
                             role: m.role,
                             content: m.content,
                             reasoning: m.metadata?.reasoning

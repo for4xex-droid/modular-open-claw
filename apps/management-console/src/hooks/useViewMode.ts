@@ -8,8 +8,7 @@
 import { useState, useEffect } from 'react';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
-
-export type ViewMode = 'beginner' | 'intermediate' | 'advanced';
+import { SettingEntry, ViewMode } from '../types';
 
 export const useViewMode = () => {
     const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -23,7 +22,7 @@ export const useViewMode = () => {
                 const resp = await authenticatedFetch(`${API_BASE}/api/v1/settings?category=ui`);
                 if (resp.ok) {
                     const data = await resp.json();
-                    const modeSetting = data.find((s: any) => s.key === 'view_mode');
+                    const modeSetting = data.find((s: SettingEntry) => s.key === 'view_mode');
                     if (modeSetting) {
                         setViewMode(modeSetting.value as ViewMode);
                         localStorage.setItem('aiome_view_mode', modeSetting.value);

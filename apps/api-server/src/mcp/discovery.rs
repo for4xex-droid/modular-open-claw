@@ -66,6 +66,30 @@ pub struct McpDiscoveryFile {
     pub mcp_servers: HashMap<String, McpServerConfig>,
 }
 
+fn resolve_env_var(var_name: &str, aiome_config: &shared::config::AiomeConfig) -> String {
+    if var_name == "DISCORD_TOKEN" {
+        aiome_config
+            .discord_token
+            .as_ref()
+            .map(|t| {
+                use secrecy::ExposeSecret;
+                t.expose_secret().to_string()
+            })
+            .unwrap_or_default()
+    } else if var_name == "TELEGRAM_TOKEN" {
+        aiome_config
+            .telegram_token
+            .as_ref()
+            .map(|t| {
+                use secrecy::ExposeSecret;
+                t.expose_secret().to_string()
+            })
+            .unwrap_or_default()
+    } else {
+        std::env::var(var_name).unwrap_or_default()
+    }
+}
+
 /// [A-3] MCP Discovery Layer
 /// Scans local configuration to automatically connect to external MCP tools.
 pub async fn discover_and_connect(
@@ -293,27 +317,7 @@ pub async fn discover_and_connect(
                             .chars()
                             .all(|c| c.is_ascii_alphanumeric() || c == '_')
                         {
-                            if var_name == "DISCORD_TOKEN" {
-                                aiome_config
-                                    .discord_token
-                                    .as_ref()
-                                    .map(|t| {
-                                        use secrecy::ExposeSecret;
-                                        t.expose_secret().to_string()
-                                    })
-                                    .unwrap_or_default()
-                            } else if var_name == "TELEGRAM_TOKEN" {
-                                aiome_config
-                                    .telegram_token
-                                    .as_ref()
-                                    .map(|t| {
-                                        use secrecy::ExposeSecret;
-                                        t.expose_secret().to_string()
-                                    })
-                                    .unwrap_or_default()
-                            } else {
-                                std::env::var(var_name).unwrap_or_default()
-                            }
+                            resolve_env_var(var_name, aiome_config)
                         } else {
                             warn!("🚨 [SECURITY] Skipping invalid environment variable name in MCP config: {}", var_name);
                             "".to_string()
@@ -384,27 +388,7 @@ pub async fn discover_and_connect(
                             .chars()
                             .all(|c| c.is_ascii_alphanumeric() || c == '_')
                         {
-                            if var_name == "DISCORD_TOKEN" {
-                                aiome_config
-                                    .discord_token
-                                    .as_ref()
-                                    .map(|t| {
-                                        use secrecy::ExposeSecret;
-                                        t.expose_secret().to_string()
-                                    })
-                                    .unwrap_or_default()
-                            } else if var_name == "TELEGRAM_TOKEN" {
-                                aiome_config
-                                    .telegram_token
-                                    .as_ref()
-                                    .map(|t| {
-                                        use secrecy::ExposeSecret;
-                                        t.expose_secret().to_string()
-                                    })
-                                    .unwrap_or_default()
-                            } else {
-                                std::env::var(var_name).unwrap_or_default()
-                            }
+                            resolve_env_var(var_name, aiome_config)
                         } else {
                             warn!("🚨 [SECURITY] Skipping invalid environment variable name in MCP config: {}", var_name);
                             "".to_string()
@@ -419,27 +403,7 @@ pub async fn discover_and_connect(
                                 .chars()
                                 .all(|c| c.is_ascii_alphanumeric() || c == '_')
                             {
-                                let var_val = if var_name == "DISCORD_TOKEN" {
-                                    aiome_config
-                                        .discord_token
-                                        .as_ref()
-                                        .map(|t| {
-                                            use secrecy::ExposeSecret;
-                                            t.expose_secret().to_string()
-                                        })
-                                        .unwrap_or_default()
-                                } else if var_name == "TELEGRAM_TOKEN" {
-                                    aiome_config
-                                        .telegram_token
-                                        .as_ref()
-                                        .map(|t| {
-                                            use secrecy::ExposeSecret;
-                                            t.expose_secret().to_string()
-                                        })
-                                        .unwrap_or_default()
-                                } else {
-                                    std::env::var(var_name).unwrap_or_default()
-                                };
+                                let var_val = resolve_env_var(var_name, aiome_config);
                                 replaced.replace_range(idx..end_idx, &var_val);
                             } else {
                                 warn!("🚨 [SECURITY] Skipping invalid inline environment variable name in MCP config: {}", var_name);
@@ -1109,5 +1073,30 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("Token endpoint returned HTTP 401"));
+    }
+
+    #[test]
+    fn test_resolve_env_var() {
+        let mut config = shared::config::AiomeConfig::default();
+        config.discord_token = Some(secrecy::Secret::from("discord_token_xyz".to_string()));
+        config.telegram_token = Some(secrecy::Secret::from("telegram_token_abc".to_string()));
+
+        // 1. DISCORD_TOKEN
+        let resolved_discord = resolve_env_var("DISCORD_TOKEN", &config);
+        assert_eq!(resolved_discord, "discord_token_xyz");
+
+        // 2. TELEGRAM_TOKEN
+        let resolved_telegram = resolve_env_var("TELEGRAM_TOKEN", &config);
+        assert_eq!(resolved_telegram, "telegram_token_abc");
+
+        // 3. Normal environment variable
+        std::env::set_var("TEST_MOCK_ENV_VAR", "mock_value_123");
+        let resolved_normal = resolve_env_var("TEST_MOCK_ENV_VAR", &config);
+        assert_eq!(resolved_normal, "mock_value_123");
+        std::env::remove_var("TEST_MOCK_ENV_VAR");
+
+        // 4. Non-existent environment variable
+        let resolved_non_existent = resolve_env_var("NON_EXISTENT_VAR_XYZ", &config);
+        assert_eq!(resolved_non_existent, "");
     }
 }

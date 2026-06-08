@@ -344,7 +344,7 @@ pub async fn send_message(
         signature,
         lamport_clock: clock,
         timestamp: chrono::Utc::now().to_rfc3339(),
-        // TODO(SEC): P2P E2E encryption required (ADR pending).
+        // TODO(SEC): See ADR-043 (docs/decisions/043-p2p-e2e-encryption.md)
         // Currently plaintext — vulnerable to man-in-the-middle sniffing on the relay.
         encryption: "none".to_string(),
     };

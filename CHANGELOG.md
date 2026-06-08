@@ -1,6 +1,27 @@
 ## [Unreleased]
 
+### Added
+- **napi-bridge ユニットテスト実装 (Phase C-3)**:
+  - `libs/napi-bridge/src/lib.rs` 内の主要 FFI 関数 (`karma_bootstrap`, `get_karma_directives`, `karma_ingest`, `quarantine_check_spawn`, `immune_check_tool`) を検証する `#[tokio::test]` テスト群を実装。`OnceCell` 初期化競合と DB スケジューリング競合を避けるため `#[serial]` 制御と共有キャッシュ `sqlite::memory:?cache=shared` へのアイソレーションを適用。
+- **フロントエンド テスト欠落コンポーネントのテスト作成 (Phase C-1)**:
+  - `GraphView`, `OllamaModelSelector`, `PromptStatsView`, `SeoPulseView`, `TreasureBox` に対する Jest ユニットテストを新規追加し、テスト漏れを 100% 解消。フロントエンド全体のテストケースが 291 件に増加。
+
+### Fixed
+- **routes/biome.rs 内の TODO コメント修正 (Phase A-1)**:
+  - レガシーな TODO を ADR-043 (`docs/decisions/043-p2p-e2e-encryption.md`) への正式な参照リンクへ置換。
+- **management-console フロントエンド型安全性の向上 (Phase B-4, B-3, B-2, B-1)**:
+  - `SettingEntry` インターフェース定義を `types.ts` に移行し、`useViewMode` フック内のレスポンスマッピングを `any` から型安全化。
+  - `useAgentChat.ts` の履歴取得レスポンスに `HistoryMessageResponse` 型を定義し、型アサーションを修正。
+  - `CausalVisualizer.tsx` のグラフ状態オブジェクトを `CausalGraphResponse` に定義・適用。
+  - `A2uiRenderer.tsx` のメトリクスおよびタイムラインイベントに `A2uiMetric`, `A2uiTimelineEvent` 型を適用し、安全な `String` キャストを付加。
+
 ### Changed
+- **discovery.rs 環境変数解決ロジック of DRY 統一 (Phase A-2)**:
+  - `mcp/discovery.rs` 内で Stdio/Http/Inline 各ハンドラの環境変数解決処理をプライベートヘルパー `resolve_env_var` へ共通化し、テストケース `test_resolve_env_var` を追加。
+- **監査レポート (TECH_DEBT_AUDIT.md) の更新 (Phase C-2)**:
+  - レポートを v6.1 へ更新。Zero-Panic 違反の残数を 0 件に更新。
+  - `libs/infrastructure/src/support/incident.rs` への `is_archived` カラム追加に関する記述などを整備。
+
 - **God Module 分割 (Phase 2)**:
   - `commercial/libs/nurture-infra/src/economy/bridge.rs` (2,364行) ➔ ディレクトリ化して機能・テストごとに分割:
     - `bridge/mod.rs` [NEW]: `NurtureCommerceBridge` 構造体定義、コンストラクタ、および Merkle 監査・エスクロー等のビジネスロジックヘルパーメソッド群を配置。

@@ -8,7 +8,8 @@ import React, { useState, useEffect } from 'react';
 import { useAvatarCharacter } from '../hooks/AvatarContext';
 import { useTranslation } from '../i18n';
 import { useDisplayMode } from '../hooks/useDisplayMode';
-import { useViewMode, type ViewMode } from '../hooks/useViewMode';
+import { useViewMode } from '../hooks/useViewMode';
+import { SettingEntry, ViewMode } from '../types';
 import {
     Monitor, Lock, Database,
     Shield, Check, X, Loader2, Share2, AlertTriangle
@@ -21,13 +22,6 @@ import EscrowManagementView from './EscrowManagementView';
 import { OriginManager } from './OriginManager';
 import { ToxicityConfig } from './ToxicityConfig';
 
-interface SettingEntry {
-    key: string;
-    value: string;
-    category: string;
-    is_secret: boolean;
-    updated_at: string;
-}
 
 const SettingsPage: React.FC = () => {
     const { character, setCharacter, proportion, setProportion } = useAvatarCharacter();

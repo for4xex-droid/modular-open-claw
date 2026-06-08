@@ -9,7 +9,7 @@ import { Network, Options } from "vis-network";
 import { DataSet } from "vis-data";
 import { GitBranch, ZoomIn, ZoomOut, Maximize, AlertCircle, Info, ChevronRight } from 'lucide-react';
 import { API_BASE } from "../config";
-import { TrajectoryStep, AgentDiagnosis } from '../types';
+import { TrajectoryStep, AgentDiagnosis, CausalGraphResponse, CausalGraphNode } from '../types';
 import { authenticatedFetch } from '../lib/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../i18n';
@@ -20,7 +20,7 @@ const CausalVisualizer: React.FC = () => {
     const containerRef = useRef<HTMLDivElement>(null);
     const networkRef = useRef<Network | null>(null);
     const [steps, setSteps] = useState<TrajectoryStep[]>([]);
-    const [graph, setGraph] = useState<{nodes: any[], edges: any[]} | null>(null);
+    const [graph, setGraph] = useState<CausalGraphResponse | null>(null);
     const [diagnosis, setDiagnosis] = useState<AgentDiagnosis | null>(null);
     const [selectedStep, setSelectedStep] = useState<TrajectoryStep | null>(null);
     const [jobId, setJobId] = useState<string>("");
@@ -36,7 +36,7 @@ const CausalVisualizer: React.FC = () => {
             const res = await authenticatedFetch(`${API_BASE}/api/v1/trajectory/${id}`);
             if (!res.ok) throw new Error("Failed to fetch trajectory");
             const data = await res.json();
-            setSteps(data.nodes.map((n: any) => n.step) || []);
+            setSteps(data.nodes.map((n: CausalGraphNode) => n.step) || []);
             setGraph(data);
 
             // Try to fetch diagnosis if job failed
