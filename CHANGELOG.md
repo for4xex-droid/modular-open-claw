@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Changed
+- **God Module 分割 (Phase 48 / G1, G2, G3)**:
+  - `libs/infrastructure/src/task_orchestrator/mod.rs` (1,186行) を、4つのサブモジュール（`types.rs`, `dispatcher.rs`, `dispatch_loop.rs`, `goal_processor.rs`）に分割し、`mod.rs` を後方互換性を持つハブモジュールとして再構成。
+  - `apps/api-server/src/mcp/discovery.rs` (1,102行) を、2つのサブモジュール（`config.rs`, `oauth.rs`）に分割し、`discovery.rs` を後方互換性を持つハブモジュールとして再構成。
+  - `libs/infrastructure/src/security.rs` (1,210行) を、3つのサブモジュール（`security/config.rs`, `security/bastion_guard.rs`, `security/voice_core_drm.rs`, `security/tests.rs`）に分割し、`security.rs` を後方互換性を持つハブモジュールとして再構成。
+
 ### Added
 - **napi-bridge ユニットテスト実装 (Phase C-3)**:
   - `libs/napi-bridge/src/lib.rs` 内の主要 FFI 関数 (`karma_bootstrap`, `get_karma_directives`, `karma_ingest`, `quarantine_check_spawn`, `immune_check_tool`) を検証する `#[tokio::test]` テスト群を実装。`OnceCell` 初期化競合と DB スケジューリング競合を避けるため `#[serial]` 制御と共有キャッシュ `sqlite::memory:?cache=shared` へのアイソレーションを適用。

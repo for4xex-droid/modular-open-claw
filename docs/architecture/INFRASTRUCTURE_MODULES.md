@@ -50,7 +50,7 @@
 | `publisher` | 成果物の自動公開（SNS, ブログ等）を管理。**Phase B/C** で WordPress REST API v2 アダプタを追加し、SEOコンテンツの自律パブリッシュを実装完了。**Phase 4** にて WordPress API トークンを排除し AbyssVault (Key Proxy) へ委譲するゼロトラストアーキテクチャへ進化。 | **Phase 4 完了** |
 | `rate_limiter` | エージェント単位のリクエスト頻度制御。DoS 攻撃や予期せぬAPI消費を防ぐ。 | **実装完了** |
 | `samsara_engine` | Soul Engine の L3 転生ロジック実体。Phase 3 で Anamnesis（物語的自己）の LLM 蒸留・継承を実装済。 | **Phase 3 完了** |
-| `security` | 暗号化、認証、Abyss Vault との連携。**Phase 13.3** で `main.rs` の初期化順序を最適化し、`config.clone()` を排除した安全なシークレット共有を実現。Linux 環境での `runsc` 検知も継続サポート。 | **強化完了** |
+| `security` | 暗号化、認証、Abyss Vault との連携。サブモジュール（`config`, `bastion_guard`, `voice_core_drm`, `tests`）に分割し、`security.rs` を後方互換ハブモジュールとして再構成。 | **分割・構造化完了** |
 | `tts` | `TtsProvider` トレイトに基づく音声合成エンジン。SSEストリーミング出力とリップシンク（Viseme）対応の多重化イベント配信をサポート。 | **Phase 14 完了** |
 | `native_backend` | ネイティブRust実装によるSLM（SuperLocalMemory）機能群。意味検索（recall）、重要度計算、矛盾検知を提供。 | **実装完了** |
 | `native_embedding` | SLMバックエンド向けに、ネイティブRustによるローカル埋め込み（Embedding）モデルの推論とコサイン類似度計算を提供。 | **実装完了** |
@@ -73,7 +73,7 @@
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
 | `x_signal_probe` | reqwest と X_BEARER_TOKEN を用いた超軽量な X API トレンド収集アダプタ。**Phase 8.7** にて、429 Retry-After 自律解析と、DashMap によるアンダーフロー無縁 (`saturating_sub`) な絶対安全レート制限機構へ到達。 | **Phase 8.7 完了** |
 | `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
-| `task_orchestrator`| 非同期タスクの管理とディスパッチ。AdaptiveImmuneSystem との統合検証、ユーザー介入（Elicitation）ワークフローの中核。レビューRejectによる即時エスクローキャンセルと返金のライフサイクルが完全連携済み。 | **Phase 2B-2 Refund & Approval 完了** |
+| `task_orchestrator`| 非同期タスクの管理とディスパッチ。サブモジュール（`types`, `dispatcher`, `dispatch_loop`, `goal_processor`）に分割し、`mod.rs` を後方互換ハブモジュールとして再構成。 | **分割・構造化完了** |
 | `gig_metadata_updater` | `GigMetadataUpdater` トレイトの SQLite 実装 (`DbGigUpdater`)。OxiLean 検証結果 (`oxilean_verified`, `oxilean_oxp`) を `ai_artifacts` テーブルの `file_manifest` JSON に永続化し、Presentation 層から DB 直接アクセスを排除。 | **Sovereign Pipeline Phase 1 完了** |
 | `grpc_proof_gate` | `FormalProofGate` トレイトの gRPC 実装 (`GrpcFormalProofGate`)。shadow-worker の `ProofVerifierService` と tonic チャンネル経由で通信し、WASM スキルの形式検証を透過的に実行。空トークン時の送信遮断によるゼロトラスト保証付き。 | **Sovereign Pipeline Phase 1 完了** |
 
