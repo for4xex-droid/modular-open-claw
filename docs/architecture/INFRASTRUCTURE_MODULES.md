@@ -41,7 +41,7 @@
 | `cortex_file_projector` | ADR-025: Duke大学研究に基づき、Cortex Wiki記事をファイルシステム階層（カテゴリ/記事.md）として物理投影。`content_hash` 差分更新により冪等性を保証し、DreamState の Agent-Native Discovery モードで自律探索精度を向上。 | **ADR-025 実装完了** |
 | `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済。Biome 3メソッド（メッセージ永続化・評価値更新）及び Federation データ（ImmuneRule/ArenaMatch）のインポート・エクスポートを実装完了。P2pSanitizer による CSAM/Toxicity 動的ブロックを完備。DBクエリ DRY マクロの適用、および `let _ =` エラー黙殺コードのトリアージを完了。 | **強化完了** |
 | `knowledge_indexer` | ドキュメントや過去の Karma を高速検索可能にインデックス。 | 実装完了 |
-| `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。ストリーミング通信時の Pre-execute Hook バイパス遮断および Ollama の LoRA 動内ビルダ統合済。**Phase v3/16** にて `EntropyGate` (Shannon Entropy 自動再質問)、`HumanizerFilter` (AI くささ除去)、`WritingContext` (コンテキスト別ルール適用) を実装しパイプラインを完成。静的 Regex パターンのパニックリスクを排除した `LazyLock` による堅牢化を完了。**Phase A** で最新モデルのユニットエコノミクス（コスト追跡）を実装。 | **第4世代進化** |
+| `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。ストリーミング通信時の Pre-execute Hook バイパス遮断および Ollama の LoRA 動内ビルダ統合済。**Phase v3/16** にて `EntropyGate`、`HumanizerFilter`、`WritingContext` を実装。最新モデルのユニットエコノミクス（コスト追跡）を実装。**Phase 48** でコスト計算と `BackgroundLlmProvider` をサブモジュール (`cost`, `background`) へ分割し、`dynamic.rs` を後方互換再構成。 | **分割・構造化完了** |
 | `lora_autotuner` | ロス履歴に基づき LoRA 学習のハイパーパラメータ（LR, Epochs, Rank）を自律調整するエンジン。 | **Phase 55 完了** |
 | `lora_marketplace` | LoRAアダプターファイルのSHA-256ハッシュ検証、エスクロー決済（CommerceEngine連携）、および分離されたファイル移動（PathSandbox）を提供する人格売買・流通インフラ。PostgreSQL/SQLite両対応。 | **実装完了** |
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。エラーのサイレント隠蔽(`let _ =`)を防止し軌跡可視化を強化。 | **強化完了** |
@@ -50,7 +50,7 @@
 | `publisher` | 成果物の自動公開（SNS, ブログ等）を管理。**Phase B/C** で WordPress REST API v2 アダプタを追加し、SEOコンテンツの自律パブリッシュを実装完了。**Phase 4** にて WordPress API トークンを排除し AbyssVault (Key Proxy) へ委譲するゼロトラストアーキテクチャへ進化。 | **Phase 4 完了** |
 | `rate_limiter` | エージェント単位のリクエスト頻度制御。DoS 攻撃や予期せぬAPI消費を防ぐ。 | **実装完了** |
 | `samsara_engine` | Soul Engine の L3 転生ロジック実体。Phase 3 で Anamnesis（物語的自己）の LLM 蒸留・継承を実装済。 | **Phase 3 完了** |
-| `security` | 暗号化、認証、Abyss Vault との連携。サブモジュール（`config`, `bastion_guard`, `voice_core_drm`, `tests`）に分割し、`security.rs` を後方互換ハブモジュールとして再構成。 | **分割・構造化完了** |
+| `security` | 暗号化、認証、Abyss Vault との連携。サブモジュール（`config`, `security/bastion_guard`, `security/voice_core_drm`, `security/tests`）に分割し、`security.rs` を後方互換ハブモジュールとして再構成。 | **分割・構造化完了** |
 | `tts` | `TtsProvider` トレイトに基づく音声合成エンジン。SSEストリーミング出力とリップシンク（Viseme）対応の多重化イベント配信をサポート。 | **Phase 14 完了** |
 | `native_backend` | ネイティブRust実装によるSLM（SuperLocalMemory）機能群。意味検索（recall）、重要度計算、矛盾検知を提供。 | **実装完了** |
 | `native_embedding` | SLMバックエンド向けに、ネイティブRustによるローカル埋め込み（Embedding）モデルの推論とコサイン類似度計算を提供。 | **実装完了** |

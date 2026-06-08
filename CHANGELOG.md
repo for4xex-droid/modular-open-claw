@@ -1,6 +1,9 @@
 ## [Unreleased]
 
 ### Changed
+- **God Module 分割 (Phase 48 / G4, G5)**:
+  - `libs/infrastructure/src/llm/dynamic.rs` (1,176行) を、2つのサブモジュール（`cost.rs`：コスト計算およびテスト、`background.rs`：`BackgroundLlmProvider`）に分割し、`dynamic.rs` を後方互換性を持つハブモジュールとして再構成。
+  - `commercial/apps/nurture-api/src/routes/internal.rs` (1,078行) を、5つのサブモジュール（`routes/internal/types.rs`, `routes/internal/balance.rs`, `routes/internal/escrow.rs`, `routes/internal/gdpr.rs`, `routes/internal/misc.rs`）に分割し、`routes/internal/mod.rs` を後方互換性を持つハブモジュールとして再構成。
 - **God Module 分割 (Phase 48 / G1, G2, G3)**:
   - `libs/infrastructure/src/task_orchestrator/mod.rs` (1,186行) を、4つのサブモジュール（`types.rs`, `dispatcher.rs`, `dispatch_loop.rs`, `goal_processor.rs`）に分割し、`mod.rs` を後方互換性を持つハブモジュールとして再構成。
   - `apps/api-server/src/mcp/discovery.rs` (1,102行) を、2つのサブモジュール（`config.rs`, `oauth.rs`）に分割し、`discovery.rs` を後方互換性を持つハブモジュールとして再構成。

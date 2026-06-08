@@ -1,7 +1,7 @@
 # LLM Provider Architecture — 動的プロバイダー設計書
 
-**Version:** 1.4
-**Last Updated:** 2026-04-24
+**Version:** 1.5
+**Last Updated:** 2026-06-08
 **Author:** Antigravity Agent / motivationstudio
 
 ---
@@ -17,7 +17,9 @@ libs/infrastructure/src/llm/
 ├── mod.rs           ← モジュール宣言
 ├── proxy.rs         ← ProxyLlmProvider (Abyss Vault 経由)
 ├── interactions.rs  ← InteractionsGeminiProvider (Phase 5: ステートフル REST API)
-└── dynamic.rs       ← DynamicLlmProvider / BackgroundLlmProvider (★ 本ドキュメント)
+├── dynamic.rs       ← DynamicLlmProvider (後方互換ハブ) (★ 本ドキュメント)
+├── background.rs    ← BackgroundLlmProvider (自律タスクバックグラウンド用)
+└── cost.rs          ← コスト計算・ユニットエコノミクス追跡
 ```
 
 ---
@@ -275,7 +277,7 @@ Gemini 2.0 Flash Live 用の双方向音声対話基盤として `LiveSessionMan
 ---
 
 *Document managed by Aiome Infrastructure Team*
-*最終更新: 2026-05-13 (Phase 4 Secrets Brokering)*
+*最終更新: 2026-06-08 (Phase 48 God Module 分割)*
 
 ---
 

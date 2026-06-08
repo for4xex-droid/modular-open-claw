@@ -5,6 +5,10 @@
  * Licensed under the Business Source License 1.1.
  */
 
+/// `background` モジュール
+pub mod background;
+/// `cost` モジュール
+pub mod cost;
 /// `cost_breaker` モジュール
 pub mod cost_breaker;
 /// `dynamic` モジュール
