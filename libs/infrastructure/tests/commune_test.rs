@@ -6,12 +6,12 @@
  */
 #![allow(clippy::unwrap_used)]
 
-use aiome_core::biome::BiomeMessage;
-use aiome_core_contracts::traits::BiomeRegistry;
+use aiome_core::commune::CommuneMessage;
+use aiome_core_contracts::traits::CommuneRegistry;
 use infrastructure::job_queue::UniversalJobQueue;
 
 #[tokio::test]
-async fn test_biome_dialogue_limit() {
+async fn test_commune_dialogue_limit() {
     let ts = std::sync::Arc::new(
         infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(
             infrastructure::db::DatabasePool::Sqlite(
@@ -32,10 +32,10 @@ async fn test_biome_dialogue_limit() {
 
     // Simulate 10 turns
     for i in 0..10 {
-        let count = queue.advance_biome_turn(topic_id, 0).await.unwrap();
+        let count = queue.advance_commune_turn(topic_id, 0).await.unwrap();
         assert_eq!(count, i + 1);
 
-        let msg = BiomeMessage {
+        let msg = CommuneMessage {
             sender_pubkey: "peer_a".to_string(),
             recipient_pubkey: "peer_b".to_string(),
             topic_id: topic_id.to_string(),
@@ -46,22 +46,22 @@ async fn test_biome_dialogue_limit() {
             timestamp: chrono::Utc::now().to_rfc3339(),
             encryption: "none".to_string(),
         };
-        queue.store_biome_message(&msg).await.unwrap();
+        queue.store_commune_message(&msg).await.unwrap();
     }
 
     let status = queue
-        .get_biome_topic_status(topic_id)
+        .get_commune_topic_status(topic_id)
         .await
         .unwrap()
         .unwrap();
     assert_eq!(status.0, 10); // 10 turns reached
 
     // Archive it
-    queue.archive_biome_topic(topic_id).await.unwrap();
+    queue.archive_commune_topic(topic_id).await.unwrap();
 
     // Verify it's archived
     let archived_status: String =
-        sqlx::query_scalar::<_, String>("SELECT status FROM biome_topics WHERE topic_id = ?")
+        sqlx::query_scalar::<_, String>("SELECT status FROM commune_topics WHERE topic_id = ?")
             .bind(topic_id)
             .fetch_one(pool.get_sqlite_pool_or_err().unwrap())
             .await

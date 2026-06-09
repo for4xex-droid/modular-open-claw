@@ -27,39 +27,43 @@ pub trait SwarmOps {
     async fn do_record_global_api_failure(&self) -> Result<i64, AiomeError>;
     async fn do_record_global_api_success(&self) -> Result<(), AiomeError>;
     async fn do_get_system_agent_id(&self) -> Result<uuid::Uuid, AiomeError>;
-    // Biome
-    async fn do_get_biome_topic_status(
+    // Commune
+    async fn do_get_commune_topic_status(
         &self,
         topic_id: &str,
     ) -> Result<Option<(i32, Option<String>)>, AiomeError>;
-    async fn do_advance_biome_turn(
+    async fn do_advance_commune_turn(
         &self,
         topic_id: &str,
         cooldown_minutes: i64,
     ) -> Result<i32, AiomeError>;
-    async fn do_fetch_biome_messages(
+    async fn do_fetch_commune_messages(
         &self,
         topic_id: &str,
         limit: i64,
     ) -> Result<Vec<serde_json::Value>, AiomeError>;
-    async fn do_store_biome_message(
+    async fn do_store_commune_message(
         &self,
-        message: &aiome_core_contracts::biome::BiomeMessage,
+        message: &aiome_core_contracts::commune::CommuneMessage,
     ) -> Result<(), AiomeError>;
-    async fn do_update_biome_reputation(&self, pubkey: &str, delta: f64)
-        -> Result<f64, AiomeError>;
-    async fn do_archive_biome_topic(&self, topic_id: &str) -> Result<(), AiomeError>;
+    async fn do_update_commune_reputation(
+        &self,
+        pubkey: &str,
+        delta: f64,
+    ) -> Result<f64, AiomeError>;
+    async fn do_archive_commune_topic(&self, topic_id: &str) -> Result<(), AiomeError>;
 }
 
 #[async_trait]
 impl SwarmOps for UniversalJobQueue {
-    async fn do_get_biome_topic_status(
+    async fn do_get_commune_topic_status(
         &self,
         topic_id: &str,
     ) -> Result<Option<(i32, Option<String>)>, AiomeError> {
         const Q_STATUS_SQLITE: &str =
-            "SELECT turn_count, status FROM biome_topics WHERE topic_id = ?";
-        const Q_STATUS_PG: &str = "SELECT turn_count, status FROM biome_topics WHERE topic_id = $1";
+            "SELECT turn_count, status FROM commune_topics WHERE topic_id = ?";
+        const Q_STATUS_PG: &str =
+            "SELECT turn_count, status FROM commune_topics WHERE topic_id = $1";
 
         let opt: Option<(i32, String)> = crate::sql_fetch_optional!(
             &self.pool,
@@ -72,13 +76,13 @@ impl SwarmOps for UniversalJobQueue {
         Ok(opt.map(|(c, s)| (c, Some(s))))
     }
 
-    async fn do_advance_biome_turn(
+    async fn do_advance_commune_turn(
         &self,
         topic_id: &str,
         cooldown_minutes: i64,
     ) -> Result<i32, AiomeError> {
-        const Q_CHECK_SQLITE: &str = "SELECT turn_count FROM biome_topics WHERE topic_id = ?";
-        const Q_CHECK_PG: &str = "SELECT turn_count FROM biome_topics WHERE topic_id = $1";
+        const Q_CHECK_SQLITE: &str = "SELECT turn_count FROM commune_topics WHERE topic_id = ?";
+        const Q_CHECK_PG: &str = "SELECT turn_count FROM commune_topics WHERE topic_id = $1";
 
         let current: i32 = crate::sql_fetch_optional!(
             &self.pool,
@@ -95,8 +99,8 @@ impl SwarmOps for UniversalJobQueue {
         let cooldown_ts =
             (chrono::Utc::now() + chrono::Duration::minutes(cooldown_minutes)).to_rfc3339();
 
-        const Q_UPSERT_SQLITE: &str = "INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES (?, 'peer', 'Active', ?, ?) ON CONFLICT(topic_id) DO UPDATE SET turn_count = biome_topics.turn_count + 1, cooldown_until = ?";
-        const Q_UPSERT_PG: &str = "INSERT INTO biome_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES ($1, 'peer', 'Active', $2, $3::timestamptz) ON CONFLICT(topic_id) DO UPDATE SET turn_count = biome_topics.turn_count + 1, cooldown_until = $3::timestamptz";
+        const Q_UPSERT_SQLITE: &str = "INSERT INTO commune_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES (?, 'peer', 'Active', ?, ?) ON CONFLICT(topic_id) DO UPDATE SET turn_count = commune_topics.turn_count + 1, cooldown_until = ?";
+        const Q_UPSERT_PG: &str = "INSERT INTO commune_topics (topic_id, peer_pubkey, status, turn_count, cooldown_until) VALUES ($1, 'peer', 'Active', $2, $3::timestamptz) ON CONFLICT(topic_id) DO UPDATE SET turn_count = commune_topics.turn_count + 1, cooldown_until = $3::timestamptz";
 
         crate::sql_exec!(
             &self.pool,
@@ -110,21 +114,21 @@ impl SwarmOps for UniversalJobQueue {
         Ok(next)
     }
 
-    async fn do_fetch_biome_messages(
+    async fn do_fetch_commune_messages(
         &self,
         topic_id: &str,
         limit: i64,
     ) -> Result<Vec<serde_json::Value>, AiomeError> {
         let q = format!(
             "SELECT sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption, created_at \
-             FROM biome_messages WHERE topic_id = {} ORDER BY created_at DESC LIMIT {}",
+             FROM commune_messages WHERE topic_id = {} ORDER BY created_at DESC LIMIT {}",
             self.pool.ph(0), self.pool.ph(1)
         );
 
         /// Converts raw sqlx rows into a Vec of JSON values.
         /// Macro is required because SqliteRow and PgRow are distinct types
         /// that share the same `try_get` API but differ in their Database associated type.
-        macro_rules! biome_rows_to_json {
+        macro_rules! commune_rows_to_json {
             ($rows:expr) => {{
                 let mut results = Vec::with_capacity($rows.len());
                 for r in $rows {
@@ -155,7 +159,7 @@ impl SwarmOps for UniversalJobQueue {
                     .map_err(|e| AiomeError::Infrastructure {
                         reason: e.to_string(),
                     })?;
-                Ok(biome_rows_to_json!(rows))
+                Ok(commune_rows_to_json!(rows))
             }
             crate::db::DatabasePool::Postgres(p) => {
                 let rows = sqlx::query(&q)
@@ -166,19 +170,19 @@ impl SwarmOps for UniversalJobQueue {
                     .map_err(|e| AiomeError::Infrastructure {
                         reason: e.to_string(),
                     })?;
-                Ok(biome_rows_to_json!(rows))
+                Ok(commune_rows_to_json!(rows))
             }
         }
     }
 
-    async fn do_store_biome_message(
+    async fn do_store_commune_message(
         &self,
-        message: &aiome_core_contracts::biome::BiomeMessage,
+        message: &aiome_core_contracts::commune::CommuneMessage,
     ) -> Result<(), AiomeError> {
         crate::sql_exec!(
             &self.pool,
-            sqlite: "INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            pg: "INSERT INTO biome_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+            sqlite: "INSERT INTO commune_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            pg: "INSERT INTO commune_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
             &message.sender_pubkey,
             &message.recipient_pubkey,
             &message.topic_id,
@@ -191,7 +195,7 @@ impl SwarmOps for UniversalJobQueue {
         Ok(())
     }
 
-    async fn do_update_biome_reputation(
+    async fn do_update_commune_reputation(
         &self,
         pubkey: &str,
         delta: f64,
@@ -204,8 +208,8 @@ impl SwarmOps for UniversalJobQueue {
                 reason: e.to_string(),
             })?;
 
-        const Q_SELECT_SQLITE: &str = "SELECT reputation_score FROM biome_peers WHERE pubkey = ?";
-        const Q_SELECT_PG: &str = "SELECT reputation_score FROM biome_peers WHERE pubkey = $1";
+        const Q_SELECT_SQLITE: &str = "SELECT reputation_score FROM commune_peers WHERE pubkey = ?";
+        const Q_SELECT_PG: &str = "SELECT reputation_score FROM commune_peers WHERE pubkey = $1";
 
         let opt: Option<(i32,)> = crate::sql_tx_fetch_optional!(
             &mut tx,
@@ -220,8 +224,8 @@ impl SwarmOps for UniversalJobQueue {
         let new_score = new_score_f.round() as i32;
 
         const Q_UPSERT_SQLITE: &str =
-            "INSERT OR REPLACE INTO biome_peers (pubkey, reputation_score) VALUES (?, ?)";
-        const Q_UPSERT_PG: &str = "INSERT INTO biome_peers (pubkey, reputation_score) VALUES ($1, $2) \
+            "INSERT OR REPLACE INTO commune_peers (pubkey, reputation_score) VALUES (?, ?)";
+        const Q_UPSERT_PG: &str = "INSERT INTO commune_peers (pubkey, reputation_score) VALUES ($1, $2) \
                                    ON CONFLICT(pubkey) DO UPDATE SET reputation_score = EXCLUDED.reputation_score, last_seen_at = CURRENT_TIMESTAMP";
 
         crate::sql_tx_exec!(
@@ -239,9 +243,10 @@ impl SwarmOps for UniversalJobQueue {
         Ok(new_score as f64 / 100.0)
     }
 
-    async fn do_archive_biome_topic(&self, topic_id: &str) -> Result<(), AiomeError> {
-        const Q_ARC_SQLITE: &str = "UPDATE biome_topics SET status = 'Archived' WHERE topic_id = ?";
-        const Q_ARC_PG: &str = "UPDATE biome_topics SET status = 'Archived' WHERE topic_id = $1";
+    async fn do_archive_commune_topic(&self, topic_id: &str) -> Result<(), AiomeError> {
+        const Q_ARC_SQLITE: &str =
+            "UPDATE commune_topics SET status = 'Archived' WHERE topic_id = ?";
+        const Q_ARC_PG: &str = "UPDATE commune_topics SET status = 'Archived' WHERE topic_id = $1";
 
         crate::sql_exec!(
             &self.pool,
@@ -686,7 +691,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_biome_messages_and_reputation() {
+    async fn test_commune_messages_and_reputation() {
         let sql_pool = sqlx::sqlite::SqlitePoolOptions::new()
             .connect("sqlite::memory:")
             .await
@@ -696,19 +701,19 @@ mod tests {
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(db_pool.clone()),
         );
 
-        sqlx::query("CREATE TABLE biome_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, sender_pubkey TEXT NOT NULL, recipient_pubkey TEXT NOT NULL, topic_id TEXT NOT NULL, content TEXT NOT NULL, karma_root_cid TEXT NOT NULL, signature TEXT NOT NULL, lamport_clock INTEGER NOT NULL, encryption TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')));")
+        sqlx::query("CREATE TABLE commune_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, sender_pubkey TEXT NOT NULL, recipient_pubkey TEXT NOT NULL, topic_id TEXT NOT NULL, content TEXT NOT NULL, karma_root_cid TEXT NOT NULL, signature TEXT NOT NULL, lamport_clock INTEGER NOT NULL, encryption TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')));")
             .execute(&sql_pool)
             .await
             .unwrap();
 
-        sqlx::query("CREATE TABLE biome_peers (pubkey TEXT PRIMARY KEY, last_seen_at TEXT DEFAULT (datetime('now')), reputation_score INTEGER NOT NULL DEFAULT 100);")
+        sqlx::query("CREATE TABLE commune_peers (pubkey TEXT PRIMARY KEY, last_seen_at TEXT DEFAULT (datetime('now')), reputation_score INTEGER NOT NULL DEFAULT 100);")
             .execute(&sql_pool)
             .await
             .unwrap();
 
         let queue = UniversalJobQueue::from_pool(db_pool, ts);
 
-        let msg = aiome_core_contracts::biome::BiomeMessage {
+        let msg = aiome_core_contracts::commune::CommuneMessage {
             sender_pubkey: "sender".to_string(),
             recipient_pubkey: "recipient".to_string(),
             topic_id: "topic-1".to_string(),
@@ -720,14 +725,14 @@ mod tests {
             encryption: "none".to_string(),
         };
 
-        let store_res = queue.do_store_biome_message(&msg).await;
+        let store_res = queue.do_store_commune_message(&msg).await;
         assert!(
             store_res.is_ok(),
             "Failed to store message: {:?}",
             store_res
         );
 
-        let fetch_res = queue.do_fetch_biome_messages("topic-1", 10).await;
+        let fetch_res = queue.do_fetch_commune_messages("topic-1", 10).await;
         assert!(
             fetch_res.is_ok(),
             "Failed to fetch messages: {:?}",
@@ -739,11 +744,11 @@ mod tests {
         assert_eq!(fetched_msg["content"], "hello");
         assert_eq!(fetched_msg["sender_pubkey"], "sender");
 
-        let rep_res1 = queue.do_update_biome_reputation("peer-1", 10.0).await;
+        let rep_res1 = queue.do_update_commune_reputation("peer-1", 10.0).await;
         assert!(rep_res1.is_ok());
         assert_eq!(rep_res1.unwrap(), 1.10);
 
-        let rep_res2 = queue.do_update_biome_reputation("peer-1", -25.0).await;
+        let rep_res2 = queue.do_update_commune_reputation("peer-1", -25.0).await;
         assert!(rep_res2.is_ok());
         assert_eq!(rep_res2.unwrap(), 0.85);
     }

@@ -256,10 +256,10 @@
         }
       }
     },
-    "/api/biome/autonomous/start": {
+    "/api/commune/autonomous/start": {
       "post": {
         "tags": [
-          "crate::routes::biome"
+          "crate::routes::commune"
         ],
         "operationId": "autonomous_start",
         "requestBody": {
@@ -289,10 +289,10 @@
         ]
       }
     },
-    "/api/biome/autonomous/status": {
+    "/api/commune/autonomous/status": {
       "get": {
         "tags": [
-          "crate::routes::biome"
+          "crate::routes::commune"
         ],
         "operationId": "autonomous_status",
         "responses": {
@@ -312,10 +312,10 @@
         ]
       }
     },
-    "/api/biome/autonomous/stop": {
+    "/api/commune/autonomous/stop": {
       "post": {
         "tags": [
-          "crate::routes::biome"
+          "crate::routes::commune"
         ],
         "operationId": "autonomous_stop",
         "responses": {
@@ -335,10 +335,10 @@
         ]
       }
     },
-    "/api/biome/list": {
+    "/api/commune/list": {
       "get": {
         "tags": [
-          "crate::routes::biome"
+          "crate::routes::commune"
         ],
         "operationId": "list_messages",
         "responses": {
@@ -358,17 +358,17 @@
         ]
       }
     },
-    "/api/biome/send": {
+    "/api/commune/send": {
       "post": {
         "tags": [
-          "crate::routes::biome"
+          "crate::routes::commune"
         ],
         "operationId": "send_message",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SendBiomeRequest"
+                "$ref": "#/components/schemas/SendCommuneRequest"
               }
             }
           },
@@ -391,12 +391,12 @@
         ]
       }
     },
-    "/api/biome/status": {
+    "/api/commune/status": {
       "get": {
         "tags": [
-          "crate::routes::biome"
+          "crate::routes::commune"
         ],
-        "operationId": "biome_status",
+        "operationId": "commune_status",
         "responses": {
           "200": {
             "description": "Status retrieved",
@@ -414,10 +414,10 @@
         ]
       }
     },
-    "/api/biome/topics": {
+    "/api/commune/topics": {
       "get": {
         "tags": [
-          "crate::routes::biome"
+          "crate::routes::commune"
         ],
         "operationId": "list_topics",
         "responses": {
@@ -438,7 +438,7 @@
       },
       "post": {
         "tags": [
-          "crate::routes::biome"
+          "crate::routes::commune"
         ],
         "operationId": "create_topic",
         "requestBody": {
@@ -5726,7 +5726,7 @@
           }
         }
       },
-      "SendBiomeRequest": {
+      "SendCommuneRequest": {
         "type": "object",
         "required": [
           "recipient_pubkey",

@@ -65,7 +65,7 @@ async fn hub_proxy_post(
 }
 
 #[derive(serde::Deserialize, utoipa::ToSchema)]
-pub struct SendBiomeRequest {
+pub struct SendCommuneRequest {
     pub recipient_pubkey: String,
     pub topic_id: String,
     pub content: String,
@@ -81,13 +81,13 @@ pub struct StartAutonomousRequest {
 
 #[utoipa::path(
     get,
-    path = "/api/biome/status",
+    path = "/api/commune/status",
     responses(
         (status = 200, description = "Status retrieved", body = serde_json::Value)
     ),
     security(("api_key" = []))
 )]
-pub async fn biome_status(
+pub async fn commune_status(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
 ) -> Result<Response, AppError> {
@@ -96,7 +96,7 @@ pub async fn biome_status(
 
 #[utoipa::path(
     get,
-    path = "/api/biome/topics",
+    path = "/api/commune/topics",
     responses(
         (status = 200, description = "Topics retrieved", body = serde_json::Value)
     ),
@@ -106,12 +106,12 @@ pub async fn list_topics(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
 ) -> Result<Response, AppError> {
-    hub_proxy_get(&state, "/api/v1/biome/topics").await
+    hub_proxy_get(&state, "/api/v1/commune/topics").await
 }
 
 #[utoipa::path(
     post,
-    path = "/api/biome/topics",
+    path = "/api/commune/topics",
     request_body = serde_json::Value,
     responses(
         (status = 201, description = "Topic created", body = serde_json::Value)
@@ -123,12 +123,12 @@ pub async fn create_topic(
     _auth: crate::auth::Authenticated,
     Json(req): Json<serde_json::Value>,
 ) -> Result<Response, AppError> {
-    hub_proxy_post(&state, "/api/v1/biome/topics", &req).await
+    hub_proxy_post(&state, "/api/v1/commune/topics", &req).await
 }
 
 #[utoipa::path(
     post,
-    path = "/api/biome/autonomous/start",
+    path = "/api/commune/autonomous/start",
     request_body = StartAutonomousRequest,
     responses(
         (status = 200, description = "Started autonomous mode", body = serde_json::Value)
@@ -148,7 +148,7 @@ pub async fn autonomous_start(
         .autonomous_running
         .store(true, std::sync::atomic::Ordering::SeqCst);
     let mut config = state.autonomous_config.write().await;
-    *config = Some(aiome_core::biome::AutonomousConfig {
+    *config = Some(aiome_core::commune::AutonomousConfig {
         topic_id: req.topic_id,
         peer_pubkey: req.peer_pubkey,
         interval_secs,
@@ -164,7 +164,7 @@ pub async fn autonomous_start(
 
 #[utoipa::path(
     post,
-    path = "/api/biome/autonomous/stop",
+    path = "/api/commune/autonomous/stop",
     responses(
         (status = 200, description = "Stopped autonomous mode", body = serde_json::Value)
     ),
@@ -189,7 +189,7 @@ pub async fn autonomous_stop(
 
 #[utoipa::path(
     get,
-    path = "/api/biome/autonomous/status",
+    path = "/api/commune/autonomous/status",
     responses(
         (status = 200, description = "Autonomous status", body = serde_json::Value)
     ),
@@ -226,7 +226,7 @@ pub async fn autonomous_status(
 
 #[utoipa::path(
     get,
-    path = "/api/biome/list",
+    path = "/api/commune/list",
     responses(
         (status = 200, description = "List recent messages", body = serde_json::Value)
     ),
@@ -242,8 +242,8 @@ pub async fn list_messages(
 
 #[utoipa::path(
     post,
-    path = "/api/biome/send",
-    request_body = SendBiomeRequest,
+    path = "/api/commune/send",
+    request_body = SendCommuneRequest,
     responses(
         (status = 200, description = "Message sent", body = serde_json::Value)
     ),
@@ -252,7 +252,7 @@ pub async fn list_messages(
 pub async fn send_message(
     State(state): State<AppState>,
     _auth: crate::auth::Authenticated,
-    Json(req): Json<SendBiomeRequest>,
+    Json(req): Json<SendCommuneRequest>,
 ) -> Result<Response, AppError> {
     // Empty content guard: 空メッセージの P2P 送出を防止
     if req.content.trim().is_empty() {
@@ -267,7 +267,7 @@ pub async fn send_message(
     const MAX_CONTENT_BYTES: usize = 8000;
     if req.content.len() > MAX_CONTENT_BYTES {
         tracing::warn!(
-            "⚠️ [Biome] Content size limit exceeded: {} bytes (max: {})",
+            "⚠️ [Commune] Content size limit exceeded: {} bytes (max: {})",
             req.content.len(),
             MAX_CONTENT_BYTES
         );
@@ -285,7 +285,7 @@ pub async fn send_message(
         || lower_content.contains(";base64,")
     {
         tracing::warn!(
-            "🚨 [Biome] Binary data embedding attempt blocked (topic: {}, recipient: {})",
+            "🚨 [Commune] Binary data embedding attempt blocked (topic: {}, recipient: {})",
             req.topic_id,
             req.recipient_pubkey
         );
@@ -304,7 +304,7 @@ pub async fn send_message(
         Ok(None) => String::new(),
         Err(e) => {
             tracing::warn!(
-                "⚠️ [Biome] Failed to fetch CSAM forbidden words from DB: {}. Proceeding with empty blocklist.",
+                "⚠️ [Commune] Failed to fetch CSAM forbidden words from DB: {}. Proceeding with empty blocklist.",
                 e
             );
             String::new()
@@ -335,7 +335,7 @@ pub async fn send_message(
         .await
         .map_err(|e| AppError::internal(e.to_string()))?;
 
-    let payload = aiome_core::biome::BiomeMessage {
+    let payload = aiome_core::commune::CommuneMessage {
         topic_id: req.topic_id.clone(),
         sender_pubkey: state.system_agent_id.to_string(),
         recipient_pubkey: req.recipient_pubkey.clone(),
@@ -349,7 +349,7 @@ pub async fn send_message(
         encryption: "none".to_string(),
     };
 
-    let url = format!("{}/api/v1/biome/relay", state.config.samsara_hub_url);
+    let url = format!("{}/api/v1/commune/relay", state.config.samsara_hub_url);
     let res = state
         .http_client
         .post(&url)
@@ -364,7 +364,7 @@ pub async fn send_message(
 
 #[cfg(test)]
 mod tests {
-    // Biome バリデーションロジックのユニットテスト
+    // Commune バリデーションロジックのユニットテスト
     // ハンドラ内のインライン検証ロジックを再現してテスト
 
     const MAX_CONTENT_BYTES: usize = 8000;

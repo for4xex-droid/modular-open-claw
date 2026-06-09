@@ -70,7 +70,7 @@ async fn test_postgres_schema_full_coverage() -> anyhow::Result<()> {
         "ai_artifacts",
         "soul_mutation_history",
         "soul_versions",
-        "biome_messages",
+        "commune_messages",
         "gig_intents",
         "gig_bids",
         "escrows",
@@ -86,7 +86,7 @@ async fn test_postgres_schema_full_coverage() -> anyhow::Result<()> {
         "approved_rules",
         "quarantined_rules",
         "node_reputation",
-        "biome_relay_queue",
+        "commune_relay_queue",
         "hub_timeline",
     ];
 

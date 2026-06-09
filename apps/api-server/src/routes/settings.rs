@@ -99,6 +99,7 @@ pub const ALLOWED_KEYS: &[&str] = &[
     "tos_accepted",
     "llm_api_url",
     "ENABLE_TOOL_REVIEWER",
+    "last_notified_version",
 ];
 
 pub const ALLOWED_CATEGORIES: &[&str] = &[
@@ -803,5 +804,13 @@ mod tests {
                 key
             );
         }
+    }
+
+    #[test]
+    fn test_last_notified_version_is_allowed() {
+        assert!(
+            ALLOWED_KEYS.contains(&"last_notified_version"),
+            "last_notified_version should be in ALLOWED_KEYS"
+        );
     }
 }

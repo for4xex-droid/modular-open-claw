@@ -637,29 +637,29 @@ pub trait FederationRegistry: Send + Sync + std::fmt::Debug {
     ) -> Result<crate::contracts::FederatedMetrics, AiomeError>;
 }
 
-/// 8. バイオーム (BiomeRegistry)
+/// 8. コミューン (CommuneRegistry)
 #[async_trait]
-pub trait BiomeRegistry: Send + Sync + std::fmt::Debug {
-    async fn get_biome_topic_status(
+pub trait CommuneRegistry: Send + Sync + std::fmt::Debug {
+    async fn get_commune_topic_status(
         &self,
         topic_id: &str,
     ) -> Result<Option<(i32, Option<String>)>, AiomeError>;
-    async fn advance_biome_turn(
+    async fn advance_commune_turn(
         &self,
         topic_id: &str,
         cooldown_minutes: i64,
     ) -> Result<i32, AiomeError>;
-    async fn fetch_biome_messages(
+    async fn fetch_commune_messages(
         &self,
         topic_id: &str,
         limit: i64,
     ) -> Result<Vec<serde_json::Value>, AiomeError>;
-    async fn store_biome_message(
+    async fn store_commune_message(
         &self,
-        message: &crate::biome::BiomeMessage,
+        message: &crate::commune::CommuneMessage,
     ) -> Result<(), AiomeError>;
-    async fn update_biome_reputation(&self, pubkey: &str, delta: f64) -> Result<f64, AiomeError>;
-    async fn archive_biome_topic(&self, topic_id: &str) -> Result<(), AiomeError>;
+    async fn update_commune_reputation(&self, pubkey: &str, delta: f64) -> Result<f64, AiomeError>;
+    async fn archive_commune_topic(&self, topic_id: &str) -> Result<(), AiomeError>;
 }
 
 /// 統合ジョブキュー (Composite Trait)
@@ -672,7 +672,7 @@ pub trait JobQueue:
     + AgentEvolver
     + ImmuneSystemOps
     + FederationRegistry
-    + BiomeRegistry
+    + CommuneRegistry
     + SystemStateOps
     + SoulStore
     + HarnessRegistryOps

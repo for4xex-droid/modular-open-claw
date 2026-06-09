@@ -154,7 +154,7 @@ AIの性格や話し方を定義するファイルです。オンボーディン
 - `soul_mutation_history`: 魂の変異履歴
 - `evolution_chronicle`: 進化ハッシュチェーン記録
 - `agent_stats`: エージェントステータス (レベル/経験値/共鳴)
-- `biome_messages` / `biome_peers` / `biome_topics`: Biomeプロトコル
+- `commune_messages` / `commune_peers` / `commune_topics`: Communeプロトコル
 - `immune_rules`: 免疫ルール (フェデレーション対応)
 - `ai_artifacts` / `artifact_edges`: アーティファクトストア
 - `expressions`: Expression Engine (自律表現)

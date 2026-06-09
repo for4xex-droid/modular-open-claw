@@ -26,7 +26,7 @@ const VoiceStore = lazy(() => import('../VoiceStore'));
 const ArtifactVault = lazy(() => import('../ArtifactVault'));
 
 // World sub-tabs
-const BiomeDialogueView = lazy(() => import('../BiomeDialogueView'));
+const CommuneDialogueView = lazy(() => import('../CommuneDialogueView'));
 const GraphView = lazy(() => import('../GraphView'));
 const CausalVisualizer = lazy(() => import('../CausalVisualizer'));
 const DemoView = lazy(() => import('../DemoView'));
@@ -174,7 +174,7 @@ const HomePage: React.FC<HomePageProps> = ({
             <MiniTabBar tabs={worldSubTabs} active={worldSubTab} onChange={setWorldSubTab} />
             <AnimatePresence mode="wait">
                 <motion.div key={worldSubTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.1 }} style={{ height: 'calc(100% - 2.5rem)' }}>
-                    {worldSubTab === 'p2p' && <BiomeDialogueView />}
+                    {worldSubTab === 'p2p' && <CommuneDialogueView />}
                     {worldSubTab === 'dashboard' && <BiotopeView stats={stats} isConnected={isConnected} recentEvents={recentEvents} sessionSavedChars={sessionSavedChars} />}
                     {worldSubTab === 'map' && <GraphView />}
                     {worldSubTab === 'trace' && <CausalVisualizer />}

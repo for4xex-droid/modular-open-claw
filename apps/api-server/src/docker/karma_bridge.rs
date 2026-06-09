@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_core::biome::{DelegationResult, FailureCategory};
+use aiome_core::delegation::{DelegationFailureKind, DelegationResult};
 use tracing::warn;
 
 pub struct KarmaBridge;
@@ -27,11 +27,11 @@ impl KarmaBridge {
         }
 
         // Base penalty calculation
-        let base_penalty = match result.failure_category() {
-            FailureCategory::Timeout => -5,
-            FailureCategory::Oom => -10,
-            FailureCategory::DependencyMissing => -3,
-            FailureCategory::SyntaxError => -7,
+        let base_penalty = match result.failure_kind() {
+            DelegationFailureKind::Timeout => -5,
+            DelegationFailureKind::Oom => -10,
+            DelegationFailureKind::DependencyMissing => -3,
+            DelegationFailureKind::SyntaxError => -7,
             _ => -2,
         };
 
@@ -42,7 +42,7 @@ impl KarmaBridge {
 
         let lesson = format!(
             "Execution failed ({:?}) in {}ms. Consecutive failures: {}. Stderr: {}",
-            result.failure_category(),
+            result.failure_kind(),
             result.duration_ms,
             consecutive_failures,
             result.stderr.chars().take(200).collect::<String>()
@@ -52,7 +52,7 @@ impl KarmaBridge {
             "🧪 [KarmaBridge] Failure detected. Penalty: {} (base: {}). Category: {:?}",
             final_penalty,
             base_penalty,
-            result.failure_category()
+            result.failure_kind()
         );
 
         (final_penalty, "Technical".to_string(), lesson)

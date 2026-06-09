@@ -49,6 +49,6 @@ pub async fn init_hub_db(pool: &shared::db::DatabasePool) -> anyhow::Result<()> 
             sqlx::migrate!("migrations/postgres").run(p).await?;
         }
     }
-    info!("✅ Hub Database initialized (Approved & Quarantine layers + BFT/Reputation & Biome).");
+    info!("✅ Hub Database initialized (Approved & Quarantine layers + BFT/Reputation & Commune).");
     Ok(())
 }

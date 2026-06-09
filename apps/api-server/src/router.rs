@@ -260,11 +260,11 @@ pub fn build_app(
             "/api/v1/lora/market/my-listings",
             get(routes::lora_market::my_listings),
         )
-        .route("/api/biome/status", get(routes::biome::biome_status))
+        .route("/api/commune/status", get(routes::commune::commune_status))
         .route(
-            "/api/biome/topics",
-            get(routes::biome::list_topics)
-                .post(routes::biome::create_topic)
+            "/api/commune/topics",
+            get(routes::commune::list_topics)
+                .post(routes::commune::create_topic)
                 .route_layer(
                     tower::ServiceBuilder::new()
                         .layer(axum::error_handling::HandleErrorLayer::new(
@@ -274,10 +274,10 @@ pub fn build_app(
                         .rate_limit(1, std::time::Duration::from_secs(5)), // 1 topic per 5s
                 ),
         )
-        .route("/api/biome/list", get(routes::biome::list_messages))
+        .route("/api/commune/list", get(routes::commune::list_messages))
         .route(
-            "/api/biome/send",
-            axum::routing::post(routes::biome::send_message).route_layer(
+            "/api/commune/send",
+            axum::routing::post(routes::commune::send_message).route_layer(
                 tower::ServiceBuilder::new()
                     .layer(axum::error_handling::HandleErrorLayer::new(
                         handle_rate_limit,
@@ -287,8 +287,8 @@ pub fn build_app(
             ),
         )
         .route(
-            "/api/biome/autonomous/start",
-            axum::routing::post(routes::biome::autonomous_start).route_layer(
+            "/api/commune/autonomous/start",
+            axum::routing::post(routes::commune::autonomous_start).route_layer(
                 tower::ServiceBuilder::new()
                     .layer(axum::error_handling::HandleErrorLayer::new(
                         handle_rate_limit,
@@ -298,12 +298,12 @@ pub fn build_app(
             ),
         )
         .route(
-            "/api/biome/autonomous/stop",
-            axum::routing::post(routes::biome::autonomous_stop),
+            "/api/commune/autonomous/stop",
+            axum::routing::post(routes::commune::autonomous_stop),
         )
         .route(
-            "/api/biome/autonomous/status",
-            get(routes::biome::autonomous_status),
+            "/api/commune/autonomous/status",
+            get(routes::commune::autonomous_status),
         )
         .route(
             "/api/synergy/graph",

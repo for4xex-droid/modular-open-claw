@@ -16,7 +16,7 @@ impl DreamState {
         &self,
         job_queue: &dyn JobQueue,
     ) -> Result<Option<String>, Box<dyn Error + Send + Sync>> {
-        info!("💤 [DreamState] Mode: Communicative — Attuning to the global Biome for AI-to-AI resonance...");
+        info!("💤 [DreamState] Mode: Communicative — Attuning to the global Commune for AI-to-AI resonance...");
 
         let (_karmas, _rules, matches) = job_queue
             .export_federated_data(None)
@@ -24,10 +24,10 @@ impl DreamState {
             .unwrap_or_default();
 
         if let Some(am) = matches.first() {
-            info!("💭 [DreamState] Resonance found! A battle between '{}' and '{}' occured in the Biome.", am.skill_a, am.skill_b);
+            info!("💭 [DreamState] Resonance found! A battle between '{}' and '{}' occured in the Commune.", am.skill_a, am.skill_b);
 
             let description = format!(
-                "Inspiration sparked by Biome Arena Match: {} vs {} for topic '{}'.",
+                "Inspiration sparked by Commune Arena Match: {} vs {} for topic '{}'.",
                 am.skill_a, am.skill_b, am.topic
             );
 
@@ -43,7 +43,7 @@ impl DreamState {
                 .await?;
 
             let job_topic = format!(
-                "Synthesizing lessons from Biome Match: {} vs {}",
+                "Synthesizing lessons from Commune Match: {} vs {}",
                 am.skill_a, am.skill_b
             );
             let directives_json = serde_json::json!({

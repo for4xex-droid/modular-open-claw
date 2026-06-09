@@ -104,8 +104,8 @@ impl SecurityPolicy {
             .allow_endpoint("trends.google.co.jp")
             .block_private_ips(true); // プライベートIPへのSSRFを防止（Allowlist以外）
 
-        // Biome SSRF Defense: ホワイトリストを環境変数から自動登録
-        if let Ok(whitelist) = std::env::var("BIOME_HUB_WHITELIST") {
+        // Commune SSRF Defense: ホワイトリストを環境変数から自動登録
+        if let Ok(whitelist) = std::env::var("COMMUNE_HUB_WHITELIST") {
             for endpoint in whitelist.split(',') {
                 let trimmed = endpoint.trim();
                 if !trimmed.is_empty() {
@@ -536,5 +536,53 @@ mod tests {
         // 1文字
         assert!(crate::security::constant_time_ends_with("abc", "c"));
         assert!(!crate::security::constant_time_ends_with("abc", "b"));
+    }
+
+    #[tokio::test]
+    async fn test_commune_hub_whitelist_allows_endpoints() -> Result<()> {
+        let var_key = "COMMUNE_HUB_WHITELIST";
+        #[allow(unsafe_code, deprecated)]
+        unsafe {
+            std::env::set_var(var_key, "commune.test-endpoint.com, another-commune.org");
+        }
+
+        let policy = SecurityPolicy::default_production();
+
+        #[allow(unsafe_code, deprecated)]
+        unsafe {
+            std::env::remove_var(var_key);
+        }
+
+        assert!(policy
+            .validate_url("http://commune.test-endpoint.com/api")
+            .await
+            .is_ok());
+        assert!(policy
+            .validate_url("http://another-commune.org")
+            .await
+            .is_ok());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_legacy_biome_hub_whitelist_is_ignored() -> Result<()> {
+        let legacy_key = "BIOME_HUB_WHITELIST";
+        #[allow(unsafe_code, deprecated)]
+        unsafe {
+            std::env::set_var(legacy_key, "legacy.biome-endpoint.com");
+        }
+
+        let policy = SecurityPolicy::default_production();
+
+        #[allow(unsafe_code, deprecated)]
+        unsafe {
+            std::env::remove_var(legacy_key);
+        }
+
+        assert!(policy
+            .validate_url("http://legacy.biome-endpoint.com")
+            .await
+            .is_err());
+        Ok(())
     }
 }

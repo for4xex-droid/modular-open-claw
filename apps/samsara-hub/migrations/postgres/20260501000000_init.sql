@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS node_reputation (
     last_seen_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS biome_topics (
+CREATE TABLE IF NOT EXISTS commune_topics (
     topic_id TEXT PRIMARY KEY,
     peer_pubkey TEXT NOT NULL,
     summary TEXT,
@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS biome_topics (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS biome_relay_queue (
+CREATE TABLE IF NOT EXISTS commune_relay_queue (
     id SERIAL PRIMARY KEY,
     recipient_pubkey TEXT NOT NULL,
     payload TEXT NOT NULL,
@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS biome_relay_queue (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_biome_relay_recipient ON biome_relay_queue(recipient_pubkey) WHERE is_delivered = 0;
+CREATE INDEX IF NOT EXISTS idx_commune_relay_recipient ON commune_relay_queue(recipient_pubkey) WHERE is_delivered = 0;
 
 CREATE TABLE IF NOT EXISTS hub_timeline (
     id TEXT PRIMARY KEY, 

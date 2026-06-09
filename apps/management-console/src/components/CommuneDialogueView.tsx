@@ -21,7 +21,7 @@ import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
 import { useTranslation } from '../i18n';
 
-interface BiomeMessage {
+interface CommuneMessage {
   id: number;
   sender_pubkey: string;
   recipient_pubkey: string;
@@ -40,9 +40,9 @@ interface AutonomousStatus {
   } | null;
 }
 
-const BiomeDialogueView: React.FC = () => {
+const CommuneDialogueView: React.FC = () => {
     const { t } = useTranslation();
-  const [messages, setMessages] = useState<BiomeMessage[]>([]);
+  const [messages, setMessages] = useState<CommuneMessage[]>([]);
   const [status, setStatus] = useState<AutonomousStatus | null>(null);
   const [peerPubkey, setPeerPubkey] = useState("PEER_NODE_DEFAULT_B");
   const [topicId, setTopicId] = useState("general_deliberation");
@@ -52,7 +52,7 @@ const BiomeDialogueView: React.FC = () => {
 
   const fetchMessages = async () => {
     try {
-      const res = await authenticatedFetch(`${API_BASE}/api/biome/list`);
+      const res = await authenticatedFetch(`${API_BASE}/api/commune/list`);
       if (res.ok) {
         const data = await res.json();
         setMessages(data.reverse()); // Show oldest at top, newest at bottom for chat
@@ -64,7 +64,7 @@ const BiomeDialogueView: React.FC = () => {
 
   const fetchStatus = async () => {
     try {
-      const res = await authenticatedFetch(`${API_BASE}/api/biome/autonomous/status`);
+      const res = await authenticatedFetch(`${API_BASE}/api/commune/autonomous/status`);
       if (res.ok) {
         const data = await res.json();
         setStatus(data);
@@ -77,7 +77,7 @@ const BiomeDialogueView: React.FC = () => {
   const startAutonomous = async () => {
     setIsStarting(true);
     try {
-      const res = await authenticatedFetch(`${API_BASE}/api/biome/autonomous/start`, {
+      const res = await authenticatedFetch(`${API_BASE}/api/commune/autonomous/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -99,7 +99,7 @@ const BiomeDialogueView: React.FC = () => {
 
   const stopAutonomous = async () => {
     try {
-      const res = await authenticatedFetch(`${API_BASE}/api/biome/autonomous/stop`, { method: "POST" });
+      const res = await authenticatedFetch(`${API_BASE}/api/commune/autonomous/stop`, { method: "POST" });
       if (res.ok) {
         fetchStatus();
       }
@@ -125,21 +125,21 @@ const BiomeDialogueView: React.FC = () => {
   }, [messages]);
 
   return (
-    <div className="biome-dialogue-view">
+    <div className="commune-dialogue-view">
       {/* Main Chat Area */}
-      <div className="main-panel biome-chat-panel">
+      <div className="main-panel commune-chat-panel">
         <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass-light)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
             <Network color="var(--accent-cyan)" size={20} />
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{t('biome.dialogueStream')}</h3>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{t('commune.dialogueStream')}</h3>
           </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <Target size={12} /> {t('biome.topic') || 'Topic:'} {status?.config?.topic_id || topicId}
+              <Target size={12} /> {t('commune.topic') || 'Topic:'} {status?.config?.topic_id || topicId}
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               <Wifi size={12} color={status?.running ? "var(--accent-emerald)" : "var(--text-muted)"} />
-              {status?.running ? t('biome.autonomousActive') : t('biome.manualMode')}
+              {status?.running ? t('commune.autonomousActive') : t('commune.manualMode')}
             </span>
           </div>
         </div>
@@ -159,7 +159,7 @@ const BiomeDialogueView: React.FC = () => {
           {messages.length === 0 && (
             <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', opacity: 0.5 }}>
               <MessageSquare size={48} style={{ marginBottom: '1rem' }} />
-              <p>{t('biome.waitingMessages')}</p>
+              <p>{t('commune.waitingMessages')}</p>
             </div>
           )}
 
@@ -183,7 +183,7 @@ const BiomeDialogueView: React.FC = () => {
                 >
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.42rem' }}>
                     {isSelf ? <Bot size={12} color="var(--accent-cyan)" /> : <User size={12} color="var(--accent-purple)" />}
-                    {isSelf ? t('biome.localIntelligence') : `${t('biome.peer')} [${msg.sender_pubkey.substring(0, 8)}]`}
+                    {isSelf ? t('commune.localIntelligence') : `${t('commune.peer')} [${msg.sender_pubkey.substring(0, 8)}]`}
                     <span style={{ opacity: 0.5 }}>• {new Date(msg.created_at).toLocaleTimeString()}</span>
                   </div>
                   <div style={{ 
@@ -207,15 +207,15 @@ const BiomeDialogueView: React.FC = () => {
       </div>
 
       {/* Control Sidebar */}
-      <div className="biome-control-sidebar">
+      <div className="commune-control-sidebar">
         <div className="stat-card" style={{ padding: 'var(--space-md)', textAlign: 'left' }}>
           <h4 style={{ margin: '0 0 var(--space-sm) 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Play size={14} /> {t('biome.autonomousEngine') || 'AUTONOMOUS ENGINE'}
+            <Play size={14} /> {t('commune.autonomousEngine') || 'AUTONOMOUS ENGINE'}
           </h4>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
              <div className="input-field-container">
-               <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('biome.targetPeer')}</label>
+               <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('commune.targetPeer')}</label>
                <input 
                  className="custom-input"
                  value={peerPubkey} 
@@ -224,7 +224,7 @@ const BiomeDialogueView: React.FC = () => {
                />
              </div>
              <div className="input-field-container">
-               <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('biome.topicIdentity')}</label>
+               <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('commune.topicIdentity')}</label>
                <input 
                  className="custom-input"
                  value={topicId} 
@@ -253,7 +253,7 @@ const BiomeDialogueView: React.FC = () => {
                     transition: 'all var(--speed-normal)'
                 }}
                >
-                 <Square size={16} fill="currentColor" /> {t('biome.stopLoop') || 'Stop Autonomous Loop'}
+                 <Square size={16} fill="currentColor" /> {t('commune.stopLoop') || 'Stop Autonomous Loop'}
                </button>
              ) : (
                <button 
@@ -262,7 +262,7 @@ const BiomeDialogueView: React.FC = () => {
                 className="primary-button"
                 style={{ width: '100%', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
                >
-                 <Play size={16} fill="currentColor" /> {isStarting ? t('biome.initializing') : t('biome.startDialogue')}
+                 <Play size={16} fill="currentColor" /> {isStarting ? t('commune.initializing') : t('commune.startDialogue')}
                </button>
              )}
           </div>
@@ -270,39 +270,39 @@ const BiomeDialogueView: React.FC = () => {
 
         <div className="stat-card" style={{ padding: 'var(--space-md)', textAlign: 'left', background: 'var(--accent-purple-05)' }}>
           <h4 style={{ margin: '0 0 var(--space-sm) 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <History size={14} /> {t('biome.protocolStats') || 'PROTOCOL STATS'}
+            <History size={14} /> {t('commune.protocolStats') || 'PROTOCOL STATS'}
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>{t('biome.messagesSent')}:</span>
+              <span style={{ color: 'var(--text-muted)' }}>{t('commune.messagesSent')}:</span>
               <span style={{ fontWeight: 700 }}>{messages.length}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>{t('biome.protocolVersion')}:</span>
-              <span style={{ fontWeight: 700 }}>v20-BIOME</span>
+              <span style={{ color: 'var(--text-muted)' }}>{t('commune.protocolVersion')}:</span>
+              <span style={{ fontWeight: 700 }}>v20-COMMUNE</span>
             </div>
           </div>
         </div>
 
         <div className="info-box-glass">
-          <p>{t('biome.sandboxNote') || 'In Sandbox Mode, AI will fallback to local storage if Sync Hub is offline. Topic constraints are enforced by DialogueManager.'}</p>
+          <p>{t('commune.sandboxNote') || 'In Sandbox Mode, AI will fallback to local storage if Sync Hub is offline. Topic constraints are enforced by DialogueManager.'}</p>
         </div>
       </div>
       
       <style>{`
-        .biome-dialogue-view {
+        .commune-dialogue-view {
           display: grid;
           grid-template-columns: 1fr 300px;
           gap: var(--space-lg);
           height: calc(85vh - 100px);
         }
-        .biome-chat-panel {
+        .commune-chat-panel {
           display: flex;
           flex-direction: column;
           padding: 0;
           overflow: hidden;
         }
-        .biome-control-sidebar {
+        .commune-control-sidebar {
           display: flex;
           flex-direction: column;
           gap: var(--space-md);
@@ -310,11 +310,11 @@ const BiomeDialogueView: React.FC = () => {
         .info-box-glass {
           padding: 1rem;
           background: var(--bg-glass-light);
-          borderRadius: var(--radius-md);
+          border-radius: var(--radius-md);
           border: 1px solid var(--border-glass);
-          fontSize: 0.7rem;
+          font-size: 0.7rem;
           color: var(--text-muted);
-          lineHeight: 1.4;
+          line-height: 1.4;
         }
         .custom-input {
           width: 100%;
@@ -333,11 +333,11 @@ const BiomeDialogueView: React.FC = () => {
         }
 
         @media (max-width: 900px) {
-          .biome-dialogue-view {
+          .commune-dialogue-view {
             grid-template-columns: 1fr;
             height: auto;
           }
-          .biome-chat-panel {
+          .commune-chat-panel {
             height: 60vh;
           }
         }
@@ -346,4 +346,4 @@ const BiomeDialogueView: React.FC = () => {
   );
 };
 
-export default BiomeDialogueView;
+export default CommuneDialogueView;

@@ -235,7 +235,7 @@ CREATE TABLE IF NOT EXISTS arena_history (
     created_at TEXT DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS biome_messages (
+CREATE TABLE IF NOT EXISTS commune_messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sender_pubkey TEXT NOT NULL,
     recipient_pubkey TEXT NOT NULL,
@@ -248,13 +248,13 @@ CREATE TABLE IF NOT EXISTS biome_messages (
     created_at TEXT DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS biome_peers (
+CREATE TABLE IF NOT EXISTS commune_peers (
     pubkey TEXT PRIMARY KEY,
     last_seen_at TEXT DEFAULT (datetime('now')),
     reputation_score INTEGER NOT NULL DEFAULT 100
 );
 
-CREATE TABLE IF NOT EXISTS biome_topics (
+CREATE TABLE IF NOT EXISTS commune_topics (
     topic_id TEXT PRIMARY KEY,
     peer_pubkey TEXT NOT NULL,
     summary TEXT,

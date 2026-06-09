@@ -35,7 +35,7 @@ jest.mock('./AvatarViewerModal', () => (props: any) =>
 jest.mock('../TreasureBox', () => ({ TreasureBox: () => <div data-testid="treasure-box"></div> }));
 jest.mock('../VoiceStore', () => () => <div data-testid="voice-store"></div>);
 jest.mock('../ArtifactVault', () => () => <div data-testid="artifact-vault"></div>);
-jest.mock('../BiomeDialogueView', () => () => <div data-testid="biome-dialogue-view"></div>);
+jest.mock('../CommuneDialogueView', () => () => <div data-testid="commune-dialogue-view"></div>);
 jest.mock('../BiotopeView', () => () => <div data-testid="biotope-view"></div>);
 jest.mock('../GraphView', () => () => <div data-testid="graph-view"></div>);
 jest.mock('../CausalVisualizer', () => () => <div data-testid="causal-visualizer"></div>);
@@ -89,7 +89,7 @@ describe('HomePage Component', () => {
         
         await waitFor(() => {
             expect(screen.queryByTestId('character-panel')).toBeNull();
-            expect(screen.getByTestId('biome-dialogue-view')).toBeTruthy();
+            expect(screen.getByTestId('commune-dialogue-view')).toBeTruthy();
         });
     });
 

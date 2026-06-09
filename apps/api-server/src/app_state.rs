@@ -91,7 +91,7 @@ pub struct AppState {
     pub provider: Component<Arc<dyn LlmProvider + Send + Sync>>,
     pub autonomous_running: Component<Arc<std::sync::atomic::AtomicBool>>,
     pub autonomous_config:
-        Component<Arc<tokio::sync::RwLock<Option<aiome_core::biome::AutonomousConfig>>>>,
+        Component<Arc<tokio::sync::RwLock<Option<aiome_core::commune::AutonomousConfig>>>>,
     pub http_client: Component<reqwest::Client>,
     pub docker_failures:
         Component<Arc<tokio::sync::RwLock<std::collections::HashMap<String, u32>>>>,

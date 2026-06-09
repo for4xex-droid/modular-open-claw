@@ -15,7 +15,7 @@ use aiome_core_contracts::contracts::{
 };
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::traits::{
-    AgentEvolver, AuditStore, BiomeRegistry, ChatStore, FederationRegistry, HarnessRegistryOps,
+    AgentEvolver, AuditStore, ChatStore, CommuneRegistry, FederationRegistry, HarnessRegistryOps,
     ImmuneSystemOps, Job, JobQueue, KarmaRegistry, KarmaSearchResult, SettingsOps,
     SnsMetricsRecord, SoulStore, SystemStateOps, TaskRegistry,
 };
@@ -121,45 +121,45 @@ impl JobQueue for RealJobQueue {
 }
 
 #[async_trait]
-impl BiomeRegistry for RealJobQueue {
-    async fn get_biome_topic_status(
+impl CommuneRegistry for RealJobQueue {
+    async fn get_commune_topic_status(
         &self,
         topic_id: &str,
     ) -> Result<Option<(i32, Option<String>)>, AiomeError> {
-        self.inner.get_biome_topic_status(topic_id).await
+        self.inner.get_commune_topic_status(topic_id).await
     }
 
-    async fn advance_biome_turn(
+    async fn advance_commune_turn(
         &self,
         topic_id: &str,
         cooldown_minutes: i64,
     ) -> Result<i32, AiomeError> {
         self.inner
-            .advance_biome_turn(topic_id, cooldown_minutes)
+            .advance_commune_turn(topic_id, cooldown_minutes)
             .await
     }
 
-    async fn fetch_biome_messages(
+    async fn fetch_commune_messages(
         &self,
         topic_id: &str,
         limit: i64,
     ) -> Result<Vec<serde_json::Value>, AiomeError> {
-        self.inner.fetch_biome_messages(topic_id, limit).await
+        self.inner.fetch_commune_messages(topic_id, limit).await
     }
 
-    async fn store_biome_message(
+    async fn store_commune_message(
         &self,
-        message: &aiome_core_contracts::biome::BiomeMessage,
+        message: &aiome_core_contracts::commune::CommuneMessage,
     ) -> Result<(), AiomeError> {
-        self.inner.store_biome_message(message).await
+        self.inner.store_commune_message(message).await
     }
 
-    async fn update_biome_reputation(&self, pubkey: &str, delta: f64) -> Result<f64, AiomeError> {
-        self.inner.update_biome_reputation(pubkey, delta).await
+    async fn update_commune_reputation(&self, pubkey: &str, delta: f64) -> Result<f64, AiomeError> {
+        self.inner.update_commune_reputation(pubkey, delta).await
     }
 
-    async fn archive_biome_topic(&self, topic_id: &str) -> Result<(), AiomeError> {
-        self.inner.archive_biome_topic(topic_id).await
+    async fn archive_commune_topic(&self, topic_id: &str) -> Result<(), AiomeError> {
+        self.inner.archive_commune_topic(topic_id).await
     }
 }
 

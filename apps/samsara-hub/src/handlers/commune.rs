@@ -2,7 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Apache License, Version 2.0.
+ * Licensed under the Version 2.0.
  */
 use aiome_core::contracts::HubMessage;
 use axum::{
@@ -19,7 +19,7 @@ use std::time::Duration;
 use tracing::{error, info, warn};
 
 use crate::handlers::verify_bearer;
-use crate::models::{BiomeWsQuery, CreateTopicRequest, TopicRecord};
+use crate::models::{CommuneWsQuery, CreateTopicRequest, TopicRecord};
 use crate::state::HubState;
 use shared::{sql_exec, sql_fetch_all, sql_fetch_optional};
 
@@ -27,7 +27,7 @@ pub async fn list_topics_handler(
     State(state): State<Arc<HubState>>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<serde_json::Value>)> {
     let query =
-        "SELECT * FROM biome_topics WHERE status = 'Active' ORDER BY updated_at DESC LIMIT 50"
+        "SELECT * FROM commune_topics WHERE status = 'Active' ORDER BY updated_at DESC LIMIT 50"
             .to_string();
     let rows: Vec<TopicRecord> = match sql_fetch_all!(&state.pool, TopicRecord, &query) {
         Ok(r) => r,
@@ -102,7 +102,7 @@ pub async fn create_topic_handler(
 
     // 3. Insert Topic
     let insert_query = format!(
-        "INSERT INTO biome_topics (topic_id, peer_pubkey, summary) VALUES ({}, {}, {})",
+        "INSERT INTO commune_topics (topic_id, peer_pubkey, summary) VALUES ({}, {}, {})",
         state.pool.ph(0),
         state.pool.ph(1),
         state.pool.ph(2)
@@ -118,7 +118,7 @@ pub async fn create_topic_handler(
     match res {
         Ok(_) => {
             info!(
-                "🌟 [Hub] New Biome Topic created: {} by {}",
+                "🌟 [Hub] New Commune Topic created: {} by {}",
                 req.topic_id, req.peer_pubkey
             );
             (
@@ -135,17 +135,17 @@ pub async fn create_topic_handler(
     }
 }
 
-pub async fn biome_relay_handler(
+pub async fn commune_relay_handler(
     State(state): State<Arc<HubState>>,
     _headers: HeaderMap,
-    Json(mut msg): Json<aiome_core::biome::BiomeMessage>,
+    Json(mut msg): Json<aiome_core::commune::CommuneMessage>,
 ) -> (StatusCode, Json<serde_json::Value>) {
     // 🛡️ [GlassWorm Shield] Sanitize text fields
     msg.content = shared::guardrails::strip_invisible_unicode(&msg.content).into_owned();
 
     // 1.5 Topic Existence / Status Check
     let topic_check_query = format!(
-        "SELECT COUNT(*) FROM biome_topics WHERE topic_id = {} AND status = 'Active'",
+        "SELECT COUNT(*) FROM commune_topics WHERE topic_id = {} AND status = 'Active'",
         state.pool.ph(0)
     );
     let topic_exists =
@@ -188,7 +188,7 @@ pub async fn biome_relay_handler(
         || msg.content.contains(";base64,")
     {
         warn!(
-            "🚨 [CSAM Filter] Blocked Biome relay containing binary/base64 data from {}",
+            "🚨 [CSAM Filter] Blocked Commune relay containing binary/base64 data from {}",
             msg.sender_pubkey
         );
         return (
@@ -201,7 +201,7 @@ pub async fn biome_relay_handler(
 
     // 4. Relay Logic
     info!(
-        "📫 [Hub] Relaying Biome Message from {} to topic {}",
+        "📫 [Hub] Relaying Commune Message from {} to topic {}",
         msg.sender_pubkey, msg.topic_id
     );
 
@@ -210,7 +210,7 @@ pub async fn biome_relay_handler(
         Ok(j) => j,
         Err(e) => {
             error!(
-                "🛡️ [Relay] Failed to serialize biome message for {}: {}",
+                "🛡️ [Relay] Failed to serialize commune message for {}: {}",
                 msg.recipient_pubkey, e
             );
             return (
@@ -220,7 +220,7 @@ pub async fn biome_relay_handler(
         }
     };
     let relay_insert_query = format!(
-        "INSERT INTO biome_relay_queue (recipient_pubkey, payload) VALUES ({}, {})",
+        "INSERT INTO commune_relay_queue (recipient_pubkey, payload) VALUES ({}, {})",
         state.pool.ph(0),
         state.pool.ph(1)
     );
@@ -231,14 +231,14 @@ pub async fn biome_relay_handler(
         &payload_json
     ) {
         error!(
-            "🛡️ [Relay] Failed to queue biome message for {}: {}",
+            "🛡️ [Relay] Failed to queue commune message for {}: {}",
             msg.recipient_pubkey, e
         );
     }
 
     // Update Turn Count in Topic (State Channel)
     let turn_update_query = format!(
-        "UPDATE biome_topics SET turn_count = turn_count + 1, updated_at = {} WHERE topic_id = {}",
+        "UPDATE commune_topics SET turn_count = turn_count + 1, updated_at = {} WHERE topic_id = {}",
         state.pool.now_fn(),
         state.pool.ph(0)
     );
@@ -255,10 +255,10 @@ pub async fn biome_relay_handler(
     )
 }
 
-pub async fn biome_ws_handler(
+pub async fn commune_ws_handler(
     State(state): State<Arc<HubState>>,
     headers: HeaderMap,
-    Query(query): Query<BiomeWsQuery>,
+    Query(query): Query<CommuneWsQuery>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
     // Auth Check
@@ -285,29 +285,29 @@ pub async fn biome_ws_handler(
         return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
-    ws.on_upgrade(move |socket| handle_biome_ws(socket, state, query.node_id))
+    ws.on_upgrade(move |socket| handle_commune_ws(socket, state, query.node_id))
 }
 
-pub async fn handle_biome_ws(mut socket: WebSocket, state: Arc<HubState>, node_id: String) {
+pub async fn handle_commune_ws(mut socket: WebSocket, state: Arc<HubState>, node_id: String) {
     let mut rx = state.tx.subscribe();
 
     info!(
-        "📪 [BiomeWS] Node {} connected for real-time relay.",
+        "📪 [CommuneWS] Node {} connected for real-time relay.",
         node_id
     );
 
     loop {
         tokio::select! {
             Ok(msg) = rx.recv() => {
-                if let HubMessage::BiomeRelay(biome_msg) = msg {
+                if let HubMessage::CommuneRelay(commune_msg) = msg {
                     // SEC: Only send if it's for this recipient
-                    if biome_msg.recipient_pubkey != node_id {
+                    if commune_msg.recipient_pubkey != node_id {
                         continue;
                     }
-                    let text = match serde_json::to_string(&HubMessage::BiomeRelay(biome_msg)) {
+                    let text = match serde_json::to_string(&HubMessage::CommuneRelay(commune_msg)) {
                         Ok(t) => t,
                         Err(e) => {
-                            tracing::error!("Failed to serialize BiomeRelay message: {}", e);
+                            tracing::error!("Failed to serialize CommuneRelay message: {}", e);
                             continue;
                         }
                     };

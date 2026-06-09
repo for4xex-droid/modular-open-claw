@@ -532,8 +532,8 @@ pub enum HubMessage {
     Pong {
         server_time: String,
     },
-    /// Biome プロトコルメッセージの転送
-    BiomeRelay(crate::biome::BiomeMessage),
+    /// Commune プロトコルメッセージの転送
+    CommuneRelay(crate::commune::CommuneMessage),
 }
 
 /// System Setting entry for Management Console

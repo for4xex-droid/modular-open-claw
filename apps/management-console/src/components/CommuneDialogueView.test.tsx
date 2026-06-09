@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import BiomeDialogueView from './BiomeDialogueView';
+import CommuneDialogueView from './CommuneDialogueView';
 import { authenticatedFetch } from '../lib/auth';
 
 jest.mock('../lib/auth', () => ({
@@ -36,7 +36,7 @@ jest.mock('lucide-react', () => ({
     Network: () => <div data-testid="icon-network"></div>
 }));
 
-describe('BiomeDialogueView Component', () => {
+describe('CommuneDialogueView Component', () => {
     let mockFetch: jest.Mock;
 
     beforeEach(() => {
@@ -96,28 +96,28 @@ describe('BiomeDialogueView Component', () => {
 
     it('renders empty state when no messages', async () => {
         mockFetch.mockImplementation((url) => {
-            if (url.includes('/api/biome/list')) return Promise.resolve({ ok: true, json: async () => [] });
-            if (url.includes('/api/biome/autonomous/status')) return Promise.resolve({ ok: true, json: async () => mockStatusStopped });
+            if (url.includes('/api/commune/list')) return Promise.resolve({ ok: true, json: async () => [] });
+            if (url.includes('/api/commune/autonomous/status')) return Promise.resolve({ ok: true, json: async () => mockStatusStopped });
             return Promise.resolve({ ok: true, json: async () => [] });
         });
 
-        render(<BiomeDialogueView />);
+        render(<CommuneDialogueView />);
 
-        expect(screen.getByText('biome.dialogueStream')).toBeTruthy();
+        expect(screen.getByText('commune.dialogueStream')).toBeTruthy();
         
         await waitFor(() => {
-            expect(screen.getByText('biome.waitingMessages')).toBeTruthy();
+            expect(screen.getByText('commune.waitingMessages')).toBeTruthy();
         });
     });
 
     it('fetches and displays messages correctly', async () => {
         mockFetch.mockImplementation((url) => {
-            if (url.includes('/api/biome/list')) return Promise.resolve({ ok: true, json: async () => mockMessages });
-            if (url.includes('/api/biome/autonomous/status')) return Promise.resolve({ ok: true, json: async () => mockStatusStopped });
+            if (url.includes('/api/commune/list')) return Promise.resolve({ ok: true, json: async () => mockMessages });
+            if (url.includes('/api/commune/autonomous/status')) return Promise.resolve({ ok: true, json: async () => mockStatusStopped });
             return Promise.resolve({ ok: true, json: async () => [] });
         });
 
-        render(<BiomeDialogueView />);
+        render(<CommuneDialogueView />);
 
         await waitFor(() => {
             expect(screen.getByText('Hello from local intelligence')).toBeTruthy();
@@ -125,29 +125,29 @@ describe('BiomeDialogueView Component', () => {
         });
 
         // Ensure both self and peer identifiers are rendered
-        expect(screen.getByText('biome.localIntelligence')).toBeTruthy();
-        expect(screen.getByText(/biome\.peer.*PEER_NOD/)).toBeTruthy();
+        expect(screen.getByText('commune.localIntelligence')).toBeTruthy();
+        expect(screen.getByText(/commune\.peer.*PEER_NOD/)).toBeTruthy();
     });
 
     it('handles starting the autonomous engine', async () => {
         let isRunning = false;
         mockFetch.mockImplementation((url, options) => {
-            if (url.includes('/api/biome/list')) return Promise.resolve({ ok: true, json: async () => [] });
-            if (url.includes('/api/biome/autonomous/status')) {
+            if (url.includes('/api/commune/list')) return Promise.resolve({ ok: true, json: async () => [] });
+            if (url.includes('/api/commune/autonomous/status')) {
                 return Promise.resolve({ ok: true, json: async () => isRunning ? mockStatusRunning : mockStatusStopped });
             }
-            if (url.includes('/api/biome/autonomous/start') && options?.method === 'POST') {
+            if (url.includes('/api/commune/autonomous/start') && options?.method === 'POST') {
                 isRunning = true;
                 return Promise.resolve({ ok: true });
             }
             return Promise.resolve({ ok: true, json: async () => [] });
         });
 
-        render(<BiomeDialogueView />);
+        render(<CommuneDialogueView />);
 
         // Wait for initial load
         await waitFor(() => {
-            expect(screen.getByText('biome.startDialogue')).toBeTruthy();
+            expect(screen.getByText('commune.startDialogue')).toBeTruthy();
         });
 
         // Change inputs
@@ -158,7 +158,7 @@ describe('BiomeDialogueView Component', () => {
         fireEvent.change(topicInput, { target: { value: 'new_topic' } });
 
         // Click Start
-        const startBtn = screen.getByText('biome.startDialogue');
+        const startBtn = screen.getByText('commune.startDialogue');
         
         await act(async () => {
             fireEvent.click(startBtn);
@@ -166,14 +166,14 @@ describe('BiomeDialogueView Component', () => {
 
         // Should call start API with new params
         expect(mockFetch).toHaveBeenCalledWith(
-            'http://localhost:3000/api/biome/autonomous/start',
+            'http://localhost:3000/api/commune/autonomous/start',
             expect.objectContaining({
                 method: 'POST',
                 body: expect.stringContaining('"topic_id":"new_topic"')
             })
         );
         expect(mockFetch).toHaveBeenCalledWith(
-            'http://localhost:3000/api/biome/autonomous/start',
+            'http://localhost:3000/api/commune/autonomous/start',
             expect.objectContaining({
                 method: 'POST',
                 body: expect.stringContaining('"peer_pubkey":"NEW_PEER"')
@@ -182,56 +182,56 @@ describe('BiomeDialogueView Component', () => {
 
         // After start, should show Stop button
         await waitFor(() => {
-            expect(screen.getByText(/biome.stopLoop|Stop Autonomous Loop/)).toBeTruthy();
-            expect(screen.getByText('biome.autonomousActive')).toBeTruthy();
+            expect(screen.getByText(/commune.stopLoop|Stop Autonomous Loop/)).toBeTruthy();
+            expect(screen.getByText('commune.autonomousActive')).toBeTruthy();
         });
     });
 
     it('handles stopping the autonomous engine', async () => {
         let isRunning = true;
         mockFetch.mockImplementation((url, options) => {
-            if (url.includes('/api/biome/list')) return Promise.resolve({ ok: true, json: async () => [] });
-            if (url.includes('/api/biome/autonomous/status')) {
+            if (url.includes('/api/commune/list')) return Promise.resolve({ ok: true, json: async () => [] });
+            if (url.includes('/api/commune/autonomous/status')) {
                 return Promise.resolve({ ok: true, json: async () => isRunning ? mockStatusRunning : mockStatusStopped });
             }
-            if (url.includes('/api/biome/autonomous/stop') && options?.method === 'POST') {
+            if (url.includes('/api/commune/autonomous/stop') && options?.method === 'POST') {
                 isRunning = false;
                 return Promise.resolve({ ok: true });
             }
             return Promise.resolve({ ok: true, json: async () => [] });
         });
 
-        render(<BiomeDialogueView />);
+        render(<CommuneDialogueView />);
 
         await waitFor(() => {
-            expect(screen.getByText(/biome.stopLoop|Stop Autonomous Loop/)).toBeTruthy();
+            expect(screen.getByText(/commune.stopLoop|Stop Autonomous Loop/)).toBeTruthy();
         });
 
-        const stopBtn = screen.getByText(/biome.stopLoop|Stop Autonomous Loop/);
+        const stopBtn = screen.getByText(/commune.stopLoop|Stop Autonomous Loop/);
         
         await act(async () => {
             fireEvent.click(stopBtn);
         });
 
         expect(mockFetch).toHaveBeenCalledWith(
-            'http://localhost:3000/api/biome/autonomous/stop',
+            'http://localhost:3000/api/commune/autonomous/stop',
             expect.objectContaining({ method: 'POST' })
         );
 
         await waitFor(() => {
-            expect(screen.getByText('biome.startDialogue')).toBeTruthy();
-            expect(screen.getByText('biome.manualMode')).toBeTruthy();
+            expect(screen.getByText('commune.startDialogue')).toBeTruthy();
+            expect(screen.getByText('commune.manualMode')).toBeTruthy();
         });
     });
 
     it('polls for new messages and status', async () => {
         mockFetch.mockResolvedValue({ ok: true, json: async () => [] });
         
-        render(<BiomeDialogueView />);
+        render(<CommuneDialogueView />);
 
         await waitFor(() => {
-            expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/biome/list');
-            expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/biome/autonomous/status');
+            expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/commune/list');
+            expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/commune/autonomous/status');
         });
 
         const initialCallCount = mockFetch.mock.calls.length;
@@ -251,7 +251,7 @@ describe('BiomeDialogueView Component', () => {
 
         mockFetch.mockRejectedValue(new Error('Network error'));
 
-        render(<BiomeDialogueView />);
+        render(<CommuneDialogueView />);
 
         await waitFor(() => {
             expect(consoleSpy).toHaveBeenCalledWith(
@@ -261,7 +261,7 @@ describe('BiomeDialogueView Component', () => {
         });
 
         // Component should still render without crashing
-        expect(screen.getByText('biome.dialogueStream')).toBeTruthy();
+        expect(screen.getByText('commune.dialogueStream')).toBeTruthy();
 
         consoleSpy.mockRestore();
     });
@@ -269,23 +269,47 @@ describe('BiomeDialogueView Component', () => {
     it('handles non-ok API response gracefully', async () => {
         mockFetch.mockResolvedValue({ ok: false, status: 500 });
 
-        render(<BiomeDialogueView />);
+        render(<CommuneDialogueView />);
 
         // Should not crash, should show empty/waiting state
         await waitFor(() => {
-            expect(screen.getByText('biome.waitingMessages')).toBeTruthy();
+            expect(screen.getByText('commune.waitingMessages')).toBeTruthy();
         });
     });
 
     it('cleans up polling interval on unmount', () => {
         mockFetch.mockResolvedValue({ ok: true, json: async () => [] });
 
-        const { unmount } = render(<BiomeDialogueView />);
+        const { unmount } = render(<CommuneDialogueView />);
         const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
         unmount();
 
         expect(clearIntervalSpy).toHaveBeenCalled();
         clearIntervalSpy.mockRestore();
+    });
+
+    it('applies correct kebab-case CSS properties in styling', () => {
+        const { container } = render(<CommuneDialogueView />);
+        const styleTags = container.querySelectorAll('style');
+        expect(styleTags.length).toBeGreaterThan(0);
+        
+        let foundStyleTag = false;
+        styleTags.forEach(styleTag => {
+            const content = styleTag.textContent || '';
+            if (content.includes('.info-box-glass')) {
+                foundStyleTag = true;
+                // camelCase properties should NOT be present
+                expect(content).not.toContain('borderRadius:');
+                expect(content).not.toContain('fontSize:');
+                expect(content).not.toContain('lineHeight:');
+                
+                // kebab-case properties should be present
+                expect(content).toContain('border-radius:');
+                expect(content).toContain('font-size:');
+                expect(content).toContain('line-height:');
+            }
+        });
+        expect(foundStyleTag).toBe(true);
     });
 });

@@ -49,14 +49,14 @@ async fn test_rate_limiting_per_agent() {
 
     for _ in 0..5 {
         let resp = server
-            .get("/api/biome/status")
+            .get("/api/commune/status")
             .add_header(axum::http::header::AUTHORIZATION, &bearer)
             .await;
         assert_eq!(resp.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     let resp = server
-        .get("/api/biome/status")
+        .get("/api/commune/status")
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
         .await;
     assert_eq!(resp.status_code(), StatusCode::TOO_MANY_REQUESTS);

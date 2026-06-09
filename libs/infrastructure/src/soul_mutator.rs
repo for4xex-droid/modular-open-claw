@@ -9,7 +9,7 @@ use crate::job_queue::EvaluationOps;
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::llm::LlmProvider;
 use aiome_core_contracts::traits::{
-    AgentEvolver, AuditStore, BiomeRegistry, ChatStore, Expression, FederationRegistry,
+    AgentEvolver, AuditStore, ChatStore, CommuneRegistry, Expression, FederationRegistry,
     ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, KarmaSearchResult, SnsMetricsRecord,
     SoulStore, TaskRegistry,
 };
@@ -705,33 +705,33 @@ mod tests {
     }
 
     #[async_trait]
-    impl BiomeRegistry for MockJobQueue {
-        async fn get_biome_topic_status(
+    impl CommuneRegistry for MockJobQueue {
+        async fn get_commune_topic_status(
             &self,
             _: &str,
         ) -> Result<Option<(i32, Option<String>)>, AiomeError> {
             Ok(None)
         }
-        async fn advance_biome_turn(&self, _: &str, _: i64) -> Result<i32, AiomeError> {
+        async fn advance_commune_turn(&self, _: &str, _: i64) -> Result<i32, AiomeError> {
             Ok(0)
         }
-        async fn fetch_biome_messages(
+        async fn fetch_commune_messages(
             &self,
             _: &str,
             _: i64,
         ) -> Result<Vec<serde_json::Value>, AiomeError> {
             Ok(vec![])
         }
-        async fn store_biome_message(
+        async fn store_commune_message(
             &self,
-            _: &aiome_core_contracts::biome::BiomeMessage,
+            _: &aiome_core_contracts::commune::CommuneMessage,
         ) -> Result<(), AiomeError> {
             Ok(())
         }
-        async fn update_biome_reputation(&self, _: &str, _: f64) -> Result<f64, AiomeError> {
+        async fn update_commune_reputation(&self, _: &str, _: f64) -> Result<f64, AiomeError> {
             Ok(0.0)
         }
-        async fn archive_biome_topic(&self, _: &str) -> Result<(), AiomeError> {
+        async fn archive_commune_topic(&self, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
     }

@@ -12,13 +12,13 @@ pub mod artifacts;
 pub mod audit;
 pub mod auth;
 pub mod avatar;
-pub mod biome;
 pub mod blueprint;
 pub mod bootstrap;
 pub mod buzz;
 pub mod commerce;
 pub(crate) mod commerce_helpers;
 pub mod commerce_webhook;
+pub mod commune;
 pub mod cortex;
 #[cfg(any(debug_assertions, feature = "demo"))]
 pub mod demo;

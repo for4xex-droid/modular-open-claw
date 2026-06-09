@@ -343,7 +343,7 @@ output_data = {"insights": insights, "total_analyzed": len(karmas)}
     }
 
     /// カルマスコアを評価し、トラストバウンド（経済活動の信頼限界）を算出する。
-    /// Phase 4: Biome Reputation に基づく動的評価ロジック
+    /// Phase 4: Commune Reputation に基づく動的評価ロジック
     pub async fn evaluate_trust_score(&self, actor: &ActorId) -> Result<u64, AiomeError> {
         tracing::debug!(
             "🧬 [KarmaForge] Evaluating trust score for actor: {}",
@@ -353,10 +353,10 @@ output_data = {"insights": insights, "total_analyzed": len(karmas)}
         let base_score: u64 = 500;
 
         // 1. Reputationの取得
-        // update_biome_reputation に 0.0 を渡すことで、現在の Reputation を取得する
-        let rep = match self
+        // update_commune_reputation に 0.0 を渡すことで、現在の Reputation を取得する
+        let rep: f64 = match self
             .job_queue
-            .update_biome_reputation(&actor.0.to_string(), 0.0)
+            .update_commune_reputation(&actor.0.to_string(), 0.0)
             .await
         {
             Ok(r) if r.is_finite() => r,

@@ -8,9 +8,9 @@
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 
-/// Biome プロトコルにおける基本メッセージ
+/// Commune プロトコルにおける基本メッセージ
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BiomeMessage {
+pub struct CommuneMessage {
     /// 送信元の公開鍵 (Base64)
     pub sender_pubkey: String,
     /// 宛先の公開鍵 (Base64)
@@ -34,7 +34,7 @@ pub struct BiomeMessage {
 
 /// 対話の要約・状態
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BiomeDialogue {
+pub struct CommuneDialogue {
     pub topic_id: String,
     pub peer_pubkey: String,
     pub last_message_at: String,
@@ -63,7 +63,7 @@ pub struct DialogueDistillation {
     pub timestamp: String,
 }
 
-impl BiomeMessage {
+impl CommuneMessage {
     /// メッセージ本文を指定された共有鍵で暗号化する
     pub fn encrypt(
         &mut self,
@@ -123,54 +123,4 @@ impl BiomeMessage {
         self.content = String::from_utf8(plaintext)?;
         Ok(())
     }
-}
-
-/// [A-1] Docker Agent ↔ Karma Feedback Loop
-/// Represents the result of an execution inside the Docker sandbox.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DelegationResult {
-    pub stdout: String,
-    pub stderr: String,
-    pub exit_code: i32,
-    pub duration_ms: u64,
-}
-
-impl DelegationResult {
-    /// Determines if the execution was successful based on exit code.
-    pub fn is_success(&self) -> bool {
-        self.exit_code == 0
-    }
-
-    /// High-level classification of the failure type.
-    pub fn failure_category(&self) -> FailureCategory {
-        if self.is_success() {
-            return FailureCategory::None;
-        }
-
-        // Common exit codes and stderr patterns
-        if self.exit_code == 124 || self.stderr.contains("timeout") {
-            FailureCategory::Timeout
-        } else if self.exit_code == 137
-            || self.stderr.contains("OOM")
-            || self.stderr.contains("Out of memory")
-        {
-            FailureCategory::Oom
-        } else if self.stderr.contains("Module not found") || self.stderr.contains("ImportError") {
-            FailureCategory::DependencyMissing
-        } else if self.stderr.contains("SyntaxError") {
-            FailureCategory::SyntaxError
-        } else {
-            FailureCategory::UnknownRuntime
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-pub enum FailureCategory {
-    None,
-    Timeout,
-    Oom,
-    DependencyMissing,
-    SyntaxError,
-    UnknownRuntime,
 }

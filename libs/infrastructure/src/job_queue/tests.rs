@@ -23,7 +23,7 @@ use aiome_core::security::PermissionManifest;
 use aiome_core::traits::{JobQueue, JobStatus, KarmaEntry, KarmaSearchResult};
 use aiome_core::trajectory::TrajectoryStore;
 use aiome_core_contracts::traits::{
-    AgentEvolver, AuditStore, BiomeRegistry, FederationRegistry, ImmuneSystemOps, KarmaRegistry,
+    AgentEvolver, AuditStore, CommuneRegistry, FederationRegistry, ImmuneSystemOps, KarmaRegistry,
     TaskRegistry,
 };
 use async_trait::async_trait;

@@ -1,6 +1,31 @@
 ## [Unreleased]
 
+### Fixed
+- **CommuneDialogueView スタイリングおよび不要 i18n キーの修正 (TDD)**:
+  - `apps/management-console/src/components/CommuneDialogueView.tsx` の `<style>` タグ内の camelCase プロパティ (`borderRadius`, `fontSize`, `lineHeight`) を、標準の kebab-case プロパティ (`border-radius`, `font-size`, `line-height`) に修正し、スタイリングがブラウザで無視される不具合を解消。
+  - `CommuneDialogueView.test.tsx` に失敗するテストを追加して不具合を再現し（Negative Test）、修正後にテストが通過することを確認（Positive Test）する TDD サイクルを実行。
+  - 不要となった i18n キー `"nav.biomeLab"` を `en.json` および `ja.json` から完全に削除し、静的解析 (`grep_search`) にて残存が 0 であることを検証。
+- **`napi-bridge` クレートにおける SQLite データベースロック競合の解消**:
+  - `libs/napi-bridge/src/lib.rs` 内のテストコードで使用されていた `AIOME_DB_PATH` をインメモリからシステム一時ディレクトリ上の絶対パス実ファイル（`/tmp/test_napi_bridge.db` 等）に切り替え。これによりカレントディレクトリに依存しない絶対パス解決が保証され、かつ SQLite の WAL モードと busy_timeout (5秒) が正常に有効化されて、並列テスト実行時に発生していた `database table is locked` や `unable to open database file` エラーによる flakiness を完全に解消。
+
+### Added
+- **バージョン通知システム (Version Notification System) の実装 (TDD)**:
+  - `apps/api-server/src/internal_services/heartbeat.rs` 内に `check_and_notify_version` 関数を実装し、起動時に一度だけ現在のバージョン（`v1.0.2`）と設定 `last_notified_version` を比較して、新しい場合に `CoreEvent::ProactiveTalk` のイベントを送信し設定を更新する仕組みを構築。
+  - `apps/api-server/src/routes/settings.rs` の `ALLOWED_KEYS` ホワイトリストに `"last_notified_version"` を追加。
+  - `apps/api-server/src/api_integration_tests/heartbeat.rs` にバージョンチェックと重複通知防止、およびホワイトリストの整合性をアサートする TDD 結合テストを追加。
+
 ### Changed
+- **P2P対話プロトコル（旧 Biome）の Commune へのリネーム (Phase 0, 1) と文脈の完全分離**:
+  - 既存の `Biome` 概念（P2P対話プロトコル）をすべて `Commune` に全面置換・リネーム完了。
+  - `BiomeRegistry` ➔ `CommuneRegistry` を含むトレイトや型定義、メソッド名の移行を実施。
+  - SQLite および PostgreSQL の初期・パッチマイグレーションファイル（DDL）内の `biome_messages`, `biome_peers`, `biome_topics`, `biome_relay_queue` を `commune_` へ置換し、テスト環境でのマイグレーション競合や `no such table: commune_topics` 起因のテスト失敗を修復。
+  - SSRF防止ホワイトリスト用環境変数 `BIOME_HUB_WHITELIST` を `COMMUNE_HUB_WHITELIST` にリネームし、`.env` および `.env.example` を同期。
+  - `dream_state/communication.rs` および `samsara-hub/src/state.rs` に残存していたログメッセージやコメント内の Biome 参照を Commune へ置換。
+  - `libs/shared/src/security.rs` 内に新環境変数の適用テストおよび旧環境変数無視のネガティブテストを追加し、TDD サイクルによる検証を完了。
+  - フロントエンド（Management Console）での `BiomeDialogueView.tsx` / `BiomeDialogueView.test.tsx` ➔ `CommuneDialogueView.tsx` / `CommuneDialogueView.test.tsx` へのリネーム、および `App.tsx` / `HomePage.tsx` のアクティブタブ名・翻訳キー（`en.json`, `ja.json`）の完全同期。
+  - `docs/guides/OPERATIONS_MANUAL.md` および `TECH_DEBT_AUDIT.md` 内の旧 `biome` 参照を `commune` へ置換。
+  - ワークスペースの全テスト（`cargo test --workspace`）およびフロントエンドのテスト・ビルド（`npm run test`, `npm run build`）が正常に100%通過することを確認。
+
 - **God Module 分割 (Phase 48 / G4, G5)**:
   - `libs/infrastructure/src/llm/dynamic.rs` (1,176行) を、2つのサブモジュール（`cost.rs`：コスト計算およびテスト、`background.rs`：`BackgroundLlmProvider`）に分割し、`dynamic.rs` を後方互換性を持つハブモジュールとして再構成。
   - `commercial/apps/nurture-api/src/routes/internal.rs` (1,078行) を、5つのサブモジュール（`routes/internal/types.rs`, `routes/internal/balance.rs`, `routes/internal/escrow.rs`, `routes/internal/gdpr.rs`, `routes/internal/misc.rs`）に分割し、`routes/internal/mod.rs` を後方互換性を持つハブモジュールとして再構成。

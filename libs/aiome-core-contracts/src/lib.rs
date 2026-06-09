@@ -19,8 +19,9 @@ pub use aiome_contracts::*;
 // Internal Modules
 pub mod a2a;
 pub mod audit;
-pub mod biome;
+pub mod commune;
 pub mod contracts;
+pub mod delegation;
 pub mod ekyc;
 pub mod events;
 pub mod expression;
@@ -39,8 +40,9 @@ pub mod voice_vault;
 
 pub use a2a::*;
 pub use audit::*;
-pub use biome::*;
+pub use commune::*;
 pub use contracts::*;
+pub use delegation::*;
 pub use ekyc::*;
 pub use events::*;
 pub use expression::*;

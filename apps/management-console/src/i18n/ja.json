@@ -13,7 +13,6 @@
     "artifactVault": "ファイル",
     "audit": "監査ログ",
     "expressions": "表現パイプライン",
-    "biomeLab": "マルチエージェントラボ",
     "voiceStore": "音声",
     "immuneSystem": "セキュリティ",
     "agentConsole": "AIチャット",
@@ -38,7 +37,7 @@
     "artifactVault": "ファイル",
     "audit": "システム監査ログ",
     "expressions": "AI 自己表現パイプライン",
-    "biomeLab": "マルチエージェントラボ",
+    "communeLab": "マルチエージェントラボ",
     "voiceStore": "音声管理",
     "loraAutotuner": "LoRA オートチューナー",
     "causalTrace": "因果推論トレース",
@@ -560,7 +559,7 @@
     "telemetry": "テレメトリ & ステータス",
     "pending": "保留中"
   },
-  "biome": {
+  "commune": {
     "topic": "トピック:",
     "autonomousEngine": "自律エンジン",
     "stopLoop": "自律ループを停止",
@@ -569,7 +568,7 @@
     "dialogueStream": "AI 間対話ストリーム",
     "autonomousActive": "自律モード稼働中",
     "manualMode": "手動モード",
-    "waitingMessages": "バイオームメッセージを待機中...",
+    "waitingMessages": "コミューンメッセージを待機中...",
     "localIntelligence": "ローカルインテリジェンス",
     "peer": "ピア",
     "targetPeer": "ターゲットピア公開鍵",

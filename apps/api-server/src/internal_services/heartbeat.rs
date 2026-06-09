@@ -53,6 +53,11 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
     )
     .with_evolution_tools(score_tracker.clone(), evolver.clone(), lora_service);
 
+    // Startup version check & notification (TDD Phase 4)
+    if let Err(e) = check_and_notify_version(&state).await {
+        tracing::error!("❌ [Heartbeat] Version notification failed: {:?}", e);
+    }
+
     // 3. 定期実行ループ (5分おき)
     let mut timer = interval(Duration::from_secs(300));
 
@@ -111,4 +116,41 @@ async fn is_suggestion_enabled(state: &AppState) -> bool {
         .flatten();
     // Default to true if not explicitly set to false
     flag.as_deref() != Some("false")
+}
+
+/// Aiomeの現在のバージョンをチェックし、未通知の場合はお知らせを送信する
+pub async fn check_and_notify_version(state: &AppState) -> anyhow::Result<()> {
+    const CURRENT_VERSION: &str = "v1.0.2";
+
+    let last_notified = state
+        .job_queue
+        .get_setting_value("last_notified_version")
+        .await?;
+
+    if last_notified.as_deref() != Some(CURRENT_VERSION) {
+        info!(
+            "📢 [Heartbeat] Version notification trigger: notifying users about {}",
+            CURRENT_VERSION
+        );
+
+        let announcement = format!(
+            "【Aiome {} リリース】新しいバージョンが利用可能です！Commune機能の改善や、システムの信頼性が向上しました。🐾",
+            CURRENT_VERSION
+        );
+
+        let _ = state
+            .event_sender
+            .get_inner()
+            .send(CoreEvent::ProactiveTalk {
+                message: announcement,
+                channel_id: 0, // 0 = Default Broadcast
+            });
+
+        state
+            .job_queue
+            .update_setting("last_notified_version", CURRENT_VERSION, "system", false)
+            .await?;
+    }
+
+    Ok(())
 }

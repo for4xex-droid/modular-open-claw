@@ -118,7 +118,7 @@ pub struct CoreServicesResult {
     pub router_provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
     pub autonomous_running: Arc<std::sync::atomic::AtomicBool>,
     pub autonomous_config:
-        Arc<tokio::sync::RwLock<Option<aiome_core::biome::autonomous::AutonomousConfig>>>,
+        Arc<tokio::sync::RwLock<Option<aiome_core::commune::autonomous::AutonomousConfig>>>,
     pub docker_failures: Arc<tokio::sync::RwLock<std::collections::HashMap<String, u32>>>,
     pub mcp_manager: Arc<mcp::client::McpProcessManager>,
     pub gig_engine: Arc<dyn aiome_core_contracts::gig::GigEngine>,

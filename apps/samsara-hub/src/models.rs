@@ -65,7 +65,7 @@ pub struct CreateTopicRequest {
 }
 
 #[derive(Deserialize)]
-pub struct BiomeWsQuery {
+pub struct CommuneWsQuery {
     pub node_id: String,
 }
 

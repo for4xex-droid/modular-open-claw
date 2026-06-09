@@ -96,9 +96,9 @@ pub mod contracts {
 }
 
 // Round 5: 自律対話の re-export
-pub mod biome {
-    pub use aiome_core::biome::{AutonomousBiomeEngine, AutonomousConfig};
-    pub use aiome_core_contracts::biome::BiomeMessage;
+pub mod commune {
+    pub use aiome_core::commune::{AutonomousCommuneEngine, AutonomousConfig};
+    pub use aiome_core_contracts::commune::CommuneMessage;
 }
 
 pub use aiome_core_contracts::{LlmRequest, LlmResponse};
@@ -114,8 +114,8 @@ mod tests {
         let _class: Option<contracts::KarmaClassification> = None;
         let _event: Option<contracts::SamsaraEvent> = None;
         let _evolver: Option<Box<dyn contracts::AgentEvolver>> = None;
-        let _cfg: Option<biome::AutonomousConfig> = None;
-        let _msg: Option<biome::BiomeMessage> = None;
+        let _cfg: Option<commune::AutonomousConfig> = None;
+        let _msg: Option<commune::CommuneMessage> = None;
         let _lora: Option<Box<dyn traits::LoraEngine>> = None;
         let _tts: Option<Box<dyn traits::TtsProvider>> = None;
     }

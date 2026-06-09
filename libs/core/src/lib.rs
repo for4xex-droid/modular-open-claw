@@ -15,11 +15,11 @@
 
 #![warn(missing_docs)]
 
-/// Biome Protocol関連のデータ型およびエンジン
-pub mod biome;
 /// LLM予算・コスト計算モジュール
 pub mod budget;
 pub mod commerce;
+/// Commune Protocol関連のデータ型およびエンジン
+pub mod commune;
 /// コアシステム全体で共有するデータ形式の定義
 pub mod contracts;
 pub mod error;
@@ -41,6 +41,11 @@ pub mod trajectory {
     pub use aiome_core_contracts::trajectory::*;
 }
 pub mod security_impl;
+
+/// Docker Agent 実行結果・委譲処理関連
+pub mod delegation {
+    pub use aiome_core_contracts::delegation::*;
+}
 
 #[cfg(test)]
 mod security_test;

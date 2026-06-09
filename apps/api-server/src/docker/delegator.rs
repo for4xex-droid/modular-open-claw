@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_core::biome::DelegationResult;
+use aiome_core::delegation::DelegationResult;
 use std::fs;
 use std::time::Instant;
 use tracing::{error, info, warn};

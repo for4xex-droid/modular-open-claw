@@ -10,7 +10,7 @@ use crate::traits::JobQueue;
 use chrono::{DateTime, Utc};
 use tracing::info;
 
-/// Biome プロトコルの対話ルール
+/// Commune プロトコルの対話ルール
 /// - State Channel: 1件のトピックにつき最大10往復
 /// - 往復終了後に LLM による要約を行い、アーカイブ化
 pub const MAX_DIALOGUE_TURNS: i32 = 10;
@@ -25,14 +25,14 @@ impl DialogueManager {
         queue: &dyn JobQueue,
         topic_id: &str,
     ) -> Result<i32, AiomeError> {
-        let status = queue.get_biome_topic_status(topic_id).await?;
+        let status = queue.get_commune_topic_status(topic_id).await?;
 
         if let Some((turn_count, cooldown_until)) = status {
             // 1. ターン制限チェック
             if turn_count >= MAX_DIALOGUE_TURNS {
                 return Err(AiomeError::Infrastructure {
                     reason: format!(
-                        "Biome Error: Topic {} has reached MAX_DIALOGUE_TURNS ({})",
+                        "Commune Error: Topic {} has reached MAX_DIALOGUE_TURNS ({})",
                         topic_id, MAX_DIALOGUE_TURNS
                     ),
                 });
@@ -44,7 +44,7 @@ impl DialogueManager {
                     if Utc::now() < until.with_timezone(&Utc) {
                         return Err(AiomeError::Infrastructure {
                             reason: format!(
-                                "Biome Error: Topic {} is in cooldown until {}",
+                                "Commune Error: Topic {} is in cooldown until {}",
                                 topic_id, until_str
                             ),
                         });
@@ -54,7 +54,7 @@ impl DialogueManager {
         }
 
         // 3. ターン更新 (デフォルト5分のクールダウン)
-        let new_count = queue.advance_biome_turn(topic_id, 5).await?;
+        let new_count = queue.advance_commune_turn(topic_id, 5).await?;
 
         Ok(new_count)
     }
@@ -64,14 +64,14 @@ impl DialogueManager {
         queue: &dyn JobQueue,
         llm: &dyn crate::llm_provider::LlmProvider,
         topic_id: &str,
-    ) -> Result<crate::biome::DialogueDistillation, AiomeError> {
+    ) -> Result<crate::commune::DialogueDistillation, AiomeError> {
         info!(
-            "🔮 [Biome] Starting dialogue distillation for topic: {}",
+            "🔮 [Commune] Starting dialogue distillation for topic: {}",
             topic_id
         );
 
         // 1. 対話履歴の取得
-        let history = queue.fetch_biome_messages(topic_id, 20).await?;
+        let history = queue.fetch_commune_messages(topic_id, 20).await?;
         if history.is_empty() {
             return Err(AiomeError::Infrastructure {
                 reason: "Cannot distill empty dialogue".to_string(),
@@ -107,8 +107,8 @@ impl DialogueManager {
         let payload_to_sign = format!("{}:{}:{}", topic_id, summary, timestamp);
         let signature = queue.sign_swarm_payload(&payload_to_sign).await?;
 
-        // 4. Distillation オブジェクト教構築
-        let distillation = crate::biome::DialogueDistillation {
+        // 4. Distillation オブジェクト構築
+        let distillation = crate::commune::DialogueDistillation {
             topic_id: topic_id.to_string(),
             summary: summary.clone(),
             participants: vec![node_id.clone()], // MVP: 自分自身の署名をまず入れる。将来的に Peer と交換。
@@ -119,12 +119,12 @@ impl DialogueManager {
         // 5. Karma として保存
         queue
             .store_karma(
-                "biome-distill",
-                "biome_protocol",
-                &format!("Biome Insight ({}): {}", topic_id, summary),
+                "commune-distill",
+                "commune_protocol",
+                &format!("Commune Insight ({}): {}", topic_id, summary),
                 "Synthesized",
                 "v20-distilled",
-                Some("Biome"),
+                Some("Commune"),
                 Some(topic_id),
                 None,
                 false,
@@ -132,10 +132,10 @@ impl DialogueManager {
             .await?;
 
         // 6. トピックをアーカイブ化
-        queue.archive_biome_topic(topic_id).await?;
+        queue.archive_commune_topic(topic_id).await?;
 
         info!(
-            "✅ [Biome] Distillation complete for {}. Saved as Synthesized Karma.",
+            "✅ [Commune] Distillation complete for {}. Saved as Synthesized Karma.",
             topic_id
         );
 
@@ -155,7 +155,7 @@ impl DialogueManager {
             PenaltyCategory::MaliciousIntent => -5.0,
         };
 
-        queue.update_biome_reputation(pubkey, delta).await
+        queue.update_commune_reputation(pubkey, delta).await
     }
 }
 

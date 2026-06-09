@@ -6,7 +6,7 @@
 **監査ツール**: `cargo audit`, `enforce_unwrap_deny.py`, `deep-scan.sh`, Git hotspot analysis, grep-based deep scan
 **Reflexion ラウンド**: 累計7セット実施（累計20件の修正、最高スコア 98)
 **深掘り対象 (v6.1)**: `mcp/discovery.rs`, `napi-bridge/src/lib.rs`, UIコンポーネント
-**深掘り対象 (v6)**: `security.rs`, `immune_system.rs`, `context_engine.rs`, `mcp/discovery.rs`, `biome.rs`
+**深掘り対象 (v6)**: `security.rs`, `immune_system.rs`, `context_engine.rs`, `mcp/discovery.rs`, `commune.rs`
 
 ---
 
@@ -66,7 +66,7 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | **QW-14** | `AgentConsole.tsx:108` のマジックナンバー `5` (ROI計算) を定数化 | `AgentConsole.tsx:108` | `savings: tasksCount * 5` — ハードコードの $5/task | — |
 | **QW-15** | `AgentConsole.tsx:115` の ROI ハッシュ計算をシード付き乱数に変更 | `AgentConsole.tsx:115` | `charCodeAt` の合計 % 500 による決定論的だが意味のない ROI 値生成 | — |
 | **QW-16** | `setup.rs:47` の未認証 `setup_init` ハンドラへの `// auth-exempt` コメント追加 | `setup.rs:47` | Type-Driven Security 違反の解消 | `[RESOLVED]` |
-| **QW-17** | [NEW] `biome.rs:347` の P2P E2E 暗号化 TODO コメントを ADR に昇格 | `routes/biome.rs:347` | セキュリティロードマップの明文化 | — |
+| **QW-17** | [NEW] `commune.rs:347` の P2P E2E 暗号化 TODO コメントを ADR に昇格 | `routes/commune.rs:347` | セキュリティロードマップの明文化 | — |
 | **QW-18** | [NEW] `mcp/discovery.rs:527-531` の OAuth URL を定数/設定ファイルに外出し | `mcp/discovery.rs:527-531` | 5サービスのトークンURLがハードコード | — |
 
 ---
@@ -183,8 +183,8 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | ✅ | `security.rs` | 263-323 | PathSandbox + Vault Sandbox 二重パス検証。 | ✅ |
 | ✅ | `security.rs` | 512-518 | env_clear() + harden_command_async()。 | ✅ |
 | ✅ | `immune_system.rs` | 193-220 | 15パターンの Baseline Sentinel。 | ✅ |
-| ✅ | `biome.rs` | 257-295 | P2P メッセージバリデーション。 | ✅ |
-| 🟡 | `biome.rs` | 347 | [NEW] **P2P E2E 暗号化が未実装** — TODO(SEC) コメントあり、ADR-043 参照が必要。 | — |
+| ✅ | `commune.rs` | 257-295 | P2P メッセージバリデーション | ✅ |
+| 🟡 | `commune.rs` | 347 | [NEW] P2P E2E 暗号化が未実装 — TODO(SEC) コメントあり、ADR-043 参照が必要。 | — |
 
 ### Dimension 9: Documentation Drift
 
@@ -239,7 +239,7 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | **`security.rs:92` の `WORKSPACE_DIR.ok()`** | 環境変数の optional 取得。 |
 | **`immune_system.rs:212-218` の `std::process::exit(1)`** | Sentinel regex のコンパイル失敗は致命的エラー。 |
 | **`context_engine.rs:284` の `LazyLock<DashMap>`** | Anti-thrashing 機構。 |
-| **`biome.rs:343` の `karma_root_cid: "cid_local_relay"`** | ローカルリレー経由のメッセージには CID が不要。 |
+| **`commune.rs:343` の karma_root_cid: "cid_local_relay"`** | ローカルリレー経由のメッセージには CID が不要。 |
 | **`mcp/discovery.rs` の OAuth URL ハードコード** | 外部サービスの公開仕様の固定 URL であり、変更頻度が極めて低い。 |
 
 ---
@@ -260,7 +260,7 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | **OQ-10** | `AgentConsole.tsx:108` の ROI 計算 | — | ビジネス判断が必要。 |
 | **OQ-11** | `setup.rs:47` の `// auth-exempt` | [RESOLVED] | コメント付与済み。 |
 | **OQ-12** | [NEW] `mcp/discovery.rs` の分割方針 | — | 1,113行の単一ファイルは保守性リスク。 |
-| **OQ-13** | [NEW] P2P E2E 暗号化 (`biome.rs:347`) の実装時期 | — | セキュリティ上の優先度は高いが、P2P 機能自体が MVP 段階。 |
+| **OQ-13** | [NEW] P2P E2E 暗号化 (`commune.rs:347`) の実装時期 | — | セキュリティ上の優先度は高いが、P2P 機能自体が MVP 段階。 |
 
 ---
 

@@ -15,7 +15,7 @@ use aiome_core_contracts::contracts::{
 use aiome_core_contracts::security::PermissionManifest;
 pub use aiome_core_contracts::traits::SettingsOps;
 use aiome_core_contracts::traits::{
-    AgentEvolver, AuditStore, BiomeRegistry, ChatStore, Expression, FederationRegistry,
+    AgentEvolver, AuditStore, ChatStore, CommuneRegistry, Expression, FederationRegistry,
     ImmuneSystemOps, Job, JobQueue, JobStatus, KarmaRegistry, KarmaSearchResult, Publisher,
     SnsMetricsRecord, SoulStore, SystemStateOps, TaskRegistry,
 };
@@ -696,38 +696,38 @@ impl FederationRegistry for UniversalJobQueue {
 }
 
 #[async_trait]
-impl BiomeRegistry for UniversalJobQueue {
-    async fn get_biome_topic_status(
+impl CommuneRegistry for UniversalJobQueue {
+    async fn get_commune_topic_status(
         &self,
         topic_id: &str,
     ) -> Result<Option<(i32, Option<String>)>, AiomeError> {
-        Box::pin(self.do_get_biome_topic_status(topic_id)).await
+        Box::pin(self.do_get_commune_topic_status(topic_id)).await
     }
-    async fn advance_biome_turn(
+    async fn advance_commune_turn(
         &self,
         topic_id: &str,
         cooldown_minutes: i64,
     ) -> Result<i32, AiomeError> {
-        Box::pin(self.do_advance_biome_turn(topic_id, cooldown_minutes)).await
+        Box::pin(self.do_advance_commune_turn(topic_id, cooldown_minutes)).await
     }
-    async fn fetch_biome_messages(
+    async fn fetch_commune_messages(
         &self,
         topic_id: &str,
         limit: i64,
     ) -> Result<Vec<serde_json::Value>, AiomeError> {
-        Box::pin(self.do_fetch_biome_messages(topic_id, limit)).await
+        Box::pin(self.do_fetch_commune_messages(topic_id, limit)).await
     }
-    async fn store_biome_message(
+    async fn store_commune_message(
         &self,
-        message: &aiome_core_contracts::biome::BiomeMessage,
+        message: &aiome_core_contracts::commune::CommuneMessage,
     ) -> Result<(), AiomeError> {
-        Box::pin(self.do_store_biome_message(message)).await
+        Box::pin(self.do_store_commune_message(message)).await
     }
-    async fn update_biome_reputation(&self, pubkey: &str, delta: f64) -> Result<f64, AiomeError> {
-        Box::pin(self.do_update_biome_reputation(pubkey, delta)).await
+    async fn update_commune_reputation(&self, pubkey: &str, delta: f64) -> Result<f64, AiomeError> {
+        Box::pin(self.do_update_commune_reputation(pubkey, delta)).await
     }
-    async fn archive_biome_topic(&self, topic_id: &str) -> Result<(), AiomeError> {
-        Box::pin(self.do_archive_biome_topic(topic_id)).await
+    async fn archive_commune_topic(&self, topic_id: &str) -> Result<(), AiomeError> {
+        Box::pin(self.do_archive_commune_topic(topic_id)).await
     }
 }
 

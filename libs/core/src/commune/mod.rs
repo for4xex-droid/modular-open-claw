@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-pub use aiome_core_contracts::biome::*;
+pub use aiome_core_contracts::commune::*;
 
 /// 自律的なP2P対話エンジンの実装
 pub mod autonomous;
@@ -13,4 +13,4 @@ pub mod autonomous;
 pub mod dialogue;
 
 // Re-export autonomous engine and config to maintain compatibility with existing code
-pub use autonomous::{AutonomousBiomeEngine, AutonomousConfig};
+pub use autonomous::{AutonomousCommuneEngine, AutonomousConfig};

@@ -2,7 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Apache License, Version 2.0.
+ * Licensed under the Version 2.0.
  */
 
 use super::common::*;
@@ -11,21 +11,22 @@ use serial_test::serial;
 
 #[serial]
 #[tokio::test]
-async fn test_biome_routes_auth() {
+async fn test_commune_routes_auth() {
     let (server, _state, _tmp) = create_test_server().await;
 
-    let resp_no_auth = server.get("/api/biome/status").await;
+    let resp_no_auth = server.get("/api/commune/status").await;
     assert_eq!(resp_no_auth.status_code(), StatusCode::UNAUTHORIZED);
 
     let resp_auth = server
-        .get("/api/biome/status")
+        .get("/api/commune/status")
         .add_header(axum::http::header::AUTHORIZATION, test_bearer())
         .await;
     assert_eq!(resp_auth.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
 }
+
 #[serial]
 #[tokio::test]
-async fn test_biome_send_message_content_length() {
+async fn test_commune_send_message_content_length() {
     let (server, _state, _tmp) = create_test_server().await;
     let bearer = test_bearer();
 
@@ -37,7 +38,7 @@ async fn test_biome_send_message_content_length() {
     });
 
     let resp = server
-        .post("/api/biome/send")
+        .post("/api/commune/send")
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
         .json(&payload)
         .await;
@@ -46,9 +47,10 @@ async fn test_biome_send_message_content_length() {
     let json = resp.json::<serde_json::Value>();
     assert!(json["error"].as_str().unwrap().contains("8000 bytes"));
 }
+
 #[serial]
 #[tokio::test]
-async fn test_biome_send_message_binary_data() {
+async fn test_commune_send_message_binary_data() {
     let (server, _state, _tmp) = create_test_server().await;
     let bearer = test_bearer();
 
@@ -60,7 +62,7 @@ async fn test_biome_send_message_binary_data() {
     });
 
     let resp = server
-        .post("/api/biome/send")
+        .post("/api/commune/send")
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
         .json(&payload)
         .await;
@@ -72,9 +74,10 @@ async fn test_biome_send_message_binary_data() {
         .unwrap()
         .contains("Binary data embedding"));
 }
+
 #[serial]
 #[tokio::test]
-async fn test_biome_autonomous_clamp() {
+async fn test_commune_autonomous_clamp() {
     let (server, _state, _tmp) = create_test_server().await;
     let bearer = test_bearer();
 
@@ -86,7 +89,7 @@ async fn test_biome_autonomous_clamp() {
     });
 
     let resp = server
-        .post("/api/biome/autonomous/start")
+        .post("/api/commune/autonomous/start")
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
         .json(&payload)
         .await;
@@ -94,7 +97,7 @@ async fn test_biome_autonomous_clamp() {
     assert_eq!(resp.status_code(), StatusCode::OK);
 
     let status_resp = server
-        .get("/api/biome/autonomous/status")
+        .get("/api/commune/autonomous/status")
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
         .await;
 
@@ -105,14 +108,15 @@ async fn test_biome_autonomous_clamp() {
     assert_eq!(config["interval_secs"].as_u64(), Some(10));
     assert_eq!(config["max_rounds"].as_u64(), Some(1));
 }
+
 #[serial]
 #[tokio::test]
-async fn test_biome_hub_unreachable_error() {
+async fn test_commune_hub_unreachable_error() {
     let (server, _state, _tmp) = create_test_server().await;
     let bearer = test_bearer();
 
     let resp = server
-        .get("/api/biome/topics")
+        .get("/api/commune/topics")
         .add_header(axum::http::header::AUTHORIZATION, &bearer)
         .await;
 

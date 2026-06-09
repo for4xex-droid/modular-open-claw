@@ -52,7 +52,7 @@ const SettingsPage = React.lazy(() => import("./components/SettingsPage"));
 const StatusPage = React.lazy(() => import("./components/StatusPage"));
 const ExpressionPipeline = React.lazy(() => import("./components/ExpressionPipeline"));
 const LoraTrainingView = React.lazy(() => import("./components/LoraTrainingView"));
-const BiomeDialogueView = React.lazy(() => import("./components/BiomeDialogueView"));
+const CommuneDialogueView = React.lazy(() => import("./components/CommuneDialogueView"));
 const VoiceStore = React.lazy(() => import("./components/VoiceStore"));
 const McpDashboard = React.lazy(() => import("./components/McpDashboard"));
 const BanDashboard = React.lazy(() => import("./components/BanDashboard"));
@@ -281,7 +281,7 @@ function App() {
   const isVisible = (tab: string) => {
     const beginner = ['home-v2', 'agent', 'artifacts', 'settings'];
     const intermediate = [...beginner, 'dashboard', 'demo', 'cortex', 'vault', 'store', 'nurture', 'mcp-dashboard', 'seo-pulse', 'status-page'];
-    const advanced = [...intermediate, 'karma', 'graph', 'causal', 'biome', 'audit', 'prompt-stats', 'immune', 'lora', 'expressions', 'ban-dashboard'];
+    const advanced = [...intermediate, 'karma', 'graph', 'causal', 'commune', 'audit', 'prompt-stats', 'immune', 'lora', 'expressions', 'ban-dashboard'];
     
     if (viewMode === 'beginner') return beginner.includes(tab);
     if (viewMode === 'intermediate') return intermediate.includes(tab);
@@ -494,12 +494,12 @@ function App() {
               onClick={() => setActiveTab("expressions")}
             />
           )}
-          {isVisible("biome") && (
+          {isVisible("commune") && (
             <NavItem
               icon={<Network size={20} />}
-              label={t('nav.biomeLab')}
-              active={activeTab === "biome"}
-              onClick={() => setActiveTab("biome")}
+              label={t('nav.communeLab')}
+              active={activeTab === "commune"}
+              onClick={() => setActiveTab("commune")}
             />
           )}
           {isVisible("store") && (
@@ -664,7 +664,7 @@ function App() {
             {activeTab === "prompt-stats" && t('page.promptStats')}
             {activeTab === "mcp-dashboard" && t('page.mcpDashboard')}
             {activeTab === "expressions" && t('page.expressions')}
-            {activeTab === "biome" && t('page.biomeLab')}
+            {activeTab === "commune" && t('page.communeLab')}
             {activeTab === "store" && t('page.voiceStore')}
             {activeTab === "ban-dashboard" && "Governance & BAN Dashboard"}
             {activeTab === "nurture" && (t('page.nurtureEconomy', { defaultValue: 'Nurture Economy' }) as string)}
@@ -715,7 +715,7 @@ function App() {
               {activeTab === "prompt-stats" && <PromptStatsView />}
               {activeTab === "mcp-dashboard" && <McpDashboard />}
               {activeTab === "expressions" && <ExpressionPipeline />}
-              {activeTab === "biome" && <BiomeDialogueView />}
+              {activeTab === "commune" && <CommuneDialogueView />}
               {activeTab === "store" && <VoiceStore />}
               {activeTab === "ban-dashboard" && <BanDashboard />}
               {activeTab === "nurture" && <NurtureDashboard />}

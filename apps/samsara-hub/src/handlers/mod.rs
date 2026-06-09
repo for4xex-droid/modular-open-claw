@@ -4,7 +4,7 @@
  *
  * Licensed under the Apache License, Version 2.0.
  */
-pub mod biome;
+pub mod commune;
 pub mod federation;
 pub mod middleware;
 pub mod system;

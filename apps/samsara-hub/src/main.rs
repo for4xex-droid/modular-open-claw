@@ -296,8 +296,8 @@ pub fn build_app(state: Arc<HubState>) -> Router {
             axum::http::header::AUTHORIZATION,
         ]);
 
-    use crate::handlers::biome::{
-        biome_relay_handler, biome_ws_handler, create_topic_handler, list_topics_handler,
+    use crate::handlers::commune::{
+        commune_relay_handler, commune_ws_handler, create_topic_handler, list_topics_handler,
     };
     use crate::handlers::middleware::auth_middleware;
     use crate::handlers::system::{health_handler, list_agents_handler};
@@ -308,11 +308,11 @@ pub fn build_app(state: Arc<HubState>) -> Router {
         .route("/api/v1/federation/push", post(push_handler))
         .route("/api/v1/registry/agents", get(list_agents_handler))
         .route(
-            "/api/v1/biome/topics",
+            "/api/v1/commune/topics",
             get(list_topics_handler).post(create_topic_handler),
         )
-        .route("/api/v1/biome/relay", post(biome_relay_handler))
-        .route("/api/v1/biome/ws", get(biome_ws_handler))
+        .route("/api/v1/commune/relay", post(commune_relay_handler))
+        .route("/api/v1/commune/ws", get(commune_ws_handler))
         .route("/api/v1/relay/timeline/sync", post(timeline_sync_handler))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
@@ -345,7 +345,7 @@ pub fn build_app(state: Arc<HubState>) -> Router {
                     (StatusCode::INTERNAL_SERVER_ERROR, msg)
                 }))
                 .layer(BufferLayer::new(2048))
-                .layer(RateLimitLayer::new(600, Duration::from_secs(60))), // High frequency for Biome
+                .layer(RateLimitLayer::new(600, Duration::from_secs(60))), // High frequency for Commune
         )
         .with_state(state)
 }

@@ -13,7 +13,6 @@
     "artifactVault": "Files",
     "audit": "Audit",
     "expressions": "Expressions",
-    "biomeLab": "Multi-Agent Lab",
     "voiceStore": "Voice",
     "immuneSystem": "Security",
     "agentConsole": "AI Chat",
@@ -38,7 +37,7 @@
     "artifactVault": "Files Vault",
     "audit": "System Audit Log",
     "expressions": "AI Self-Expression Pipeline",
-    "biomeLab": "Multi-Agent Lab",
+    "communeLab": "Multi-Agent Lab",
     "voiceStore": "Voice Manager",
     "loraAutotuner": "LoRA Autotuner",
     "causalTrace": "Causal Reasoning Trace",
@@ -560,7 +559,7 @@
     "telemetry": "Telemetry & Status",
     "pending": "Pending"
   },
-  "biome": {
+  "commune": {
     "topic": "Topic:",
     "autonomousEngine": "AUTONOMOUS ENGINE",
     "stopLoop": "Stop Autonomous Loop",
@@ -569,7 +568,7 @@
     "dialogueStream": "AI-to-AI Dialogue Stream",
     "autonomousActive": "Autonomous Active",
     "manualMode": "Manual Mode",
-    "waitingMessages": "Waiting for Biome messages...",
+    "waitingMessages": "Waiting for Commune messages...",
     "localIntelligence": "Local Intelligence",
     "peer": "Peer",
     "targetPeer": "Target Peer Pubkey",
