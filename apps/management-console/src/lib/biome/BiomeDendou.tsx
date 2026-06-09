@@ -17,16 +17,16 @@ export function BiomeDendou({ list, onLoad }: BiomeDendouProps) {
   return (
     <div style={{
       padding: '16px',
-      background: 'rgba(20, 20, 30, 0.6)',
+      background: 'var(--bg-glass-heavy)',
       backdropFilter: 'blur(12px)',
-      border: '1px solid rgba(255, 255, 255, 0.08)',
+      border: '1px solid var(--border-glass)',
       borderRadius: '12px',
-      color: '#fff',
+      color: 'var(--white-100)',
       fontFamily: 'system-ui, sans-serif'
     }}>
       <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 'bold' }}>HALL OF FAME</h3>
       {list.length === 0 ? (
-        <div style={{ color: '#889', fontSize: '14px', textAlign: 'center', padding: '16px' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center', padding: '16px' }}>
           No legendary specimens saved yet.
         </div>
       ) : (
@@ -36,23 +36,23 @@ export function BiomeDendou({ list, onLoad }: BiomeDendouProps) {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(255, 255, 255, 0.04)',
+              background: 'var(--white-02)',
+              border: '1px solid var(--white-04)',
               borderRadius: '8px',
               padding: '12px 16px'
             }}>
               <div>
                 <div style={{ fontWeight: '600', fontSize: '14px' }}>{sp.name}</div>
-                <div style={{ fontSize: '11px', color: '#889', marginTop: '4px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
                   Gen: {sp.generation} | {sp.rarity} | {sp.date}
                 </div>
               </div>
               <button
                 style={{
-                  background: 'rgba(96, 165, 250, 0.15)',
-                  border: '1px solid rgba(96, 165, 250, 0.3)',
+                  background: 'var(--accent-cyan-15)',
+                  border: '1px solid var(--accent-cyan-30)',
                   borderRadius: '6px',
-                  color: '#60a5fa',
+                  color: 'var(--accent-cyan)',
                   padding: '6px 12px',
                   cursor: 'pointer',
                   fontSize: '12px',

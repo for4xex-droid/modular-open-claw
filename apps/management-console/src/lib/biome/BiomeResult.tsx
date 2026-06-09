@@ -13,24 +13,24 @@ export function BiomeResult({ generation, rarity, onSave, onClose }: BiomeResult
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    background: 'rgba(15, 15, 25, 0.95)',
+    background: 'var(--bg-deep-glass)',
     backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    border: '1px solid var(--border-glass-bright)',
     borderRadius: '16px',
     padding: '32px',
-    color: '#fff',
+    color: 'var(--white-100)',
     width: '400px',
     textAlign: 'center',
-    boxShadow: '0 24px 64px rgba(0, 0, 0, 0.8)',
+    boxShadow: 'var(--shadow-deep)',
     fontFamily: 'system-ui, sans-serif',
     zIndex: 1000
   };
 
   const buttonStyle: React.CSSProperties = {
-    background: 'rgba(255, 255, 255, 0.08)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    background: 'var(--white-08)',
+    border: '1px solid var(--border-glass)',
     borderRadius: '8px',
-    color: '#fff',
+    color: 'var(--white-100)',
     padding: '10px 20px',
     cursor: 'pointer',
     fontWeight: 'bold',
@@ -40,8 +40,8 @@ export function BiomeResult({ generation, rarity, onSave, onClose }: BiomeResult
 
   const saveButtonStyle: React.CSSProperties = {
     ...buttonStyle,
-    background: 'linear-gradient(135deg, #ffd700, #b8860b)',
-    color: '#000',
+    background: 'linear-gradient(135deg, var(--accent-amber), var(--accent-amber-30))',
+    color: 'var(--text-inverse)',
     border: 'none'
   };
 
@@ -50,20 +50,20 @@ export function BiomeResult({ generation, rarity, onSave, onClose }: BiomeResult
       <h2 style={{ fontSize: '24px', margin: '0 0 16px 0', letterSpacing: '1px' }}>SIMULATION LEGACY</h2>
       
       <div style={{ margin: '24px 0' }}>
-        <div style={{ fontSize: '14px', color: '#889' }}>FINAL RARITY</div>
+        <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>FINAL RARITY</div>
         <div style={{
           fontSize: '32px',
           fontWeight: '900',
-          color: rarity === 'Legendary' ? '#ffd700' : rarity === 'Epic' ? '#c084fc' : rarity === 'Rare' ? '#60a5fa' : '#a1a1aa',
+          color: rarity === 'Legendary' ? 'var(--accent-amber)' : rarity === 'Epic' ? 'var(--accent-purple)' : rarity === 'Rare' ? 'var(--accent-cyan)' : 'var(--text-muted)',
           margin: '8px 0',
-          textShadow: rarity === 'Legendary' ? '0 0 16px rgba(255,215,0,0.4)' : 'none'
+          textShadow: rarity === 'Legendary' ? '0 0 16px var(--accent-amber-30)' : 'none'
         }}>
           {rarity}
         </div>
       </div>
 
       <div style={{ margin: '16px 0', fontSize: '16px' }}>
-        <span style={{ color: '#889' }}>Survival Generations: </span>
+        <span style={{ color: 'var(--text-muted)' }}>Survival Generations: </span>
         <strong style={{ fontSize: '20px' }}>{generation}</strong>
       </div>
 

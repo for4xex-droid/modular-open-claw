@@ -510,11 +510,11 @@ export function BiomeRenderer({
         display: 'block',
         width,
         height,
-        background: 'var(--color-bg-biome, #0a0a0f)',
+        background: 'var(--color-bg-biome, var(--bg-primary))',
         borderRadius: 'var(--radius-md, 8px)',
-        boxShadow: 'var(--shadow-lg, 0 8px 32px 0 rgba(0, 0, 0, 0.37))',
+        boxShadow: 'var(--shadow-lg, var(--shadow-deep))',
         backdropFilter: 'blur(4px)',
-        border: '1px solid var(--color-border-biome, rgba(255, 255, 255, 0.08))',
+        border: '1px solid var(--color-border-biome, var(--border-glass))',
       }}
     />
   );

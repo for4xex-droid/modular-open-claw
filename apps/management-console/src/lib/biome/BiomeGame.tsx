@@ -69,7 +69,7 @@ export function BiomeGame({ seed }: BiomeGameProps) {
         justifyContent: 'center',
         alignItems: 'center',
         height: '400px',
-        color: '#fff',
+        color: 'var(--white-100)',
         fontFamily: 'system-ui, sans-serif'
       }}>
         Loading Biome Engine...
@@ -85,9 +85,9 @@ export function BiomeGame({ seed }: BiomeGameProps) {
       display: 'flex',
       gap: '24px',
       padding: '24px',
-      background: '#07070a',
+      background: 'var(--bg-primary)',
       borderRadius: '16px',
-      color: '#fff',
+      color: 'var(--white-100)',
       fontFamily: 'system-ui, sans-serif'
     }}>
       {/* メインレンダラー */}

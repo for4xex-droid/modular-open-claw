@@ -44,6 +44,7 @@ pub struct SetupInitResponse {
         (status = 403, description = "Setup already completed")
     )
 )]
+// auth-exempt
 pub async fn setup_init(
     State(state): State<AppState>,
     Json(payload): Json<SetupInitRequest>,

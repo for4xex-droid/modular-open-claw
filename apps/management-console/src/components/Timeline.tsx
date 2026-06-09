@@ -115,7 +115,7 @@ const Timeline: React.FC = () => {
                         <div className="ani-pulse">{t('timeline.syncing')}</div>
                     </div>
                 ) : error ? (
-                    <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--accent-red, #ff6b6b)' }}>
+                    <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--accent-rose)' }}>
                         <Zap size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
                         <p>{t('timeline.error') || 'Failed to load timeline data'}</p>
                         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{error}</p>

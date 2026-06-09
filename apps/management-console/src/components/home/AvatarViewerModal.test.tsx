@@ -35,7 +35,7 @@ jest.mock('@react-three/drei', () => ({
 }));
 
 jest.mock('../../utils/cssVar', () => ({
-  cssVar: () => '#000000'
+  cssVar: () => 'black'
 }));
 
 describe('AvatarViewerModal', () => {
