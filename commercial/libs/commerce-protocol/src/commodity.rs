@@ -28,6 +28,8 @@ pub enum CommodityKind {
     KarmaPackage,
     AutomationBlueprint,
     LoraAdapter,
+    GeneticBlueprint,
+    BiomeEnvironment,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

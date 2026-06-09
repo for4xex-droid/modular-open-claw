@@ -9,8 +9,8 @@ export interface BiomeGameProps {
 }
 
 export function BiomeGame({ seed }: BiomeGameProps) {
-  const { loading, generation, tick, rewind } = useBiomeEngine({ seed });
   const [paused, setPaused] = useState(false);
+  const { loading, generation, tick, rewind } = useBiomeEngine({ seed, paused });
   const [cells, setCells] = useState<CellInfo[]>([]);
 
   // 初期セルの生成および状態更新

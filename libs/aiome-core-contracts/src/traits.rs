@@ -660,6 +660,28 @@ pub trait CommuneRegistry: Send + Sync + std::fmt::Debug {
     ) -> Result<(), AiomeError>;
     async fn update_commune_reputation(&self, pubkey: &str, delta: f64) -> Result<f64, AiomeError>;
     async fn archive_commune_topic(&self, topic_id: &str) -> Result<(), AiomeError>;
+
+    /// P2P 経由で共有されたゲノム（設計図データ）をローカルに保存する
+    async fn store_shared_genome(
+        &self,
+        _topic_id: &str,
+        _blueprint_json: &str,
+    ) -> Result<(), AiomeError> {
+        Err(AiomeError::Infrastructure {
+            reason: "store_shared_genome not implemented".to_string(),
+        })
+    }
+
+    /// 特定トピックにおいて共有されたゲノム一覧を取得する
+    async fn fetch_shared_genomes(
+        &self,
+        _topic_id: &str,
+        _limit: i64,
+    ) -> Result<Vec<serde_json::Value>, AiomeError> {
+        Err(AiomeError::Infrastructure {
+            reason: "fetch_shared_genomes not implemented".to_string(),
+        })
+    }
 }
 
 /// 統合ジョブキュー (Composite Trait)

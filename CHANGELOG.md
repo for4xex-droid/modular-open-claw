@@ -1,5 +1,42 @@
 ## [Unreleased]
 
+### Added
+- **GLSLシェーダーのポストプロセス・パーティクル演出強化 (TDD / Phase 5-6)**:
+  - `apps/management-console/src/lib/biome/BiomeRenderer.tsx` にて、ヒッグス粒子による空間歪み（重力レンズ効果、色収差）およびタキオンによる因果逆行・残像（タイムトレイル、過去フレームとのピンポンブレンド）を描画可能にする WebGL2 ポストプロセス処理を実装。
+  - パススルー用の頂点シェーダーとコピー用のフラグメントシェーダーをインラインで追加。
+  - `cssVar` ブリッジを介して CSS テーマカラー（`--color-primary`, `--color-secondary`）を動的に解決し、WebGL2 に uniform として適用する機能を構築。
+  - `requestAnimationFrame` を用いた連続的な 60fps アニメーションループを構築し、動的な u_time 変数の更新とピンポン履歴テクスチャのスワップによるスムーズなビジュアル演出を保証。
+  - `BiomeRenderer.test.tsx` および `BiomeGame.test.tsx` にて、Vite `?raw` クエリを解決する仮想モックの設定、および WebGL の framebuffer と texture リソース破棄を含むクリーンアップ関数のモック化を完了し、全テストケースが正常に通過することを確認。
+  - 3段階検証プロトコル（正常動作確認、マウント例外注入による失敗確認、元コード復元による完全合格確認）をクリア。
+- **`CommuneRegistry` へのゲノム共有メソッド追加と Samsara Hub 経由の交換基盤 (TDD / Phase 5-2)**:
+  - `libs/aiome-core-contracts/src/traits.rs` の `CommuneRegistry` トレイトに、アセット共有（遺伝子等）を行うための `store_shared_genome` および `fetch_shared_genomes` メソッドをデフォルト実装（未実装エラーを返す安全設計）付きで追加。
+  - `libs/infrastructure/src/job_queue/swarm.rs` の `UniversalJobQueue` 向けの具象処理（`do_store_shared_genome` / `do_fetch_shared_genomes`）および `job_queue/mod.rs` での委譲実装を完了。
+  - 共有された遺伝的設計図を永続化するためのテーブル `commune_shared_genomes` を追加する DB マイグレーションファイル（`20260610000002_commune_shared_genomes.sql`）を SQLite/PostgreSQL の双方に導入。
+  - `commune_test.rs` にて、他ノードから共有されたゲノムデータのインメモリ保存・フェッチが正しく決定論的に動作することを検証する `test_commune_shared_genome_exchange` テストケースを追加し、TDD サイクルおよび検証プロトコルをすべてクリア。
+- **`CommuneMessage` への `payload_type` 追加とアセット交換メッセージ用スキーマ拡張 (TDD / Phase 5-1)**:
+  - `libs/aiome-core-contracts/src/commune.rs` の `CommuneMessage` 構造体に、テキスト型メッセージとアセット/データ型メッセージ（`"genetic_blueprint"` 等）を識別するための `payload_type: Option<String>` フィールドを追加。
+  - `libs/infrastructure/src/job_queue/swarm.rs` の `do_fetch_commune_messages` および `do_store_commune_message` の SQLite/PostgreSQL クエリと JSON マッピング処理を更新し、`payload_type` の永続化・ロードに対応。
+  - SQLite および PostgreSQL の双方に対し、`commune_messages` テーブルに `payload_type TEXT DEFAULT NULL` カラムを追加する DB マイグレーションファイル（`20260610000001_commune_payload_type.sql`）を導入。
+  - 既存の構造体初期化箇所（`swarm.rs`, `autonomous.rs`, `commune_test.rs`, `api-server/src/routes/commune.rs`）をすべて更新して `payload_type: None` を適用し、既存の通信・テストフローとの後方互換性を保証。
+  - `commune_test.rs` にて、`payload_type` に `"genetic_blueprint"` などの任意のデータ識別型を指定したメッセージの保存と復元をアサートする単体テストを追加し、TDD サイクルおよび検証プロトコル（正常・障害注入・復旧）をすべてクリア。
+- **`management-console` Tauri シェルにおけるシステムトレイとウィンドウ操作の統合 (TDD / Phase 2b-1)**:
+  - `apps/management-console/src-tauri/src/lib.rs` にて `build_tray_menu` 関数を実装し、ウィンドウの表示/非表示を切り替える「Toggle Window」およびアプリを終了する「Quit」メニューを定義。
+  - `TrayIconBuilder` を使用したシステムトレイメニューの初期化処理と、メニュークリック時のウィンドウ表示トグル・フォーカス制御、および終了イベントハンドリングを `run` 関数に追加。
+  - `Cargo.toml` の `tauri` に `"tray-icon"` フィーチャーを追加し、capabilities の設定でトレイとメニューに必要な権限 `"core:tray:default"` および `"core:menu:default"` を定義。
+  - macOS 特有の `muda`（Menu）のメインスレッド制約を回避するため、ユニットテストに条件付きコンパイル（`#[cfg(not(target_os = "macos"))]`）を適用し、他OSでのみ構築テストが走り、macOSではビルド検証のみをパスする仕組みを構築。
+- **バックグラウンド進化 (ウィンドウ最小化・非表示時の1fps tick) の実装 (TDD / Phase 2b-2)**:
+  - `apps/management-console/src/hooks/useBiomeEngine.ts` にて `document.visibilityState` および `visibilitychange` イベントの監視ハンドラを実装。
+  - ウィンドウが非表示（`hidden`）状態かつゲームが一時停止（`paused`）していない場合に、`setInterval` を用いて 1fps（1000ms 間隔）でバックグラウンドでの WASM `tick` 演算を継続し、ウィンドウが表示（`visible`）状態に戻った際にタイマーをクリアして通常のループに処理を戻すフォールバック機構を構築。
+  - フロントエンドの `BiomeGame.tsx` コンポーネントにおける `useBiomeEngine` 呼び出し箇所を修正し、一時停止ステートをフックへ伝えることで一時停止中の意図しないバックグラウンド進化を防止。
+  - `useBiomeEngine.test.ts` にて、`visibilitychange` イベント発火時にフェイクタイマーを進め、WASM `tick` が実行されて世代数が正しくインクリメントされることを検証する Jest 単体テストを追加し、TDD サイクルで完全にグリーン合格。
+- **`GeneticBlueprint` / `BiomeEnvironment` の経済接続とアップロード制約の実装 (TDD / Phase 4)**:
+  - `commercial/libs/commerce-protocol/src/commodity.rs` にて `GeneticBlueprint` および `BiomeEnvironment` を `CommodityKind` enum に追加。
+  - `commercial/libs/nurture-infra/src/marketplace/sqlite.rs` の `SQLiteMarketplace::create_item` 内でのマッチング分岐を拡張し、新アセットタイプに対応。
+  - `commercial/apps/nurture-api/src/mcp_tools/upload.rs` において、`GeneticBlueprint` または `BiomeEnvironment` のアップロード（または生成）時に、有効な `fe_pro` または `si_pro` プランを所有しているかを確認する限定ゲートを実装。
+  - 各プランの上限件数（`fe_pro` は 5件、`si_pro` は 20件、その他は 0件）を `nurture_items` テーブルのカウントから算出して超過アップロードを遮断する件数制限（殿堂入り件数制限）を実装。
+  - 種の名前が 3〜32 文字であり、かつ英数字・スペース・ハイフン・アンダースコア（`^[a-zA-Z0-9 _-]+$`）のみで構成されているかを検証する Layer 0 ガードレール `validate_species_name` を実装。
+  - `upload.rs` 内のテストモジュールに、上記制約（プランチェック、件数制限、名前バリデーション）の正常動作とエラー遮断を検証する3つのユニットテストを追加し、すべて TDD サイクルで合格。
+
 ### Fixed
 - **`management-console` フロントエンドの `Biome` 関連ファイルにおける未使用 `React` インポートのクリーンアップ**:
   - `src/lib/biome/BiomeDendou.tsx`, `BiomeHUD.tsx`, `BiomeGame.tsx`, `BiomeRenderer.tsx` 内の未使用の `React` インポートを削除し、TypeScript（`tsc`）の未使用ローカル変数チェック（`TS6133`）によるビルド失敗エラーを解消。

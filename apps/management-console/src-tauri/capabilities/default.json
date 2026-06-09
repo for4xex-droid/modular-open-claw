@@ -6,6 +6,8 @@
   "permissions": [
     "core:default",
     "opener:default",
+    "core:tray:default",
+    "core:menu:default",
     {
       "identifier": "shell:allow-execute",
       "allow": [{ "name": "obscura" }]

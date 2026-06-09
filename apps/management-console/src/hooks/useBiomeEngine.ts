@@ -2,12 +2,19 @@ import { useState, useEffect, useRef } from 'react';
 
 export interface UseBiomeEngineOptions {
   seed: number;
+  paused?: boolean;
 }
 
-export function useBiomeEngine({ seed }: UseBiomeEngineOptions) {
+export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) {
   const [loading, setLoading] = useState(true);
   const [generation, setGeneration] = useState(0);
   const engineRef = useRef<any>(null);
+  const pausedRef = useRef<boolean>(paused);
+
+  // paused の最新状態を保持
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
 
   useEffect(() => {
     let active = true;
@@ -35,6 +42,44 @@ export function useBiomeEngine({ seed }: UseBiomeEngineOptions) {
     engineRef.current.tick();
     setGeneration(Number(engineRef.current.generation()));
   };
+
+  // バックグラウンド進化の制御
+  useEffect(() => {
+    if (loading) return;
+
+    let intervalId: NodeJS.Timeout | null = null;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        if (!intervalId && !pausedRef.current) {
+          intervalId = setInterval(() => {
+            if (!pausedRef.current) {
+              tick();
+            }
+          }, 1000);
+        }
+      } else {
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 初期状態がすでに hidden の場合に対応
+    if (document.visibilityState === 'hidden') {
+      handleVisibilityChange();
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [loading]);
 
   const rewind = (generations: number): boolean => {
     if (!engineRef.current) return false;

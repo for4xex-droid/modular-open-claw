@@ -78,4 +78,48 @@ describe('useBiomeEngine Hook', () => {
 
     expect(result.current.generation).toBe(2);
   });
+
+  it('ウィンドウ非表示時に 1fps tick の setInterval が開始され、表示時にクリアされること', async () => {
+    jest.useFakeTimers();
+    
+    // visibilityState をモック
+    let visibilityState = 'visible';
+    Object.defineProperty(document, 'visibilityState', {
+      get: () => visibilityState,
+      configurable: true
+    });
+
+    const { result, unmount } = renderHook(() => useBiomeEngine({ seed: 42, paused: false }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    // hidden に変更
+    act(() => {
+      visibilityState = 'hidden';
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    // 1000ms 進める
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    // generation が増加していることを確認
+    expect(result.current.generation).toBeGreaterThan(0);
+
+    // visible に戻す
+    act(() => {
+      visibilityState = 'visible';
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    const currentGen = result.current.generation;
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    // visible に戻った後は setInterval による tick は追加で発生しない
+    expect(result.current.generation).toBe(currentGen);
+
+    unmount();
+    jest.useRealTimers();
+  });
 });

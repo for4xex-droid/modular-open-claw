@@ -13,6 +13,17 @@
 use crate::state::SharedState;
 use chrono::Utc;
 use commerce_protocol::commodity::{CommodityKind, ItemDescriptor, PriceTag};
+use sqlx::Row;
+
+/// 種の名前のバリデーション (Guardrail Layer 0)
+pub fn validate_species_name(name: &str) -> bool {
+    let len = name.chars().count();
+    if !(3..=32).contains(&len) {
+        return false;
+    }
+    name.chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == ' ' || c == '-' || c == '_')
+}
 use commerce_protocol::error::NurtureError;
 use commerce_protocol::identity::ActorId;
 use commerce_protocol::offer::SaleMode;
@@ -168,6 +179,8 @@ pub async fn handle_upload(
         "KarmaPackage" => CommodityKind::KarmaPackage,
         "AutomationBlueprint" => CommodityKind::AutomationBlueprint,
         "LoraAdapter" => CommodityKind::LoraAdapter,
+        "GeneticBlueprint" => CommodityKind::GeneticBlueprint,
+        "BiomeEnvironment" => CommodityKind::BiomeEnvironment,
         unknown => {
             tracing::error!("❌ [Upload] Unknown CommodityKind '{}'", unknown);
             return Err(NurtureError::PolicyViolation(format!(
@@ -176,6 +189,66 @@ pub async fn handle_upload(
             )));
         }
     };
+
+    // GeneticBlueprint または BiomeEnvironment の場合の特別ルール (Pro 限定ゲート & 殿堂入り制限 & Guardrail Layer 0)
+    if kind == CommodityKind::GeneticBlueprint || kind == CommodityKind::BiomeEnvironment {
+        if !validate_species_name(&sanitized_name) {
+            return Err(NurtureError::PolicyViolation(
+                "Invalid species name: must be 3-32 characters and contain only alphanumeric characters, spaces, hyphens, or underscores".to_string()
+            ));
+        }
+
+        let sub_row = sqlx::query(
+            "SELECT plan_id FROM nurture_subscriptions WHERE actor_id = ? AND status = 'active'",
+        )
+        .bind(payload.creator_id.to_string())
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| NurtureError::Infrastructure(format!("サブスクリプション確認失敗: {}", e)))?;
+
+        let plan_id = match sub_row {
+            Some(row) => {
+                let pid: String = row.try_get("plan_id").map_err(|e| {
+                    NurtureError::Infrastructure(format!("plan_id 取得失敗: {}", e))
+                })?;
+                pid
+            }
+            None => {
+                return Err(NurtureError::PolicyViolation(
+                    "Pro membership is required to upload Biome assets".to_string(),
+                ));
+            }
+        };
+
+        let max_limit = match plan_id.as_str() {
+            "si_pro" => 20,
+            "fe_pro" => 5,
+            _ => {
+                return Err(NurtureError::PolicyViolation(
+                    "Pro membership is required to upload Biome assets".to_string(),
+                ));
+            }
+        };
+
+        let count_row = sqlx::query(
+            "SELECT COUNT(*) as cnt FROM nurture_items WHERE creator_id = ? AND (kind = 'GeneticBlueprint' OR kind = 'BiomeEnvironment')"
+        )
+        .bind(payload.creator_id.to_string())
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| NurtureError::Infrastructure(format!("アップロード数カウント失敗: {}", e)))?;
+
+        let count: i64 = count_row
+            .try_get("cnt")
+            .map_err(|e| NurtureError::Infrastructure(format!("cnt 取得失敗: {}", e)))?;
+
+        if count >= max_limit {
+            return Err(NurtureError::PolicyViolation(format!(
+                "Upload limit reached for your membership plan (max {} items)",
+                max_limit
+            )));
+        }
+    }
 
     let parsed_sale_mode = if payload.sale_mode.starts_with("subscription:") {
         let parts: Vec<&str> = payload.sale_mode.split(':').collect();
@@ -453,5 +526,156 @@ mod tests {
             item.metadata.get("adapter_path").unwrap().as_str().unwrap(),
             "/path/to/lora.safetensors"
         );
+    }
+
+    #[tokio::test]
+    async fn test_upload_biome_asset_requires_pro_subscription() {
+        let state = setup_state().await;
+        let creator_id = Uuid::new_v4();
+        sqlx::query("INSERT INTO nurture_kyc_status (actor_id, status) VALUES (?, 'verified')")
+            .bind(creator_id.to_string())
+            .execute(&state.pool)
+            .await
+            .unwrap();
+
+        // サブスクリプションがない状態で GeneticBlueprint をアップロード
+        let req = UploadRequest {
+            creator_id,
+            kind: "GeneticBlueprint".to_string(),
+            name: "Species-Alpha".to_string(),
+            description: "A genetic blueprint".to_string(),
+            price_coins: 100,
+            content: "{}".to_string(),
+            drm_enabled: false,
+            sale_mode: "instant".to_string(),
+            idempotency_key: Uuid::new_v4().to_string(),
+        };
+
+        let res = handle_upload(state.clone(), req).await;
+        assert!(res.is_err());
+        match res.err().unwrap() {
+            NurtureError::PolicyViolation(msg) => {
+                assert!(msg.contains("Pro membership is required"));
+            }
+            other => panic!("Expected PolicyViolation, got: {:?}", other),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_upload_biome_asset_invalid_name_guardrail() {
+        let state = setup_state().await;
+        let creator_id = Uuid::new_v4();
+        sqlx::query("INSERT INTO nurture_kyc_status (actor_id, status) VALUES (?, 'verified')")
+            .bind(creator_id.to_string())
+            .execute(&state.pool)
+            .await
+            .unwrap();
+
+        // 有効な fe_pro サブスクリプションを追加
+        sqlx::query("INSERT INTO nurture_subscriptions (id, actor_id, stripe_subscription_id, plan_id, status, current_period_end) VALUES (?, ?, ?, 'fe_pro', 'active', ?)")
+            .bind(Uuid::new_v4().to_string())
+            .bind(creator_id.to_string())
+            .bind("sub_123")
+            .bind(Utc::now() + chrono::Duration::days(30))
+            .execute(&state.pool)
+            .await
+            .unwrap();
+
+        // 不正な名前（短すぎる）でアップロード
+        let req = UploadRequest {
+            creator_id,
+            kind: "GeneticBlueprint".to_string(),
+            name: "Al".to_string(), // 2文字
+            description: "A genetic blueprint".to_string(),
+            price_coins: 100,
+            content: "{}".to_string(),
+            drm_enabled: false,
+            sale_mode: "instant".to_string(),
+            idempotency_key: Uuid::new_v4().to_string(),
+        };
+
+        let res = handle_upload(state.clone(), req).await;
+        assert!(res.is_err());
+        match res.err().unwrap() {
+            NurtureError::PolicyViolation(msg) => {
+                assert!(msg.contains("Invalid species name"));
+            }
+            other => panic!("Expected PolicyViolation, got: {:?}", other),
+        }
+
+        // 不正な名前（特殊文字）でアップロード
+        let req_invalid_chars = UploadRequest {
+            creator_id,
+            kind: "GeneticBlueprint".to_string(),
+            name: "Species<script>".to_string(),
+            description: "A genetic blueprint".to_string(),
+            price_coins: 100,
+            content: "{}".to_string(),
+            drm_enabled: false,
+            sale_mode: "instant".to_string(),
+            idempotency_key: Uuid::new_v4().to_string(),
+        };
+
+        let res = handle_upload(state.clone(), req_invalid_chars).await;
+        assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_upload_biome_asset_exceeds_limit() {
+        let state = setup_state().await;
+        let creator_id = Uuid::new_v4();
+        sqlx::query("INSERT INTO nurture_kyc_status (actor_id, status) VALUES (?, 'verified')")
+            .bind(creator_id.to_string())
+            .execute(&state.pool)
+            .await
+            .unwrap();
+
+        // 有効な fe_pro サブスクリプションを追加 (上限5件)
+        sqlx::query("INSERT INTO nurture_subscriptions (id, actor_id, stripe_subscription_id, plan_id, status, current_period_end) VALUES (?, ?, ?, 'fe_pro', 'active', ?)")
+            .bind(Uuid::new_v4().to_string())
+            .bind(creator_id.to_string())
+            .bind("sub_123")
+            .bind(Utc::now() + chrono::Duration::days(30))
+            .execute(&state.pool)
+            .await
+            .unwrap();
+
+        // 5件アップロードする
+        for i in 0..5 {
+            let req = UploadRequest {
+                creator_id,
+                kind: "GeneticBlueprint".to_string(),
+                name: format!("Species-{}", i),
+                description: "A genetic blueprint".to_string(),
+                price_coins: 100,
+                content: "{}".to_string(),
+                drm_enabled: false,
+                sale_mode: "instant".to_string(),
+                idempotency_key: format!("key-{}", i),
+            };
+            handle_upload(state.clone(), req).await.unwrap();
+        }
+
+        // 6件目は失敗するはず
+        let req_exceed = UploadRequest {
+            creator_id,
+            kind: "GeneticBlueprint".to_string(),
+            name: "Species-Exceed".to_string(),
+            description: "A genetic blueprint".to_string(),
+            price_coins: 100,
+            content: "{}".to_string(),
+            drm_enabled: false,
+            sale_mode: "instant".to_string(),
+            idempotency_key: "key-exceed".to_string(),
+        };
+
+        let res = handle_upload(state.clone(), req_exceed).await;
+        assert!(res.is_err());
+        match res.err().unwrap() {
+            NurtureError::PolicyViolation(msg) => {
+                assert!(msg.contains("Upload limit reached"));
+            }
+            other => panic!("Expected PolicyViolation, got: {:?}", other),
+        }
     }
 }

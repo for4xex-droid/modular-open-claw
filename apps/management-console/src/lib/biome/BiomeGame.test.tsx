@@ -4,6 +4,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 // Vite ?raw バーチャルモック
 jest.mock('./shaders/grid.vert?raw', () => 'void main() {}', { virtual: true });
 jest.mock('./shaders/grid.frag?raw', () => 'void main() {}', { virtual: true });
+jest.mock('./shaders/higgs.frag?raw', () => 'void main() {}', { virtual: true });
+jest.mock('./shaders/tachyon.frag?raw', () => 'void main() {}', { virtual: true });
 
 // BiomeEngine WASM のモック
 jest.mock('biome-engine', () => {
@@ -44,6 +46,22 @@ const mockGetContext = jest.fn().mockReturnValue({
   clearColor: jest.fn(),
   clear: jest.fn(),
   drawArraysInstanced: jest.fn(),
+  createTexture: jest.fn().mockReturnValue({}),
+  bindTexture: jest.fn(),
+  texImage2D: jest.fn(),
+  texParameteri: jest.fn(),
+  deleteTexture: jest.fn(),
+  createFramebuffer: jest.fn().mockReturnValue({}),
+  bindFramebuffer: jest.fn(),
+  framebufferTexture2D: jest.fn(),
+  deleteFramebuffer: jest.fn(),
+  getUniformLocation: jest.fn().mockReturnValue({}),
+  uniform1f: jest.fn(),
+  uniform2f: jest.fn(),
+  uniform3f: jest.fn(),
+  uniform1i: jest.fn(),
+  activeTexture: jest.fn(),
+  drawArrays: jest.fn(),
 });
 HTMLCanvasElement.prototype.getContext = mockGetContext as any;
 

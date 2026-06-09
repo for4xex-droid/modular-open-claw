@@ -52,6 +52,16 @@ pub trait SwarmOps {
         delta: f64,
     ) -> Result<f64, AiomeError>;
     async fn do_archive_commune_topic(&self, topic_id: &str) -> Result<(), AiomeError>;
+    async fn do_store_shared_genome(
+        &self,
+        topic_id: &str,
+        blueprint_json: &str,
+    ) -> Result<(), AiomeError>;
+    async fn do_fetch_shared_genomes(
+        &self,
+        topic_id: &str,
+        limit: i64,
+    ) -> Result<Vec<serde_json::Value>, AiomeError>;
 }
 
 #[async_trait]
@@ -120,7 +130,7 @@ impl SwarmOps for UniversalJobQueue {
         limit: i64,
     ) -> Result<Vec<serde_json::Value>, AiomeError> {
         let q = format!(
-            "SELECT sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption, created_at \
+            "SELECT sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption, payload_type, created_at \
              FROM commune_messages WHERE topic_id = {} ORDER BY created_at DESC LIMIT {}",
             self.pool.ph(0), self.pool.ph(1)
         );
@@ -142,6 +152,7 @@ impl SwarmOps for UniversalJobQueue {
                         "signature": r.try_get::<String, _>("signature").unwrap_or_default(),
                         "lamport_clock": lamport as u64,
                         "encryption": r.try_get::<String, _>("encryption").unwrap_or_default(),
+                        "payload_type": r.try_get::<Option<String>, _>("payload_type").unwrap_or_default(),
                         "created_at": r.try_get::<String, _>("created_at").unwrap_or_default(),
                     }));
                 }
@@ -181,8 +192,8 @@ impl SwarmOps for UniversalJobQueue {
     ) -> Result<(), AiomeError> {
         crate::sql_exec!(
             &self.pool,
-            sqlite: "INSERT INTO commune_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            pg: "INSERT INTO commune_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+            sqlite: "INSERT INTO commune_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption, payload_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            pg: "INSERT INTO commune_messages (sender_pubkey, recipient_pubkey, topic_id, content, karma_root_cid, signature, lamport_clock, encryption, payload_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
             &message.sender_pubkey,
             &message.recipient_pubkey,
             &message.topic_id,
@@ -190,7 +201,8 @@ impl SwarmOps for UniversalJobQueue {
             &message.karma_root_cid,
             &message.signature,
             message.lamport_clock as i64,
-            &message.encryption
+            &message.encryption,
+            &message.payload_type
         )?;
         Ok(())
     }
@@ -255,6 +267,71 @@ impl SwarmOps for UniversalJobQueue {
             topic_id
         )?;
         Ok(())
+    }
+
+    async fn do_store_shared_genome(
+        &self,
+        topic_id: &str,
+        blueprint_json: &str,
+    ) -> Result<(), AiomeError> {
+        crate::sql_exec!(
+            &self.pool,
+            sqlite: "INSERT INTO commune_shared_genomes (topic_id, blueprint_json) VALUES (?, ?)",
+            pg: "INSERT INTO commune_shared_genomes (topic_id, blueprint_json) VALUES ($1, $2)",
+            topic_id,
+            blueprint_json
+        )?;
+        Ok(())
+    }
+
+    async fn do_fetch_shared_genomes(
+        &self,
+        topic_id: &str,
+        limit: i64,
+    ) -> Result<Vec<serde_json::Value>, AiomeError> {
+        let q = format!(
+            "SELECT topic_id, blueprint_json, created_at FROM commune_shared_genomes WHERE topic_id = {} ORDER BY created_at DESC LIMIT {}",
+            self.pool.ph(0), self.pool.ph(1)
+        );
+
+        macro_rules! genome_rows_to_json {
+            ($rows:expr) => {{
+                let mut results = Vec::with_capacity($rows.len());
+                for r in $rows {
+                    results.push(serde_json::json!({
+                        "topic_id": r.try_get::<String, _>("topic_id").unwrap_or_default(),
+                        "blueprint_json": r.try_get::<String, _>("blueprint_json").unwrap_or_default(),
+                        "created_at": r.try_get::<String, _>("created_at").unwrap_or_default(),
+                    }));
+                }
+                results
+            }};
+        }
+
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(topic_id)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                Ok(genome_rows_to_json!(rows))
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let rows = sqlx::query(&q)
+                    .bind(topic_id)
+                    .bind(limit)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                Ok(genome_rows_to_json!(rows))
+            }
+        }
     }
 
     async fn do_get_node_id(&self) -> Result<String, AiomeError> {
@@ -701,7 +778,7 @@ mod tests {
             crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(db_pool.clone()),
         );
 
-        sqlx::query("CREATE TABLE commune_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, sender_pubkey TEXT NOT NULL, recipient_pubkey TEXT NOT NULL, topic_id TEXT NOT NULL, content TEXT NOT NULL, karma_root_cid TEXT NOT NULL, signature TEXT NOT NULL, lamport_clock INTEGER NOT NULL, encryption TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')));")
+        sqlx::query("CREATE TABLE commune_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, sender_pubkey TEXT NOT NULL, recipient_pubkey TEXT NOT NULL, topic_id TEXT NOT NULL, content TEXT NOT NULL, karma_root_cid TEXT NOT NULL, signature TEXT NOT NULL, lamport_clock INTEGER NOT NULL, encryption TEXT NOT NULL, payload_type TEXT DEFAULT NULL, created_at TEXT DEFAULT (datetime('now')));")
             .execute(&sql_pool)
             .await
             .unwrap();
@@ -723,6 +800,7 @@ mod tests {
             lamport_clock: 42,
             timestamp: "2026-06-07T00:00:00Z".to_string(),
             encryption: "none".to_string(),
+            payload_type: None,
         };
 
         let store_res = queue.do_store_commune_message(&msg).await;

@@ -30,6 +30,9 @@ pub struct CommuneMessage {
     /// 暗号化方式 ("none", "aes-256-gcm", etc.)
     /// Phase 20 MVP では "none" を使用。
     pub encryption: String,
+    /// ペイロードの型 (None = "text" (既存互換), Some("genetic_blueprint"), etc.)
+    #[serde(default)]
+    pub payload_type: Option<String>,
 }
 
 /// 対話の要約・状態

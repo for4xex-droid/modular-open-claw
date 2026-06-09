@@ -729,6 +729,20 @@ impl CommuneRegistry for UniversalJobQueue {
     async fn archive_commune_topic(&self, topic_id: &str) -> Result<(), AiomeError> {
         Box::pin(self.do_archive_commune_topic(topic_id)).await
     }
+    async fn store_shared_genome(
+        &self,
+        topic_id: &str,
+        blueprint_json: &str,
+    ) -> Result<(), AiomeError> {
+        Box::pin(self.do_store_shared_genome(topic_id, blueprint_json)).await
+    }
+    async fn fetch_shared_genomes(
+        &self,
+        topic_id: &str,
+        limit: i64,
+    ) -> Result<Vec<serde_json::Value>, AiomeError> {
+        Box::pin(self.do_fetch_shared_genomes(topic_id, limit)).await
+    }
 }
 
 #[async_trait]

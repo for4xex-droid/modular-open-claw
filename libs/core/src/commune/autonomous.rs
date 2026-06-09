@@ -243,6 +243,7 @@ impl AutonomousCommuneEngine {
                 lamport_clock: clock,
                 timestamp: chrono::Utc::now().to_rfc3339(),
                 encryption: "none".to_string(),
+                payload_type: None,
             };
 
             // Phase 6.9: Cryptographic enforcement

@@ -189,6 +189,8 @@ impl SQLiteMarketplace {
             CommodityKind::KarmaPackage => "KarmaPackage",
             CommodityKind::AutomationBlueprint => "AutomationBlueprint",
             CommodityKind::LoraAdapter => "LoraAdapter",
+            CommodityKind::GeneticBlueprint => "GeneticBlueprint",
+            CommodityKind::BiomeEnvironment => "BiomeEnvironment",
         };
 
         let price_coins: i64 = match item.price {

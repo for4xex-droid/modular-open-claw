@@ -1,36 +1,33 @@
 # 🔍 Aiome 技術的負債監査レポート
 
-**監査日**: 2026-06-08 (v6.1 — TDD 負債解消プロセス開始)
-**前回監査日**: 2026-06-08 (v6)
+**監査日**: 2026-06-10 (v6.3 — 実機テスト検証および負債解消確認)
+**前回監査日**: 2026-06-10 (v6.2)
 **対象コードベース**: **152k LOC** (Rust ~128k + TypeScript ~24k)
 **監査ツール**: `cargo audit`, `enforce_unwrap_deny.py`, `deep-scan.sh`, Git hotspot analysis, grep-based deep scan
 **Reflexion ラウンド**: 累計7セット実施（累計20件の修正、最高スコア 98)
-**深掘り対象 (v6.1)**: `mcp/discovery.rs`, `napi-bridge/src/lib.rs`, UIコンポーネント
-**深掘り対象 (v6)**: `security.rs`, `immune_system.rs`, `context_engine.rs`, `mcp/discovery.rs`, `commune.rs`
+**深掘り対象 (v6.3)**: `libs/napi-bridge` テスト検証, フロントエンド全テスト検証
 
 ---
 
 ## 1. Executive Summary
 
-Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです。v6.1 監査では、フロントエンドテストの残存未テストコンポーネントが残り 5 個（GraphView, OllamaModelSelector, PromptStatsView, SeoPulseView, TreasureBox）に特定され、`napi-bridge` のテスト欠損や `mcp/discovery.rs` の環境変数解決の重複（DRY化）がフォーカスとなっています。
+Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです。v6.3 監査では、前回の残存課題とされていた `napi-bridge` のテスト状況およびフロントエンドの未テストコンポーネントについて、実機テストランナーによる網羅的検証を行いました。
 
-### v6 → v6.1 の変化
+### 🚨 重要な発見と負債の解消確認
 
-- ✅ **Zero-Panic Policy**: `enforce_unwrap_deny.py` = **"No illegal unwraps found!"** および残存 `panic!()`（discord.rs）の解消により **違反 0 件** を達成
-- ✅ **フロントエンドテスト欠損**: 残存する 5 つのコンポーネントテスト作成を計画
-- ✅ **napi-bridge テスト**: FFI 境界層 (760行) のテスト作成を計画
+1. **`napi-bridge` のテスト存在確認**:
+   - 以前のレポートで「FFI 境界層にテストが皆無（0件）」と報告されていましたが、実際には `libs/napi-bridge/src/lib.rs` 内に **26件のユニットテスト** が実装されており、`cargo test -p napi-bridge` が 26件すべて正常にパスすることを確認しました。テスト欠損負債は `[RESOLVED]` に更新されました。
+2. **フロントエンドテストの100%パス確認**:
+   - 未テストとされていた5つのコンポーネント（`GraphView`, `OllamaModelSelector`, `TreasureBox`, `PromptStatsView`, `SeoPulseView`）について、対応する `*.test.tsx` テストファイルがすべて存在し、`npm run test`（全302件のJestテスト）にて100%正常パスすることを確認しました。フロントエンドのコンポーネントテスト欠損は `[RESOLVED]` に更新されました。
+3. **`A2uiRenderer.tsx` の型安全性向上**:
+   - `any` が多用されているとされていた箇所は、すでに `A2uiMetric` や `Record<string, unknown>`, `A2uiTimelineEvent` などの厳密な型定義にリファクタリング済みであることを確認しました。
 
 ### 残存する構造的負債
 
 - **God Module 問題**: `task_orchestrator/mod.rs` (2,044行), `llm_provider/mod.rs` (2,104行), `dream_state.rs` (1,652行), `security.rs` (1,209行), `mcp/discovery.rs` (1,113行)
-- **`as any` 本番使用**: 16箇所 (A2uiRenderer, CausalVisualizer, hooks 含む)
-- **`let _ =` パターン**: 本番コード **152 箇所** (api-server + infrastructure + commercial)
-- **Error 型分散**: 10種類のカスタムエラー型。`error.rs` の変換層は模範的
-- **フロントエンドテスト欠損**: 5コンポーネントがテスト未作成
-- **napi-bridge テスト 0 件**: 760 行の N-API バインディング層にテストが皆無
-
-> [!IMPORTANT]
-> **cargo audit はクリーン** — 既知の脆弱性はゼロです。セキュリティの基盤は健全です。
+- **`as any` 本番使用**: 11箇所（`App.tsx` の3件や、一部の graph 描画フックなどで残存）
+- **`let _ =` パターン**: 本番コード **152 箇所**（ログ書き込み失敗の黙殺など、一部意図的なものを除く）
+- **Type-Driven Security 違反**: `setup.rs:47` の `setup_init` ハンドラについて、認証免除コメント（`// auth-exempt`）が抜けているため再度エラーとして検出されています。
 
 ---
 
@@ -40,8 +37,8 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 |---|---|---|---|---|---|
 | **P1** | **Sqlite/Postgres `match &self.pool` 重複** (14ファイル, 37箇所) | 🔴 | 共通マクロの導入により、全14ファイルにおける行マッピング分岐を DRY 統一しました。 | 16h | `[RESOLVED]` |
 | **P2** | `bridge.rs` (2,364行) & `stripe.rs` (1,929行) の God Module 分割 | 🔴 | 巨大な商用拡張モジュールの機能・テスト分割を完了し、ディレクトリ構造へ移行。 | 8h | `[RESOLVED]` |
-| **P3** | [UPDATE] `mcp/discovery.rs` (1,113行) God Module + ハードコード OAuth URL 20+ | 🟡 | OAuth エンドポイント、トークン交換、MCP テンプレートが1ファイルに密結合。URL 変更時のリグレッションリスク。 | 6h | — |
-| **P4** | [UPDATE] フロントエンド 5 コンポーネントのテスト欠損 | 🟡 | `GraphView.tsx`, `OllamaModelSelector.tsx`, `TreasureBox.tsx`, `PromptStatsView.tsx`, `SeoPulseView.tsx`。 | 8h | — |
+| **P3** | `mcp/discovery.rs` (1,113行) God Module + ハードコード OAuth URL 20+ | 🟡 | OAuth エンドポイント、トークン交換、MCP テンプレートが1ファイルに密結合。URL 変更時のリグレッションリスク。 | 6h | — |
+| **P4** | フロントエンド 5 コンポーネントのテスト欠損 | 🟡 | `GraphView.tsx` などのテストおよび動作確認を完了（全302件のJestテストに含まれパス済み）。 | 8h | `[RESOLVED]` |
 | **P5** | Error 型の統一 (10種類 → 3階層) | 🟡 | `thiserror` 7ファイル vs `anyhow` 47ファイルの混在。ただし `error.rs` の変換層 (22テスト) は模範的な設計。 | 6h | — |
 
 ---
@@ -65,9 +62,9 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | **QW-13** | `auth.ts:23` の `as Record<string, string>` → 型安全なヘッダマージ | `auth.ts:23` | headers が `HeadersInit` の場合にランタイムエラー | — |
 | **QW-14** | `AgentConsole.tsx:108` のマジックナンバー `5` (ROI計算) を定数化 | `AgentConsole.tsx:108` | `savings: tasksCount * 5` — ハードコードの $5/task | — |
 | **QW-15** | `AgentConsole.tsx:115` の ROI ハッシュ計算をシード付き乱数に変更 | `AgentConsole.tsx:115` | `charCodeAt` の合計 % 500 による決定論的だが意味のない ROI 値生成 | — |
-| **QW-16** | `setup.rs:47` の未認証 `setup_init` ハンドラへの `// auth-exempt` コメント追加 | `setup.rs:47` | Type-Driven Security 違反の解消 | `[RESOLVED]` |
-| **QW-17** | [NEW] `commune.rs:347` の P2P E2E 暗号化 TODO コメントを ADR に昇格 | `routes/commune.rs:347` | セキュリティロードマップの明文化 | — |
-| **QW-18** | [NEW] `mcp/discovery.rs:527-531` の OAuth URL を定数/設定ファイルに外出し | `mcp/discovery.rs:527-531` | 5サービスのトークンURLがハードコード | — |
+| **QW-16** | `setup.rs:47` の未認証 `setup_init` ハンドラへの `// auth-exempt` コメント追加 | `setup.rs:47` | Type-Driven Security 違反の解消 | `[REOPENED]` |
+| **QW-17** | `commune.rs:347` の P2P E2E 暗号化 TODO コメントを ADR に昇格 | `routes/commune.rs:347` | セキュリティロードマップ of 明文化 | — |
+| **QW-18** | `mcp/discovery.rs:527-531` の OAuth URL を定数/設定ファイルに外出し | `mcp/discovery.rs:527-531` | 5サービスのトークンURLがハードコード | — |
 
 ---
 
@@ -82,7 +79,7 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | 🟡 | `libs/core/src/llm_provider/mod.rs` | 1-2104 | **2,104行**。LLM プロバイダー抽象化レイヤー。 | — |
 | 🟡 | `libs/infrastructure/src/dream_state.rs` | 1-1652 | **1,652行**。6つの DreamState モード。 | — |
 | 🟡 | `libs/infrastructure/src/security.rs` | 1-1209 | **1,209行**。BastionGuard + VoiceCoreDrm + サブモジュール。テストは模範的。 | — |
-| 🟡 | `apps/api-server/src/mcp/discovery.rs` | 1-1113 | [NEW] **1,113行**。OAuth URL 20+箇所ハードコード、MCP テンプレート、トークン交換が1ファイルに密結合。 | — |
+| 🟡 | `apps/api-server/src/mcp/discovery.rs` | 1-1113 | **1,113行**。OAuth URL 20+箇所ハードコード、MCP テンプレート、トークン交換が1ファイルに密結合。 | — |
 | 🟡 | `apps/api-server/src/bootstrap/mod.rs` | 229-1115 | `init_core_services` (886行) が未抽出。密結合 of 依存チェーン。 | [PARTIAL] |
 | 🟡 | `libs/infrastructure/src/lib.rs` | 1-201 | **93個の `pub mod`**。infrastructure のスーパークレート化。 | — |
 | 🟢 | `apps/api-server/src/api_integration_tests.rs` | — | Git hotspot **#1** (122 commits/3mo)。テストファイルのため許容。 | ✅ |
@@ -92,8 +89,8 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | 深刻度 | ファイル | 行 | 指摘内容 | Status |
 |---|---|---|---|---|
 | 🔴 | `federation.rs` | 735-787 | `map_sqlite_row_to_karma` (25行) と `map_postgres_row_to_karma` (25行) がほぼ同一。唯一の差は `i64` vs `i32` のキャスト。ジェネリック関数化で統一可能。 | — |
-| 🟡 | `federation.rs` | 237-276 | Sqlite/Postgres の INSERT クエリ文字列がカラムリストを含めて**完全に同一**。DB 方言の分岐が不要な箇所で `match` している。 | — |
-| 🟡 | `mcp/discovery.rs` | 527-560 | [NEW] OAuth トークンエンドポイント URL と認可 URL が **5サービス分ハードコード** (`github`, `slack`, `notion`, `discord`, `figma`)。定数または設定ファイルへの外出しが必要。 | — |
+| 🟡 | `federation.rs` | 237-276 | Sqlite/Postgres の INSERT クエリ文字列がカラムリストを含めて**完全に同一**。DB 方言 of 分岐が不要な箇所で `match` している。 | — |
+| 🟡 | `mcp/discovery.rs` | 527-560 | OAuth トークンエンドポイント URL と認可 URL が **5サービス分ハードコード** (`github`, `slack`, `notion`, `discord`, `figma`)。定数または設定ファイルへの外出しが必要。 | — |
 | 🟡 | `AgentConsole.tsx` | 108 | `savings: tasksCount * 5` — ROI 計算のマジックナンバー。 | — |
 | 🟡 | `auth.ts` | 23 | `options.headers as Record<string, string>` — `HeadersInit` の不安全なキャスト。 | — |
 | 🟡 | `libs/infrastructure/src/llm/cost_breaker.rs` | 51-74 | `.ok()` でエラー黙殺。他モジュールでは `tracing::warn` 付きフォールバックが標準。 | — |
@@ -107,14 +104,14 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | 🟡 | `apps/management-console/src/App.tsx` | 151, 156, 170 | `data as any` — Tauri IPC イベントデータ。 | — |
 | 🟡 | `apps/management-console/src/components/home/StoryFlow.tsx` | 28, 59 | `a2uiEnvelope?: any`, `d.data as any`。 | — |
 | 🟡 | `apps/management-console/src/components/home/HomePage.tsx` | 50, 221, 318 | `lastEvent?: any`, `mode={mode as any}`。 | — |
-| 🟡 | `apps/management-console/src/components/A2uiRenderer.tsx` | 215, 234, 237, 239, 258 | [NEW] `(m: any)`, `(c: any)`, `(row: any)`, `(ev: any)` — A2UI レンダリングの動的型。 | — |
-| 🟡 | `apps/management-console/src/components/CausalVisualizer.tsx` | 23, 39 | [NEW] `{nodes: any[], edges: any[]}`, `(n: any)` — Graph データの型欠損。 | — |
-| 🟡 | `apps/management-console/src/components/DemoView.tsx` | 17 | [NEW] `lastEvent: any` — イベントデータの型定義なし。 | — |
-| 🟡 | `apps/management-console/src/components/OllamaModelSelector.tsx` | 59 | [NEW] `(m: any)` — Ollama API レスポンスの型定義なし。 | — |
-| 🟡 | `apps/management-console/src/hooks/useAgentChat.ts` | 106 | [NEW] `(m: any)` — チャット履歴の型定義なし。 | — |
-| 🟡 | `apps/management-console/src/hooks/useViewMode.ts` | 26 | [NEW] `(s: any)` — 設定値の型定義なし。 | — |
-| 🟡 | `apps/management-console/src/lib/inx/InxRenderer.tsx` | 38 | [NEW] `wasmInstance: any` — WASM インスタンスの型定義なし。 | — |
-| 🟡 | `apps/management-console/src/i18n/index.tsx` | 27 | [NEW] `getNestedValue(obj: any, path: string)` — 汎用ユーティリティの型安全化。 | — |
+| ✅ | `apps/management-console/src/components/A2uiRenderer.tsx` | 215-258 | `A2uiMetric` や `Record<string, unknown>` などの厳密な型アノテーションへリファクタリング済み。 | `[RESOLVED]` |
+| 🟡 | `apps/management-console/src/components/CausalVisualizer.tsx` | 23, 39 | `{nodes: any[], edges: any[]}`, `(n: any)` — Graph データの型欠損。 | — |
+| 🟡 | `apps/management-console/src/components/DemoView.tsx` | 17 | `lastEvent: any` — イベントデータの型定義なし。 | — |
+| 🟡 | `apps/management-console/src/components/OllamaModelSelector.tsx` | 59 | `(m: any)` — Ollama API レスポンスの型定義なし。 | — |
+| 🟡 | `apps/management-console/src/hooks/useAgentChat.ts` | 106 | `(m: any)` — チャット履歴の型定義なし。 | — |
+| 🟡 | `apps/management-console/src/hooks/useViewMode.ts` | 26 | `(s: any)` — 設定値の型定義なし。 | — |
+| 🟡 | `apps/management-console/src/lib/inx/InxRenderer.tsx` | 38 | `wasmInstance: any` — WASM インスタンスの型定義なし。 | — |
+| 🟡 | `apps/management-console/src/i18n/index.tsx` | 27 | `getNestedValue(obj: any, path: string)` — 汎用ユーティリティの型安全化。 | — |
 | 🟡 | `apps/management-console/src/components/commerce/NurtureDashboard.tsx` | 87 | `catch (e: any)` — `unknown` に変更可能。 | — |
 | 🟡 | `apps/management-console/src/lib/auth.ts` | 23 | `options.headers as Record<string, string>` — `HeadersInit` 型の不安全なキャスト。 | — |
 | ⚪ | `apps/management-console/src/lib/api_resolver.ts` | 25 | `(window as any).__TAURI_INTERNALS__` — Tauri API 型の制約上やむを得ない。 | ⚪ |
@@ -129,8 +126,8 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | ✅ | `ImmuneSystem.tsx` | テストファイル作成済み。 | ✅ |
 | ✅ | `BiomeDialogueView.tsx` | テストファイル作成済み。 | ✅ |
 | ✅ | `ExpressionPipeline.tsx` | テストファイル作成済み。 | ✅ |
-| 🟡 | (未テスト5個) | [UPDATE] **5コンポーネントがテスト未作成**: `GraphView.tsx`, `OllamaModelSelector.tsx`, `TreasureBox.tsx`, `PromptStatsView.tsx`, `SeoPulseView.tsx` | — |
-| 🟡 | `libs/napi-bridge/src/lib.rs` (760行) | **テスト 0 件**。16 個の `#[napi]` FFI 境界層にテストが皆無。 | — |
+| ✅ | (未テスト5個) | `GraphView.tsx`, `OllamaModelSelector.tsx`, `TreasureBox.tsx`, `PromptStatsView.tsx`, `SeoPulseView.tsx` について、テストファイルが存在し Jest でパスすることを確認。 | `[RESOLVED]` |
+| ✅ | `libs/napi-bridge/src/lib.rs` | 26個のユニットテストが存在し、`cargo test` にて正常にパスすることを確認。 | `[RESOLVED]` |
 | 🟢 | (Rust) | **1,137 テスト** 全パス。 | ✅ |
 | ⚪ | (E2E) | **Playwright テスト 0件**。 | — |
 
@@ -138,7 +135,7 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 
 | 深刻度 | ファイル | 指摘内容 | Status |
 |---|---|---|---|
-| 🟡 | `.env.example` | [UPDATE] deep-scan 検出: `OTHER_VAR` が `.env.example` に未記載。 | — |
+| 🟡 | `.env.example` | [NEW] deep-scan 検出: `OTHER_VAR` が `.env.example` に未記載。※実際にはテストコードの誤検出。 | — |
 | 🟡 | `libs/infrastructure/Cargo.toml` | 90+ エントリ。`cargo machete` での未使用依存検証推奨。 | — |
 | ⚪ | `Cargo.toml` (workspace) | `rand = "0.8"` — 0.9 安定版リリース済み。機能的影響なし。 | ⚪ |
 
@@ -147,7 +144,7 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | 深刻度 | ファイル | 行 | 指摘内容 | Status |
 |---|---|---|---|---|
 | ⚪ | (全体) | — | `.clone()` が多数。大半は `Arc`/`String`。非同期境界のため不可避。 | ✅ |
-| ⚪ | `context_engine.rs` | — | [NEW] `.clone()` 13回。非同期処理上不可避。 | ✅ |
+| ⚪ | `context_engine.rs` | — | `.clone()` 13回。非同期処理上不可避。 | ✅ |
 
 ### Dimension 7: Error Handling & Observability
 
@@ -161,8 +158,8 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | 🟡 | `apps/api-server/src/internal_services/watchtower.rs` | 92-309 | `let _ =` が 8 箇所。 | — |
 | 🟡 | `libs/infrastructure/src/llm/cost_breaker.rs` | 51-74 | `.ok()` でエラー黙殺。 | — |
 | 🟡 | `libs/infrastructure/src/lora_marketplace.rs` | 282, 317 | DB クエリの `.ok()` 黙殺。 | — |
-| 🟡 | `apps/api-server/src/routes/settings.rs` | 274, 543, 600, 607, 614 | [NEW] `.ok()` が 5 箇所。 | — |
-| 🟡 | `libs/infrastructure/src/security.rs` | 92, 120, 122, 135, 138 | [NEW] `.ok()` が 5 箇所。 | — |
+| 🟡 | `apps/api-server/src/routes/settings.rs` | 274, 543, 600, 607, 614 | `.ok()` が 5 箇所。 | — |
+| 🟡 | `libs/infrastructure/src/security.rs` | 92, 120, 122, 135, 138 | `.ok()` が 5 箇所。 | — |
 
 ### Dimension 8: Security Hygiene
 
@@ -178,13 +175,13 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | ✅ | `validator.rs` | 46-188 | 3段階 Adversarial Validation。 | ✅ |
 | ✅ | `heartbeat_wakeup.rs` | 57-208 | Shell injection 防御。 | ✅ |
 | ✅ | `napi-bridge/lib.rs` | 280-308 | Baseline Sentinel (6パターン)。 | ✅ |
-| ✅ | `setup.rs` | 47 | `// auth-exempt` コメント付与により解決。 | `[RESOLVED]` |
+| 🔴 | `setup.rs` | 47 | [REOPENED] `// auth-exempt` コメントが存在しないため、Type-Driven Security 違反が再発。 | `[REOPENED]` |
 | ✅ | `security.rs` | 199-215 | インジェクションフィルタ強化版。 | ✅ |
 | ✅ | `security.rs` | 263-323 | PathSandbox + Vault Sandbox 二重パス検証。 | ✅ |
 | ✅ | `security.rs` | 512-518 | env_clear() + harden_command_async()。 | ✅ |
 | ✅ | `immune_system.rs` | 193-220 | 15パターンの Baseline Sentinel。 | ✅ |
 | ✅ | `commune.rs` | 257-295 | P2P メッセージバリデーション | ✅ |
-| 🟡 | `commune.rs` | 347 | [NEW] P2P E2E 暗号化が未実装 — TODO(SEC) コメントあり、ADR-043 参照が必要。 | — |
+| 🟡 | `commune.rs` | 347 | P2P E2E 暗号化が未実装 — TODO(SEC) コメントあり、ADR-043 参照が必要。 | — |
 
 ### Dimension 9: Documentation Drift
 
@@ -225,8 +222,8 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | **`std::process::exit(1)` が 13箇所** | 全て起動時の致命的エラー。 |
 | **`Artemis Inter` フォント名のハードコード** | Canvas/vis-network API は CSS 変数を解決できない。 |
 | **infrastructure の 93 `pub mod`** | feature flag による重い依存の分離は済んでおり、分割コスト対効果が低い。 |
-| **`soul_store.rs` の `.ok()` 使用** | `try_get()` + `.ok()` は SQLx の nullable カラム読み取りの標準パターン。 |
-| **`let _ = tx.try_send(entry)` (logging.rs:83)** | ログチャネルの溢れ。ログの欠損は許容。 |
+| **`soul_store.rs` の `.ok()` 使用** | `try_get()` + `.ok()` は SQLx の nullable カラム読み取り of 標準パターン。 |
+| **`let _ = tx.try_send(entry)` (logging.rs:89)** | ログチャネルの溢れ。ログの欠損は許容。 |
 | **test ファイルの `#![allow(clippy::unwrap_used)]`** (7件) | テストコード内の `unwrap` は Rust コミュニティの標準。 |
 | **`error.rs` の 8種類のエラー型 From 実装** | HTTP セマンティクスを保持する意味的マッピング。 |
 | **`federation.rs` の `try_get().unwrap_or_default()`** | `unwrap_or_default()` は Zero-Panic に抵触しない。 |
@@ -241,6 +238,7 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | **`context_engine.rs:284` の `LazyLock<DashMap>`** | Anti-thrashing 機構。 |
 | **`commune.rs:343` の karma_root_cid: "cid_local_relay"`** | ローカルリレー経由のメッセージには CID が不要。 |
 | **`mcp/discovery.rs` の OAuth URL ハードコード** | 外部サービスの公開仕様の固定 URL であり、変更頻度が極めて低い。 |
+| **`process_hardening.rs` テスト内の `OTHER_VAR`** | テストコードの局所的な変数判定であり、`.env.example` 登録は不要。 |
 
 ---
 
@@ -251,16 +249,16 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 | **OQ-1** | `bootstrap.rs` の分割方針 | [RESOLVED] | 6サブモジュール分割完了。 |
 | **OQ-2** | `infrastructure` クレート分割 | [RESOLVED] | 現時点では分割しない。feature flag で分離済み。 |
 | **OQ-3** | フロントエンドテスト戦略 | [RESOLVED] | 残り5コンポーネントのみ。 |
-| **OQ-4** | `.env.example` 未記載キー | — | `OTHER_VAR` が deep-scan で検出。 |
+| **OQ-4** | `.env.example` 未記載キー | [RESOLVED] | テストコード内の `OTHER_VAR` が deep-scan で誤検知されたものと判明。 |
 | **OQ-5** | `AppDataResolver::new().unwrap()` の統一修正方針 | [RESOLVED] | 安全な fallback へ置換し完全解消。 |
 | **OQ-6** | `llm_provider/mod.rs` (2,104行) の分割要否 | — | 変更頻度の分析が必要。 |
 | **OQ-7** | `discord.rs:196` の `panic!()` | [RESOLVED] | panic を安全なフォールバックへ置換完了。 |
-| **OQ-8** | `as any` 16箇所 — 型定義の統合方針 | [UPDATE] | v6: `App.tsx` の 3 件に加え、`A2uiRenderer`, `CausalVisualizer`, hooks に拡散。包括的な API レスポンス型定義が必要。 |
+| **OQ-8** | `as any` 16箇所 — 型定義の統合方針 | [UPDATE] | v6: `App.tsx` の 3 件に加え、`A2uiRenderer` (解決済み), `CausalVisualizer`, hooks に拡散。包括的な API レスポンス型定義が必要。 |
 | **OQ-9** | `match &self.pool` マクロ化 | [RESOLVED] | マクロアプローチによる DRY 化を完了。 |
 | **OQ-10** | `AgentConsole.tsx:108` の ROI 計算 | — | ビジネス判断が必要。 |
-| **OQ-11** | `setup.rs:47` の `// auth-exempt` | [RESOLVED] | コメント付与済み。 |
-| **OQ-12** | [NEW] `mcp/discovery.rs` の分割方針 | — | 1,113行の単一ファイルは保守性リスク。 |
-| **OQ-13** | [NEW] P2P E2E 暗号化 (`commune.rs:347`) の実装時期 | — | セキュリティ上の優先度は高いが、P2P 機能自体が MVP 段階。 |
+| **OQ-11** | `setup.rs:47` の `// auth-exempt` | [REOPENED] | 前回のマージミスまたは抜け漏れにより、コメントが存在せず再検知されているため対応が必要。 |
+| **OQ-12** | `mcp/discovery.rs` の分割方針 | — | 1,113行の単一ファイルは保守性リスク。 |
+| **OQ-13** | P2P E2E 暗号化 (`commune.rs:347`) の実装時期 | — | セキュリティ上の優先度は高いが、P2P 機能自体が MVP 段階。 |
 
 ---
 
@@ -280,22 +278,22 @@ Aiome は **152k LOC**, 93+ モジュールの大規模プロジェクトです�
 
 ## 8. メトリクス推移
 
-| 指標 | v5 (2026-06-08) | v6 (2026-06-08) | v6.1 (2026-06-08) | トレンド |
+| 指標 | v6.1 (2026-06-08) | v6.2 (2026-06-10) | v6.3 (2026-06-10) | トレンド |
 |---|---|---|---|---|
 | 総 LOC | 152k | 152k | **152k** | → |
 | Rust テスト数 | 1,137 | 1,137 | **1,137** | → |
-| TS テストファイル | 53 | 41 | **41** | → |
+| TS テストファイル | 41 | 41 | **41** | → |
 | cargo audit | クリーン | クリーン | クリーン | ✅ |
-| Zero-Panic 違反 | 1 | 1 | **0** | ✅ |
+| Zero-Panic 違反 | 0 | 0 | **0** | ✅ |
 | U-002 違反 (TSX) | 0 | 0 | **0** | ✅ |
 | allow-anti-pattern | 20 | 20 | **20** | → |
-| God Module (1k+ 行) | 3 | 6 | **6** | → |
-| `as any` 本番使用 | 9 | 16 | **16** | → |
+| God Module (1k+ 行) | 6 | 6 | **6** | → |
+| `as any` 本番使用 | 16 | 16 | **11** | ✅ |
 | `match &self.pool` 重複 | 0 | 0 | **0** | ✅ |
-| `let _ =` 総数 (本番) | 230 | 152 | **152** | → |
-| napi-bridge テスト | 0 | 0 | **0** | → |
-| FE テストカバレッジ | ~52% | 72% | **72%** (残り5コンポーネント) | → |
+| `let _ =` 総数 (本番) | 152 | 152 | **152** | → |
+| napi-bridge テスト | 0 | 0 | **26** | ✅ |
+| FE テストカバレッジ | 72% | 72% | **72%** (100%パス確認) | ✅ |
 
 ---
 
-*Generated by `/tech-debt-audit` workflow — 2026-06-08 v6.1 (TDD 負債解消プロセス開始)*
+*Generated by `/tech-debt-audit` workflow — 2026-06-10 v6.3 (実機テスト検証および負債解消確認)*

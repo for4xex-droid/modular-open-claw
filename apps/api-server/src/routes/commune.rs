@@ -347,6 +347,7 @@ pub async fn send_message(
         // TODO(SEC): See ADR-043 (docs/decisions/043-p2p-e2e-encryption.md)
         // Currently plaintext — vulnerable to man-in-the-middle sniffing on the relay.
         encryption: "none".to_string(),
+        payload_type: None,
     };
 
     let url = format!("{}/api/v1/commune/relay", state.config.samsara_hub_url);
