@@ -7,6 +7,7 @@ edition = "2021"
 [dependencies]
 aiome_core = { path = "../core", package = "aiome-core" }
 soul = { path = "../soul" }
+biome-engine = { path = "../biome-engine" }
 aiome-core-contracts = { workspace = true }
 aiome-contracts = { workspace = true }
 # tuning = { path = "../tuning" } (Moved to commercial repo)

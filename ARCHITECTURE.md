@@ -45,6 +45,7 @@ graph TD
         aiome-core-contracts(aiome-core-contracts)
         soul(soul)
         aiome-commerce(aiome-commerce)
+        biome-engine(biome-engine)
     end
 
     api-server --> soul
@@ -54,6 +55,7 @@ graph TD
     api-server --> aiome-core-contracts
     api-server --> aiome-contracts
     api-server --> aiome-commerce
+    api-server --> biome-engine
     api-server --> nurture-api
     api-server --> nurture-core
     api-server --> nurture-infra
@@ -69,6 +71,7 @@ graph TD
     aiome-core --> aiome-core-contracts
     aiome-core --> avatar-engine
     infrastructure --> soul
+    infrastructure --> biome-engine
     infrastructure --> aiome-core-contracts
     infrastructure --> aiome-contracts
     infrastructure --> shared
@@ -133,6 +136,7 @@ graph TD
 | `shadow-worker` | `apps/shadow-worker` | (Core Module) |
 | `aiome-node` | `apps/aiome-node` | (Core Module) |
 | `aiome-commerce` | `libs/aiome-commerce` | (Core Module) |
+| `biome-engine` | `libs/biome-engine` | (Core Module) |
 | `nurture-api` | `commercial/apps/nurture-api` | (Core Module) |
 | `commerce-protocol` | `commercial/libs/commerce-protocol` | (Core Module) |
 | `nurture-bridge` | `commercial/libs/nurture-bridge` | (Core Module) |

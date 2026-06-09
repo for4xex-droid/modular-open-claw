@@ -155,4 +155,50 @@ mod tests {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn test_frozen_traits_persistence_roundtrip() -> Result<(), AiomeError> {
+        let pool = setup_db().await;
+        let store = UniversalSoulStore::new(pool);
+
+        let mut soul = AgentSoul::new("test-agent-frozen".to_string());
+
+        let marker = soul::SomaticMarker {
+            id: "m_permanent".to_string(),
+            embedding: vec![0.1, 0.2],
+            valence: 0.8,
+            arousal: 0.5,
+            intensity: 0.9,
+            created_at: "2026-06-10T00:00:00Z".to_string(),
+            is_permanent: true,
+        };
+        soul.somatic_markers.push(marker);
+
+        let ft = soul::FrozenTraitSnapshot {
+            trait_index: 3,
+            frozen_value: 0.75,
+            somatic_marker_id: "m_permanent".to_string(),
+            frozen_at_generation: 2,
+            created_at: "2026-06-10T00:00:00Z".to_string(),
+        };
+        soul.frozen_traits.push(ft.clone());
+
+        // Save
+        store.save_soul(&soul).await?;
+
+        // Load
+        let loaded = store
+            .load_soul("test-agent-frozen")
+            .await?
+            .expect("Soul not found");
+
+        assert_eq!(loaded.somatic_markers.len(), 1);
+        assert!(loaded.somatic_markers[0].is_permanent);
+        assert_eq!(loaded.somatic_markers[0].id, "m_permanent");
+
+        assert_eq!(loaded.frozen_traits.len(), 1);
+        assert_eq!(loaded.frozen_traits[0], ft);
+
+        Ok(())
+    }
 }

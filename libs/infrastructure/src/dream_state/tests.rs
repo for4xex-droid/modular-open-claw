@@ -9,6 +9,7 @@
 mod tests {
     use super::super::*;
     use crate::job_queue::EvaluationOps;
+    use crate::soul_store::UniversalSoulStore;
     use aiome_core_contracts::commune::CommuneMessage;
     use aiome_core_contracts::contracts::{
         ArenaMatch, FederatedMetrics, ImmuneRule, KarmaEntry, OracleVerdict, SamsaraEvent,
@@ -23,6 +24,7 @@ mod tests {
     use aiome_core_contracts::types::AgentStats;
     use async_trait::async_trait;
     use serde_json::Value;
+    use soul::AgentSoul;
     use uuid::Uuid;
 
     #[derive(Debug)]
@@ -1016,6 +1018,158 @@ mod tests {
         assert!(
             has_reflection,
             "reflective_dream MUST store karma to write-back into the economic ecosystem"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_biome_evolution_dream() {
+        // 1. Setup DB and JobQueue
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap();
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
+        );
+        let jq = std::sync::Arc::new(
+            crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
+                .await
+                .unwrap(),
+        );
+        crate::job_queue::migrations::DbInitializer::init_db(&*jq)
+            .await
+            .unwrap();
+
+        // 2. Initialize BiomeEngine
+        let engine =
+            std::sync::Arc::new(tokio::sync::RwLock::new(biome_engine::BiomeEngine::new(42)));
+
+        // 3. Initialize SoulStore and create system AgentSoul in DB
+        let soul_store = std::sync::Arc::new(UniversalSoulStore::new(pool.clone()));
+        let system_agent_id = jq.get_system_agent_id().await.unwrap();
+        let soul = AgentSoul::new(system_agent_id.to_string());
+        soul_store.save_soul(&soul).await.unwrap();
+
+        // 4. Setup MockLlm returning valid JSON
+        #[derive(Debug)]
+        struct BiomeMockLlm;
+        #[async_trait]
+        impl aiome_core::llm_provider::LlmProvider for BiomeMockLlm {
+            fn name(&self) -> &str {
+                "biome-mock"
+            }
+            async fn complete(
+                &self,
+                _: &str,
+                _: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                Ok(aiome_core::llm_provider::LlmResponse {
+                    content: r#"
+                    {
+                      "message": "A legendary silicon-based predator has evolved.",
+                      "rarity": "Legendary",
+                      "recommendation": "invest in silicon diffusion"
+                    }
+                    "#
+                    .into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    ..Default::default()
+                })
+            }
+            async fn complete_with_cache(
+                &self,
+                _: aiome_core_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+        }
+
+        // 5. Setup broadcast channel for events
+        let (tx, mut rx) = tokio::sync::broadcast::channel(100);
+
+        let dream = DreamState::new(std::sync::Arc::new(BiomeMockLlm))
+            .with_biome_engine(engine)
+            .with_soul_store(soul_store.clone())
+            .with_event_sender(tx);
+
+        // 6. Execute Biome Evolution dream
+        let result = dream.biome_evolution_dream(&*jq).await.unwrap();
+        assert!(result.is_some());
+
+        // 7. Verify CoreEvent was sent
+        let event = rx.recv().await.unwrap();
+        if let CoreEvent::BiomeEvolution {
+            run_id,
+            generation,
+            message,
+            rarity,
+            recommendation,
+        } = event
+        {
+            assert_eq!(generation, 1);
+            assert_eq!(rarity, Some("Legendary".to_string()));
+            assert!(message.contains("legendary silicon-based predator"));
+        } else {
+            panic!("Expected CoreEvent::BiomeEvolution");
+        }
+
+        // 8. Verify Karma was stored
+        let all_karma = jq.fetch_all_karma(100).await.unwrap();
+        let has_biome_karma = all_karma
+            .iter()
+            .any(|k| k["skill"] == "biome" && k["karma_type"] == "Synthesized");
+        assert!(
+            has_biome_karma,
+            "biome_evolution_dream MUST store karma for evolutionary progress"
+        );
+
+        // 9. Verify AgentSoul was updated with legendary experience
+        let loaded_soul = soul_store
+            .load_soul(&system_agent_id.to_string())
+            .await
+            .unwrap()
+            .unwrap();
+        let biome_exp = loaded_soul
+            .experience_buffer
+            .iter()
+            .find(|e| e.is_core_memory && e.content.contains("Legendary"));
+        assert!(
+            biome_exp.is_some(),
+            "Legendary achievement MUST update AgentSoul experience buffer"
+        );
+
+        // 10. Verify Experience.domain is "biome" (not "general")
+        let exp = biome_exp.unwrap();
+        assert_eq!(
+            exp.domain, "biome",
+            "Biome experience domain MUST be 'biome', not default 'general'"
+        );
+        assert!(
+            (exp.outcome_valence - 1.0).abs() < f64::EPSILON,
+            "Legendary outcome_valence MUST be 1.0"
+        );
+        assert!(
+            (exp.original_prediction - 0.5).abs() < f64::EPSILON,
+            "original_prediction MUST be 0.5 (initial neutral prediction)"
+        );
+
+        // 11. Verify PredictiveModel has "biome" domain entry
+        assert!(
+            loaded_soul.predictive_model.domains.contains_key("biome"),
+            "PredictiveModel MUST have a 'biome' domain entry after Biome evolution"
+        );
+        let biome_dm = &loaded_soul.predictive_model.domains["biome"];
+        assert_eq!(
+            biome_dm.experience_count, 1,
+            "experience_count MUST be 1 after single evolution"
+        );
+        // surprise = |1.0 - 0.5| = 0.5 → new_accuracy = 0.5*(1-α) + (1-0.5)*α = 0.5 (unchanged for default α=0.05)
+        // The key invariant is that the domain was created and updated, not the exact value
+        assert!(
+            (biome_dm.last_surprise - 0.5).abs() < f64::EPSILON,
+            "last_surprise MUST be 0.5 for Legendary (actual=1.0, predicted=0.5)"
         );
     }
 }

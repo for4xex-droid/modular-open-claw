@@ -57,15 +57,8 @@ impl SoulStore for UniversalJobQueue {
 #[async_trait]
 impl SoulStoreOps for UniversalJobQueue {
     async fn do_load_soul(&self, id: &str) -> Result<Option<serde_json::Value>, AiomeError> {
-        let q = format!("SELECT data_json FROM souls WHERE id = {}", self.pool.ph(0));
-        let opt = crate::sql_fetch_optional!(&self.pool, (String,), &q, id).unwrap_or(None);
-        if let Some((s,)) = opt {
-            Ok(Some(
-                serde_json::from_str(&s).unwrap_or(serde_json::Value::Null),
-            ))
-        } else {
-            Ok(None)
-        }
+        let store = crate::soul_store::UniversalSoulStore::new(self.pool.clone());
+        aiome_core_contracts::traits::SoulStore::load_soul(&store, id).await
     }
 
     async fn do_store_soul_fragment(

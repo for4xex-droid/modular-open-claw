@@ -43,6 +43,9 @@ Aiome は、完全なオープンソースとして提供されるエージェ�
 9.  **Intelligence Layer (From Hierarchy to Intelligence)**:
     - **役割**: ピラミッド型の命令ダウンフロー（Hierarchy）から、LLM自身が課題発見から解決ツールの探索まで行う自律ネットワーキング（Intelligence）への転換。
     - **特徴**: アイドル時に稼働する `DreamService` がシステム全体の課題解決や「探索的夢（`scientific_experiment`）」を JobQueue に投下します。さらに、タスク実行に必要なスキルを持たない場合でもクラッシュせず、`ToolDiscoveryEngine` にフォールバックして必要な MCP ツールを自己推論して導入要求を出す「フェイルソフト」と「自己組織化」を獲得しました。
+10. **Biome Evolution Layer (Phase 3 / Biome Integration)**:
+    - **役割**: セルオートマトンシミュレーション（`BiomeEngine`）の進化プロセスを観察・分析し、魂（`AgentSoul`）の形質固定と成長にフィードバックする。
+    - **特徴**: アイドル時の夢想 (`biome_evolution_dream`) からトリガーされ、進化結果の希少度（rarity）に応じた `outcome_valence`（Legendary=1.0, Rare=0.8, Common=0.5）を適用し、`PredictiveModel` の `plasticity` 更新および `Experience` の蓄積を実行します。Legendary 達成時は `core_memory` (長期記憶) として `AgentSoul` に永続的に刻まれ、ヒッグス粒子による形質固定（`FrozenTraitSnapshot`）が発生します。
 
 ---
 
@@ -68,5 +71,5 @@ SQLiteの `agent_stats` テーブルで管理される指標のほか、**Samsar
 
 ---
 
-最終更新: 2026-05-04 (Aiome v1.0 Stabilization / Federation Sunset)
+最終更新: 2026-06-10 (Aiome v1.0 / Biome Evolution Dream & P3-13 Integration)
 Aiome Development Team

@@ -87,6 +87,7 @@ impl UniversalSoulStore {
         let semantic_json = serde_json::to_string(&soul.semantic_index).unwrap_or_default();
         let persona_boundaries_json =
             serde_json::to_string(&soul.persona_boundaries).unwrap_or_default();
+        let frozen_traits_json = serde_json::to_string(&soul.frozen_traits).unwrap_or_default();
 
         let q = format!(
             r#"
@@ -95,8 +96,8 @@ impl UniversalSoulStore {
                 defenses_json, predictive_model_json, attachment_json,
                 instinct_json, anamnesis_json, experience_buffer_json,
                 lora_adapter_path, lora_base_model, lora_hash, last_begging_at,
-                semantic_index_json, persona_boundaries_json
-            ) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15})
+                semantic_index_json, persona_boundaries_json, frozen_traits_json
+            ) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16})
             ON CONFLICT(id) DO UPDATE SET
                 generation = excluded.generation,
                 soul_hash = excluded.soul_hash,
@@ -112,7 +113,8 @@ impl UniversalSoulStore {
                 lora_hash = excluded.lora_hash,
                 last_begging_at = excluded.last_begging_at,
                 semantic_index_json = excluded.semantic_index_json,
-                persona_boundaries_json = excluded.persona_boundaries_json
+                persona_boundaries_json = excluded.persona_boundaries_json,
+                frozen_traits_json = excluded.frozen_traits_json
             "#,
             self.pool.ph(0),
             self.pool.ph(1),
@@ -129,7 +131,8 @@ impl UniversalSoulStore {
             self.pool.ph(12),
             self.pool.ph(13),
             self.pool.ph(14),
-            self.pool.ph(15)
+            self.pool.ph(15),
+            self.pool.ph(16)
         );
 
         sql_exec!(
@@ -150,7 +153,8 @@ impl UniversalSoulStore {
             soul.lora_hash.clone(),
             soul.last_begging_at,
             semantic_json,
-            persona_boundaries_json
+            persona_boundaries_json,
+            frozen_traits_json
         )?;
 
         // Update cache on save
@@ -309,6 +313,7 @@ impl UniversalSoulStore {
         let buffer_json: String = r.get("experience_buffer_json");
         let semantic_json: Option<String> = r.try_get("semantic_index_json").ok();
         let persona_json: Option<String> = r.try_get("persona_boundaries_json").ok();
+        let frozen_traits_json: Option<String> = r.try_get("frozen_traits_json").ok();
 
         Ok(AgentSoul {
             id: id.to_string(),
@@ -329,6 +334,9 @@ impl UniversalSoulStore {
                 .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or_default(),
             persona_boundaries: persona_json
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default(),
+            frozen_traits: frozen_traits_json
                 .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or_default(),
         })
@@ -350,6 +358,7 @@ impl UniversalSoulStore {
         let buffer_json: String = r.get("experience_buffer_json");
         let semantic_json: Option<String> = r.try_get("semantic_index_json").ok();
         let persona_json: Option<String> = r.try_get("persona_boundaries_json").ok();
+        let frozen_traits_json: Option<String> = r.try_get("frozen_traits_json").ok();
 
         Ok(AgentSoul {
             id: id.to_string(),
@@ -372,6 +381,9 @@ impl UniversalSoulStore {
             persona_boundaries: persona_json
                 .and_then(|s| serde_json::from_str(&s).ok())
                 .unwrap_or_default(),
+            frozen_traits: frozen_traits_json
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default(),
         })
     }
 
@@ -384,7 +396,7 @@ impl UniversalSoulStore {
                 defenses_json, predictive_model_json, attachment_json,
                 instinct_json, anamnesis_json, experience_buffer_json,
                 lora_adapter_path, lora_base_model, lora_hash, last_begging_at,
-                semantic_index_json, persona_boundaries_json
+                semantic_index_json, persona_boundaries_json, frozen_traits_json
             FROM agent_souls
             WHERE id = {}
             "#,

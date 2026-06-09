@@ -6,14 +6,16 @@
  */
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import wasm from "vite-plugin-wasm";
+import topLevelAwait from "vite-plugin-top-level-await";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async ({ mode }) => ({
-  plugins: [react()],
-  assetsInclude: ['**/*.vrm'],
+  plugins: [react(), wasm(), topLevelAwait()],
+  assetsInclude: ['**/*.vrm', '**/*.wasm'],
   // Production: strip console.log / console.warn (keep console.error for diagnostics)
   esbuild: {
     pure: mode === 'production' ? ['console.log', 'console.warn'] : [],
@@ -25,7 +27,8 @@ export default defineConfig(async ({ mode }) => ({
           vendor: ['react', 'react-dom'],
           ui: ['framer-motion', 'lucide-react'],
           network: ['vis-data', 'vis-network'],
-          mermaid: ['beautiful-mermaid']
+          mermaid: ['beautiful-mermaid'],
+          biome: ['biome-engine']
         }
       }
     }

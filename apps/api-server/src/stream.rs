@@ -745,6 +745,16 @@ pub async fn trigger_system_vitality_stream(
                             });
                             yield Ok(Event::default().event("commerce_event").data(data.to_string()));
                         },
+                        shared::watchtower::CoreEvent::BiomeEvolution { run_id, generation, message, rarity, recommendation } => {
+                            let data = serde_json::json!({
+                                "run_id": run_id,
+                                "generation": generation,
+                                "message": message,
+                                "rarity": rarity,
+                                "recommendation": recommendation,
+                            });
+                            yield Ok(Event::default().event("biome_evolution").data(data.to_string()));
+                        },
                         _ => {} // Other events handled by polling above
                     }
                 }

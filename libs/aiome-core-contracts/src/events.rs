@@ -115,6 +115,14 @@ pub enum CoreEvent {
         currency: String,
         description: String,
     },
+    /// Phase 3: Biome Evolution Event
+    BiomeEvolution {
+        run_id: String,
+        generation: u32,
+        message: String,
+        rarity: Option<String>,
+        recommendation: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -184,6 +184,8 @@ pub struct AppState {
     // --- Stripe Production Config ---
     pub stripe_price_subscription_monthly: Option<String>,
     pub alert_manager: Component<Arc<infrastructure::alerts::AlertManager>>,
+    // --- Biome Engine (Phase 3) ---
+    pub biome_engine: Component<Arc<tokio::sync::RwLock<biome_engine::BiomeEngine>>>,
 }
 
 impl AppState {

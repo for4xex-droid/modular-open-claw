@@ -15,6 +15,8 @@ pub struct SomaticMarker {
     pub arousal: f64,   // 0.0 to 1.0 (calm to highly aroused)
     pub intensity: f64, // time-decayed intensity
     pub created_at: String,
+    #[serde(default)]
+    pub is_permanent: bool,
 }
 
 impl SomaticMarker {
@@ -44,6 +46,7 @@ impl SomaticMarker {
             arousal: arousal.clamp(0.0, 1.0),
             intensity: intensity.clamp(0.0, 1.0),
             created_at,
+            is_permanent: false,
         }
     }
 }
@@ -86,6 +89,7 @@ mod tests {
             arousal: 0.8,
             intensity: 0.9,
             created_at: "test".into(),
+            is_permanent: false,
         };
 
         let resonance = marker.resonance(&[1.0, 1.0]);

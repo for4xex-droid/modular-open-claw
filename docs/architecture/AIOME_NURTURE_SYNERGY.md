@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-06-08
+> **最終更新**: 2026-06-10
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -223,6 +223,8 @@ graph LR
         INF[infrastructure]
         CONTRACTS[aiome-contracts]
         COMMERCE[aiome-commerce]
+        BIOME[biome-engine]
+        SOUL[soul]
     end
 
     subgraph "Project NURTURE (commercial/)"
@@ -244,11 +246,15 @@ graph LR
     NI -->|"path = ../../../libs/shared"| SH
     NI -->|"path = ../../../libs/infrastructure"| INF
     NB -->|"path = ../../../libs/aiome-core-contracts"| CONTRACTS
+    INF -->|"path = ../biome-engine"| BIOME
+    INF -->|"path = ../soul"| SOUL
 
     style AC fill:#4CAF50,color:white
     style SH fill:#4CAF50,color:white
     style INF fill:#4CAF50,color:white
     style CONTRACTS fill:#4CAF50,color:white
+    style BIOME fill:#4CAF50,color:white
+    style SOUL fill:#4CAF50,color:white
     style CP fill:#FF9800,color:white
     style NC fill:#FF9800,color:white
     style NI fill:#FF9800,color:white
@@ -1017,7 +1023,8 @@ gantt
 | `aiome-core-contracts` | 70+ | `JobQueue`, `KarmaRegistry`, `ArtifactStore`, `Publisher` |
 | `shared` | 30+ | `AppDataResolver` (CBA Cell-ID Namespacing), `SecurityPolicy`, `Guardrails` |
 | `infrastructure` | 150+ | `RegistryManager`, `WordPressAdapter`, `ContextEngine`, `SoTEngine`, `EvaluationLogger`, `SemanticCacheRepository`, `DistillationOps`, `SupportClassifier`, `SupportResponder`, `SupportIncidentRepository`, `SupportFeedbackCollector` |
-| `soul` | 20+ | `AgentSoul`, `SoulPipeline`, `SomaticMarker`, `SemanticRecaller`, `DreamState` |
+| `soul` | 20+ | `AgentSoul`, `SoulPipeline`, `SomaticMarker`, `SemanticRecaller`, `DreamState`, `FrozenTraitSnapshot` |
+| `biome-engine` | 15+ | `BiomeEngine`, `CellGenome`, `Element`, `Rarity`, `Grid`, `Particle` |
 | `core` | 20+ | `OllamaProvider`, `GeminiProvider`, `ClaudeProvider`, `OpenAiProvider` |
 | `avatar-engine` | 15+ | `Inochi2dLoader`, `SimpleLipSyncEngine`, `PhysicsSimulator` |
 

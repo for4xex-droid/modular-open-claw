@@ -379,6 +379,9 @@ pub async fn assemble_app_state(
             .secrets
             .stripe_price_subscription_monthly
             .clone(),
+        biome_engine: Component::new(std::sync::Arc::new(tokio::sync::RwLock::new(
+            biome_engine::BiomeEngine::new(42),
+        ))),
     };
 
     Ok(state)

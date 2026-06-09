@@ -1,6 +1,24 @@
 ## [Unreleased]
 
 ### Fixed
+- **`management-console` フロントエンドの `Biome` 関連ファイルにおける未使用 `React` インポートのクリーンアップ**:
+  - `src/lib/biome/BiomeDendou.tsx`, `BiomeHUD.tsx`, `BiomeGame.tsx`, `BiomeRenderer.tsx` 内の未使用の `React` インポートを削除し、TypeScript（`tsc`）の未使用ローカル変数チェック（`TS6133`）によるビルド失敗エラーを解消。
+- **`test_biome_evolution_dream` テストにおける外部キー制約および `AgentSoul` 更新エラーの修正 (TDD)**:
+  - `libs/infrastructure/src/dream_state/biome.rs` にて、進化の夢想中にシステムジョブ（`Biome Evolution Gen {gen}`）を一時的に `enqueue` してその `id` を `store_karma` に渡すことで、`karma_logs.job_id` のデータベース外部キー制約エラー（`FOREIGN KEY constraint failed`）を解消。
+  - `libs/infrastructure/src/job_queue/soul_store.rs` の `do_load_soul` 関数で、存在しない `souls` テーブルを SELECT していた古いバグを、`UniversalSoulStore::load_soul` に処理委譲する形に修正。これにより、夢想完了時に `AgentSoul` のロードおよび Legendary 達成時の経験値バッファの更新・保存がスキップされる問題を解消。
+  - `apps/api-server/Cargo.toml` に `biome-engine` のパス依存関係を追加し、ビルドエラーを修正。
+  - `apps/api-server/src/api_integration_tests/common.rs` のテスト用 `AppState` 初期化部分に `biome_engine` フィールドの初期化を追記。
+- **Biome 進化の AgentSoul 統合を P3-13 要件に準拠させる修正**:
+  - `Experience.domain` を `"general"`（デフォルト）から `"biome"` に明示設定。
+  - 全 Biome 進化イベント（Legendary に限らず Common/Rare 含む）で `PredictiveModel.update_plasticity("biome", outcome_valence, 0.5)` を呼び出すように拡張。
+  - `outcome_valence` を rarity に基づき段階的に設定（Legendary=1.0, Rare=0.8, Common=0.5）。
+  - `original_prediction` を初期予測値 0.5 に明示設定。
+- **`biome_evolution_dream` におけるエラーハンドリングの堅牢化とフォールトトレランス設計の導入 (Reflexion)**:
+  - `libs/infrastructure/src/dream_state/biome.rs` において、`store_karma` や `save_soul` の呼び出し失敗時に夢想処理全体を中断（`?` による脱出）するのではなく、`tracing::warn!` による警告ログ出力に切り替え、処理を継続（Graceful Skip）するように改善。
+  - `serde_json::from_value` による `AgentSoul` のデシリアライズ失敗時や `soul_opt == None` の場合にサイレントに無視されるのを防ぎ、`tracing::warn!` 警告ログを追加して診断性を向上。
+  - コメントのナンバリング重複（`// 6.` が2つ存在していた問題）を `// 6.` および `// 7.` へ修正し、想定外文字列のフォールバックスキームの注記を整理。
+- **`test_biome_evolution_dream` テストケースの検証アサーション強化 (Reflexion)**:
+  - `libs/infrastructure/src/dream_state/tests.rs` にて、`Experience.domain` の正当性、Legendary時における `outcome_valence` の期待値 `1.0`、初期予測値 `0.5`、`predictive_model` の学習適用状態、経験数および `last_surprise` の検証を含む6つの厳格なアサーションを追加。
 - **CommuneDialogueView スタイリングおよび不要 i18n キーの修正 (TDD)**:
   - `apps/management-console/src/components/CommuneDialogueView.tsx` の `<style>` タグ内の camelCase プロパティ (`borderRadius`, `fontSize`, `lineHeight`) を、標準の kebab-case プロパティ (`border-radius`, `font-size`, `line-height`) に修正し、スタイリングがブラウザで無視される不具合を解消。
   - `CommuneDialogueView.test.tsx` に失敗するテストを追加して不具合を再現し（Negative Test）、修正後にテストが通過することを確認（Positive Test）する TDD サイクルを実行。

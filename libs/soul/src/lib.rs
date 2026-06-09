@@ -15,6 +15,7 @@
 pub mod adapter;
 pub mod anamnesis;
 pub mod attachment;
+pub mod biome_traits;
 pub mod bounding_middleware;
 pub mod defense;
 pub mod engine;
@@ -29,6 +30,7 @@ pub mod somatic;
 pub use adapter::SoulDomainAdapter;
 pub use anamnesis::AnamnesisProfile;
 pub use attachment::{AttachmentModel, AttachmentStyle};
+pub use biome_traits::FrozenTraitSnapshot;
 pub use bounding_middleware::BoundingGuard;
 pub use defense::{Defense, DefenseAction, DefenseTrigger};
 pub use engine::SamsaraEngine;

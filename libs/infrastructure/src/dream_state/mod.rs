@@ -18,6 +18,7 @@ use tokio::sync::broadcast;
 
 // Declare submodules
 mod aegis;
+mod biome;
 mod communication;
 mod exploration;
 mod observability;
@@ -55,9 +56,13 @@ pub struct DreamState {
     eval_logger: Option<Arc<crate::llm::evaluation_logger::EvaluationLogger>>,
     incident_repo: Option<Arc<IncidentRepository>>,
     event_sender: Option<broadcast::Sender<CoreEvent>>,
+    biome_engine: Option<Arc<tokio::sync::RwLock<biome_engine::BiomeEngine>>>,
+    soul_store: Option<Arc<crate::soul_store::UniversalSoulStore>>,
 }
 
 impl DreamState {
+    pub const MAX_CORE_MEMORY: usize = 50;
+
     /// 新しいインスタンスを生成する
     pub fn new(llm: Arc<dyn aiome_core::llm_provider::LlmProvider>) -> Self {
         Self {
@@ -65,6 +70,8 @@ impl DreamState {
             eval_logger: None,
             incident_repo: None,
             event_sender: None,
+            biome_engine: None,
+            soul_store: None,
         }
     }
 
@@ -83,6 +90,19 @@ impl DreamState {
 
     pub fn with_event_sender(mut self, sender: broadcast::Sender<CoreEvent>) -> Self {
         self.event_sender = Some(sender);
+        self
+    }
+
+    pub fn with_biome_engine(
+        mut self,
+        engine: Arc<tokio::sync::RwLock<biome_engine::BiomeEngine>>,
+    ) -> Self {
+        self.biome_engine = Some(engine);
+        self
+    }
+
+    pub fn with_soul_store(mut self, store: Arc<crate::soul_store::UniversalSoulStore>) -> Self {
+        self.soul_store = Some(store);
         self
     }
 
@@ -115,6 +135,7 @@ impl DreamState {
         // Observability dreams get a dedicated 15% slot when eval_logger is connected
         let obs_prob = if self.eval_logger.is_some() { 15 } else { 0 };
         let aegis_prob = if self.incident_repo.is_some() { 10 } else { 0 };
+        let biome_prob = if self.biome_engine.is_some() { 10 } else { 0 };
 
         let insight = if rand_val < comm_prob as i64 {
             self.communicative_dream(job_queue)
@@ -130,6 +151,10 @@ impl DreamState {
                 .map(DreamResult::from_insight)
         } else if rand_val < (comm_prob + sci_prob + obs_prob + aegis_prob) as i64 {
             self.aegis_sentinel_dream().await?
+        } else if rand_val < (comm_prob + sci_prob + obs_prob + aegis_prob + biome_prob) as i64 {
+            self.biome_evolution_dream(job_queue)
+                .await?
+                .map(DreamResult::from_insight)
         } else if rand_val % 2 == 0 {
             self.explorative_dream(job_queue, trend_sonar)
                 .await?

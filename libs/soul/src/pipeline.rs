@@ -603,6 +603,7 @@ mod tests {
             arousal: 1.0,
             intensity: 1.0,
             created_at: "".to_string(),
+            is_permanent: false,
         });
 
         let pipeline = SoulPipeline::new(DummyAdapter, DummyEngine);

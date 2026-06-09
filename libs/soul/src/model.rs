@@ -50,6 +50,9 @@ pub struct AgentSoul {
 
     #[serde(default)]
     pub persona_boundaries: PersonaBoundaries,
+
+    #[serde(default)]
+    pub frozen_traits: Vec<crate::biome_traits::FrozenTraitSnapshot>,
 }
 
 impl AgentSoul {
@@ -73,6 +76,7 @@ impl AgentSoul {
             last_begging_at: None,
             semantic_index: Vec::new(),
             persona_boundaries: PersonaBoundaries::default(),
+            frozen_traits: Vec::new(),
         };
         soul.compute_hash();
         soul
@@ -166,10 +170,12 @@ impl AgentSoul {
         self.defenses.retain(|d| d.intensity > death_threshold);
 
         self.somatic_markers.iter_mut().for_each(|m| {
-            m.intensity *= decay_rate;
+            if !m.is_permanent {
+                m.intensity *= decay_rate;
+            }
         });
         self.somatic_markers
-            .retain(|m| m.intensity > death_threshold);
+            .retain(|m| m.is_permanent || m.intensity > death_threshold);
     }
 }
 
@@ -244,10 +250,45 @@ mod tests {
         soul.defenses.push(d1);
         soul.defenses.push(d2);
 
+        // Somatic Markers
+        let m1 = SomaticMarker {
+            id: "m1".to_string(),
+            embedding: vec![1.0, 0.0],
+            valence: 0.5,
+            arousal: 1.0,
+            intensity: 1.0,
+            created_at: "".to_string(),
+            is_permanent: false,
+        };
+
+        let mut m2 = m1.clone();
+        m2.id = "m2".to_string();
+        m2.is_permanent = true;
+
+        let mut m3 = m1.clone();
+        m3.id = "m3".to_string();
+        m3.intensity = 0.201;
+        m3.is_permanent = true;
+
+        soul.somatic_markers.push(m1);
+        soul.somatic_markers.push(m2);
+        soul.somatic_markers.push(m3);
+
         soul.apply_temporal_decay();
 
         assert_eq!(soul.defenses.len(), 1); // d2 should be removed (0.201 * 0.995 < 0.2)
         assert!(soul.defenses[0].intensity < 1.0); // d1 should be decayed
+
+        let m1_found = soul.somatic_markers.iter().find(|m| m.id == "m1").unwrap();
+        let m2_found = soul.somatic_markers.iter().find(|m| m.id == "m2").unwrap();
+        let m3_found = soul.somatic_markers.iter().find(|m| m.id == "m3").unwrap();
+
+        assert!(m1_found.intensity < 1.0, "m1 should decay");
+        assert_eq!(m2_found.intensity, 1.0, "m2 (permanent) should NOT decay");
+        assert_eq!(
+            m3_found.intensity, 0.201,
+            "m3 (permanent) should survive and NOT decay"
+        );
     }
 
     #[test]

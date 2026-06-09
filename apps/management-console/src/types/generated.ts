@@ -100,7 +100,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/biome/autonomous/start": {
+    "/api/commune/autonomous/start": {
         parameters: {
             query?: never;
             header?: never;
@@ -116,7 +116,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/biome/autonomous/status": {
+    "/api/commune/autonomous/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -132,7 +132,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/biome/autonomous/stop": {
+    "/api/commune/autonomous/stop": {
         parameters: {
             query?: never;
             header?: never;
@@ -148,7 +148,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/biome/list": {
+    "/api/commune/list": {
         parameters: {
             query?: never;
             header?: never;
@@ -164,7 +164,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/biome/send": {
+    "/api/commune/send": {
         parameters: {
             query?: never;
             header?: never;
@@ -180,14 +180,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/biome/status": {
+    "/api/commune/status": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["biome_status"];
+        get: operations["commune_status"];
         put?: never;
         post?: never;
         delete?: never;
@@ -196,7 +196,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/biome/topics": {
+    "/api/commune/topics": {
         parameters: {
             query?: never;
             header?: never;
@@ -666,6 +666,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/commerce/checkout-session/create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** [POST] /api/v1/commerce/checkout-session/create */
+        post: operations["create_checkout_session"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/commerce/customer-portal/create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stripe Customer Portal セッションを作成し、ポータル URL を返却する */
+        post: operations["create_portal_session"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/commerce/escrow/history/{agent_id}": {
         parameters: {
             query?: never;
@@ -745,6 +779,57 @@ export interface paths {
         put?: never;
         /** [POST] /api/v1/commerce/purchase/:agent_id */
         post: operations["execute_purchase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/commerce/subscription/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** [POST] /api/v1/commerce/subscription/cancel */
+        post: operations["cancel_subscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/commerce/subscription/create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** [POST] /api/v1/commerce/subscription/create */
+        post: operations["create_subscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/commerce/subscription/{agent_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** [GET] /api/v1/commerce/subscription/{agent_id} */
+        get: operations["get_subscription_status"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1699,6 +1784,10 @@ export interface components {
         AutoToggle: {
             enabled: boolean;
         };
+        CancelSubscriptionRequest: {
+            agent_id: string;
+            subscription_id: string;
+        };
         CategoryCount: {
             /** Format: int64 */
             count: number;
@@ -1736,9 +1825,30 @@ export interface components {
             title: string;
             wiki_article_refs: string[];
         };
+        CreateCheckoutSessionRequest: {
+            agent_id: string;
+            cancel_url: string;
+            price_id: string;
+            success_url: string;
+        };
+        CreateCheckoutSessionResponse: {
+            url: string;
+        };
         CreateGuildRequest: {
             description?: string | null;
             name: string;
+        };
+        CreatePortalSessionRequest: {
+            /** Format: uuid */
+            agent_id: string;
+            return_url: string;
+        };
+        CreatePortalSessionResponse: {
+            url: string;
+        };
+        CreateSubscriptionRequest: {
+            agent_id: string;
+            plan_id: string;
         };
         DiagnosisResponse: {
             failure_category?: string | null;
@@ -2197,6 +2307,8 @@ export interface components {
              * @description 共鳴度（対話品質スコア）
              */
             resonance: number;
+            /** @description サポートインシデントの週間統計情報 (S-5) */
+            support_incidents?: unknown;
             /**
              * Format: int64
              * @description ディスク総容量（GB）
@@ -2213,7 +2325,7 @@ export interface components {
              */
             vram_usage_mb?: number | null;
         };
-        SendBiomeRequest: {
+        SendCommuneRequest: {
             content: string;
             recipient_pubkey: string;
             topic_id: string;
@@ -2256,6 +2368,14 @@ export interface components {
          * @enum {string}
          */
         StepCategory: "General" | "Hypothesis" | "ToolSelection" | "Planning" | "Execution" | "Review" | "Decision" | "Economic";
+        SubscriptionResponse: {
+            subscription_id: string;
+        };
+        /**
+         * @description サブスクリプションのステータス
+         * @enum {string}
+         */
+        SubscriptionStatus: "active" | "cancelled" | "past_due" | "none" | "trialing" | "unpaid" | "incomplete" | "incomplete_expired";
         SynthReq: {
             base_model: string;
         };
@@ -2709,7 +2829,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SendBiomeRequest"];
+                "application/json": components["schemas"]["SendCommuneRequest"];
             };
         };
         responses: {
@@ -2724,7 +2844,7 @@ export interface operations {
             };
         };
     };
-    biome_status: {
+    commune_status: {
         parameters: {
             query?: never;
             header?: never;
@@ -3636,6 +3756,96 @@ export interface operations {
             };
         };
     };
+    create_checkout_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCheckoutSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Checkout Session created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateCheckoutSessionResponse"];
+                };
+            };
+            /** @description Invalid URL scheme */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized access */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_portal_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePortalSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Portal session created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatePortalSessionResponse"];
+                };
+            };
+            /** @description Bad request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_escrows: {
         parameters: {
             query?: never;
@@ -3781,6 +3991,96 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchaseResponse"];
+                };
+            };
+            /** @description Unauthorized access */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cancel_subscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelSubscriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description Subscription cancelled successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized access or missing eKYC */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_subscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSubscriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description Subscription created successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponse"];
+                };
+            };
+            /** @description Unauthorized access or missing eKYC */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_subscription_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The unique ID of the agent */
+                agent_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Subscription status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionStatus"];
                 };
             };
             /** @description Unauthorized access */

@@ -871,6 +871,9 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
             infrastructure::buzz::scheduler::BuzzScheduler::new(90, 4),
         )),
         stripe_price_subscription_monthly: std::env::var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY").ok(),
+        biome_engine: Component::new(std::sync::Arc::new(tokio::sync::RwLock::new(
+            biome_engine::BiomeEngine::new(42),
+        ))),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

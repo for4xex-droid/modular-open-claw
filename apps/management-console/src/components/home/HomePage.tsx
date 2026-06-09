@@ -32,6 +32,8 @@ const CausalVisualizer = lazy(() => import('../CausalVisualizer'));
 const DemoView = lazy(() => import('../DemoView'));
 const BiotopeView = lazy(() => import('../BiotopeView'));
 const Timeline = lazy(() => import('../Timeline'));
+const BiomeGame = lazy(() => import('../../lib/biome/BiomeGame').then(m => ({ default: m.BiomeGame })));
+
 
 // Settings sub-tabs
 const SettingsPage = lazy(() => import('../SettingsPage'));
@@ -104,6 +106,7 @@ const shopSubTabs = [
 const worldSubTabs = [
     { key: 'p2p', label: 'P2P対話' },
     { key: 'dashboard', label: 'ダッシュボード' },
+    { key: 'biome', label: 'バイオーム' },
     { key: 'map', label: 'マップ' },
     { key: 'trace', label: 'トレース' },
     { key: 'chronicle', label: 'クロニクル' },
@@ -180,6 +183,7 @@ const HomePage: React.FC<HomePageProps> = ({
                     {worldSubTab === 'trace' && <CausalVisualizer />}
                     {worldSubTab === 'chronicle' && <Timeline />}
                     {worldSubTab === 'demo' && <DemoView stats={stats} lastEvent={lastEvent} isConnected={isConnected} />}
+                    {worldSubTab === 'biome' && <BiomeGame seed={42} />}
                 </motion.div>
             </AnimatePresence>
         </div>
