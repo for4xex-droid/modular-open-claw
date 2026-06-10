@@ -19,7 +19,7 @@ export interface CellInfo {
 export interface BiomeRendererProps {
   width: number;
   height: number;
-  cells: CellInfo[];
+  renderView: Float32Array;
   effectType?: 'none' | 'higgs' | 'tachyon';
   effectIntensity?: number;
   effectCenter?: [number, number];
@@ -28,6 +28,7 @@ export interface BiomeRendererProps {
 const GRID_WIDTH = 128;
 const GRID_HEIGHT = 128;
 const INSTANCE_COUNT = GRID_WIDTH * GRID_HEIGHT;
+
 
 // パススルー用の頂点シェーダーとコピー用のフラグメントシェーダー
 const passthroughVert = `#version 300 es
@@ -80,7 +81,7 @@ function parseColorToRGB(colorStr: string): [number, number, number] {
 export function BiomeRenderer({
   width,
   height,
-  cells,
+  renderView,
   effectType = 'none',
   effectIntensity = 0.0,
   effectCenter = [0.5, 0.5]
@@ -111,15 +112,15 @@ export function BiomeRenderer({
   const pingpongIdxRef = useRef<number>(0);
 
   // パラメータ同期用の ref
-  const cellsRef = useRef<CellInfo[]>(cells);
+  const renderViewRef = useRef<Float32Array>(renderView);
   const effectTypeRef = useRef<string>(effectType);
   const effectIntensityRef = useRef<number>(effectIntensity);
   const effectCenterRef = useRef<[number, number]>(effectCenter);
 
   // 最新パラメータを常に ref に同期
   useEffect(() => {
-    cellsRef.current = cells;
-  }, [cells]);
+    renderViewRef.current = renderView;
+  }, [renderView]);
 
   useEffect(() => {
     effectTypeRef.current = effectType;
@@ -228,6 +229,7 @@ export function BiomeRenderer({
     if (!instanceVbo) return;
     instanceVboRef.current = instanceVbo;
     gl.bindBuffer(gl.ARRAY_BUFFER, instanceVbo);
+    gl.bufferData(gl.ARRAY_BUFFER, INSTANCE_COUNT * 12 * 4, gl.DYNAMIC_DRAW);
 
     const stride = 48; // 12 float * 4 bytes
 
@@ -305,41 +307,17 @@ export function BiomeRenderer({
         return;
       }
 
-      const activeCells = cellsRef.current;
+      const renderView = renderViewRef.current;
       const currentEffect = effectTypeRef.current;
       const intensity = effectIntensityRef.current;
       const center = effectCenterRef.current;
       const time = (performance.now() - startTime) / 1000.0;
 
       // --- 1. インスタンスデータバッファの更新 ---
-      const instanceData = new Float32Array(INSTANCE_COUNT * 12);
-      for (let i = 0; i < INSTANCE_COUNT; i++) {
-        const offset = i * 12;
-        const cell = activeCells[i];
-
-        if (cell) {
-          instanceData[offset] = cell.x;
-          instanceData[offset + 1] = cell.y;
-          instanceData[offset + 2] = cell.active ? 1.0 : 0.0;
-          instanceData[offset + 3] = cell.morphology;
-          instanceData[offset + 4] = cell.elements[0] || 0.0;
-          instanceData[offset + 5] = cell.elements[1] || 0.0;
-          instanceData[offset + 6] = cell.elements[2] || 0.0;
-          instanceData[offset + 7] = cell.elements[3] || 0.0;
-          instanceData[offset + 8] = cell.elements[4] || 0.0;
-          instanceData[offset + 9] = cell.elements[5] || 0.0;
-          instanceData[offset + 10] = cell.elements[6] || 0.0;
-          instanceData[offset + 11] = cell.elements[7] || 0.0;
-        } else {
-          const x = i % GRID_WIDTH;
-          const y = Math.floor(i / GRID_WIDTH);
-          instanceData[offset] = x;
-          instanceData[offset + 1] = y;
-          instanceData[offset + 2] = 0.0;
-        }
+      if (renderView && renderView.length > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, instanceVbo);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, renderView);
       }
-      gl.bindBuffer(gl.ARRAY_BUFFER, instanceVbo);
-      gl.bufferData(gl.ARRAY_BUFFER, instanceData, gl.DYNAMIC_DRAW);
 
       // --- 2. Scene FBO への描画 (オフスクリーン) ---
       gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFbo);

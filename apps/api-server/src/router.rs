@@ -306,6 +306,14 @@ pub fn build_app(
             get(routes::commune::autonomous_status),
         )
         .route(
+            "/api/commune/:topic/genome",
+            post(routes::commune::share_genome),
+        )
+        .route(
+            "/api/commune/:topic/genomes",
+            get(routes::commune::list_shared_genomes),
+        )
+        .route(
             "/api/synergy/graph",
             get(routes::karma::synergy_graph_handler),
         )

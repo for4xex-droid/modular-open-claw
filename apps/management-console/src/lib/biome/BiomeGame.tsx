@@ -2,38 +2,50 @@ import { useState, useEffect } from 'react';
 import { useBiomeEngine } from '../../hooks/useBiomeEngine';
 import { BiomeHUD } from './BiomeHUD';
 import { BiomeControls } from './BiomeControls';
-import { BiomeRenderer, CellInfo } from './BiomeRenderer';
+import { BiomeRenderer } from './BiomeRenderer';
 
 export interface BiomeGameProps {
-  seed: number;
+  seed?: number;
 }
 
 export function BiomeGame({ seed }: BiomeGameProps) {
   const [paused, setPaused] = useState(false);
-  const { loading, generation, tick, rewind } = useBiomeEngine({ seed, paused });
-  const [cells, setCells] = useState<CellInfo[]>([]);
+  const [currentSeed, setCurrentSeed] = useState(() => seed ?? Math.floor(Math.random() * 1000000));
+
+  // Props の seed が明示的に変更されたら同期する
+  useEffect(() => {
+    if (seed !== undefined) {
+      setCurrentSeed(seed);
+    }
+  }, [seed]);
+
+  const {
+    loading,
+    generation,
+    tick,
+    rewind,
+    getRenderView,
+    injectElement,
+    applyCrisis,
+    getRarity,
+    getActiveCellCount,
+    getElementBalance,
+    getMutationBoost,
+    ticksSinceMutation,
+  } = useBiomeEngine({ seed: currentSeed, paused });
 
   // 初期セルの生成および状態更新
   useEffect(() => {
     if (loading) return;
 
-    // 128x128 グリッドの初期セル情報を生成
-    const initialCells: CellInfo[] = [];
-    for (let y = 0; y < 128; y++) {
-      for (let x = 0; x < 128; x++) {
-        // テスト・デモ用に中央部にいくつかアクティブなセルを配置
-        const isActive = x >= 60 && x <= 68 && y >= 60 && y <= 68;
-        initialCells.push({
-          x,
-          y,
-          active: isActive,
-          morphology: 0,
-          elements: [isActive ? 1000 : 0, 0, 0, 0, 0, 0, 0, 0], // C
-        });
+    // テスト・デモ用に中央部にいくつかアクティブなセルを配置（炭素注入）
+    for (let y = 60; y <= 68; y++) {
+      for (let x = 60; x <= 68; x++) {
+        injectElement(x, y, 0, 5000);
       }
     }
-    setCells(initialCells);
-  }, [loading, seed]);
+  }, [loading, currentSeed, injectElement]);
+
 
   // ゲームの自動進行タイマー
   useEffect(() => {
@@ -41,22 +53,6 @@ export function BiomeGame({ seed }: BiomeGameProps) {
 
     const interval = setInterval(() => {
       tick();
-      
-      // セルの元素拡散や形態変化をシミュレートして状態更新 (React側での反映)
-      setCells((prevCells) =>
-        prevCells.map((cell) => {
-          if (!cell.active) return cell;
-          
-          // 元素反応・突然変異などを適当にモック（実体はWASM側で回る）
-          const nextElements = [...cell.elements];
-          // 代謝
-          if (nextElements[0] > 10) nextElements[0] -= 10;
-          return {
-            ...cell,
-            elements: nextElements,
-          };
-        })
-      );
     }, 100); // 100ms ごとに tick (10fps)
 
     return () => clearInterval(interval);
@@ -68,48 +64,93 @@ export function BiomeGame({ seed }: BiomeGameProps) {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        height: '400px',
+        height: '25rem',
         color: 'var(--white-100)',
-        fontFamily: 'system-ui, sans-serif'
+        fontFamily: 'var(--font-main)'
       }}>
         Loading Biome Engine...
       </div>
     );
   }
 
-  // 代替の元素比率データ
-  const elementBalance = { C: 40, N: 30, P: 10, H: 20 };
+  // 元素比率データを WASM から取得して HUD 向けにマップ
+  const balanceRaw = getElementBalance();
+  const elementBalance = {
+    C: balanceRaw[0] || 0,
+    N: balanceRaw[1] || 0,
+    P: balanceRaw[2] || 0,
+    H: balanceRaw[3] || 0,
+    O: balanceRaw[4] || 0,
+    S: balanceRaw[5] || 0,
+    Fe: balanceRaw[6] || 0,
+    Si: balanceRaw[7] || 0,
+  };
+
+  const rarities = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
+  const rarity = rarities[getRarity()] || 'Common';
+
+  const elementIndexMap: Record<string, number> = {
+    C: 0,
+    N: 1,
+    P: 2,
+    H: 3,
+  };
+
+  const handleInjectElement = (el: string) => {
+    const idx = elementIndexMap[el];
+    if (idx !== undefined) {
+      // 画面中央部（64, 64）の 5x5 エリアに分散して元素を注入する
+      for (let y = 62; y <= 66; y++) {
+        for (let x = 62; x <= 66; x++) {
+          injectElement(x, y, idx, 2000);
+        }
+      }
+    }
+  };
+
+  const handleTriggerCrisis = (crisis: string) => {
+    const type = crisis === 'Meteor' ? 'meteor' : 'ice_age';
+    applyCrisis(type, 64, 64);
+  };
+
+  const renderView = getRenderView();
 
   return (
     <div style={{
       display: 'flex',
-      gap: '24px',
-      padding: '24px',
+      gap: 'var(--layout-panel-gap)',
+      padding: 'var(--layout-panel-gap)',
       background: 'var(--bg-primary)',
-      borderRadius: '16px',
+      borderRadius: 'var(--radius-md)',
       color: 'var(--white-100)',
-      fontFamily: 'system-ui, sans-serif'
+      fontFamily: 'var(--font-main)'
     }}>
       {/* メインレンダラー */}
       <div style={{ flex: '1', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <BiomeRenderer width={512} height={512} cells={cells} />
+        <BiomeRenderer width={512} height={512} renderView={renderView} />
       </div>
 
       {/* コントロール・情報HUDパネル */}
-      <div style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ width: 'var(--layout-right-panel-width)', display: 'flex', flexDirection: 'column', gap: 'var(--layout-panel-gap)' }}>
         <BiomeHUD
           generation={generation}
-          rarity="Common"
+          rarity={rarity}
           elementBalance={elementBalance}
+          mutationBoost={getMutationBoost()}
+          ticksSinceMutation={ticksSinceMutation()}
+          activeCellCount={getActiveCellCount()}
         />
         <BiomeControls
-          onInjectElement={() => {}}
-          onTriggerCrisis={() => {}}
+          onInjectElement={handleInjectElement}
+          onTriggerCrisis={handleTriggerCrisis}
           onRewind={() => rewind(20)}
           paused={paused}
           onTogglePause={() => setPaused(!paused)}
+          onNewSeed={() => setCurrentSeed(Math.floor(Math.random() * 1000000))}
         />
+
       </div>
     </div>
   );
 }
+

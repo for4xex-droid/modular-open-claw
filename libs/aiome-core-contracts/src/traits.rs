@@ -457,6 +457,13 @@ pub trait KarmaRegistry: Send + Sync + std::fmt::Debug {
         category: &str,
         limit: i64,
     ) -> Result<KarmaSearchResult, AiomeError>;
+    async fn count_karma_by_domains_since(
+        &self,
+        _domains: &[&str],
+        _since: chrono::DateTime<chrono::Utc>,
+    ) -> Result<std::collections::HashMap<String, i64>, AiomeError> {
+        Ok(std::collections::HashMap::new())
+    }
 
     /// SLM (SuperLocalMemory) から教訓を想起する (Phase 2-B)
     async fn recall_from_slm(

@@ -1,6 +1,6 @@
 # ADR-022: Nurture Aesthetic System — AI自律アバター装飾と公式コンテンツの統一アーキテクチャ
 
-> **Status**: Proposed  
+> **Status**: Accepted  
 > **Date**: 2026-03-26  
 > **Origin**: Aesthetic Pressure モデル設計討議  
 > **Impact**: Nurture Platform / Avatar Engine / Commerce Engine / Shadow Clone

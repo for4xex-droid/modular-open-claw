@@ -1,6 +1,6 @@
 # ADR 009: MoonBit の採用範囲と将来計画
 
-- **Status**: Proposed (Phase 10+ 検討事項)
+- **Status**: Accepted (Phase 10+ 計画)
 - **Date**: 2026-03-20
 - **Context**: WASM スキル開発の DX 向上とエコシステム拡大
 

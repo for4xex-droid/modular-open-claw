@@ -59,6 +59,11 @@ pub trait KarmaOps {
         category: &str,
         limit: i64,
     ) -> Result<KarmaSearchResult, AiomeError>;
+    async fn do_count_karma_by_domains_since(
+        &self,
+        domains: &[&str],
+        since: chrono::DateTime<chrono::Utc>,
+    ) -> Result<std::collections::HashMap<String, i64>, AiomeError>;
 }
 
 #[async_trait]
@@ -135,6 +140,74 @@ impl KarmaOps for UniversalJobQueue {
             is_ood: false,
             max_score: 0.0,
         })
+    }
+
+    async fn do_count_karma_by_domains_since(
+        &self,
+        domains: &[&str],
+        since: chrono::DateTime<chrono::Utc>,
+    ) -> Result<std::collections::HashMap<String, i64>, AiomeError> {
+        let since_str = since.to_rfc3339();
+
+        if domains.is_empty() {
+            return Ok(std::collections::HashMap::new());
+        }
+
+        let mut placeholders = Vec::new();
+        for i in 0..domains.len() {
+            placeholders.push(self.pool.ph(i + 1));
+        }
+        let placeholders_str = placeholders.join(", ");
+
+        let q = format!(
+            "SELECT domain, COUNT(*) as count FROM karma_logs WHERE created_at >= {} AND domain IN ({}) GROUP BY domain",
+            self.pool.ph(0),
+            placeholders_str
+        );
+
+        let mut counts = std::collections::HashMap::new();
+        for domain in domains {
+            counts.insert(domain.to_string(), 0);
+        }
+
+        match &self.pool {
+            crate::db::DatabasePool::Sqlite(p) => {
+                let mut query = sqlx::query(&q).bind(&since_str);
+                for domain in domains {
+                    query = query.bind(*domain);
+                }
+                let rows = query
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for r in rows {
+                    let dom: String = r.get("domain");
+                    let cnt: i64 = r.get("count");
+                    counts.insert(dom, cnt);
+                }
+            }
+            crate::db::DatabasePool::Postgres(p) => {
+                let mut query = sqlx::query(&q).bind(&since_str);
+                for domain in domains {
+                    query = query.bind(*domain);
+                }
+                let rows = query
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| AiomeError::Infrastructure {
+                        reason: e.to_string(),
+                    })?;
+                for r in rows {
+                    let dom: String = r.get("domain");
+                    let cnt: i64 = r.get("count");
+                    counts.insert(dom, cnt);
+                }
+            }
+        }
+
+        Ok(counts)
     }
 
     async fn do_fetch_relevant_karma(

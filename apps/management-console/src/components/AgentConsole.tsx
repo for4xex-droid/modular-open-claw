@@ -35,6 +35,13 @@ interface RoiStats {
     instances: Array<{ id: string, name: string, status: string, nextRun: string, roi: string }>;
 }
 
+interface AuditLedgerEntry {
+    record_id?: string;
+    table_name?: string;
+    operation?: string;
+    timestamp?: string;
+}
+
 const SAVINGS_PER_TASK = 5;
 
 interface ArtifactRecord {
@@ -109,16 +116,27 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         tasksExecuted: tasksCount,
                         savings: tasksCount * SAVINGS_PER_TASK, // Use constant saving per automated task
                         activeBlueprints: blueprints.length,
-                        instances: blueprints.map(bp => ({
-                            id: bp.id,
-                            name: bp.name || 'Untitled Blueprint',
-                            status: 'Running',
-                            nextRun: 'Active',
-                            roi: '+$' + (Math.abs(bp.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % 500 + 100) + '/mo'
-                        }))
+                        instances: blueprints.map(bp => {
+                            const bpTasksCount = ledger.filter((l: AuditLedgerEntry) => l.record_id === bp.id).length;
+                            const bpRoi = (bpTasksCount * SAVINGS_PER_TASK) + 100;
+                            return {
+                                id: bp.id,
+                                name: bp.name || 'Untitled Blueprint',
+                                status: 'Running',
+                                nextRun: 'Active',
+                                roi: '+$' + bpRoi + '/mo'
+                            };
+                        })
                     });
                 } catch (e) {
                     console.error("Failed to fetch ROI stats:", e);
+                    // Fallback to safe empty stats to prevent loader freeze and infinite retries
+                    setStats({
+                        tasksExecuted: 0,
+                        savings: 0,
+                        activeBlueprints: 0,
+                        instances: []
+                    });
                 }
             };
             fetchStats();
@@ -129,22 +147,22 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
 
     // Shared ReactMarkdown component overrides (DRY: used in both history and streaming renders)
     const markdownComponents = {
-        h1: ({node, ...props}: React.ComponentPropsWithoutRef<'h1'> & { node?: unknown }) => <h1 style={{color: 'var(--accent-cyan)', fontSize: '1.5em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
-        h2: ({node, ...props}: React.ComponentPropsWithoutRef<'h2'> & { node?: unknown }) => <h2 style={{color: 'var(--accent-purple)', fontSize: '1.2em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
-        h3: ({node, ...props}: React.ComponentPropsWithoutRef<'h3'> & { node?: unknown }) => <h3 style={{fontSize: '1.1em', marginTop: '1em', marginBottom: '0.5em'}} {...props} />,
+        h1: ({node, ...props}: React.ComponentPropsWithoutRef<'h1'> & { node?: unknown }) => <h1 style={{color: 'var(--accent-cyan)', fontSize: 'var(--font-size-2xl)', marginTop: 'var(--space-sm)', marginBottom: 'var(--space-xs)'}} {...props} />,
+        h2: ({node, ...props}: React.ComponentPropsWithoutRef<'h2'> & { node?: unknown }) => <h2 style={{color: 'var(--accent-purple)', fontSize: 'var(--font-size-lg)', marginTop: 'var(--space-sm)', marginBottom: 'var(--space-xs)'}} {...props} />,
+        h3: ({node, ...props}: React.ComponentPropsWithoutRef<'h3'> & { node?: unknown }) => <h3 style={{fontSize: 'var(--font-size-base)', marginTop: 'var(--space-sm)', marginBottom: 'var(--space-xs)'}} {...props} />,
         a: ({node, ...props}: React.ComponentPropsWithoutRef<'a'> & { node?: unknown }) => <a style={{color: 'var(--accent-cyan)', textDecoration: 'underline'}} {...props} />,
         code: ({node, className, children, ...props}: React.ComponentPropsWithoutRef<'code'> & { node?: unknown; children?: React.ReactNode }) => {
             const match = /language-(\w+)/.exec(className || '');
             if (match && match[1] === 'mermaid') {
                 return (
-                    <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'0.8rem', padding:'1rem', border:'1px solid var(--accent-rose-30)'}}>Failed to render mermaid diagram (React error)</div>}>
+                    <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'var(--font-size-sm)', padding:'var(--space-sm)', border:'1px solid var(--accent-rose-30)'}}>Failed to render mermaid diagram (React error)</div>}>
                         <MermaidRenderer code={String(children).replace(/\n$/, '')} />
                     </ErrorBoundary>
                 );
             }
-            return <code style={{background: 'var(--black-40)', padding: '0.2em 0.4em', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.9em'}} className={className} {...props}>{children}</code>;
+            return <code style={{background: 'var(--black-40)', padding: '0.2em 0.4em', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)'}} className={className} {...props}>{children}</code>;
         },
-        pre: ({node, ...props}: React.ComponentPropsWithoutRef<'pre'> & { node?: unknown }) => <pre style={{background: 'var(--black-60)', padding: '1em', borderRadius: 'var(--radius-md)', overflowX: 'auto', marginBottom: '1em'}} {...props} />
+        pre: ({node, ...props}: React.ComponentPropsWithoutRef<'pre'> & { node?: unknown }) => <pre style={{background: 'var(--black-60)', padding: 'var(--space-sm)', borderRadius: 'var(--radius-md)', overflowX: 'auto', marginBottom: 'var(--space-sm)'}} {...props} />
     };
 
     return (

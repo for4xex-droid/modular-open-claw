@@ -8,6 +8,7 @@
 use super::DreamState;
 use aiome_core_contracts::events::CoreEvent;
 use aiome_core_contracts::traits::JobQueue;
+use rand::Rng;
 use std::error::Error;
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -25,10 +26,27 @@ impl DreamState {
             None => return Ok(None),
         };
 
-        // 1. BiomeEngine をロックして tick() を実行
+        // 24時間以内のカルマから突然変異ブースト (1.0x 〜 2.0x) を算出
+        let domain_counts = job_queue
+            .count_karma_by_domains_since(
+                &["news", "commune", "nurture", "metaverse"],
+                chrono::Utc::now() - chrono::Duration::hours(24),
+            )
+            .await?;
+        let mut boost = 1.0_f32;
+        for domain in &["news", "commune", "nurture", "metaverse"] {
+            if domain_counts.get(*domain).copied().unwrap_or(0) >= 1 {
+                boost += 0.25;
+            }
+        }
+
+        // 1. BiomeEngine をロックしてブーストを適用し、tick() を実行
         let mut engine = biome_engine.write().await;
+        engine.set_mutation_boost(boost.min(2.0));
         engine.tick();
         let gen = engine.generation();
+        let rarity = engine.get_rarity();
+        let substance = engine.roll_substance();
         drop(engine); // ロックを早期解放
 
         // 2. LLM を用いて進化の洞察を生成する
@@ -60,7 +78,14 @@ impl DreamState {
             .as_str()
             .unwrap_or("Stable biome environment observed.")
             .to_string();
-        let rarity_str = data["rarity"].as_str().unwrap_or("Common").to_string();
+        let rarity_str = match rarity {
+            biome_engine::rarity::BiomeRarity::Legendary => "Legendary",
+            biome_engine::rarity::BiomeRarity::Epic => "Epic",
+            biome_engine::rarity::BiomeRarity::Rare => "Rare",
+            biome_engine::rarity::BiomeRarity::Uncommon => "Uncommon",
+            biome_engine::rarity::BiomeRarity::Common => "Common",
+        }
+        .to_string();
         let recommendation = data["recommendation"].as_str().map(|s| s.to_string());
 
         info!(
@@ -142,6 +167,35 @@ impl DreamState {
             if let Some(soul_val) = soul_opt {
                 match serde_json::from_value::<soul::AgentSoul>(soul_val) {
                     Ok(mut soul) => {
+                        // Higgs粒子による形質の固定（ヒッグス凍結処理）
+                        if substance == biome_engine::particle::SubstanceKind::Higgs {
+                            let trait_idx = rand::thread_rng().gen_range(0..32);
+                            let marker_id = format!("higgs-{}", uuid::Uuid::new_v4());
+
+                            // SomaticMarker の追加
+                            let marker = soul::somatic::SomaticMarker {
+                                id: marker_id.clone(),
+                                embedding: vec![0.0; 32],
+                                valence: 0.8,
+                                arousal: 0.8,
+                                intensity: 1.0,
+                                created_at: chrono::Utc::now().to_rfc3339(),
+                                is_permanent: true,
+                            };
+                            soul.somatic_markers.push(marker);
+
+                            // FrozenTraitSnapshot の追加
+                            let snapshot = soul::biome_traits::FrozenTraitSnapshot {
+                                trait_index: trait_idx,
+                                frozen_value: 1.0,
+                                somatic_marker_id: marker_id,
+                                frozen_at_generation: gen,
+                                created_at: chrono::Utc::now().to_rfc3339(),
+                            };
+                            soul.frozen_traits.push(snapshot);
+                            info!("⚛️ [DreamState] Higgs particle mutation! Froze trait index {} at generation {}.", trait_idx, gen);
+                        }
+
                         // 7a. Rarity に基づく outcome_valence 決定
                         let outcome_valence = match rarity_str.as_str() {
                             "Legendary" => 1.0,

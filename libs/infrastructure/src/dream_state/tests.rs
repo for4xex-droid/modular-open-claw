@@ -1043,6 +1043,12 @@ mod tests {
         let engine =
             std::sync::Arc::new(tokio::sync::RwLock::new(biome_engine::BiomeEngine::new(42)));
 
+        // テストのために Legendary の発生を強制
+        {
+            let mut eng = engine.write().await;
+            eng.debug_force_rarity(biome_engine::rarity::BiomeRarity::Legendary);
+        }
+
         // 3. Initialize SoulStore and create system AgentSoul in DB
         let soul_store = std::sync::Arc::new(UniversalSoulStore::new(pool.clone()));
         let system_agent_id = jq.get_system_agent_id().await.unwrap();
@@ -1171,5 +1177,150 @@ mod tests {
             (biome_dm.last_surprise - 0.5).abs() < f64::EPSILON,
             "last_surprise MUST be 0.5 for Legendary (actual=1.0, predicted=0.5)"
         );
+    }
+
+    #[tokio::test]
+    async fn test_biome_evolution_dream_with_boost_and_higgs() {
+        // 1. Setup DB and JobQueue
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap();
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
+        );
+        let jq = std::sync::Arc::new(
+            crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
+                .await
+                .unwrap(),
+        );
+        crate::job_queue::migrations::DbInitializer::init_db(&*jq)
+            .await
+            .unwrap();
+
+        // 2. ブーストのために 24 時間以内のカルマを登録する（news と commune の 2 ドメイン）
+        let system_agent_id = jq.get_system_agent_id().await.unwrap();
+        let dummy_job_id = jq
+            .enqueue("data_processing", "dummy", "auto", None, None, None, 10)
+            .await
+            .unwrap();
+
+        jq.store_karma(
+            &dummy_job_id,
+            "news_topic",
+            "news lesson",
+            "Synthesized",
+            "dummy_soul",
+            Some("news"),
+            None,
+            None,
+            false,
+        )
+        .await
+        .unwrap();
+        jq.store_karma(
+            &dummy_job_id,
+            "commune_topic",
+            "commune lesson",
+            "Synthesized",
+            "dummy_soul",
+            Some("commune"),
+            None,
+            None,
+            false,
+        )
+        .await
+        .unwrap();
+
+        // 3. Initialize BiomeEngine
+        let engine =
+            std::sync::Arc::new(tokio::sync::RwLock::new(biome_engine::BiomeEngine::new(42)));
+
+        // テストのために Higgs の発生を強制
+        {
+            let mut eng = engine.write().await;
+            eng.debug_force_substance(biome_engine::particle::SubstanceKind::Higgs);
+        }
+
+        // 4. Initialize SoulStore and create system AgentSoul in DB
+        let soul_store = std::sync::Arc::new(UniversalSoulStore::new(pool.clone()));
+        let soul = soul::AgentSoul::new(system_agent_id.to_string());
+        soul_store.save_soul(&soul).await.unwrap();
+
+        // 5. Setup MockLlm returning valid JSON
+        #[derive(Debug)]
+        struct BiomeMockLlm;
+        #[async_trait]
+        impl aiome_core::llm_provider::LlmProvider for BiomeMockLlm {
+            fn name(&self) -> &str {
+                "biome-mock"
+            }
+            async fn complete(
+                &self,
+                _: &str,
+                _: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                Ok(aiome_core::llm_provider::LlmResponse {
+                    content: r#"
+                    {
+                      "message": "A legendary silicon-based predator has evolved.",
+                      "rarity": "Legendary",
+                      "recommendation": "invest in silicon diffusion"
+                    }
+                    "#
+                    .into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    ..Default::default()
+                })
+            }
+            async fn complete_with_cache(
+                &self,
+                _: aiome_core_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+        }
+
+        // 6. Setup broadcast channel for events
+        let (tx, mut rx) = tokio::sync::broadcast::channel(100);
+
+        let dream = DreamState::new(std::sync::Arc::new(BiomeMockLlm))
+            .with_biome_engine(engine.clone())
+            .with_soul_store(soul_store.clone())
+            .with_event_sender(tx);
+
+        // 7. Execute Biome Evolution dream
+        let result = dream.biome_evolution_dream(&*jq).await.unwrap();
+        assert!(result.is_some());
+
+        // 8. エンジンに適用されたブースト値の検証（1.5x に設定されているか）
+        {
+            let eng = engine.read().await;
+            assert!((eng.get_mutation_boost() - 1.5).abs() < 1e-5);
+        }
+
+        // 9. Soul への Higgs 凍結処理の適用検証
+        let loaded_soul = soul_store
+            .load_soul(&system_agent_id.to_string())
+            .await
+            .unwrap()
+            .unwrap();
+        let soul_obj: soul::AgentSoul = loaded_soul;
+
+        // frozen_traits に Higgs 固定記録が 1 件追加されていることを検証
+        assert_eq!(soul_obj.frozen_traits.len(), 1);
+        let frozen = &soul_obj.frozen_traits[0];
+        assert_eq!(frozen.frozen_at_generation, 1);
+
+        // somatic_markers に Higgs に対応する Permanent な SomaticMarker が 1 件追加されていることを検証
+        let matched_marker = soul_obj
+            .somatic_markers
+            .iter()
+            .find(|m| m.id == frozen.somatic_marker_id);
+        assert!(matched_marker.is_some());
+        let marker = matched_marker.unwrap();
+        assert!(marker.is_permanent);
     }
 }

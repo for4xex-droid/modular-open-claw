@@ -6,6 +6,7 @@ export interface BiomeControlsProps {
   onRewind: () => void;
   paused: boolean;
   onTogglePause: () => void;
+  onNewSeed?: () => void;
 }
 
 export function BiomeControls({
@@ -13,21 +14,23 @@ export function BiomeControls({
   onTriggerCrisis,
   onRewind,
   paused,
-  onTogglePause
+  onTogglePause,
+  onNewSeed
 }: BiomeControlsProps) {
   const elements = ['C', 'N', 'P', 'H'];
   const crises = ['Meteor', 'IceAge'];
 
+
   const buttonStyle: React.CSSProperties = {
     background: 'var(--white-05)',
     border: '1px solid var(--border-glass)',
-    borderRadius: '8px',
+    borderRadius: 'var(--radius-sm)',
     color: 'var(--white-100)',
-    padding: '8px 16px',
+    padding: 'var(--space-xs) var(--space-sm)',
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '0.875rem',
     fontWeight: '500',
-    transition: 'all 0.2s',
+    transition: 'all var(--speed-fast)',
   };
 
   const primaryButtonStyle: React.CSSProperties = {
@@ -46,21 +49,21 @@ export function BiomeControls({
 
   return (
     <div style={{
-      padding: '16px',
+      padding: 'var(--space-sm)',
       background: 'var(--bg-glass-heavy)',
-      backdropFilter: 'blur(12px)',
+      backdropFilter: 'blur(var(--blur-md))',
       border: '1px solid var(--border-glass)',
-      borderRadius: '12px',
+      borderRadius: 'var(--radius-md)',
       color: 'var(--white-100)',
       display: 'flex',
       flexDirection: 'column',
-      gap: '16px',
-      fontFamily: 'system-ui, sans-serif'
+      gap: 'var(--space-sm)',
+      fontFamily: 'var(--font-main)'
     }}>
       {/* 元素注入 */}
       <div>
-        <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>INJECT ELEMENTS</span>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 'var(--space-xs)' }}>INJECT ELEMENTS</span>
+        <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
           {elements.map((el) => (
             <button
               key={el}
@@ -76,8 +79,8 @@ export function BiomeControls({
 
       {/* 災害発生 */}
       <div>
-        <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>TRIGGER CRISIS</span>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 'var(--space-xs)' }}>TRIGGER CRISIS</span>
+        <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
           {crises.map((cr) => (
             <button
               key={cr}
@@ -92,14 +95,21 @@ export function BiomeControls({
       </div>
 
       {/* システム制御 */}
-      <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '12px', display: 'flex', gap: '8px' }}>
+      <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: 'var(--space-sm)', display: 'flex', gap: 'var(--space-xs)' }}>
         <button style={buttonStyle} onClick={onTogglePause} aria-label={paused ? 'Resume' : 'Pause'}>
           {paused ? 'Resume' : 'Pause'}
         </button>
         <button style={buttonStyle} onClick={onRewind} aria-label="Rewind">
           Rewind
         </button>
+        {onNewSeed && (
+          <button style={buttonStyle} onClick={onNewSeed} aria-label="New Seed">
+            New Seed
+          </button>
+        )}
       </div>
+
     </div>
   );
 }
+

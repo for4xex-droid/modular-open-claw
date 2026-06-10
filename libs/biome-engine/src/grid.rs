@@ -1,3 +1,4 @@
+use crate::evolution::CellMorphology;
 use crate::genome::CellGenome;
 use rand::rngs::SmallRng;
 use rand::SeedableRng;
@@ -15,12 +16,13 @@ pub struct CellDelta {
     pub active: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct BiomeCell {
     pub active: bool,
     pub elements: [u16; 8], // C, N, P, H, O, S, Fe, Si
     pub genome: CellGenome,
     pub is_frozen: bool,
+    pub morphology: CellMorphology,
 }
 
 impl BiomeCell {
@@ -30,6 +32,7 @@ impl BiomeCell {
             elements: [0u16; 8],
             genome: CellGenome::default_nurture(),
             is_frozen: false,
+            morphology: CellMorphology::Basic,
         }
     }
 }
@@ -41,37 +44,111 @@ impl Default for BiomeCell {
 }
 
 pub struct BiomeGrid {
-    pub(crate) cells: Vec<BiomeCell>,
+    cells_a: Vec<BiomeCell>,
+    cells_b: Vec<BiomeCell>,
+    current_is_a: bool,
     rng: SmallRng,
+    pub mutation_boost: f32,
+    pub ticks_since_mutation: u32,
+    render_buffer: Vec<f32>,
 }
 
 impl BiomeGrid {
     pub fn new(seed: u64) -> Self {
-        let cells = vec![BiomeCell::new(); GRID_SIZE];
+        let cells_a = vec![BiomeCell::new(); GRID_SIZE];
+        let cells_b = vec![BiomeCell::new(); GRID_SIZE];
         let rng = SmallRng::seed_from_u64(seed);
-        Self { cells, rng }
+        let render_buffer = vec![0.0f32; GRID_SIZE * 12];
+        Self {
+            cells_a,
+            cells_b,
+            current_is_a: true,
+            rng,
+            mutation_boost: 1.0,
+            ticks_since_mutation: 0,
+            render_buffer,
+        }
+    }
+
+    pub fn current_cells(&self) -> &Vec<BiomeCell> {
+        if self.current_is_a {
+            &self.cells_a
+        } else {
+            &self.cells_b
+        }
+    }
+
+    pub fn current_cells_mut(&mut self) -> &mut Vec<BiomeCell> {
+        if self.current_is_a {
+            &mut self.cells_a
+        } else {
+            &mut self.cells_b
+        }
+    }
+
+    #[allow(dead_code)]
+    fn next_cells_mut(&mut self) -> &mut Vec<BiomeCell> {
+        if self.current_is_a {
+            &mut self.cells_b
+        } else {
+            &mut self.cells_a
+        }
+    }
+
+    pub fn set_current_cells(&mut self, cells: Vec<BiomeCell>) {
+        if self.current_is_a {
+            self.cells_a = cells;
+        } else {
+            self.cells_b = cells;
+        }
+    }
+
+    pub fn render_data_ptr(&self) -> *const f32 {
+        self.render_buffer.as_ptr()
+    }
+
+    pub fn render_data_len(&self) -> usize {
+        self.render_buffer.len()
     }
 
     pub fn get_cell(&self, x: usize, y: usize) -> &BiomeCell {
-        &self.cells[y * GRID_WIDTH + x]
+        &self.current_cells()[y * GRID_WIDTH + x]
     }
 
     pub fn get_cell_mut(&mut self, x: usize, y: usize) -> &mut BiomeCell {
-        &mut self.cells[y * GRID_WIDTH + x]
+        &mut self.current_cells_mut()[y * GRID_WIDTH + x]
     }
 
     /// グリッドの状態を1ステップ進め、変更されたセルの差分を返す
     pub fn tick(&mut self) -> Vec<CellDelta> {
         use rand::Rng;
-        let mut next_cells = self.cells.clone();
+
+        let current_is_a = self.current_is_a;
+        let cells_a = &mut self.cells_a;
+        let cells_b = &mut self.cells_b;
+        let rng = &mut self.rng;
+        let render_buffer = &mut self.render_buffer;
+        let mut ticks_since_mutation = self.ticks_since_mutation;
+        let mutation_boost = self.mutation_boost;
+
+        // current と next の参照を分割
+        let (current_cells, next_cells) = if current_is_a {
+            (&*cells_a, cells_b)
+        } else {
+            (&*cells_b, cells_a)
+        };
+
+        // 1. nextバッファにcurrentバッファの内容をコピー (Vecなのでclone_from_sliceが安全かつ高速)
+        next_cells.clone_from_slice(current_cells);
+
         let mut deltas = Vec::new();
 
+        // 拡散計算
         for y in 0..GRID_HEIGHT {
             for x in 0..GRID_WIDTH {
                 let idx = y * GRID_WIDTH + x;
-                let cell = &self.cells[idx];
+                let cell = &current_cells[idx];
 
-                // アクティブかつ炭素(インデックス0)が十分に存在するセルから周囲に拡散
                 if cell.active && cell.elements[0] > 100 {
                     let spread_amount = cell.elements[0] / 10;
                     if spread_amount == 0 {
@@ -88,9 +165,7 @@ impl BiomeGrid {
                     for &(nx, ny) in &neighbors {
                         if nx < GRID_WIDTH && ny < GRID_HEIGHT {
                             let n_idx = ny * GRID_WIDTH + nx;
-
-                            // 乱数要素の追加 (警告回避および将来の確率変動用)
-                            let rand_factor: u16 = self.rng.gen_range(80..=120);
+                            let rand_factor: u16 = rng.gen_range(80..=120);
                             let final_spread =
                                 ((spread_amount as u32 * rand_factor as u32) / 100) as u16;
 
@@ -107,8 +182,43 @@ impl BiomeGrid {
             }
         }
 
-        // 状態が変化したセルを検出して差分を収集
-        for (idx, (cell, next_cell)) in self.cells.iter().zip(next_cells.iter()).enumerate() {
+        let mut mutation_occurred = false;
+        let base_rate = 205u16;
+        let mutation_rate = ((base_rate as f32 * mutation_boost) as u32).min(65535) as u16;
+
+        ticks_since_mutation += 1;
+        let force_mutate = ticks_since_mutation >= 1000;
+
+        for cell in next_cells.iter_mut() {
+            if cell.active {
+                // 1. 元素反応
+                crate::element::react_elements(cell);
+
+                // 2. 突然変異
+                let should_mutate = if force_mutate {
+                    true
+                } else {
+                    let roll: u16 = rng.gen_range(0..=65535);
+                    roll < mutation_rate
+                };
+
+                if should_mutate {
+                    let mut mutated_genome = cell.genome.clone();
+                    mutated_genome.mutate(mutation_rate, rng);
+                    cell.genome = mutated_genome;
+                    mutation_occurred = true;
+                }
+
+                // 3. 形態決定
+                cell.morphology = crate::evolution::determine_morphology(&cell.elements);
+            }
+        }
+
+        if mutation_occurred {
+            ticks_since_mutation = 0;
+        }
+
+        for (idx, (cell, next_cell)) in current_cells.iter().zip(next_cells.iter()).enumerate() {
             if cell != next_cell {
                 let x = (idx % GRID_WIDTH) as u16;
                 let y = (idx / GRID_WIDTH) as u16;
@@ -120,7 +230,26 @@ impl BiomeGrid {
             }
         }
 
-        self.cells = next_cells;
+        // 状態を書き戻す
+        self.current_is_a = !current_is_a;
+        self.ticks_since_mutation = ticks_since_mutation;
+
+        // 反転後の現在のバッファ（＝更新されたnext_cells）をレンダリングバッファに反映
+        for (idx, cell) in next_cells.iter().enumerate() {
+            let offset = idx * 12;
+            let x = (idx % GRID_WIDTH) as f32;
+            let y = (idx / GRID_WIDTH) as f32;
+
+            render_buffer[offset] = x;
+            render_buffer[offset + 1] = y;
+            render_buffer[offset + 2] = if cell.active { 1.0 } else { 0.0 };
+            render_buffer[offset + 3] = cell.morphology as u32 as f32;
+
+            for i in 0..8 {
+                render_buffer[offset + 4 + i] = cell.elements[i] as f32;
+            }
+        }
+
         deltas
     }
 }
@@ -132,7 +261,7 @@ mod tests {
     #[test]
     fn test_grid_dimensions() {
         let grid = BiomeGrid::new(42);
-        assert_eq!(grid.cells.len(), GRID_SIZE);
+        assert_eq!(grid.current_cells().len(), GRID_SIZE);
     }
 
     #[test]
@@ -146,7 +275,6 @@ mod tests {
         let deltas = grid.tick();
 
         // 状態が変化し、差分(CellDelta)が返ってくることを期待する。
-        // 現在は tick() が空の Vec を返すので、このテストは失敗する (RED)
         assert!(
             !deltas.is_empty(),
             "Grid tick should produce state changes and return deltas"
@@ -170,11 +298,67 @@ mod tests {
 
         // grid1 と grid2 は同一のシードなので状態が完全に一致するはず
         assert_eq!(
-            grid1.cells, grid2.cells,
+            grid1.current_cells(),
+            grid2.current_cells(),
             "Grids with same seed should be identical"
         );
 
         // grid1 と grid3 は異なるシードなので状態が異なるはず (ただし現時点では両方 tick が空なので
         // このテストはたまたまパスする可能性があるが、実実装が入ると差が出る)
+    }
+
+    #[test]
+    fn test_double_buffering() {
+        let mut grid = BiomeGrid::new(42);
+        let initial_ptr = grid.current_cells().as_ptr();
+        grid.tick();
+        let next_ptr = grid.current_cells().as_ptr();
+        assert_ne!(
+            initial_ptr, next_ptr,
+            "Pointer should swap to avoid allocation"
+        );
+    }
+
+    #[test]
+    fn test_cell_morphology_initialization() {
+        let cell = BiomeCell::new();
+        assert_eq!(cell.morphology, crate::evolution::CellMorphology::Basic);
+    }
+
+    #[test]
+    fn test_pity_system_and_mutation_boost() {
+        let mut grid = BiomeGrid::new(42);
+        assert_eq!(grid.ticks_since_mutation, 0);
+        assert_eq!(grid.mutation_boost, 1.0);
+
+        // 突然変異はアクティブなセルでのみ発生するため、1セルをアクティブ化する
+        grid.get_cell_mut(5, 5).active = true;
+
+        grid.mutation_boost = 2.0;
+        grid.ticks_since_mutation = 999;
+
+        grid.tick();
+        assert_eq!(grid.ticks_since_mutation, 0);
+    }
+
+    #[test]
+    fn test_render_buffer_updates() {
+        let mut grid = BiomeGrid::new(42);
+        grid.get_cell_mut(5, 5).active = true;
+        grid.get_cell_mut(5, 5).elements[0] = 1000;
+
+        grid.tick();
+
+        let ptr = grid.render_data_ptr();
+        let len = grid.render_data_len();
+        assert_ne!(ptr, std::ptr::null());
+        assert_eq!(len, GRID_SIZE * 12);
+
+        let slice = unsafe { std::slice::from_raw_parts(ptr, len) };
+        let cell_idx = 5 * GRID_WIDTH + 5;
+        let offset = cell_idx * 12;
+        assert_eq!(slice[offset], 5.0); // x
+        assert_eq!(slice[offset + 1], 5.0); // y
+        assert_eq!(slice[offset + 2], 1.0); // active
     }
 }

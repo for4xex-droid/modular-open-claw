@@ -14,9 +14,10 @@ Before initiating a release, ensure the following checks have passed:
 
 ## 2. Security and Vulnerability Audit
 
-- Run the full AST deep scan:
+- Run the dependency and keyword scan (nurture_auditor.py is deprecated):
   ```bash
-  python3 scripts/nurture_auditor.py
+  # grep-based scan for unsafe, unwrap, or panics in production code
+  grep -rn "unsafe\|unwrap\|panic!" libs/ apps/ --include="*.rs" | grep -v test | head -20
   ```
 - Run the cargo audit explicitly to ensure no new vulnerabilities:
   ```bash

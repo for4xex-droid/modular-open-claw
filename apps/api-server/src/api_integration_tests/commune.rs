@@ -123,3 +123,40 @@ async fn test_commune_hub_unreachable_error() {
     // Fails because the external Hub endpoint is not mocked and fails to connect
     assert_eq!(resp.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
 }
+
+#[serial]
+#[tokio::test]
+async fn test_commune_genome_sharing_roundtrip() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let payload = serde_json::json!({
+        "genome_json": "{\"genes\": [1.0, 2.0, 3.0]}"
+    });
+
+    // 1. Post shared genome
+    let share_resp = server
+        .post("/api/commune/test_topic/genome")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(share_resp.status_code(), StatusCode::OK);
+    let share_json = share_resp.json::<serde_json::Value>();
+    assert_eq!(share_json["status"], "success");
+
+    // 2. Get shared genomes
+    let get_resp = server
+        .get("/api/commune/test_topic/genomes")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(get_resp.status_code(), StatusCode::OK);
+    let genomes = get_resp.json::<serde_json::Value>();
+    let genomes_arr = genomes.as_array().unwrap();
+    assert_eq!(genomes_arr.len(), 1);
+    assert_eq!(
+        genomes_arr[0]["blueprint_json"],
+        "{\"genes\": [1.0, 2.0, 3.0]}"
+    );
+}

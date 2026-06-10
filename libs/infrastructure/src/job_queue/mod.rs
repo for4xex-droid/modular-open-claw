@@ -514,6 +514,13 @@ impl KarmaRegistry for UniversalJobQueue {
     ) -> Result<KarmaSearchResult, AiomeError> {
         Box::pin(self.do_fetch_relevant_karma_by_category(topic, category, limit)).await
     }
+    async fn count_karma_by_domains_since(
+        &self,
+        domains: &[&str],
+        since: chrono::DateTime<chrono::Utc>,
+    ) -> Result<std::collections::HashMap<String, i64>, AiomeError> {
+        Box::pin(self.do_count_karma_by_domains_since(domains, since)).await
+    }
 
     async fn recall_from_slm(
         &self,

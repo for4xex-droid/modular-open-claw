@@ -72,6 +72,10 @@ colors:
   accent-amber-20: "rgba(245, 158, 11, 0.2)"
   accent-amber-30: "rgba(245, 158, 11, 0.3)"
   accent-amber-80: "rgba(245, 158, 11, 0.8)"
+  accent-blue: "#3b82f6"
+  accent-blue-rgb: "59, 130, 246"
+  accent-orange: "#f97316"
+  accent-orange-rgb: "249, 115, 22"
   chart-1: "var(--accent-purple)"
   chart-2: "var(--accent-cyan)"
   chart-3: "var(--accent-emerald)"
@@ -93,6 +97,7 @@ colors:
   speed-slow: "0.8s"
   speed-genesis: "2s"
 spacing:
+  space-2xs: "0.25rem"
   space-xs: "0.5rem"
   space-sm: "1rem"
   space-md: "1.5rem"
@@ -102,12 +107,20 @@ spacing:
   layout-main-padding: "var(--space-xl)"
   layout-panel-gap: "var(--space-md)"
   layout-right-panel-width: "320px"
+sizing:
+  size-bar-sm: "0.375rem"
 rounded:
   radius-sm: "8px"
   radius-md: "12px"
   radius-lg: "20px"
   radius-xl: "28px"
 typography:
+  font-size-2xs: "0.625rem"
+  font-size-xs: "0.6875rem"
+  font-size-sm: "0.75rem"
+  font-size-base: "0.875rem"
+  font-size-lg: "1.125rem"
+  font-size-2xl: "1.5rem"
   font-display: "'Outfit', 'Artemis Inter', system-ui, sans-serif"
   font-main: "'Artemis Inter', 'Inter', system-ui, -apple-system, sans-serif"
   font-mono: "'JetBrains Mono', 'Fira Code', monospace"
@@ -118,6 +131,8 @@ motion:
   speed-fast: "0.2s"
   speed-base: "0.4s"
   speed-slow: "0.7s"
+effects:
+  blur-md: "12px"
 ---
 
 # Aiome Management Console — Design System
@@ -159,6 +174,8 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 - **Emerald** — `var(--accent-emerald)` (#10b981): Success/connected states. Green for health.
 - **Amber** — `var(--accent-amber)` (#f59e0b): Warning/paused states. Warm caution.
 - **Fuchsia** — `var(--accent-fuchsia)` (#d946ef): Tertiary accent for special highlights.
+- **Blue** — `var(--accent-blue)` (#3b82f6): Info/context state. Blue for helpful information.
+- **Orange** — `var(--accent-orange)` (#f97316): Paired interactive accent or tertiary glow.
 
 ### Chart Colors
 - **Chart 1** — `var(--chart-1)` (rgb(0, 242, 255)): Primary chart color, maps to Cyan.
@@ -342,6 +359,7 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 ### Spacing Scale (tokens.css)
 | Token | Value | Use |
 |-------|-------|-----|
+| `var(--space-2xs)` | 0.25rem (4px) | Micro gaps, ultra-tight layouts |
 | `var(--space-xs)` | 0.5rem (8px) | Tight gaps, inline spacing, badge padding |
 | `var(--space-sm)` | 1rem (16px) | Standard gap, list spacing |
 | `var(--space-md)` | 1.5rem (24px) | Section padding, card internal spacing |

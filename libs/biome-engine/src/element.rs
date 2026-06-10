@@ -44,6 +44,7 @@ mod tests {
             ],
             genome: CellGenome::default_nurture(),
             is_frozen: false,
+            morphology: crate::evolution::CellMorphology::Basic,
         };
 
         react_elements(&mut cell);
@@ -65,6 +66,7 @@ mod tests {
             elements: [1000, 500, 200, 1000, 1000, 500, 0, 0],
             genome: CellGenome::default_nurture(),
             is_frozen: false,
+            morphology: crate::evolution::CellMorphology::Basic,
         };
 
         let initial_mass: u32 = cell.elements.iter().map(|&x| x as u32).sum();

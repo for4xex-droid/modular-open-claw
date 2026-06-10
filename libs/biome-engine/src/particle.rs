@@ -17,7 +17,7 @@ pub fn roll_substance_discovery(grid: &BiomeGrid, rng: &mut impl Rng) -> Substan
     // グリッド内に高鉄濃度 (Fe > 40000) のセルがあるかスキャン
     let mut has_high_iron = false;
     for i in 0..GRID_SIZE {
-        if grid.cells[i].active && grid.cells[i].elements[6] >= 40000 {
+        if grid.current_cells()[i].active && grid.current_cells()[i].elements[6] >= 40000 {
             has_high_iron = true;
             break;
         }

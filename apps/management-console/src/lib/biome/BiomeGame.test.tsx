@@ -10,11 +10,25 @@ jest.mock('./shaders/tachyon.frag?raw', () => 'void main() {}', { virtual: true 
 // BiomeEngine WASM のモック
 jest.mock('biome-engine', () => {
   return {
+    __esModule: true,
+    default: jest.fn().mockResolvedValue({
+      memory: { buffer: new ArrayBuffer(1024 * 1024) },
+    }),
     BiomeEngine: jest.fn().mockImplementation(() => {
       return {
         generation: () => 0,
         tick: jest.fn(),
         apply_tachyon_rewind: jest.fn(),
+        render_data_ptr: () => 0,
+        render_data_len: () => 16384 * 12,
+        get_cell_detail: jest.fn(),
+        inject_element: jest.fn(),
+        apply_crisis: jest.fn(),
+        get_rarity: () => 0,
+        get_active_cell_count: () => 100,
+        get_element_balance: () => new Uint16Array([40, 30, 10, 20, 0, 0, 0, 0]),
+        get_mutation_boost: () => 1.0,
+        ticks_since_mutation: () => 0,
       };
     }),
   };
@@ -86,4 +100,15 @@ describe('BiomeGame Component', () => {
     const canvas = document.querySelector('canvas');
     expect(canvas).toBeInTheDocument();
   });
+
+  it('seedプロパティが省略された場合でも正常にレンダリングされること', async () => {
+    render(<BiomeGame />);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Loading/i)).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/GENERATION/i)).toBeInTheDocument();
+  });
 });
+

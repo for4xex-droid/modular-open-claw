@@ -1,7 +1,53 @@
 ## [Unreleased]
 
+### Fixed
+- **`AgentConsole` の API エラー時フォールバック制御と無限リトライ防止 (Reflexion / TDD)**:
+  - `AgentConsole.tsx` において、API（`/api/artifacts` または `/api/v1/audit/ledger`）がエラーを返した際に、stats 情報を空のフォールバック値（`0` および `[]`）で更新する例外ハンドリングを追加し、UIのローダーフリーズおよび無限リトライループの危険性を解消。
+  - `AgentConsole.test.tsx` に、APIエラー発生時にフォールバックUI（`agent.noBlueprintInstances`）が表示されることを検証する Jest テストケースを追加し、TDD サイクルで正常動作を確認。
+- **`AgentConsole` コンポーネントの CSS デザイントークン標準適合化 (U-002)**:
+  - Markdown レンダラー（`markdownComponents`）のインライン style 指定内のハードコードされた fontSize および余白（`1.5em`, `1.2em`, `1.1em`, `1em`, `0.5em` 等）を、`tokens.css` の CSS 変数（`var(--font-size-2xl)`, `var(--font-size-lg)`, `var(--font-size-base)`, `var(--font-size-sm)`, `var(--space-sm)`, `var(--space-xs)`）にすべて置換。
+- **`AgentConsole` の型安全性強化と `any` 型の排除 (CC-6)**:
+  - `AgentConsole.tsx` 内の `stats` フェッチ処理で用いられていた `any` 型キャストを排除し、具体的な `AuditLedgerEntry` interface を定義・適用して型安全性を担保。
+
 ### Added
+- **フロントエンド型安全性および CSS デザイントークン標準適合化 (Perfect Plan / B-4, B-5)**:
+  - `apps/management-console/src/hooks/useBiomeEngine.ts` 内の `useRef<any>` (engineRef, wasmMemoryRef) の any キャストを廃止。WASM バインディングから型定義を直接インポートし、`useRef<BiomeEngine | null>` および `useRef<WebAssembly.Memory | null>` による厳格な型安全性を導入。
+  - `tokens.css` にフォントサイズを定義する Typography Scale トークン群 (`--font-size-2xs` 〜 `--font-size-2xl`) を追加。
+  - `DESIGN.md` の YAML フロントマターおよび各セクションに、追加された Typography Scale トークンを同期。
+  - `apps/management-console/src/lib/biome/BiomeHUD.tsx` 内の 11 箇所の `fontSize` の rem/px 生記述値をすべて `--font-size-*` トークン参照へ置換。
+- **Proposed ADR 2件の承認 (Accepted 昇格) (Perfect Plan / B-3)**:
+  - [009-moonbit-skill-sdk.md](file:///Users/motista/Desktop/antigravity/aiome/docs/decisions/009-moonbit-skill-sdk.md) (MoonBit の採用範囲と将来計画) のステータスを `Proposed` から `Accepted` に変更。
+  - [022-nurture-aesthetic-system.md](file:///Users/motista/Desktop/antigravity/aiome/docs/decisions/022-nurture-aesthetic-system.md) (Nurture Aesthetic System 統一アーキテクチャ) のステータスを `Proposed` から `Accepted` に変更。
+  - [TECH_DEBT_AUDIT.md](file:///Users/motista/Desktop/antigravity/aiome/TECH_DEBT_AUDIT.md) を v7.1 へ更新し、未承認 ADR 数を 0 件に変更。QW-15 (ROI 修正完了) および QW-17 (P2P E2E 暗号化 ADR 既存確認) を `[RESOLVED]` に変更。
+- **リリースブロッカーおよび品質改善の解決 (Perfect Plan v5.3 / TDD)**:
+  - `apps/management-console/src/components/AgentConsole.tsx` にて、`charCodeAt` による意味のない ROI ハッシュ計算を廃止。監査ログ（`/api/v1/audit/ledger`）の `record_id` と blueprint の `id` を照合し、実際の実行タスク数に基づくロジック（`+$` + (実行数 * SAVINGS_PER_TASK + 100) + `/mo`）に修正。
+  - `AgentConsole.test.tsx` に、上記 ROI 計算を検証する Jest ユニットテストを追加し、TDD サイクルを完了。
+  - `.env.example` に、現在までにコードベースで参照されているものの未定義だった 26 個の環境変数（`ANTHROPIC_API_KEY`, `DATABASE_URL`, `STRIPE_API_KEY` 等）をプレースホルダー付きで末尾に一括追記。
+  - `apps/management-console/DESIGN.md` の YAML フロントマターおよび各セクションに、`tokens.css` に定義されているものの未掲載だった 7 個のデザイントークン（`--accent-blue`, `--accent-orange` 等）を同期・追記。
+  - `RELEASING.md` 内の廃止済みスクリプト `nurture_auditor.py` 参照を、`grep` と `cargo audit` による最新の手順へ更新。
+  - `TECH_DEBT_AUDIT.md` 上で `[RESOLVED]` 済みと実コード検証された 5 つの QW タスク（QW-11, QW-12, QW-13, QW-14, QW-18）のステータスを更新し、未承認 ADR 数（13件→2件）や Rust テスト数（991→4,459）の乖離を修正。
+
+### Changed
+- **デザイントークンの品質改善 — 未定義参照の解消と重複排除 (Reflexion Cycle 2)**:
+  - `tokens.css` に `--accent-blue` (#3b82f6) と `--accent-orange` (#f97316) およびそれぞれの opacity バリアント (-rgb, -20, -10) を追加。BiomeHUD のグラデーションや ProofPowerIndicator 等の11箇所で参照されていた未定義トークンを解消。
+  - `tokens.css` 内の `--speed-fast` / `--speed-slow` の重複定義を解消。古い定義グループ (0.15s/0.8s) を削除し、新しいグループ (0.2s/0.7s) に統一。`--speed-normal` (0.3s) は30箇所以上で参照されていたため復元・保持。
+- **Biome UI コンポーネントの U-002 完全準拠 (Reflexion Refine)**:
+  - `tokens.css` に `--space-2xs` (0.25rem), `--size-bar-sm` (0.375rem), `--blur-md` (12px) の3トークンを追加。
+  - `BiomeHUD.tsx` の全ハードコード rem/px 生値（`0.25rem`, `0.375rem`, `3px`）をトークン参照に置換。
+  - `BiomeHUD.tsx`, `BiomeControls.tsx` の `backdropFilter: 'blur(12px)'` を `blur(var(--blur-md))` に統一。
+  - `BiomeGame.tsx` の `useEffect` deps 配列に `injectElement` を追加し、ESLint exhaustive-deps 準拠。
+
+### Added
+- **WASM Biome エンジンのシード動的化と「New Seed」ボタンの追加 (TDD / Phase C)**:
+  - `apps/management-console/src/lib/biome/BiomeGame.tsx` において、Props の `seed` をオプショナルに変更し、コンポーネント内でランダムシード（`Math.random()` 由来）の動的生成と `currentSeed` ステートによるシミュレーションシード値の管理を実装。
+  - `apps/management-console/src/lib/biome/BiomeControls.tsx` に `onNewSeed` コールバックを受け取る「New Seed」ボタンを実装し、ゲーム画面からプレイヤーがいつでもランダムシードで新しくバイオームを再生成できるように UI を拡張。
+  - `apps/management-console/src/components/home/HomePage.tsx` での `<BiomeGame>` 呼び出しから固定シード `seed={42}` を削除。
+  - `BiomeGame.test.tsx` および `BiomeComponents.test.tsx` にて、シード省略時のレンダリング正常系、および「New Seed」ボタンの条件付きレンダリングとコールバックのトリガーをアサートする Jest テストを追加し、TDD サイクルで完全グリーン合格。
+  - `useBiomeEngine.test.ts` にて、無効なシード値（`NaN` / `Infinity`）に対するバリデーションおよびフォールバックアサーション、さらにアンマウント・シード変更時の `free()` による WASM メモリ解放のアサーション、および返される API 関数の参照安定性テストを追加。
+- **CI パイプラインにおける wasm-pack ビルドの統合 (CI)**:
+  - `.github/workflows/ci.yml` の `frontend` および `e2e` ジョブに、`npm ci` を実行する前に Rust ツールチェーンのセットアップと `wasm-pack build` を実行して `libs/biome-engine/pkg` WASM モジュールを事前ビルドするステップを追加。CI上での依存関係の解決エラーを解消。
 - **`let _ =` (エラー黙殺) の是正とTDDテスト追加 (Phase 48 - Tech Debt)**:
+
   - 重要コンポーネント（`browser_conductor.rs`, `stripe.rs`）における `let _ =` エラー黙殺パターンを是正し、ログ出力または適切なエラー伝播（`?`）へリファクタリング。
   - `browser_red_team_tdd.rs` にてエスクロー失敗時のエラーが正しく処理されることを検証する TDD テストケース `test_browser_conductor_escrow_release_error_does_not_panic` を追加し、GREENパスを確認。
   - `watchtower.rs`, `skill_handler.rs`, `circuit_breaker.rs`, `cortex_compiler.rs`, `knowledge_indexer.rs`, `discord.rs`, `job_queue/watchtower.rs` など、非クリティカルな 32 箇所のエラー黙殺を是正。
@@ -46,6 +92,13 @@
   - `upload.rs` 内のテストモジュールに、上記制約（プランチェック、件数制限、名前バリデーション）の正常動作とエラー遮断を検証する3つのユニットテストを追加し、すべて TDD サイクルで合格。
 
 ### Fixed
+- **WASM Biome エンジンフックのメモリリーク防止・バリデーション・安定化 (useBiomeEngine 改善)**:
+  - `apps/management-console/src/hooks/useBiomeEngine.ts` にて、`seed` が無効値（`NaN` / `Infinity`）の場合に `0` にフォールバックする安全バリデーションを導入。
+  - フックの再ロード時およびアンマウント時に、前の `BiomeEngine` インスタンスに対して明示的に `free()` を呼び出すように変更し、WASM メモリリークを防止。
+  - 返される API 関数（`tick`, `rewind` 等）を `useCallback` で囲み、レンダリング間の参照の安定性を保証。
+  - `NodeJS.Timeout` の代わりにブラウザ環境で安全な `ReturnType<typeof setInterval>` に型を変更し、TypeScript コンパイルエラーを解消。
+- **UI コンポーネントの CSS デザイントークン完全適合化 (U-002 解消)**:
+  - `BiomeGame.tsx`, `BiomeControls.tsx`, `BiomeHUD.tsx` に残存していたインラインスタイルの生値（ピクセル数やフォントファミリーなど）を、`tokens.css` で定義された CSS デザイントークン変数（`var(--layout-panel-gap)`, `var(--radius-md)` 等）に置換。
 - **U-002 UIテーマ適合性（tokens.css）の完全適合化 (U-002 解消)**:
   - 管理コンソール内の 8 ファイル（`Timeline.tsx`, `BiomeRenderer.tsx`, `BiomeDendou.tsx` 等）においてハードコードされていた 65 箇所の HEX カラー値および `rgba`/`rgb` 色値指定を完全に排除し、`tokens.css` の共通設計トークン CSS 変数へ置換しました。
 - **CC-6 Type-Driven Security 警告の解消 (CC-6 解消)**:

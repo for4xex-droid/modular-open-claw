@@ -129,4 +129,76 @@ describe('AgentConsole Slash Commands UI', () => {
     expect(screen.getByText(/Hello World/)).toBeInTheDocument();
     expect(screen.getByText(/This is a \*\*markdown\*\* test/)).toBeInTheDocument();
   });
+
+  it('calculates blueprint ROI based on actual ledger audit tasks (TDD)', async () => {
+    // Arrange
+    // Override mocks for this test
+    // @ts-expect-error
+    jest.spyOn(require('../hooks/useWorkspacePersona'), 'useWorkspacePersona').mockReturnValue({
+      mode: 'agency'
+    });
+
+    const mockArtifacts = [
+      { id: 'bp-1', category: 'Blueprint', name: 'Auto Backup' },
+      { id: 'bp-2', category: 'blueprint', name: 'Sync Tasks' },
+      { id: 'art-3', category: 'Report', name: 'Some Report' } // Non-blueprint
+    ];
+
+    const mockLedger = [
+      { id: 1, record_id: 'bp-1', table_name: 'artifacts', operation: 'EXECUTE', timestamp: '2026-06-10' },
+      { id: 2, record_id: 'bp-1', table_name: 'artifacts', operation: 'EXECUTE', timestamp: '2026-06-10' },
+      { id: 3, record_id: 'other', table_name: 'artifacts', operation: 'EXECUTE', timestamp: '2026-06-10' }
+    ];
+
+    const mockFetch = require('../lib/auth').authenticatedFetch as jest.Mock;
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes('/api/artifacts')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockArtifacts) });
+      }
+      if (url.includes('/api/v1/audit/ledger')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockLedger) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    });
+
+    // Act
+    render(<AgentConsole />);
+
+    // Switch to Automations tab
+    const automationsBtn = screen.getByText('agent.automationsTab');
+    automationsBtn.click();
+
+    // Assert overall stats
+    expect(await screen.findByText('3')).toBeInTheDocument(); // Tasks Executed
+    expect(await screen.findByText('$15')).toBeInTheDocument(); // Estimated Savings (3 * $5)
+    expect(await screen.findByText('2')).toBeInTheDocument(); // Active Blueprints (bp-1 and bp-2)
+
+    // Assert ROI calculations
+    // bp-1 (Auto Backup) has 2 executions: $100 + 2 * $5 = $110
+    expect(await screen.findByText('+$110/mo')).toBeInTheDocument();
+    // bp-2 (Sync Tasks) has 0 executions: $100 + 0 * $5 = $100
+    expect(await screen.findByText('+$100/mo')).toBeInTheDocument();
+  });
+
+  it('sets fallback stats on API fetch failure to prevent infinite retries', async () => {
+    // Arrange
+    // @ts-expect-error
+    jest.spyOn(require('../hooks/useWorkspacePersona'), 'useWorkspacePersona').mockReturnValue({
+      mode: 'agency'
+    });
+
+    const mockFetch = require('../lib/auth').authenticatedFetch as jest.Mock;
+    mockFetch.mockImplementation(() => Promise.reject(new Error('Network Error')));
+
+    // Act
+    render(<AgentConsole />);
+
+    // Switch to Automations tab
+    const automationsBtn = screen.getByText('agent.automationsTab');
+    automationsBtn.click();
+
+    // Assert fallback empty UI is rendered instead of loading forever
+    expect(await screen.findByText('agent.noBlueprintInstances')).toBeInTheDocument();
+  });
 });
+

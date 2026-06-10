@@ -183,7 +183,7 @@ const HomePage: React.FC<HomePageProps> = ({
                     {worldSubTab === 'trace' && <CausalVisualizer />}
                     {worldSubTab === 'chronicle' && <Timeline />}
                     {worldSubTab === 'demo' && <DemoView stats={stats} lastEvent={lastEvent} isConnected={isConnected} />}
-                    {worldSubTab === 'biome' && <BiomeGame seed={42} />}
+                    {worldSubTab === 'biome' && <BiomeGame />}
                 </motion.div>
             </AnimatePresence>
         </div>

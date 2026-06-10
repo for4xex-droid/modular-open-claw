@@ -8,7 +8,7 @@
 use crate::error::AppError;
 use crate::AppState;
 use aiome_core::traits::SettingsOps;
-use aiome_core_contracts::JobQueue;
+use aiome_core_contracts::{CommuneRegistry, JobQueue};
 use axum::{
     extract::State,
     http::StatusCode,
@@ -361,6 +361,61 @@ pub async fn send_message(
         .map_err(|e| AppError::internal(e.to_string()))?;
 
     hub_response_to_axum(res).await
+}
+
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+pub struct ShareGenomeRequest {
+    pub genome_json: String,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/commune/{topic}/genome",
+    request_body = ShareGenomeRequest,
+    responses(
+        (status = 200, description = "Genome shared successfully", body = serde_json::Value)
+    ),
+    security(("api_key" = []))
+)]
+pub async fn share_genome(
+    State(state): State<AppState>,
+    axum::extract::Path(topic): axum::extract::Path<String>,
+    _auth: crate::auth::Authenticated,
+    Json(req): Json<ShareGenomeRequest>,
+) -> Result<Response, AppError> {
+    state
+        .job_queue
+        .store_shared_genome(&topic, &req.genome_json)
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?;
+
+    Ok((
+        StatusCode::OK,
+        Json(serde_json::json!({"status": "success", "message": "Genome shared"})),
+    )
+        .into_response())
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/commune/{topic}/genomes",
+    responses(
+        (status = 200, description = "List shared genomes", body = serde_json::Value)
+    ),
+    security(("api_key" = []))
+)]
+pub async fn list_shared_genomes(
+    State(state): State<AppState>,
+    axum::extract::Path(topic): axum::extract::Path<String>,
+    _auth: crate::auth::Authenticated,
+) -> Result<Response, AppError> {
+    let genomes = state
+        .job_queue
+        .fetch_shared_genomes(&topic, 100)
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?;
+
+    Ok((StatusCode::OK, Json(genomes)).into_response())
 }
 
 #[cfg(test)]

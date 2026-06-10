@@ -51,6 +51,41 @@ describe('Biome HUD & Controls Components', () => {
     expect(onRewind).toHaveBeenCalled();
   });
 
+  it('BiomeControls が onNewSeed ハンドラーを持つ場合に New Seed ボタンを表示し、クリック時にハンドラーを呼び出すこと', () => {
+    const onNewSeed = jest.fn();
+    render(
+      <BiomeControls
+        onInjectElement={jest.fn()}
+        onTriggerCrisis={jest.fn()}
+        onRewind={jest.fn()}
+        paused={false}
+        onTogglePause={jest.fn()}
+        onNewSeed={onNewSeed}
+      />
+    );
+
+    const newSeedBtn = screen.getByRole('button', { name: /New Seed/i });
+    expect(newSeedBtn).toBeInTheDocument();
+    fireEvent.click(newSeedBtn);
+    expect(onNewSeed).toHaveBeenCalled();
+  });
+
+  it('BiomeControls が onNewSeed ハンドラーを持たない場合に New Seed ボタンを表示しないこと', () => {
+    render(
+      <BiomeControls
+        onInjectElement={jest.fn()}
+        onTriggerCrisis={jest.fn()}
+        onRewind={jest.fn()}
+        paused={false}
+        onTogglePause={jest.fn()}
+      />
+    );
+
+    const newSeedBtn = screen.queryByRole('button', { name: /New Seed/i });
+    expect(newSeedBtn).not.toBeInTheDocument();
+  });
+
+
   it('BiomeResult が最終結果を表示すること', () => {
     const onSave = jest.fn();
     render(

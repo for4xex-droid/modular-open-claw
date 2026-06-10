@@ -24,7 +24,7 @@ pub fn determine_rarity(grid: &BiomeGrid) -> BiomeRarity {
     let mut max_element_val = 0;
 
     for i in 0..GRID_SIZE {
-        let cell = &grid.cells[i];
+        let cell = &grid.current_cells()[i];
         if cell.active {
             active_count += 1;
 

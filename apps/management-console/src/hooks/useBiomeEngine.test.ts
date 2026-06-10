@@ -1,9 +1,12 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useBiomeEngine } from './useBiomeEngine';
 
-// biome-engine WASM のモック
 jest.mock('biome-engine', () => {
   return {
+    __esModule: true,
+    default: jest.fn().mockResolvedValue({
+      memory: { buffer: new ArrayBuffer(1024 * 1024) },
+    }),
     BiomeEngine: jest.fn().mockImplementation(() => {
       let generation = 0;
       return {
@@ -18,6 +21,17 @@ jest.mock('biome-engine', () => {
           }
           return false;
         }),
+        render_data_ptr: () => 0,
+        render_data_len: () => 16384 * 12,
+        get_cell_detail: jest.fn(),
+        inject_element: jest.fn(),
+        apply_crisis: jest.fn(),
+        get_rarity: () => 0,
+        get_active_cell_count: () => 100,
+        get_element_balance: () => new Uint16Array([40, 30, 10, 20, 0, 0, 0, 0]),
+        get_mutation_boost: () => 1.0,
+        ticks_since_mutation: () => 0,
+        free: jest.fn(),
       };
     }),
   };
@@ -27,6 +41,7 @@ describe('useBiomeEngine Hook', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
+
 
   it('初期状態では loading が true であり、世代数が 0 であること', async () => {
     const { result } = renderHook(() => useBiomeEngine({ seed: 42 }));
@@ -80,6 +95,11 @@ describe('useBiomeEngine Hook', () => {
   });
 
   it('ウィンドウ非表示時に 1fps tick の setInterval が開始され、表示時にクリアされること', async () => {
+    // まず real timers でロード完了を待つ
+    const { result, unmount } = renderHook(() => useBiomeEngine({ seed: 42, paused: false }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    // ロード完了後に fake timers に切り替える
     jest.useFakeTimers();
     
     // visibilityState をモック
@@ -89,10 +109,7 @@ describe('useBiomeEngine Hook', () => {
       configurable: true
     });
 
-    const { result, unmount } = renderHook(() => useBiomeEngine({ seed: 42, paused: false }));
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    // hidden に変更
+    // hidden に変更してイベント発火
     act(() => {
       visibilityState = 'hidden';
       document.dispatchEvent(new Event('visibilitychange'));
@@ -122,4 +139,72 @@ describe('useBiomeEngine Hook', () => {
     unmount();
     jest.useRealTimers();
   });
+
+  it('無効な seed 値 (NaN, Infinity など) が渡された場合に 0 にフォールバックすること', async () => {
+    const wasm = require('biome-engine');
+    
+    // NaN の場合
+    const { result: resultNaN } = renderHook(() => useBiomeEngine({ seed: NaN }));
+    await waitFor(() => expect(resultNaN.current.loading).toBe(false));
+    expect(wasm.BiomeEngine).toHaveBeenCalledWith(BigInt(0));
+
+    // Infinity の場合
+    const { result: resultInf } = renderHook(() => useBiomeEngine({ seed: Infinity }));
+    await waitFor(() => expect(resultInf.current.loading).toBe(false));
+    expect(wasm.BiomeEngine).toHaveBeenCalledWith(BigInt(0));
+  });
+
+  it('アンマウントまたは seed 変更時に前の WASM インスタンスが free されること', async () => {
+    const wasm = require('biome-engine');
+    
+    // 最初フックのロード
+    const { result, rerender, unmount } = renderHook(({ seed }) => useBiomeEngine({ seed }), {
+      initialProps: { seed: 42 }
+    });
+    
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    
+    // mockImplementation で返されるインスタンスを取得するための参照
+    const instances = (wasm.BiomeEngine as jest.Mock).mock.results;
+    expect(instances.length).toBe(1);
+    const firstInstance = instances[0].value;
+    
+    // seed を変更する
+    rerender({ seed: 100 });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    
+    // 最初のインスタンスが free されていることを期待
+    expect(firstInstance.free).toHaveBeenCalled();
+    
+    // 2番目のインスタンス
+    expect(instances.length).toBe(2);
+    const secondInstance = instances[1].value;
+    
+    // アンマウント
+    unmount();
+    expect(secondInstance.free).toHaveBeenCalled();
+  });
+
+  it('seed が変化しない場合、返される API 関数の参照が安定していること', async () => {
+    const { result, rerender } = renderHook(({ seed }) => useBiomeEngine({ seed }), {
+      initialProps: { seed: 42 }
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const initialTick = result.current.tick;
+    const initialRewind = result.current.rewind;
+    const initialInject = result.current.injectElement;
+    const initialApplyCrisis = result.current.applyCrisis;
+
+    // seed は同じままで rerender をトリガー
+    rerender({ seed: 42 });
+
+    expect(result.current.tick).toBe(initialTick);
+    expect(result.current.rewind).toBe(initialRewind);
+    expect(result.current.injectElement).toBe(initialInject);
+    expect(result.current.applyCrisis).toBe(initialApplyCrisis);
+  });
 });
+
+

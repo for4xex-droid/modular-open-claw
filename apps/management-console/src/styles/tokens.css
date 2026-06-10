@@ -80,6 +80,14 @@
   --accent-amber-20: rgba(245, 158, 11, 0.2);
   --accent-amber-30: rgba(245, 158, 11, 0.3);
   --accent-amber-80: rgba(245, 158, 11, 0.8);
+  --accent-blue: #3b82f6;
+  --accent-blue-rgb: 59, 130, 246;
+  --accent-blue-20: rgba(59, 130, 246, 0.2);
+  --accent-blue-10: rgba(59, 130, 246, 0.1);
+  --accent-orange: #f97316;
+  --accent-orange-rgb: 249, 115, 22;
+  --accent-orange-20: rgba(249, 115, 22, 0.2);
+  --accent-orange-10: rgba(249, 115, 22, 0.1);
   --chart-1: var(--accent-purple);
   --chart-2: var(--accent-cyan);
   --chart-3: var(--accent-emerald);
@@ -96,15 +104,14 @@
   --glow-purple: 0 0 25px rgba(188, 140, 255, 0.25);
   --glow-rose: 0 0 25px rgba(255, 77, 148, 0.25);
   --shadow-deep: 0 20px 50px var(--black-50);
-  --speed-fast: 0.15s;
-  --speed-normal: 0.3s;
-  --speed-slow: 0.8s;
-  --speed-genesis: 2s;
+  --space-2xs: 0.25rem;
   --space-xs: 0.5rem;
   --space-sm: 1rem;
   --space-md: 1.5rem;
   --space-lg: 2rem;
   --space-xl: 3rem;
+  --size-bar-sm: 0.375rem;
+  --blur-md: 12px;
   --layout-sidebar-width: 280px;
   --layout-main-padding: var(--space-xl);
   --layout-panel-gap: var(--space-md);
@@ -113,6 +120,12 @@
   --radius-md: 12px;
   --radius-lg: 20px;
   --radius-xl: 28px;
+  --font-size-2xs: 0.625rem;
+  --font-size-xs: 0.6875rem;
+  --font-size-sm: 0.75rem;
+  --font-size-base: 0.875rem;
+  --font-size-lg: 1.125rem;
+  --font-size-2xl: 1.5rem;
   --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
   --font-main: 'Inter', 'Roboto', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
@@ -120,6 +133,8 @@
   --timing-bouncy: cubic-bezier(0.34, 1.56, 0.64, 1);
   --timing-linear: linear;
   --speed-fast: 0.2s;
+  --speed-normal: 0.3s;
   --speed-base: 0.4s;
   --speed-slow: 0.7s;
+  --speed-genesis: 2s;
 }

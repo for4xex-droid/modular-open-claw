@@ -609,7 +609,60 @@ sequenceDiagram
     end
 ```
 
+### 5.9 WASM Biome 進化の DreamState 連携およびヒッグス凍結フロー
+
+```mermaid
+sequenceDiagram
+    participant Dream as DreamState (DreamService)
+    participant Engine as BiomeEngine (WASM)
+    participant DB as Database (SQLite/Postgres)
+    participant Soul as AgentSoul (SoulStore)
+
+    Dream->>DB: count_karma_by_domains_since(24 hours)
+    DB-->>Dream: { news: C1, commune: C2, nurture: C3, metaverse: C4 }
+    Dream->>Dream: カルマ数に基づきブースト値を算出 (1.0x - 2.0x)
+    Dream->>Engine: set_mutation_boost(boost)
+    Dream->>Engine: tick()
+    Engine->>Engine: セル拡散, 反応, 突然変異 (天井カウンター監視)
+    Dream->>Engine: roll_substance() (超物質/Higgs発見判定)
+    alt Higgs(ヒッグス超物質)が発見された場合 (ヒッグス凍結処理)
+        Dream->>Engine: get_rarity() & serialize_genome()
+        Dream->>Soul: add_frozen_trait(FrozenTraitSnapshot)
+        Dream->>DB: save_soul(AgentSoul)
+        Note over Dream,DB: 獲得した形質とソマティックマーカーを永続固定
+    end
+```
+
+### 5.10 P2P ゲノム共有（遺伝的設計図の送受信）フロー
+
+```mermaid
+sequenceDiagram
+    actor User as 👤 クリエイター / ユーザー
+    participant MC as Management Console (UI)
+    participant API as api-server (commune route)
+    participant Queue as UniversalJobQueue (Swarm)
+    participant DB as Database (commune_shared_genomes)
+
+    User->>MC: アセット画面からゲノムの「共有」を実行
+    MC->>API: POST /api/commune/{topic}/genome { x, y, genome_data }
+    API->>Queue: store_shared_genome(topic, creator_id, genome_data)
+    Queue->>DB: INSERT INTO commune_shared_genomes
+    DB-->>Queue: OK
+    Queue-->>API: OK
+    API-->>MC: 200 OK (共有成功)
+
+    Note over User,DB: 他のノードから共有ゲノム一覧を取得するフロー
+    User->>MC: 共有ゲノム一覧タブを開く
+    MC->>API: GET /api/commune/{topic}/genomes
+    API->>Queue: fetch_shared_genomes(topic)
+    Queue->>DB: SELECT FROM commune_shared_genomes WHERE topic = $1
+    DB-->>Queue: [SharedGenomeDescriptor]
+    Queue-->>API: [SharedGenomeDescriptor]
+    API-->>MC: JSON (共有ゲノムリスト)
+```
+
 ---
+
 
 ## 6. 主要データ構造（クラス図）
 
