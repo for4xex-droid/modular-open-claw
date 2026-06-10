@@ -89,9 +89,12 @@ async fn handle_core_event(event: CoreEvent, bridges: &[Arc<dyn ChannelBridge>])
                 channel_id
             );
             for bridge in bridges {
-                let _ = bridge
+                if let Err(e) = bridge
                     .send_message(&channel_id.to_string(), &response)
-                    .await;
+                    .await
+                {
+                    warn!("⚠️ [Watchtower] Failed to send ChatResponse message to Discord/Telegram: {:?}", e);
+                }
             }
         }
         CoreEvent::ProactiveTalk {
@@ -111,7 +114,9 @@ async fn handle_core_event(event: CoreEvent, bridges: &[Arc<dyn ChannelBridge>])
             };
 
             for bridge in bridges {
-                let _ = bridge.send_message(&target_channel, &message).await;
+                if let Err(e) = bridge.send_message(&target_channel, &message).await {
+                    warn!("⚠️ [Watchtower] Failed to send ProactiveTalk message to Discord/Telegram: {:?}", e);
+                }
             }
         }
         _ => {}
@@ -186,7 +191,7 @@ async fn handle_control_command(
                                 }
                                 Err(e) => {
                                     error!("❌ [Watchtower] Support AgentEngine failed: {:?}", e);
-                                    let _ = state_clone
+                                    if let Err(err) = state_clone
                                         .event_sender
                                         .get_inner()
                                         .send(CoreEvent::ChatResponse {
@@ -195,7 +200,9 @@ async fn handle_control_command(
                                                 .to_string(),
                                         channel_id,
                                         resource_path: None,
-                                    });
+                                    }) {
+                                        debug!("⚠️ [Watchtower] Failed to send support error ChatResponse: {:?}", err);
+                                    }
                                 }
                             }
 
@@ -237,7 +244,9 @@ async fn handle_control_command(
                                     infrastructure::support::escalator::SupportEscalator::new(
                                         state_clone.alert_manager.get_inner().clone(),
                                     );
-                                let _ = escalator.escalate_if_needed(&intent, id).await;
+                                if let Err(e) = escalator.escalate_if_needed(&intent, id).await {
+                                    warn!("⚠️ [Watchtower] Escalation failed: {:?}", e);
+                                }
                             }
                         }
                         Err(e) => {
@@ -275,7 +284,7 @@ async fn handle_control_command(
                         // [reflexion] サニタイズされたエラーを送信（詳細な技術情報は伏せる）
                         let user_error =
                             "⚠️ システム一時エラーが発生しました。時間を置いて再度お試しください。";
-                        let _ =
+                        if let Err(err) =
                             state_clone
                                 .event_sender
                                 .get_inner()
@@ -283,7 +292,13 @@ async fn handle_control_command(
                                     response: user_error.to_string(),
                                     channel_id,
                                     resource_path: None,
-                                });
+                                })
+                        {
+                            debug!(
+                                "⚠️ [Watchtower] Failed to send system error ChatResponse: {:?}",
+                                err
+                            );
+                        }
                     }
                 }
             });
@@ -299,21 +314,30 @@ async fn handle_control_command(
                     (**state_clone.db_pool.get_inner()).clone(),
                     state_clone.job_queue.get_inner().clone() as Arc<dyn KarmaRegistry>,
                 );
-                let _ = feedback.handle_feedback(&incident_id, resolved).await;
+                if let Err(e) = feedback.handle_feedback(&incident_id, resolved).await {
+                    warn!("⚠️ [Watchtower] Failed to handle feedback: {:?}", e);
+                }
 
                 let response = if resolved {
                     "✅ フィードバックありがとうございます。解決済みとして記録しました。"
                 } else {
                     "❌ 未解決として記録しました。担当者にエスカレーションします。"
                 };
-                let _ = state_clone
-                    .event_sender
-                    .get_inner()
-                    .send(CoreEvent::ChatResponse {
-                        response: response.to_string(),
-                        channel_id,
-                        resource_path: None,
-                    });
+                if let Err(err) =
+                    state_clone
+                        .event_sender
+                        .get_inner()
+                        .send(CoreEvent::ChatResponse {
+                            response: response.to_string(),
+                            channel_id,
+                            resource_path: None,
+                        })
+                {
+                    debug!(
+                        "⚠️ [Watchtower] Failed to send feedback ChatResponse: {:?}",
+                        err
+                    );
+                }
             });
         }
         ControlCommand::StopGracefully => {

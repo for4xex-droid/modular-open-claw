@@ -450,7 +450,7 @@ impl CortexCompiler {
                     source_ids_json
                 };
 
-                let _ = sqlx::query(
+                if let Err(e) = sqlx::query(
                     "INSERT INTO cortex_concept_index (concept, document_ids, article_ids, summary)
                      VALUES (?, ?, '[]', ?)
                      ON CONFLICT(concept) DO UPDATE SET
@@ -464,7 +464,14 @@ impl CortexCompiler {
                 .bind(&merged_doc_ids)
                 .bind(&candidate.description)
                 .execute(pool)
-                .await;
+                .await
+                {
+                    tracing::error!(
+                        "Failed to update concept index for concept {}: {}",
+                        concept_name_norm,
+                        e
+                    );
+                }
             }
         }
 

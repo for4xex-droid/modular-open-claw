@@ -169,11 +169,13 @@ impl CircuitBreaker {
                     let name = self.name.clone();
                     let am = am.clone();
                     tokio::spawn(async move {
-                        let _ = am.trigger_alert(
+                        if let Err(e) = am.trigger_alert(
                             &format!("Circuit Breaker Tripped: {}", name),
                             &format!("Service '{}' has reached failure threshold and entered Open state (Failing Fast).", name),
                             crate::alerts::AlertLevel::Critical,
-                        ).await;
+                        ).await {
+                            tracing::warn!("⚠️ [CircuitBreaker] Failed to trigger alert for tripped service '{}': {:?}", name, e);
+                        }
                     });
                 }
             }

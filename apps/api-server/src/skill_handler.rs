@@ -231,7 +231,12 @@ pub async fn execute_wasm_skill(
         Ok(v) => {
             // ✅ A2C & KarmaForge Synergy: OxiLean verification passed
             if let Some(hm) = state.hook_manager.as_opt() {
-                let _ = hm.trigger_proof_completed(skill_name, true).await;
+                if let Err(e) = hm.trigger_proof_completed(skill_name, true).await {
+                    tracing::warn!(
+                        "⚠️ [WasmSkill] Failed to trigger proof completed (success): {:?}",
+                        e
+                    );
+                }
             }
 
             match state
@@ -261,7 +266,12 @@ pub async fn execute_wasm_skill(
         Err(e) => {
             // ❌ A2C & KarmaForge Synergy: OxiLean verification failed
             if let Some(hm) = state.hook_manager.as_opt() {
-                let _ = hm.trigger_proof_completed(skill_name, false).await;
+                if let Err(e) = hm.trigger_proof_completed(skill_name, false).await {
+                    tracing::warn!(
+                        "⚠️ [WasmSkill] Failed to trigger proof completed (failure): {:?}",
+                        e
+                    );
+                }
             }
 
             step.is_critical_failure = true;
@@ -365,7 +375,13 @@ pub async fn execute_wasm_skill(
                 let parts: Vec<&str> = v.constraint_name.split(':').collect();
                 if parts.len() >= 3 {
                     let h_id = parts[2];
-                    let _ = state.job_queue.increment_harness_stats(h_id, false).await;
+                    if let Err(e) = state.job_queue.increment_harness_stats(h_id, false).await {
+                        tracing::warn!(
+                            "⚠️ [WasmSkill] Failed to increment harness stats for {}: {:?}",
+                            h_id,
+                            e
+                        );
+                    }
                 }
             }
         }
@@ -377,7 +393,13 @@ pub async fn execute_wasm_skill(
             step.failure_category =
                 Some(aiome_core::trajectory::FailureCategory::GuardrailsTriggered);
         }
-        let _ = state.job_queue.trajectory_store.record_step(id, step).await;
+        if let Err(e) = state.job_queue.trajectory_store.record_step(id, step).await {
+            tracing::error!(
+                "❌ [WasmSkill] Failed to record trajectory step for job {}: {:?}",
+                id,
+                e
+            );
+        }
     }
 
     result_str

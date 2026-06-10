@@ -104,14 +104,20 @@ impl EventHandler for Handler {
         if let Some(ticket_id) =
             extract_ticket_id_from_bot_message(&ctx, reaction.channel_id, reaction.message_id).await
         {
-            let _ = self
+            if let Err(e) = self
                 .command_tx
                 .send(ControlCommand::SupportFeedback {
                     incident_id: ticket_id,
                     resolved,
                     channel_id,
                 })
-                .await;
+                .await
+            {
+                error!(
+                    "❌ [Discord] Failed to send SupportFeedback command to Core: {:?}",
+                    e
+                );
+            }
         }
     }
 }
@@ -129,7 +135,7 @@ impl ChannelBridge for DiscordBridge {
         let channel = serenity::model::id::ChannelId::new(channel_id_u64);
 
         // Help inference by explicitly specifying the error type or using a temporary variable
-        let _ = channel
+        channel
             .say(&self.http, content)
             .await
             .map_err(|e| AiomeError::Infrastructure {

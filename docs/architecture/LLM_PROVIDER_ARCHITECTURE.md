@@ -132,7 +132,7 @@ Key Proxy を経由する特殊なプロバイダーです。API キーを直接
       API キー不保持                                API キー物理隔離         Gemini/OpenAI
 ```
 ※ Local Development フォールバック:
-`bootstrap.rs` 起動時にプロキシへのヘルスチェック (Ping) を行い、プロキシがダウンしている（ローカル未起動など）場合は、自動的に `DynamicLlmProvider` (Ollama等) へフォールバックし、開発体験の崩壊を防ぎます。
+`bootstrap/mod.rs` 起動時にプロキシへのヘルスチェック (Ping) を行い、プロキシがダウンしている（ローカル未起動など）場合は、自動的に `DynamicLlmProvider` (Ollama等) へフォールバックし、開発体験 of 崩壊を防ぎます。
 
 ---
 

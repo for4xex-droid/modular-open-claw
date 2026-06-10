@@ -153,7 +153,12 @@ impl ProjectKnowledgeIndexer {
                 })?;
 
         for id in old_ids {
-            let _ = self.artifact_store.delete_artifact(&id, jail).await;
+            if let Err(e) = self.artifact_store.delete_artifact(&id, jail).await {
+                warn!(
+                    "⚠️ [KnowledgeIndexer] Failed to delete old chunk artifact '{}' for {}: {:?}",
+                    id, rel_path, e
+                );
+            }
         }
 
         // 2. Build Hierarchical Tree and Save as Metadata

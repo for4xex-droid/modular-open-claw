@@ -480,17 +480,21 @@ impl WatchtowerOps for UniversalJobQueue {
             const Q3_SQLITE: &str = "UPDATE sns_metrics_history SET is_finalized = 1, oracle_reason = 'Poison Pill Activated: LLM Evaluation continually fails.' WHERE id = ?";
             const Q3_PG: &str = "UPDATE sns_metrics_history SET is_finalized = 1, oracle_reason = 'Poison Pill Activated: LLM Evaluation continually fails.' WHERE id = $1";
 
-            let _ = crate::sql_tx_exec!(
+            crate::sql_tx_exec!(
                 &mut tx,
                 sqlite: Q3_SQLITE,
                 pg: Q3_PG,
                 record_id
-            );
+            )?;
 
-            let _ = tx.commit().await;
+            tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to commit oracle retry count: {}", e),
+            })?;
             Ok(true)
         } else {
-            let _ = tx.commit().await;
+            tx.commit().await.map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to commit oracle retry count: {}", e),
+            })?;
             Ok(false)
         }
     }

@@ -1,6 +1,14 @@
 ## [Unreleased]
 
 ### Added
+- **`let _ =` (エラー黙殺) の是正とTDDテスト追加 (Phase 48 - Tech Debt)**:
+  - 重要コンポーネント（`browser_conductor.rs`, `stripe.rs`）における `let _ =` エラー黙殺パターンを是正し、ログ出力または適切なエラー伝播（`?`）へリファクタリング。
+  - `browser_red_team_tdd.rs` にてエスクロー失敗時のエラーが正しく処理されることを検証する TDD テストケース `test_browser_conductor_escrow_release_error_does_not_panic` を追加し、GREENパスを確認。
+  - `watchtower.rs`, `skill_handler.rs`, `circuit_breaker.rs`, `cortex_compiler.rs`, `knowledge_indexer.rs`, `discord.rs`, `job_queue/watchtower.rs` など、非クリティカルな 32 箇所のエラー黙殺を是正。
+- **技術的負債監査ドキュメントおよびアセットの整理**:
+  - `TECH_DEBT_AUDIT.md` を v7.0 に全面更新。
+  - `docs/` 内の `bootstrap.rs` 関連参照（`SECURITY_DESIGN.md`, `LLM_PROVIDER_ARCHITECTURE.md`, `INFRASTRUCTURE_MODULES.md`）のパスを現在の構成に合わせて修正。
+  - 退役した `.context/impact_graph.json` を `.context/archive/` に退避・整理。
 - **GLSLシェーダーのポストプロセス・パーティクル演出強化 (TDD / Phase 5-6)**:
   - `apps/management-console/src/lib/biome/BiomeRenderer.tsx` にて、ヒッグス粒子による空間歪み（重力レンズ効果、色収差）およびタキオンによる因果逆行・残像（タイムトレイル、過去フレームとのピンポンブレンド）を描画可能にする WebGL2 ポストプロセス処理を実装。
   - パススルー用の頂点シェーダーとコピー用のフラグメントシェーダーをインラインで追加。

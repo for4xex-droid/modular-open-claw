@@ -256,14 +256,17 @@ pub async fn stripe_webhook(
             match uuid::Uuid::parse_str(agent_id_str) {
                 Ok(agent_id) => {
                     if let Some(sender) = state.event_sender.as_opt() {
-                        let _ =
+                        if let Err(e) =
                             sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
                                 event_type: "invoice.payment_failed".to_string(),
                                 agent_id,
                                 amount: 0,
                                 currency: "jpy".to_string(),
                                 description: format!("Stripe event ID: {}", event_id),
-                            });
+                            })
+                        {
+                            warn!("⚠️ [StripeWebhook] Failed to broadcast invoice.payment_failed: {:?}", e);
+                        }
                         metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "invoice.payment_failed").increment(1);
                     }
                 }

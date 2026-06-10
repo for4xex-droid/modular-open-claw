@@ -221,14 +221,18 @@ impl TaskConductor for BrowserConductor {
         if status.success() {
             if cost > 0 && !escrow_id.is_empty() {
                 if let Some(engine) = &self.commerce_engine {
-                    let _ = engine.escrow_release(&escrow_id, uuid::Uuid::nil()).await;
+                    if let Err(e) = engine.escrow_release(&escrow_id, uuid::Uuid::nil()).await {
+                        tracing::error!(escrow_id = %escrow_id, error = ?e, "Failed to release escrow");
+                    }
                 }
             }
             Ok((final_result, None))
         } else {
             if cost > 0 && !escrow_id.is_empty() {
                 if let Some(engine) = &self.commerce_engine {
-                    let _ = engine.escrow_refund(&escrow_id).await;
+                    if let Err(e) = engine.escrow_refund(&escrow_id).await {
+                        tracing::error!(escrow_id = %escrow_id, error = ?e, "Failed to refund escrow");
+                    }
                 }
             }
             Err(AiomeError::Infrastructure {
