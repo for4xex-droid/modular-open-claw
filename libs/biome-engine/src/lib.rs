@@ -264,6 +264,7 @@ impl BiomeEngine {
                 if cell.is_frozen {
                     frozen_count += 1;
                 }
+                #[allow(clippy::needless_range_loop)]
                 for i in 0..8 {
                     total_elements[i] += cell.elements[i] as u64;
                 }
