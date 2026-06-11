@@ -22,6 +22,7 @@ pub mod plugin;
 pub mod proof;
 pub mod rlm;
 pub mod security;
+pub mod task_tier;
 pub mod x402;
 
 pub use commerce::*;
@@ -30,4 +31,5 @@ pub use llm::*;
 pub use plugin::*;
 pub use rlm::*;
 pub use security::*;
+pub use task_tier::*;
 pub use x402::*;

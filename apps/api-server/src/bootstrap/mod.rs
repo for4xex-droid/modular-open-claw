@@ -83,6 +83,8 @@ pub struct ProviderResult {
     pub provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
     pub bg_provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
     pub embed_provider: Arc<dyn aiome_core::llm_provider::EmbeddingProvider>,
+    /// Fast tier 用プロバイダー（ローカル LLM 優先、FallbackRouter で wrap 済み）
+    pub fast_provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
 }
 
 pub struct CoreServicesResult {

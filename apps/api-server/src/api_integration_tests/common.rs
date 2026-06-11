@@ -615,6 +615,7 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
         soul_mutator: Component::new(soul_mutator),
         soul_store: Component::new(soul_store),
         provider: Component::new(provider.clone()),
+        fast_provider: Component::new(provider.clone()), // テストでは DummyLlm を共用
         autonomous_running: Component::new(autonomous_running),
         autonomous_config: Component::new(autonomous_config),
         http_client: Component::new(aiome_core::http::get_http_client().clone()),

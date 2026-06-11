@@ -1,6 +1,25 @@
 ## [Unreleased]
 
+### Fixed
+- **Local LLM First の追加 Reflexion 改善 (TDD)**:
+  - **R-1 (P1) SemaphoreGuardedProvider テストの厳密化**: `libs/infrastructure/src/llm/semaphore_guard.rs` のテストにおいて `AtomicUsize` を使用し、最大同時実行数（`max_concurrent`）を厳密に追跡・アサートするよう検証を改善。
+  - **R-2 (P2) セマフォ容量の環境変数化**: 設定に `local_llm_concurrency` フィールドを追加し、環境変数 `LOCAL_LLM_CONCURRENCY`（デフォルト 2）からセマフォキャパシティを動的に指定できるように拡張。`.env.example` の `🤖 LLM & AI PROVIDERS` に設定説明を同期。
+  - **R-3 (P3) ContextEngine 内部セマフォ名のリファクタリング**: `context_engine.rs` の内部フィールドおよび引数名を `compression_semaphore` に改名し、システム全体のLLM実行制限セマフォとの混同を解消。
+  - **R-4 (P3) GuardedStream の Pin 安全性コメント追加**: `GuardedStream` に安全性ドキュメントコメントを追記し、プロジェクト全体のコード可読性と品質規格を向上。
+- **Local LLM First 修正と型安全性の強化 (Reflexion & TDD)**:
+  - **local_fallback_policy の型安全化 (P0)**: `libs/shared/src/config.rs` に `LocalFallbackPolicy` enum を定義し、環境変数パース時のタイポ等に対する安全なデフォルト値へのフォールバック（`AutoSwitch`）を実装。また `llm_providers.rs` と `system.rs` の文字列直接比較をこの enum による比較へ修正。
+  - **一貫性のあるセマフォ制限の導入 (P1)**: `libs/infrastructure/src/llm/semaphore_guard.rs` に `SemaphoreGuardedProvider` を新規実装し、`fast_provider` そのものを容量 2 のセマフォで透過的にラップ。これにより個別コンポーネント（SamsaraEngine, Oracle等）への配管なしに全 12 コンポーネントに自動的かつ一貫した同時実行制御を適用。`core_services.rs` 内の個別 `local_llm_semaphore` 定義を整理。
+  - **.env.example の重複排除 (P2)**: 末尾にあった重複する `LOCAL_FAST_MODEL` と `LOCAL_FALLBACK_POLICY` を削除し、LLM 設定セクションのコメントアウトを外して適切な位置で有効化。
+  - **TaskTier ドキュメントの追記 (P3)**: `libs/aiome-contracts/src/task_tier.rs` の docコメントを拡張し、将来のタスクディスパッチャーによる自動ティア選択の意図を明記。
+
 ### Added
+- **Local LLM First Architecture (TDD)**:
+  - **TaskTier enum の実装**: `libs/aiome-contracts/src/task_tier.rs` を新規作成し、タスクの推論強度（Fast, Smart）を識別する `TaskTier` enum を追加。
+  - **AiomeConfig 設定拡張**: `libs/shared/src/config.rs` に Fast tier 用ローカルモデル名（`local_fast_model`）およびローカル不在時のフォールバックポリシー（`local_fallback_policy`）フィールドを追加。環境変数およびデフォルト値からのパース処理を追加。
+  - **fast_provider の bootstrap**: `apps/api-server/src/bootstrap/llm_providers.rs` で、ローカルオンリーの `BackgroundLlmProvider` をベースにし、フォールバックポリシー（"auto_switch" / "local_only"）に応じて `FallbackRouter` をラップした `fast_provider` を構築するように拡張。
+  - **ローカル LLM Semaphore**: `apps/api-server/src/bootstrap/core_services.rs` 内に、Ollama のシングルスレッド推論を制御するための同時実行制御セマフォ `local_llm_semaphore` (size=2) を追加。
+  - **各種コンポーネントのプロバイダー切替**: Fast tier タスクを実行する `SamsaraEngine`, `ContextEngine`, `IntentGenerator`, `ToolDiscovery`, `StrategicPlanner`, `Oracle` (fast_provider), `AdaptiveImmuneSystem`, `HierarchicalRouter`, `CortexIngester`, `BuzzGenerator`, `CortexCompiler`, `HeartbeatWakeupService` の利用プロバイダーを `fast_provider` に切り替え。
+  - **ポリシー別接続検証テスト**: `apps/api-server/src/api_integration_tests/system.rs` にて、オフライン時の `local_only` ポリシー下における接続エラーおよび `auto_switch` ポリシー下におけるフォールバック動作を検証するインテグレーションテストを追加。
 - **Biome リリース v8.3 (TDD)**:
   - **WASM状態永続化 (IndexedDB)**: `useBiomeEngine.ts` 内に IndexedDB を使用したシミュレーション状態の永続化を実装。画面のアンマウントやシード変更の際に、WASM状態（世代数、現在のシード、グリッドサイズ、インスタンスなど）を自動保存・復元。
   - **SSE受信ハンドラ (biome_evolution + Crisis 予告)**: `App.tsx` 内の SSE イベント受信処理に `biome_evolution` および `crisis_prediction` ハンドラを追加し、ダッシュボードの `recentEvents` パルスログに動的追加。

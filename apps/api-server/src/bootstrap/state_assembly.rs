@@ -53,6 +53,7 @@ pub async fn assemble_app_state(
         soul_mutator: Component::new(core.soul_mutator.clone()),
         soul_store: Component::new(core.soul_store.clone()),
         provider: Component::new(core.router_provider.clone()),
+        fast_provider: Component::new(llm.fast_provider.clone()),
         autonomous_running: Component::new(core.autonomous_running.clone()),
         autonomous_config: Component::new(core.autonomous_config.clone()),
         http_client: Component::new(db.http_client.clone()),
@@ -183,7 +184,7 @@ pub async fn assemble_app_state(
         )),
         hierarchical_router: Component::new(std::sync::Arc::new(
             infrastructure::hierarchical_router::HierarchicalRouter::new(
-                llm.provider.clone(),
+                llm.fast_provider.clone(),
                 db.db_pool.get_sqlite_pool_or_err()?.clone(),
             ),
         )),
@@ -263,7 +264,7 @@ pub async fn assemble_app_state(
         },
         cortex_ingester: Component::new(std::sync::Arc::new(
             infrastructure::cortex_ingester::CortexIngester::new(
-                core.router_provider.clone(),
+                llm.fast_provider.clone(),
                 db.db_pool.clone(),
             ),
         )),
@@ -368,9 +369,7 @@ pub async fn assemble_app_state(
         spec_provider: Component::new(core.spec_provider.clone()),
         tokens_css: core.tokens_css.clone(),
         buzz_generator: Component::new(std::sync::Arc::new(
-            infrastructure::buzz::generator::BuzzContentGenerator::new(
-                core.router_provider.clone(),
-            ),
+            infrastructure::buzz::generator::BuzzContentGenerator::new(llm.fast_provider.clone()),
         )),
         buzz_scheduler: Component::new(std::sync::Arc::new(
             infrastructure::buzz::scheduler::BuzzScheduler::new(90, 4),

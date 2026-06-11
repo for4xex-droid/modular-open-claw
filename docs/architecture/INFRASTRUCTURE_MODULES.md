@@ -42,6 +42,7 @@
 | `job_queue` | タスクの非同期実行とリトライ、依存関係の管理。SwarmOps デッドロック修正済。Biome 3メソッド（メッセージ永続化・評価値更新）及び Federation データ（ImmuneRule/ArenaMatch）のインポート・エクスポートを実装完了。P2pSanitizer による CSAM/Toxicity 動的ブロックを完備。DBクエリ DRY マクロの適用、および `let _ =` エラー黙殺コードのトリアージを完了。 | **強化完了** |
 | `knowledge_indexer` | ドキュメントや過去の Karma を高速検索可能にインデックス。 | 実装完了 |
 | `llm` | 動的プロバイダー（Gemini/Ollama/Fallback）の抽象化。ストリーミング通信時の Pre-execute Hook バイパス遮断および Ollama の LoRA 動内ビルダ統合済。**Phase v3/16** にて `EntropyGate`、`HumanizerFilter`、`WritingContext` を実装。最新モデルのユニットエコノミクス（コスト追跡）を実装。**Phase 48** でコスト計算と `BackgroundLlmProvider` をサブモジュール (`cost`, `background`) へ分割し、`dynamic.rs` を後方互換再構成。 | **分割・構造化完了** |
+| `llm/semaphore_guard` | LLMプロバイダーへの同時実行数をセマフォで制限するラッパー `SemaphoreGuardedProvider` およびストリーム保護用 `GuardedStream` を提供。 | **実装完了** |
 | `lora_autotuner` | ロス履歴に基づき LoRA 学習のハイパーパラメータ（LR, Epochs, Rank）を自律調整するエンジン。 | **Phase 55 完了** |
 | `lora_marketplace` | LoRAアダプターファイルのSHA-256ハッシュ検証、エスクロー決済（CommerceEngine連携）、および分離されたファイル移動（PathSandbox）を提供する人格売買・流通インフラ。PostgreSQL/SQLite両対応。 | **実装完了** |
 | `memory_crystallizer` | 短期記憶から長期的な教訓（Karma）への結晶化。エラーのサイレント隠蔽(`let _ =`)を防止し軌跡可視化を強化。 | **強化完了** |
@@ -83,7 +84,7 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-06-10 (Asia/Tokyo) - DBクエリマクロ導入によるDRY化, `let _ =` トリアージ, 環境変数整理, エラー設計ドキュメントの整備, および Biome 進化夢想（P3-13）モジュールの統合完了*
+*最終更新: 2026-06-12 (Asia/Tokyo) - LLM同時実行制御セマフォの導入、および関連ドキュメントの更新*
 
 ## Phase 6 Integration Notes
 

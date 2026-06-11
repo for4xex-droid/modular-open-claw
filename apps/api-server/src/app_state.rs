@@ -89,6 +89,8 @@ pub struct AppState {
     pub soul_mutator: Component<Arc<SoulMutator>>,
     pub soul_store: Component<Arc<UniversalSoulStore>>,
     pub provider: Component<Arc<dyn LlmProvider + Send + Sync>>,
+    /// Fast tier プロバイダー（ローカル LLM 優先）
+    pub fast_provider: Component<Arc<dyn LlmProvider + Send + Sync>>,
     pub autonomous_running: Component<Arc<std::sync::atomic::AtomicBool>>,
     pub autonomous_config:
         Component<Arc<tokio::sync::RwLock<Option<aiome_core::commune::AutonomousConfig>>>>,

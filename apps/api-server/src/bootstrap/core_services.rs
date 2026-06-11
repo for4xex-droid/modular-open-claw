@@ -34,6 +34,7 @@ pub async fn init_core_services(
     let embed_provider = &llm.embed_provider;
     let bg_provider = &llm.bg_provider;
     let provider = &llm.provider;
+    let fast_provider = &llm.fast_provider;
 
     // === 🏗️ STAGE 4/7: Core Services ===
     let artifact_store = Arc::new(
@@ -191,7 +192,7 @@ pub async fn init_core_services(
         Some(embed_provider.clone()),
     );
     let samsara_engine = infrastructure::samsara_engine::DefaultSamsaraEngine::new(
-        bg_provider.clone(),
+        fast_provider.clone(),
         "You are the Core Soul Engine. Process experiences and distill wisdom.".to_string(),
     );
     let mut soul_pipeline = soul::pipeline::SoulPipeline::new(soul_adapter, samsara_engine);
@@ -205,13 +206,13 @@ pub async fn init_core_services(
     // AgentSense (AS-1)
     let intent_firewall = Arc::new(infrastructure::intent::IntentFirewall::new()?);
     let context_engine = Arc::new(infrastructure::context_engine::ContextEngine::new(
-        provider.clone(),
+        fast_provider.clone(),
         job_queue.clone(),
         llm_semaphore.clone(),
     ));
     let intent_generator = Arc::new(infrastructure::intent::IntentGenerator::new(
         context_engine.clone(),
-        provider.clone(),
+        fast_provider.clone(),
         intent_firewall.clone(),
         soul_store.clone(),
     ));
@@ -611,12 +612,12 @@ pub async fn init_core_services(
     let tool_discovery = Arc::new(
         infrastructure::skills::discovery::DefaultToolDiscoveryEngine::new(
             wasm_skill_manager.clone(),
-            bg_provider.clone(),
+            fast_provider.clone(),
         ),
     );
     let strategic_planner = Arc::new(
         infrastructure::task_orchestrator::planner::DefaultStrategicPlanner::new(
-            bg_provider.clone(),
+            fast_provider.clone(),
         ),
     );
 
@@ -624,6 +625,7 @@ pub async fn init_core_services(
     let soul_md = std::fs::read_to_string(&soul_path).unwrap_or_else(|_| String::new());
     let oracle = Arc::new(
         infrastructure::oracle::Oracle::new(bg_provider.clone(), soul_md.clone())
+            .with_fast_provider(fast_provider.clone())
             .with_event_tx(event_sender.clone()),
     );
 
@@ -699,7 +701,7 @@ pub async fn init_core_services(
         Some(gig_engine.clone()),
         Some(diagnostics_engine),
         Some(Arc::new(
-            infrastructure::immune_system::AdaptiveImmuneSystem::new(bg_provider.clone()),
+            infrastructure::immune_system::AdaptiveImmuneSystem::new(fast_provider.clone()),
         )),
         Some(quality_gate_store.clone()),
         Some(hook_manager.clone()),

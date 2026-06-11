@@ -93,7 +93,7 @@ impl Default for ContextBudget {
 pub struct ContextEngine {
     provider: Arc<dyn LlmProvider + Send + Sync>,
     job_queue: Arc<dyn ContextDeps>,
-    semaphore: Arc<Semaphore>,
+    compression_semaphore: Arc<Semaphore>,
 }
 
 impl ContextEngine {
@@ -101,12 +101,12 @@ impl ContextEngine {
     pub fn new(
         provider: Arc<dyn LlmProvider + Send + Sync>,
         job_queue: Arc<dyn ContextDeps>,
-        semaphore: Arc<Semaphore>,
+        compression_semaphore: Arc<Semaphore>,
     ) -> Self {
         Self {
             provider,
             job_queue,
-            semaphore,
+            compression_semaphore,
         }
     }
 
@@ -309,7 +309,7 @@ impl ContextEngine {
 
         // threshold が文字数基準とする
         if total_chars > threshold {
-            if let Ok(_permit) = self.semaphore.try_acquire() {
+            if let Ok(_permit) = self.compression_semaphore.try_acquire() {
                 info!(
                     "🧠 [ContextEngine] Compressing history for channel: {}",
                     channel_id
@@ -750,8 +750,8 @@ pub mod tests {
         });
         let (job_queue, _tmp) = crate::job_queue::tests::create_test_queue().await;
         let job_queue = Arc::new(job_queue);
-        let semaphore = Arc::new(tokio::sync::Semaphore::new(1));
-        let engine = ContextEngine::new(provider, job_queue.clone(), semaphore);
+        let compression_semaphore = Arc::new(tokio::sync::Semaphore::new(1));
+        let engine = ContextEngine::new(provider, job_queue.clone(), compression_semaphore);
 
         let channel_id = "test_channel";
         let category = "Security Test";
@@ -801,8 +801,8 @@ pub mod tests {
         });
         let (job_queue, _tmp) = crate::job_queue::tests::create_test_queue().await;
         let job_queue = Arc::new(job_queue);
-        let semaphore = Arc::new(tokio::sync::Semaphore::new(1));
-        let engine = ContextEngine::new(provider, job_queue.clone(), semaphore);
+        let compression_semaphore = Arc::new(tokio::sync::Semaphore::new(1));
+        let engine = ContextEngine::new(provider, job_queue.clone(), compression_semaphore);
 
         let channel_id = "test_channel";
         let category = "DoS Test";
@@ -855,8 +855,8 @@ pub mod tests {
         });
         let (job_queue, _tmp) = crate::job_queue::tests::create_test_queue().await;
         let job_queue = Arc::new(job_queue);
-        let semaphore = Arc::new(tokio::sync::Semaphore::new(1));
-        let engine = ContextEngine::new(provider, job_queue.clone(), semaphore);
+        let compression_semaphore = Arc::new(tokio::sync::Semaphore::new(1));
+        let engine = ContextEngine::new(provider, job_queue.clone(), compression_semaphore);
 
         let channel_id = "test_channel";
         let huge_content = "H".repeat(2000);
@@ -914,8 +914,8 @@ pub mod tests {
         });
         let (job_queue, _tmp) = crate::job_queue::tests::create_test_queue().await;
         let job_queue = Arc::new(job_queue);
-        let semaphore = Arc::new(tokio::sync::Semaphore::new(1));
-        let engine = ContextEngine::new(provider, job_queue.clone(), semaphore);
+        let compression_semaphore = Arc::new(tokio::sync::Semaphore::new(1));
+        let engine = ContextEngine::new(provider, job_queue.clone(), compression_semaphore);
 
         let channel_id = "test_compression_channel";
 

@@ -47,7 +47,7 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
     let evolver: Arc<dyn AgentEvolver> = state.job_queue.get_inner().clone();
 
     let wakeup_service = HeartbeatWakeupService::new(
-        state.provider.get_inner().clone(),
+        state.fast_provider.get_inner().clone(),
         state.llm_semaphore.get_inner().clone(),
         state.config.get_inner().resolver.root().to_path_buf(),
     )

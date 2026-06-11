@@ -715,6 +715,14 @@ classDiagram
         Expression
         VoiceModel
         KarmaPackage
+        GeneticBlueprint
+        BiomeEnvironment
+    }
+
+    class TaskTier {
+        <<enum>>
+        Fast
+        Smart
     }
 
     class ItemDescriptor {

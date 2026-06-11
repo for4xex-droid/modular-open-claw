@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
 **Version:** 3.2  
-**Last Updated:** 2026-06-02
+**Last Updated:** 2026-06-12
 
 ---
 
@@ -89,6 +89,7 @@ ABYSS_VAULT_PATH=~/.aiome/abyss_vault            # APIキー物理隔離ディ�
 TIMESFM_AUTH_TOKEN=your_secure_token             # TimesFM 予測側認証トークン (必須)
 TIMESFM_SIDECAR_URL=http://localhost:3020        # TimesFM サイドカーURL
 CONTAINER_RUNTIME=podman                         # DockerConductor/ Delegator で強制利用するコンテナランタイム (podman or docker). 指定がない場合は podman 優先の自動フォールバック。
+LOCAL_LLM_CONCURRENCY=2                          # Fast tier 用ローカルモデルへの同時実行セマフォ制限数 (デフォルト: 2)
 ```
 
 > **Note**: すべての環境変数は `libs/shared/src/config.rs` の `AiomeConfig::load()` で一元管理されています。デフォルト値が設定されているため、必須のもの以外は未設定でも起動可能です。

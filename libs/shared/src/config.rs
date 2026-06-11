@@ -8,7 +8,46 @@
 use anyhow::{Context, Result};
 use secrecy::SecretString;
 use std::env;
+use std::fmt;
 use std::path::PathBuf;
+use std::str::FromStr;
+
+/// ローカル不在時のフォールバックポリシー
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum LocalFallbackPolicy {
+    /// ローカル不在時は自動でクラウド等のBGプロバイダーへスイッチ
+    #[default]
+    AutoSwitch,
+    /// ローカルモデルのみを使用し、クラウド等へのスイッチは行わない
+    LocalOnly,
+}
+
+impl FromStr for LocalFallbackPolicy {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_lowercase().as_str() {
+            "local_only" | "localonly" => Ok(Self::LocalOnly),
+            "auto_switch" | "autoswitch" | "auto" => Ok(Self::AutoSwitch),
+            other => {
+                tracing::warn!(
+                    "Invalid local_fallback_policy '{}'. Defaulting to 'auto_switch'. Valid options: 'auto_switch', 'local_only'.",
+                    other
+                );
+                Ok(Self::AutoSwitch)
+            }
+        }
+    }
+}
+
+impl fmt::Display for LocalFallbackPolicy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::AutoSwitch => write!(f, "auto_switch"),
+            Self::LocalOnly => write!(f, "local_only"),
+        }
+    }
+}
 
 /// MCP Configuration
 #[derive(Clone, Debug, Default)]
@@ -28,6 +67,10 @@ pub struct AiomeConfig {
     pub ollama_host: String,
     /// 使用するOllamaモデル名
     pub ollama_model: String,
+    /// Fast tier 用ローカルモデル名 (デフォルト: ollama_model と同値)
+    pub local_fast_model: String,
+    /// ローカル不在時のフォールバックポリシー
+    pub local_fallback_policy: LocalFallbackPolicy,
     /// Google Gemini APIキー（SecretStringで保護）
     pub gemini_api_key: Option<SecretString>,
     /// OpenAI APIキー（SecretStringで保護）
@@ -94,6 +137,8 @@ pub struct AiomeConfig {
     pub discord_token: Option<SecretString>,
     /// Telegram Bot Token
     pub telegram_token: Option<SecretString>,
+    /// Fast tier 用ローカルモデルへの同時実行セマフォ制限数
+    pub local_llm_concurrency: usize,
 }
 
 /// OllamaサーバーのデフォルトURL
@@ -123,6 +168,8 @@ impl Default for AiomeConfig {
             log_level: "info".to_string(),
             ollama_host: DEFAULT_OLLAMA_HOST.to_string(),
             ollama_model: "gemma4:26b".to_string(),
+            local_fast_model: "gemma4:26b".to_string(),
+            local_fallback_policy: LocalFallbackPolicy::AutoSwitch,
             gemini_api_key: None,
             openai_api_key: None,
             anthropic_api_key: None,
@@ -156,6 +203,7 @@ impl Default for AiomeConfig {
             shadow_clone_grpc_port: "50051".to_string(),
             discord_token: None,
             telegram_token: None,
+            local_llm_concurrency: 2,
         }
     }
 }
@@ -175,6 +223,15 @@ impl AiomeConfig {
             env::var("OLLAMA_HOST").unwrap_or_else(|_| DEFAULT_OLLAMA_HOST.to_string());
 
         let ollama_model = env::var("OLLAMA_MODEL").unwrap_or_else(|_| "gemma4:26b".to_string());
+
+        let local_fast_model =
+            env::var("LOCAL_FAST_MODEL").unwrap_or_else(|_| ollama_model.clone());
+
+        let local_fallback_policy_raw =
+            env::var("LOCAL_FALLBACK_POLICY").unwrap_or_else(|_| "auto_switch".to_string());
+        let local_fallback_policy = local_fallback_policy_raw
+            .parse::<LocalFallbackPolicy>()
+            .unwrap_or_default();
 
         let api_server_port = env::var("PORT")
             .ok()
@@ -237,6 +294,8 @@ impl AiomeConfig {
             log_level,
             ollama_host,
             ollama_model,
+            local_fast_model,
+            local_fallback_policy,
             gemini_api_key,
             openai_api_key,
             anthropic_api_key,
@@ -298,6 +357,10 @@ impl AiomeConfig {
                 crate::security::scrub_env("TELEGRAM_TOKEN");
                 SecretString::from(token)
             }),
+            local_llm_concurrency: env::var("LOCAL_LLM_CONCURRENCY")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(2),
         })
     }
 
@@ -384,5 +447,50 @@ mod tests {
             std::env::var("TELEGRAM_TOKEN").is_err(),
             "TELEGRAM_TOKEN was not scrubbed!"
         );
+    }
+
+    #[test]
+    #[serial]
+    fn test_local_llm_first_config() {
+        std::env::set_var("LOCAL_FAST_MODEL", "qwen2.5:7b");
+        std::env::set_var("LOCAL_FALLBACK_POLICY", "local_only");
+
+        let config = AiomeConfig::load().expect("Failed to load config");
+        assert_eq!(config.local_fast_model, "qwen2.5:7b");
+        assert_eq!(config.local_fallback_policy, LocalFallbackPolicy::LocalOnly);
+
+        std::env::set_var("LOCAL_FALLBACK_POLICY", "invalid_policy_typo");
+        let config_typo = AiomeConfig::load().expect("Failed to load config");
+        assert_eq!(
+            config_typo.local_fallback_policy,
+            LocalFallbackPolicy::AutoSwitch
+        );
+
+        std::env::remove_var("LOCAL_FAST_MODEL");
+        std::env::remove_var("LOCAL_FALLBACK_POLICY");
+
+        let default_config = AiomeConfig::default();
+        assert_eq!(default_config.local_fast_model, default_config.ollama_model);
+        assert_eq!(
+            default_config.local_fallback_policy,
+            LocalFallbackPolicy::AutoSwitch
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_local_llm_concurrency_config() {
+        std::env::set_var("LOCAL_LLM_CONCURRENCY", "5");
+        let config = AiomeConfig::load().expect("Failed to load config");
+        assert_eq!(config.local_llm_concurrency, 5);
+
+        std::env::set_var("LOCAL_LLM_CONCURRENCY", "invalid");
+        let config_invalid = AiomeConfig::load().expect("Failed to load config");
+        assert_eq!(config_invalid.local_llm_concurrency, 2);
+
+        std::env::remove_var("LOCAL_LLM_CONCURRENCY");
+
+        let default_config = AiomeConfig::default();
+        assert_eq!(default_config.local_llm_concurrency, 2);
     }
 }

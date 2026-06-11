@@ -79,9 +79,53 @@ pub async fn init_llm_providers(
         tracing::info!("🛡️ [HookManager] ToolCallReviewerHook registered successfully");
     }
 
+    // === Fast tier provider (Local LLM First) ===
+    let fast_model = config.local_fast_model.clone();
+    let fast_host = config.ollama_host.clone();
+
+    let local_ollama = Arc::new(infrastructure::llm::dynamic::BackgroundLlmProvider {
+        ops: db.job_queue.clone(),
+        client: db.http_client.clone(),
+        fallback_model: fast_model.clone(),
+        fallback_host: fast_host.clone(),
+        gemini_api_key: None, // ローカルオンリー
+        openai_api_key: None,
+        anthropic_api_key: None,
+        hook_manager: db.hook_manager.clone(),
+        live_manager: live_manager.clone(),
+        eval_logger: Some(db.eval_logger.clone()),
+    });
+
+    // FallbackRouter で wrap: local → bg_provider(クラウド含む) フェイルオーバー
+    let fast_provider_router = Arc::new(infrastructure::llm::fallback_router::FallbackRouter::new(
+        local_ollama.clone() as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
+        bg_provider.clone(),
+        3, // failure threshold
+    ))
+        as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>;
+
+    // local_fallback_policy == "local_only" の場合は FallbackRouter を使わず
+    // local_ollama 単体を渡す（フォールバックなし）
+    let fast_provider =
+        if config.local_fallback_policy == shared::config::LocalFallbackPolicy::LocalOnly {
+            local_ollama as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>
+        } else {
+            fast_provider_router
+        };
+
+    // fast_provider を SemaphoreGuardedProvider でラップして、ローカルLLMへの同時実行数を制限 (P1: 一貫性修正)
+    let local_llm_semaphore = Arc::new(tokio::sync::Semaphore::new(config.local_llm_concurrency));
+    let fast_provider = Arc::new(
+        infrastructure::llm::semaphore_guard::SemaphoreGuardedProvider::new(
+            fast_provider,
+            local_llm_semaphore,
+        ),
+    ) as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>;
+
     Ok(ProviderResult {
         provider: provider as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
         bg_provider,
         embed_provider,
+        fast_provider,
     })
 }

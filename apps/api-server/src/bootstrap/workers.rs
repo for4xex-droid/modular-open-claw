@@ -74,7 +74,7 @@ pub async fn spawn_background_workers(
     });
 
     // [Step 1.10] Initialize and Spawn CortexCompiler Background Loop
-    let compiler_provider = state.provider.get_inner().clone();
+    let compiler_provider = state.fast_provider.get_inner().clone();
     let compiler_pool = state.db_pool.get_inner().clone();
     let compiler_semaphore = state.compute_semaphore.get_inner().clone();
     let compiler_gate = Some(belief_gate.clone());

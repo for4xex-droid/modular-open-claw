@@ -17,6 +17,7 @@ pub mod dynamic;
 pub mod entropy_gate;
 pub mod evaluation_logger;
 pub mod fallback_router;
+pub mod semaphore_guard;
 
 #[cfg(feature = "native-inference")]
 pub mod native_embedding;

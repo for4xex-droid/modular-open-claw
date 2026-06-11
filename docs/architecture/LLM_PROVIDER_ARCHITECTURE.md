@@ -1,7 +1,7 @@
 # LLM Provider Architecture — 動的プロバイダー設計書
 
-**Version:** 1.5
-**Last Updated:** 2026-06-08
+**Version:** 1.6
+**Last Updated:** 2026-06-12
 **Author:** Antigravity Agent / motivationstudio
 
 ---
@@ -76,6 +76,12 @@ LLM の接続先は以下の優先順位で解決されます：
 `FallbackRouter` は、プライマリLLM（例: 外部サービスや高負荷モデル）の障害をサーキットブレーカーで検知し、セカンダリ（例: Gemini Cloud などの安定プロバイダー）へ透過的に切り替えます。
 - **Failover**: タイムアウトや 5xx エラーを検知して自動トリガー。
 - **Transparent**: 利用側は単一の `LlmProvider` として操作可能。
+
+### 3.3a SemaphoreGuardedProvider (Phase Reflexion 改善実装)
+ローカル LLM（Ollama等）の推論スレッド枯渇やリソース競合を防ぐため、`fast_provider` は `SemaphoreGuardedProvider` によって自動的にラップされます。
+- **Concurrency Control**: 同時実行数制限を適用し、ローカル LLM への多重アクセスを抑制します。
+- **Dynamic Capacity**: 同時実行数の上限は環境変数 `LOCAL_LLM_CONCURRENCY`（デフォルト 2）によって動的に設定可能です。
+- **GuardedStream**: ストリーミング処理に対応し、セマフォ許可（`OwnedSemaphorePermit`）のライフサイクルをストリームの生存期間と安全に同期（SAFETY comments）させます。
 
 ### 3.4 Trend Evaluation (Phase 20/21 実装)
 `ExternalTrendSonar` はオプションの `LlmProvider` を参照し、収集されたトレンドキーワードに対してスコアリング（注目度・有用性）を行います。これにより、単なる収集から「意味のある選別」へと進化しています。

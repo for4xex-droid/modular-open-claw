@@ -405,6 +405,7 @@ async fn test_fallback_router_failover() {
         job_queue: Component::new(job_queue.clone()),
         config: Component::new(std::sync::Arc::new(shared::config::AiomeConfig::default())),
         provider: Component::new(router.clone()),
+        fast_provider: Component::new(router.clone()),
         health_monitor: Component::new(Arc::new(Mutex::new(HealthMonitor::new()))),
         ..Default::default()
     };
@@ -656,4 +657,88 @@ async fn test_alert_manager_di_and_alerting() {
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].0, "Test Title");
     assert_eq!(results[0].1, "Test Message");
+}
+
+#[serial]
+#[tokio::test]
+async fn test_fast_provider_fallback_policy_behavior() {
+    let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed");
+    let db_path = tmp_dir.path().join("test_llm_policy.db");
+    let pool = infrastructure::db::DatabasePool::new_sqlite(&format!(
+        "sqlite://{}",
+        db_path.to_str().unwrap()
+    ))
+    .await
+    .expect("Failed to create test DB pool");
+
+    let ts = std::sync::Arc::new(
+        infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
+    );
+    let job_queue = Arc::new(
+        infrastructure::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
+            .await
+            .expect("Failed to create test job queue"),
+    );
+
+    let db = crate::bootstrap::DatabaseResult {
+        db_pool: pool.clone(),
+        job_queue,
+        eval_logger: Arc::new(
+            infrastructure::llm::evaluation_logger::EvaluationLogger::new(Arc::new(
+                infrastructure::llm::evaluation_logger::SqlEvalLogRepository::new(pool.clone()),
+            )),
+        ),
+        audit_logger: Arc::new(infrastructure::audit_logger::AsyncAuditLogger::new(
+            pool.clone().into(),
+            10,
+        )),
+        system_agent_id: uuid::Uuid::new_v4(),
+        circuit_breaker: Arc::new(infrastructure::circuit_breaker::CircuitBreaker::new(
+            "test-cb",
+            infrastructure::circuit_breaker::CircuitBreakerConfig {
+                failure_threshold: 5,
+                reset_timeout: std::time::Duration::from_secs(60),
+            },
+        )),
+        rate_limiter: infrastructure::rate_limiter::AgentRateLimiter::new(10).unwrap(),
+        slo_engine: Arc::new(infrastructure::slo_engine::SloEngine::new(
+            infrastructure::slo_engine::SloConfig {
+                error_budget_max: 100,
+                warning_threshold: 80,
+            },
+            chrono::Duration::hours(24),
+        )),
+        http_client: reqwest::Client::new(),
+        sandbox: Arc::new({
+            let sandbox_dir = tmp_dir.path().join("sandbox");
+            std::fs::create_dir_all(&sandbox_dir).expect("failed to create sandbox dir");
+            shared::sandbox::PathSandbox::new(sandbox_dir).expect("sandbox creation failed")
+        }),
+        hook_manager: Arc::new(infrastructure::security::hook_manager::HookManager::new()),
+        alert_manager: Arc::new(infrastructure::alerts::AlertManager::new()),
+    };
+
+    // Case 1: local_fallback_policy == "local_only"
+    let mut config = shared::config::AiomeConfig::default();
+    config.local_fallback_policy = shared::config::LocalFallbackPolicy::LocalOnly;
+    config.ollama_host = "http://localhost:9999".to_string();
+    let config_arc = Arc::new(config);
+
+    let providers = crate::bootstrap::init_llm_providers(&config_arc, &db, None)
+        .await
+        .expect("Failed to init llm providers");
+
+    assert_eq!(providers.fast_provider.name(), "BackgroundLlm");
+
+    // Case 2: local_fallback_policy == "auto_switch"
+    let mut config = shared::config::AiomeConfig::default();
+    config.local_fallback_policy = shared::config::LocalFallbackPolicy::AutoSwitch;
+    config.ollama_host = "http://localhost:9999".to_string();
+    let config_arc = Arc::new(config);
+
+    let providers = crate::bootstrap::init_llm_providers(&config_arc, &db, None)
+        .await
+        .expect("Failed to init llm providers");
+
+    assert_eq!(providers.fast_provider.name(), "FallbackRouter");
 }
