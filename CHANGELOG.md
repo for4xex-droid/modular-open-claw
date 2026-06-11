@@ -6,6 +6,7 @@
   - **SSE受信ハンドラ (biome_evolution + Crisis 予告)**: `App.tsx` 内の SSE イベント受信処理に `biome_evolution` および `crisis_prediction` ハンドラを追加し、ダッシュボードの `recentEvents` パルスログに動的追加。
   - **i18n キー追加**: `en.json` および `ja.json` の `event` オブジェクトに `biomeEvolution` および `crisisPrediction` 翻訳キーを追加。
   - **テスト環境の修正と安定化**: `App.test.tsx` のグローバルスコープで `HTMLElement.prototype.scrollIntoView` をモック化し、JSDOM 環境でのタブ切り替えクラッシュを解決。`BiotopeView` モックが `recentEvents` リストの `title` をレンダリングするように拡張し、SSE アサーションを通過。
+  - **Clippy 警告の修正**: `biome-engine` クレートの `lib.rs` において、`scan_vulnerability` 内の `needless_range_loop` 警告を抑制し、pre-push 時のコンパイルエラーを解消。
 
 ### Fixed
 - **`AgentConsole` の API エラー時フォールバック制御と無限リトライ防止 (Reflexion / TDD)**:
