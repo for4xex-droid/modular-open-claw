@@ -29,7 +29,7 @@ export interface VitalityUIEvent {
 }
 
 export interface VitalityRawEvent {
-    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'aegis_sentinel' | 'skill_execution' | 'plugin_event' | 'proactive_talk' | 'token_saved' | 'task_awaiting_input' | 'quality_gate';
+    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'aegis_sentinel' | 'skill_execution' | 'plugin_event' | 'proactive_talk' | 'token_saved' | 'task_awaiting_input' | 'quality_gate' | 'biome_evolution' | 'crisis_prediction';
     data: unknown;
 }
 
@@ -221,6 +221,18 @@ export interface A2uiMetric {
 export interface A2uiTimelineEvent {
     time: string;
     title: string;
+}
+
+export interface BiomeEvolutionEvent {
+    generation: number;
+    rarity: string;
+    message?: string;
+}
+
+export interface CrisisPredictionEvent {
+    crisis_type: string;
+    seconds_remaining: number;
+    description?: string;
 }
 
 

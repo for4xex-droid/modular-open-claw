@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useBiomeEngine } from '../../hooks/useBiomeEngine';
 import { BiomeHUD } from './BiomeHUD';
 import { BiomeControls } from './BiomeControls';
@@ -15,7 +15,6 @@ import { BiomeResult } from './BiomeResult';
 import { BiomeDendou, Specimen } from './BiomeDendou';
 import { API_BASE } from '../../config';
 import { isAuthenticated } from '../../lib/auth';
-import { Uuid } from '../../types'; // UUIDなどのインポートがあれば
 
 export interface BiomeGameProps {
   seed?: number;

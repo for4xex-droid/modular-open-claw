@@ -68,7 +68,7 @@ impl BiomeHistory {
 
         let mut current_state = match &self.entries[keyframe_pos].1 {
             HistoryEntry::Keyframe(cells) => cells.clone(),
-            _ => unreachable!(),
+            _ => return None,
         };
 
         for i in (keyframe_pos + 1)..=pos {
@@ -302,14 +302,14 @@ impl BiomeEngine {
         report.to_string()
     }
 
-    pub fn serialize(&self) -> String {
+    pub fn serialize(&self) -> Result<String, String> {
         let state = SerializedEngineState {
             generation: self.generation,
             cells: self.grid.current_cells().clone(),
             mutation_boost: self.grid.mutation_boost,
             ticks_since_mutation: self.grid.ticks_since_mutation,
         };
-        serde_json::to_string(&state).unwrap_or_default()
+        serde_json::to_string(&state).map_err(|e| format!("Failed to serialize: {}", e))
     }
 
     pub fn deserialize(json: &str) -> Result<BiomeEngine, String> {
@@ -396,7 +396,7 @@ mod tests {
         engine.inject_element(5, 5, 0, 500);
         engine.tick();
 
-        let serialized = engine.serialize();
+        let serialized = engine.serialize().expect("serialize failed");
         assert!(!serialized.is_empty());
 
         let restored = BiomeEngine::deserialize(&serialized).expect("deserialize failed");

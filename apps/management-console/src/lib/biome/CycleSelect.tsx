@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-import React from 'react';
+
 
 interface CycleSelectProps {
   speed: number;

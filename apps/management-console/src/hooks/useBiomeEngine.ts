@@ -2,7 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { BiomeEngine } from 'biome-engine';
 
 // IndexedDB Helper Functions
+let dbInstance: IDBDatabase | null = null;
+
 function openDatabase(): Promise<IDBDatabase> {
+  if (dbInstance) {
+    return Promise.resolve(dbInstance);
+  }
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
       return reject(new Error('IndexedDB is not supported'));
@@ -14,13 +19,24 @@ function openDatabase(): Promise<IDBDatabase> {
         db.createObjectStore('engine_states');
       }
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      dbInstance = request.result;
+      dbInstance.onclose = () => {
+        dbInstance = null;
+      };
+      dbInstance.onerror = () => {
+        dbInstance = null;
+      };
+      resolve(dbInstance);
+    };
     request.onerror = () => reject(request.error);
   });
 }
 
+let saveQueue: Promise<void> = Promise.resolve();
+
 function saveState(key: string, data: string): Promise<void> {
-  return openDatabase().then((db) => {
+  const task = () => openDatabase().then((db) => {
     return new Promise<void>((resolve, reject) => {
       const transaction = db.transaction('engine_states', 'readwrite');
       const store = transaction.objectStore('engine_states');
@@ -29,6 +45,10 @@ function saveState(key: string, data: string): Promise<void> {
       request.onerror = () => reject(request.error);
     });
   });
+
+  const nextPromise = saveQueue.then(task, task);
+  saveQueue = nextPromise;
+  return nextPromise;
 }
 
 function loadState(key: string): Promise<string | null> {

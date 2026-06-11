@@ -6,9 +6,16 @@
   - **SSE受信ハンドラ (biome_evolution + Crisis 予告)**: `App.tsx` 内の SSE イベント受信処理に `biome_evolution` および `crisis_prediction` ハンドラを追加し、ダッシュボードの `recentEvents` パルスログに動的追加。
   - **i18n キー追加**: `en.json` および `ja.json` の `event` オブジェクトに `biomeEvolution` および `crisisPrediction` 翻訳キーを追加。
   - **テスト環境の修正と安定化**: `App.test.tsx` のグローバルスコープで `HTMLElement.prototype.scrollIntoView` をモック化し、JSDOM 環境でのタブ切り替えクラッシュを解決。`BiotopeView` モックが `recentEvents` リストの `title` をレンダリングするように拡張し、SSE アサーションを通過。
-  - **Clippy 警告の修正**: `biome-engine` クレートの `lib.rs` において、`scan_vulnerability` 内の `needless_range_loop` 警告を抑制し、pre-push 時のコンパイルエラーを解消。
+  - **Clippy 警告の修正**: `biome-engine` クレート of `lib.rs` において、`scan_vulnerability` 内の `needless_range_loop` 警告を抑制し、pre-push 時のコンパイルエラーを解消。
 
 ### Fixed
+- **Biome リリース v8.3 の型安全性強化と IndexedDB 接続リークの是正 (Reflexion)**:
+  - `types.ts` および `useSystemVitality.tsx` で `biome_evolution` / `crisis_prediction` を `VitalityRawEvent` 型に定義・追加し、TypeScript での strict 型チェック互換性を担保。
+  - `useBiomeEngine.ts` の IndexedDB 接続オープン処理をシングルトン化し、切断時の自動再接続機能を追加することで、WASM エンジンのシミュレーションループに伴う IndexedDB コネクションのリークを根絶。
+  - `saveState` の同時非同期呼び出しにおける競合（Race Condition）を防ぐため、Promise チェーンによるシーケンシャル保存キューを導入。
+  - WASM エンジン（Rust）の `serialize()` メソッドの戻り値を `Result<String, String>` に変更し、データシリアライズ失敗時のエラーが JS 側に適切に伝搬されるように改善。
+  - Rust 側の `lib.rs` 内で panic を引き起こす危険性があった `unreachable!` を安全な `None` フォールバック処理へ変更。
+  - 未使用インポート（React, Uuid）の削除による TS コンパイルエラーの解消、および Rust のテストコードの修正。
 - **`AgentConsole` の API エラー時フォールバック制御と無限リトライ防止 (Reflexion / TDD)**:
   - `AgentConsole.tsx` において、API（`/api/artifacts` または `/api/v1/audit/ledger`）がエラーを返した際に、stats 情報を空のフォールバック値（`0` および `[]`）で更新する例外ハンドリングを追加し、UIのローダーフリーズおよび無限リトライループの危険性を解消。
   - `AgentConsole.test.tsx` に、APIエラー発生時にフォールバックUI（`agent.noBlueprintInstances`）が表示されることを検証する Jest テストケースを追加し、TDD サイクルで正常動作を確認。

@@ -17,7 +17,7 @@ export interface SystemVitality {
 
 export type VitalityEvent = {
     id?: string;
-    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'aegis_sentinel' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event' | 'gig_published' | 'sot_progress' | 'token_saved' | 'task_awaiting_input' | 'quality_gate' | 'commerce_event' | 'task_progress' | 'task_completed' | 'task_failed';
+    type: 'level_up' | 'karma_update' | 'inspiration' | 'job_started' | 'job_completed' | 'tts_started' | 'tts_completed' | 'skill_loaded' | 'skill_ready' | 'immune_alert' | 'aegis_sentinel' | 'skill_execution' | 'agent_stats' | 'proactive_talk' | 'plugin_event' | 'gig_published' | 'sot_progress' | 'token_saved' | 'task_awaiting_input' | 'quality_gate' | 'commerce_event' | 'task_progress' | 'task_completed' | 'task_failed' | 'biome_evolution' | 'crisis_prediction';
     data: AgentStats | Karma | SoTEvent | unknown;
 };
 
@@ -105,7 +105,7 @@ export const SystemVitalityProvider: React.FC<{ children: ReactNode }> = ({ chil
                             'tts_started', 'tts_completed',
                             'skill_loaded', 'skill_ready',
                             'immune_alert', 'aegis_sentinel', 'skill_execution', 'agent_stats', 'proactive_talk', 'plugin_event', 'gig_published', 'sot_progress', 'token_saved', 'task_awaiting_input', 'quality_gate', 'commerce_event',
-                            'task_progress', 'task_completed', 'task_failed'
+                            'task_progress', 'task_completed', 'task_failed', 'biome_evolution', 'crisis_prediction'
                         ];
 
                         if (validEvents.includes(msg.event)) {

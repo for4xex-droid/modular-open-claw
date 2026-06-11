@@ -71,7 +71,7 @@ import { isAuthenticated } from "./lib/auth";
 import { useAvatarState } from "./hooks/useAvatarState";
 import { AiomeSkeleton } from "./components/common/AiomeSkeleton";
 import { useDisplayMode } from "./hooks/useDisplayMode";
-import { AgentStats, VitalityUIEvent, Karma, SoTEvent, ImmuneAlertEvent, AegisSentinelEvent, InspirationEvent } from "./types";
+import { AgentStats, VitalityUIEvent, Karma, SoTEvent, ImmuneAlertEvent, AegisSentinelEvent, InspirationEvent, BiomeEvolutionEvent, CrisisPredictionEvent } from "./types";
 import { useSystemVitality } from "./hooks/useSystemVitality";
 import { useViewMode } from "./hooks/useViewMode";
 import { useTokenHealth } from "./hooks/useTokenHealth";
@@ -215,7 +215,7 @@ function App() {
         break;
       }
       case 'biome_evolution': {
-        const d = data as { generation: number; rarity: string; message?: string };
+        const d = data as BiomeEvolutionEvent;
         addEvent(
           t('event.biomeEvolution', { defaultValue: '🧬 Biome Evolution' }) as string,
           d.message || `Generation ${d.generation} reached. Rarity: ${d.rarity}`,
@@ -225,7 +225,7 @@ function App() {
         break;
       }
       case 'crisis_prediction': {
-        const d = data as { crisis_type: string; seconds_remaining: number; description?: string };
+        const d = data as CrisisPredictionEvent;
         addEvent(
           t('event.crisisPrediction', { defaultValue: '⚠️ Crisis Imminent' }) as string,
           d.description || `Incoming ${d.crisis_type} in ${Math.round(d.seconds_remaining / 60)} minutes!`,
