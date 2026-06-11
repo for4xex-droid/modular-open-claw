@@ -16,7 +16,7 @@ pub struct CellDelta {
     pub active: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct BiomeCell {
     pub active: bool,
     pub elements: [u16; 8], // C, N, P, H, O, S, Fe, Si
@@ -149,7 +149,7 @@ impl BiomeGrid {
                 let idx = y * GRID_WIDTH + x;
                 let cell = &current_cells[idx];
 
-                if cell.active && cell.elements[0] > 100 {
+                if cell.active && !cell.is_frozen && cell.elements[0] > 100 {
                     let spread_amount = cell.elements[0] / 10;
                     if spread_amount == 0 {
                         continue;
@@ -190,7 +190,7 @@ impl BiomeGrid {
         let force_mutate = ticks_since_mutation >= 1000;
 
         for cell in next_cells.iter_mut() {
-            if cell.active {
+            if cell.active && !cell.is_frozen {
                 // 1. 元素反応
                 crate::element::react_elements(cell);
 
@@ -360,5 +360,30 @@ mod tests {
         assert_eq!(slice[offset], 5.0); // x
         assert_eq!(slice[offset + 1], 5.0); // y
         assert_eq!(slice[offset + 2], 1.0); // active
+    }
+
+    #[test]
+    fn test_frozen_cells_skip_element_reaction_and_mutation() {
+        let mut grid = BiomeGrid::new(42);
+
+        // (5,5) のセルをアクティブ・かつ凍結状態に設定し、元素を注入
+        let cell = grid.get_cell_mut(5, 5);
+        cell.active = true;
+        cell.is_frozen = true;
+        // 炭素を5000注入
+        cell.elements[0] = 5000;
+        let original_elements = cell.elements;
+        let original_genome = cell.genome.clone();
+
+        // tick を実行
+        let _deltas = grid.tick();
+
+        let result_cell = grid.get_cell(5, 5);
+        // 凍結中のため、元素やゲノムが変化しないこと
+        assert_eq!(result_cell.elements, original_elements);
+        assert_eq!(result_cell.genome, original_genome);
+
+        // また、隣のセル（例: 6,5）に拡散してアクティブ化していないこと
+        assert!(!grid.get_cell(6, 5).active);
     }
 }

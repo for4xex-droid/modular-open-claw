@@ -346,6 +346,18 @@ pub fn build_app(
         .route(
             "/api/v1/a2ui/action",
             post(routes::a2ui::submit_a2ui_action),
+        )
+        .route(
+            "/api/v1/biome/runs",
+            get(routes::biome::list_runs).post(routes::biome::save_run),
+        )
+        .route(
+            "/api/v1/biome/specimens",
+            get(routes::biome::list_specimens).post(routes::biome::save_specimen),
+        )
+        .route(
+            "/api/v1/biome/analytics/:run_id",
+            get(routes::biome::get_analytics),
         );
 
     #[cfg(any(debug_assertions, feature = "demo"))]

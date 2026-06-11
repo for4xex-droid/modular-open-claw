@@ -214,6 +214,26 @@ function App() {
         );
         break;
       }
+      case 'biome_evolution': {
+        const d = data as { generation: number; rarity: string; message?: string };
+        addEvent(
+          t('event.biomeEvolution', { defaultValue: '🧬 Biome Evolution' }) as string,
+          d.message || `Generation ${d.generation} reached. Rarity: ${d.rarity}`,
+          'var(--accent-cyan)',
+          <Activity size={16} />
+        );
+        break;
+      }
+      case 'crisis_prediction': {
+        const d = data as { crisis_type: string; seconds_remaining: number; description?: string };
+        addEvent(
+          t('event.crisisPrediction', { defaultValue: '⚠️ Crisis Imminent' }) as string,
+          d.description || `Incoming ${d.crisis_type} in ${Math.round(d.seconds_remaining / 60)} minutes!`,
+          'var(--accent-rose)',
+          <Shield size={16} />
+        );
+        break;
+      }
       default:
         break;
     }

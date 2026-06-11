@@ -12,6 +12,7 @@ pub mod artifacts;
 pub mod audit;
 pub mod auth;
 pub mod avatar;
+pub mod biome;
 pub mod blueprint;
 pub mod bootstrap;
 pub mod buzz;

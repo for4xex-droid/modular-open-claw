@@ -1,6 +1,48 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { BiomeEngine } from 'biome-engine';
 
+// IndexedDB Helper Functions
+function openDatabase(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === 'undefined') {
+      return reject(new Error('IndexedDB is not supported'));
+    }
+    const request = indexedDB.open('biome_db', 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('engine_states')) {
+        db.createObjectStore('engine_states');
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function saveState(key: string, data: string): Promise<void> {
+  return openDatabase().then((db) => {
+    return new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction('engine_states', 'readwrite');
+      const store = transaction.objectStore('engine_states');
+      const request = store.put(data, key);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  });
+}
+
+function loadState(key: string): Promise<string | null> {
+  return openDatabase().then((db) => {
+    return new Promise<string | null>((resolve, reject) => {
+      const transaction = db.transaction('engine_states', 'readonly');
+      const store = transaction.objectStore('engine_states');
+      const request = store.get(key);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  });
+}
+
 export interface UseBiomeEngineOptions {
   seed: number;
   paused?: boolean;
@@ -18,9 +60,22 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
     pausedRef.current = paused;
   }, [paused]);
 
+  const saveCurrentState = useCallback(async () => {
+    if (!engineRef.current) return;
+    const validatedSeed = Number.isFinite(seed) ? seed : 0;
+    const key = `seed_${validatedSeed}`;
+    try {
+      const serialized = engineRef.current.serialize();
+      await saveState(key, serialized);
+    } catch (e) {
+      console.warn('Failed to save biome-engine state to IndexedDB', e);
+    }
+  }, [seed]);
+
   useEffect(() => {
     let active = true;
     const validatedSeed = Number.isFinite(seed) ? seed : 0;
+    setLoading(true);
     
     // WASMモジュールの動的インポート
     import('biome-engine').then(async (wasm) => {
@@ -39,8 +94,21 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
         }
       }
 
-      // WASM側の constructor は u64 (BigInt) を期待する
-      const engine = new wasm.BiomeEngine(BigInt(validatedSeed));
+      // IndexedDB から過去の保存状態を取得して復元を試みる
+      let engine: BiomeEngine;
+      const key = `seed_${validatedSeed}`;
+      try {
+        const savedJson = await loadState(key);
+        if (savedJson) {
+          engine = wasm.BiomeEngine.deserialize(savedJson);
+        } else {
+          engine = new wasm.BiomeEngine(BigInt(validatedSeed));
+        }
+      } catch (err) {
+        console.warn('Failed to load state from IndexedDB, fallback to fresh start', err);
+        engine = new wasm.BiomeEngine(BigInt(validatedSeed));
+      }
+
       engineRef.current = engine;
       setGeneration(Number(engine.generation()));
       setLoading(false);
@@ -69,7 +137,8 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
     if (!engineRef.current) return;
     engineRef.current.tick();
     setGeneration(Number(engineRef.current.generation()));
-  }, []);
+    saveCurrentState();
+  }, [saveCurrentState]);
 
   // バックグラウンド進化の制御
   useEffect(() => {
@@ -115,9 +184,10 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
     const success = engineRef.current.apply_tachyon_rewind(generations);
     if (success) {
       setGeneration(Number(engineRef.current.generation()));
+      saveCurrentState();
     }
     return success;
-  }, []);
+  }, [saveCurrentState]);
 
   const getRenderView = useCallback((): Float32Array => {
     if (!engineRef.current || !wasmMemoryRef.current) {
@@ -137,12 +207,14 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
   const injectElement = useCallback((x: number, y: number, idx: number, amount: number) => {
     if (!engineRef.current) return;
     engineRef.current.inject_element(x, y, idx, amount);
-  }, []);
+    saveCurrentState();
+  }, [saveCurrentState]);
 
   const applyCrisis = useCallback((crisisType: string, x: number, y: number) => {
     if (!engineRef.current) return;
     engineRef.current.apply_crisis(crisisType, x, y);
-  }, []);
+    saveCurrentState();
+  }, [saveCurrentState]);
 
   const getRarity = useCallback((): number => {
     if (!engineRef.current) return 0; // Common

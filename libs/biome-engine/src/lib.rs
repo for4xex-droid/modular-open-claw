@@ -247,6 +247,91 @@ impl BiomeEngine {
     pub fn ticks_since_mutation(&self) -> u32 {
         self.grid.ticks_since_mutation
     }
+
+    pub fn thaw_grid(&mut self) {
+        crate::crisis::thaw_grid(&mut self.grid);
+    }
+
+    pub fn scan_vulnerability(&self) -> String {
+        let cells = self.grid.current_cells();
+        let mut active_count = 0;
+        let mut frozen_count = 0;
+        let mut total_elements = [0u64; 8];
+
+        for cell in cells {
+            if cell.active {
+                active_count += 1;
+                if cell.is_frozen {
+                    frozen_count += 1;
+                }
+                for i in 0..8 {
+                    total_elements[i] += cell.elements[i] as u64;
+                }
+            }
+        }
+
+        let mut vulnerabilities = Vec::new();
+
+        if active_count == 0 {
+            vulnerabilities.push("ExtinctionRisk");
+        } else {
+            let freeze_ratio = frozen_count as f32 / active_count as f32;
+            if freeze_ratio >= 0.5 {
+                vulnerabilities.push("HighFreezeRatio");
+            }
+        }
+
+        let sum: u64 = total_elements.iter().sum();
+        if sum > 0 {
+            for &total in total_elements.iter() {
+                let ratio = total as f32 / sum as f32;
+                if ratio >= 0.8 {
+                    vulnerabilities.push("ElementImbalance");
+                    break;
+                }
+            }
+        }
+
+        let report = serde_json::json!({
+            "active_cells": active_count,
+            "frozen_cells": frozen_count,
+            "vulnerabilities": vulnerabilities,
+        });
+
+        report.to_string()
+    }
+
+    pub fn serialize(&self) -> String {
+        let state = SerializedEngineState {
+            generation: self.generation,
+            cells: self.grid.current_cells().clone(),
+            mutation_boost: self.grid.mutation_boost,
+            ticks_since_mutation: self.grid.ticks_since_mutation,
+        };
+        serde_json::to_string(&state).unwrap_or_default()
+    }
+
+    pub fn deserialize(json: &str) -> Result<BiomeEngine, String> {
+        let state: SerializedEngineState =
+            serde_json::from_str(json).map_err(|e| format!("Failed to parse JSON: {}", e))?;
+
+        let mut engine = BiomeEngine::new(42);
+        engine.generation = state.generation;
+        engine.grid.set_current_cells(state.cells.clone());
+        engine.grid.mutation_boost = state.mutation_boost;
+        engine.grid.ticks_since_mutation = state.ticks_since_mutation;
+        engine.prev_tick_cells = state.cells;
+
+        Ok(engine)
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct SerializedEngineState {
+    generation: u32,
+    cells: Vec<crate::grid::BiomeCell>,
+    mutation_boost: f32,
+    ticks_since_mutation: u32,
 }
 
 #[cfg(test)]
@@ -287,5 +372,38 @@ mod tests {
             10,
             "Generation should be restored to 10"
         );
+    }
+
+    #[test]
+    fn test_scan_vulnerability() {
+        let mut engine = BiomeEngine::new(42);
+
+        let report = engine.scan_vulnerability();
+        assert!(report.contains("ExtinctionRisk"));
+
+        engine.inject_element(10, 10, 0, 100);
+        let cell = engine.grid.get_cell_mut(10, 10);
+        cell.is_frozen = true;
+
+        let report2 = engine.scan_vulnerability();
+        assert!(report2.contains("HighFreezeRatio"));
+    }
+
+    #[test]
+    fn test_serialize_deserialize() {
+        let mut engine = BiomeEngine::new(42);
+        engine.inject_element(5, 5, 0, 500);
+        engine.tick();
+
+        let serialized = engine.serialize();
+        assert!(!serialized.is_empty());
+
+        let restored = BiomeEngine::deserialize(&serialized).expect("deserialize failed");
+        assert_eq!(restored.generation(), 1);
+
+        let original_cell = engine.grid.get_cell(5, 5);
+        let restored_cell = restored.grid.get_cell(5, 5);
+        assert!(restored_cell.active);
+        assert_eq!(restored_cell.elements[0], original_cell.elements[0]);
     }
 }

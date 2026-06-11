@@ -75,7 +75,9 @@
     "societyOfThought": "思考プロセス",
     "deliberationUpdate": "審議更新: {{type}}",
     "aegisSentinel": "セキュリティアラート",
-    "aegisAlert": "免疫警報が発令されました。"
+    "aegisAlert": "免疫警報が発令されました。",
+    "biomeEvolution": "🧬 バイオーム進化",
+    "crisisPrediction": "⚠️ クライシス予告"
   },
   "loading": "システム同期中...",
   "biotope": {

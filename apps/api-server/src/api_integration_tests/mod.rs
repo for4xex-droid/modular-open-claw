@@ -11,6 +11,7 @@ pub mod common;
 pub use common::*;
 pub mod agent;
 pub mod auth;
+pub mod biome;
 pub mod commerce;
 pub mod commune;
 pub mod compliance;

@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### Added
+- **Biome リリース v8.3 (TDD)**:
+  - **WASM状態永続化 (IndexedDB)**: `useBiomeEngine.ts` 内に IndexedDB を使用したシミュレーション状態の永続化を実装。画面のアンマウントやシード変更の際に、WASM状態（世代数、現在のシード、グリッドサイズ、インスタンスなど）を自動保存・復元。
+  - **SSE受信ハンドラ (biome_evolution + Crisis 予告)**: `App.tsx` 内の SSE イベント受信処理に `biome_evolution` および `crisis_prediction` ハンドラを追加し、ダッシュボードの `recentEvents` パルスログに動的追加。
+  - **i18n キー追加**: `en.json` および `ja.json` の `event` オブジェクトに `biomeEvolution` および `crisisPrediction` 翻訳キーを追加。
+  - **テスト環境の修正と安定化**: `App.test.tsx` のグローバルスコープで `HTMLElement.prototype.scrollIntoView` をモック化し、JSDOM 環境でのタブ切り替えクラッシュを解決。`BiotopeView` モックが `recentEvents` リストの `title` をレンダリングするように拡張し、SSE アサーションを通過。
+
 ### Fixed
 - **`AgentConsole` の API エラー時フォールバック制御と無限リトライ防止 (Reflexion / TDD)**:
   - `AgentConsole.tsx` において、API（`/api/artifacts` または `/api/v1/audit/ledger`）がエラーを返した際に、stats 情報を空のフォールバック値（`0` および `[]`）で更新する例外ハンドリングを追加し、UIのローダーフリーズおよび無限リトライループの危険性を解消。

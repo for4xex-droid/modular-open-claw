@@ -29,16 +29,47 @@ impl DreamState {
             karma_summary
         );
 
-        let resp = self
+        let resp_result = self
             .llm
             .complete(
                 &prompt,
                 Some("You are a Scientific AI Researcher. Generate innovative improvement hypotheses."),
             )
-            .await?;
+            .await;
 
-        let json_str = crate::llm::utils::extract_json(&resp.content)?;
-        let manifest: Value = serde_json::from_str(json_str.as_ref())?;
+        let manifest = match resp_result {
+            Ok(resp) => {
+                if let Ok(json_str) = crate::llm::utils::extract_json(&resp.content) {
+                    serde_json::from_str::<Value>(json_str.as_ref()).unwrap_or_else(|_| {
+                        serde_json::json!({
+                            "domain": "General",
+                            "problem": "Unoptimized cognitive latency",
+                            "hypothesis": "Steady progress through optimization",
+                            "experiment_design": "Observe latency"
+                        })
+                    })
+                } else {
+                    serde_json::json!({
+                        "domain": "General",
+                        "problem": "Unoptimized cognitive latency",
+                        "hypothesis": "Steady progress through optimization",
+                        "experiment_design": "Observe latency"
+                    })
+                }
+            }
+            Err(e) => {
+                warn!(
+                    "⚠️ [DreamState] LLM failed in scientific dream: {}. Using fallback.",
+                    e
+                );
+                serde_json::json!({
+                    "domain": "General",
+                    "problem": "Unoptimized cognitive latency",
+                    "hypothesis": "Steady progress through optimization",
+                    "experiment_design": "Observe latency"
+                })
+            }
+        };
 
         let domain = manifest["domain"].as_str().unwrap_or("General");
         let hypothesis = manifest["hypothesis"].as_str().unwrap_or("No hypothesis");

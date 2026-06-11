@@ -9,6 +9,16 @@ pub enum CrisisType {
     IceAge,
 }
 
+/// グリッド全体の凍結状態を解除する
+pub fn thaw_grid(grid: &mut BiomeGrid) {
+    use crate::grid::{GRID_HEIGHT, GRID_WIDTH};
+    for y in 0..GRID_HEIGHT {
+        for x in 0..GRID_WIDTH {
+            grid.get_cell_mut(x, y).is_frozen = false;
+        }
+    }
+}
+
 /// 災害イベントを実行する
 pub fn apply_crisis(grid: &mut BiomeGrid, crisis: CrisisType, target_x: usize, target_y: usize) {
     use crate::grid::{GRID_HEIGHT, GRID_WIDTH};
@@ -24,10 +34,12 @@ pub fn apply_crisis(grid: &mut BiomeGrid, crisis: CrisisType, target_x: usize, t
             for y in start_y..=end_y {
                 for x in start_x..=end_x {
                     let cell = grid.get_cell_mut(x, y);
-                    // 災害耐性 (ゲノムインデックス 8) が高いセルは生き残る
-                    let resistance = cell.genome.get_value(8);
-                    if resistance < 50000 {
-                        cell.active = false;
+                    if cell.active {
+                        let resistance = cell.genome.get_value(8);
+                        if resistance < 65535 {
+                            // 元素の回転（比率の変化・多様性促進）
+                            cell.elements.rotate_right(1);
+                        }
                     }
                 }
             }
@@ -37,12 +49,12 @@ pub fn apply_crisis(grid: &mut BiomeGrid, crisis: CrisisType, target_x: usize, t
                 for x in 0..GRID_WIDTH {
                     let cell = grid.get_cell_mut(x, y);
                     if cell.active {
-                        let resistance = cell.genome.get_value(8) as u32;
-                        // 通常は 80% に減少、耐性が高ければ減少幅が小さくなる
-                        // factor: 80% (耐性0) 〜 100% (耐性65535)
-                        let factor = 80 + (20 * resistance) / 65535;
-                        for i in 0..8 {
-                            cell.elements[i] = ((cell.elements[i] as u32 * factor) / 100) as u16;
+                        let resistance = cell.genome.get_value(8);
+                        let total_elements: u32 = cell.elements.iter().map(|&e| e as u32).sum();
+
+                        // 活性度が低く（総元素量 < 1000）、かつ耐性も低い（< 30000）セルを凍結
+                        if total_elements < 1000 && resistance < 30000 {
+                            cell.is_frozen = true;
                         }
                     }
                 }
@@ -57,92 +69,104 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_meteor_impact_destroys_cells() {
+    fn test_meteor_impact_rotates_elements_and_retains_active() {
         let mut grid = BiomeGrid::new(42);
 
-        // インパクト周囲をアクティブにする
-        for y in 8..=12 {
-            for x in 8..=12 {
-                grid.get_cell_mut(x, y).active = true;
-            }
-        }
+        // テスト用セルを配置（耐性0で、元素を設定）
+        let cell = grid.get_cell_mut(10, 10);
+        cell.active = true;
+        cell.genome.set_value(8, 0); // 耐性0
+        cell.elements = [100, 200, 300, 400, 500, 600, 700, 800];
 
         // 隕石を (10, 10) に落下させる
         apply_crisis(&mut grid, CrisisType::Meteor, 10, 10);
 
-        // 中心 (10, 10) が破壊（active = false）されていることを期待
-        // 現在は apply_crisis が空なので、このテストは失敗する (RED)
-        assert!(
-            !grid.get_cell(10, 10).active,
-            "Center cell should be destroyed by Meteor"
+        let result_cell = grid.get_cell(10, 10);
+        // セルはアクティブのままであること
+        assert!(result_cell.active, "Cell should remain active");
+        // 元素が回転していること (elements.rotate_right(1) なら [800, 100, 200, 300, 400, 500, 600, 700] になる)
+        assert_ne!(
+            result_cell.elements,
+            [100, 200, 300, 400, 500, 600, 700, 800]
+        );
+        // 耐性がないので元素が変更されている
+    }
+
+    #[test]
+    fn test_meteor_no_rotation_with_high_resistance() {
+        let mut grid = BiomeGrid::new(42);
+
+        // 耐性最大のセルを配置
+        let cell = grid.get_cell_mut(10, 10);
+        cell.active = true;
+        cell.genome.set_value(8, 65535); // 耐性最大
+        cell.elements = [100, 200, 300, 400, 500, 600, 700, 800];
+
+        apply_crisis(&mut grid, CrisisType::Meteor, 10, 10);
+
+        let result_cell = grid.get_cell(10, 10);
+        // 耐性最大なので、元素比率が回転しないこと
+        assert_eq!(
+            result_cell.elements,
+            [100, 200, 300, 400, 500, 600, 700, 800]
         );
     }
 
     #[test]
-    fn test_ice_age_reduces_elements() {
+    fn test_ice_age_freezes_inactive_cells() {
         let mut grid = BiomeGrid::new(42);
-        grid.get_cell_mut(5, 5).active = true;
-        grid.get_cell_mut(5, 5).elements[0] = 1000; // 炭素
+
+        // 活性度が低いセル (元素合計 < 1000)
+        let cell_low = grid.get_cell_mut(5, 5);
+        cell_low.active = true;
+        cell_low.genome.set_value(8, 0); // 耐性0
+        cell_low.elements = [10, 10, 10, 10, 10, 10, 10, 10]; // 合計 80 < 1000
+        cell_low.is_frozen = false;
+
+        // 活性度が高いセル (元素合計 >= 1000)
+        let cell_high = grid.get_cell_mut(6, 6);
+        cell_high.active = true;
+        cell_high.genome.set_value(8, 0); // 耐性0
+        cell_high.elements = [200, 200, 200, 200, 200, 100, 100, 100]; // 合計 1300 >= 1000
+        cell_high.is_frozen = false;
+
+        // 活性度は低いが耐性が高いセル
+        let cell_res = grid.get_cell_mut(7, 7);
+        cell_res.active = true;
+        cell_res.genome.set_value(8, 65535); // 耐性最大
+        cell_res.elements = [10, 10, 10, 10, 10, 10, 10, 10];
+        cell_res.is_frozen = false;
 
         // 氷河期を発生させる
         apply_crisis(&mut grid, CrisisType::IceAge, 0, 0);
 
-        // 元素量が減衰していることを期待
-        // 現在は apply_crisis が空なので、このテストは失敗する (RED)
+        // 低活性セルは凍結されること
         assert!(
-            grid.get_cell(5, 5).elements[0] < 1000,
-            "Ice age should reduce element amounts"
+            grid.get_cell(5, 5).is_frozen,
+            "Low activity cell should be frozen"
+        );
+        // 高活性セルは凍結されないこと
+        assert!(
+            !grid.get_cell(6, 6).is_frozen,
+            "High activity cell should not be frozen"
+        );
+        // 耐性高セルは凍結されないこと
+        assert!(
+            !grid.get_cell(7, 7).is_frozen,
+            "Resistant cell should not be frozen"
         );
     }
 
     #[test]
-    fn test_meteor_survival_with_high_resistance() {
+    fn test_thaw_grid_unfreezes_all_cells() {
         let mut grid = BiomeGrid::new(42);
+        grid.get_cell_mut(5, 5).is_frozen = true;
+        grid.get_cell_mut(10, 10).is_frozen = true;
 
-        // (10, 10) に耐性最大 (65535) のセルを配置
-        grid.get_cell_mut(10, 10).active = true;
-        grid.get_cell_mut(10, 10).genome.set_value(8, 65535); // 災害耐性
+        // 解凍を実行
+        super::thaw_grid(&mut grid);
 
-        apply_crisis(&mut grid, CrisisType::Meteor, 10, 10);
-
-        // 耐性が高いため、破壊されずに生き残ることを期待
-        assert!(
-            grid.get_cell(10, 10).active,
-            "Resistant cell should survive Meteor"
-        );
-    }
-
-    #[test]
-    fn test_ice_age_survival_with_high_resistance() {
-        let mut grid = BiomeGrid::new(42);
-
-        // 耐性最大のセルと、耐性初期値 (10000) のセルを配置
-        grid.get_cell_mut(5, 5).active = true;
-        grid.get_cell_mut(5, 5).elements[0] = 1000;
-        grid.get_cell_mut(5, 5).genome.set_value(8, 65535); // 耐性最大
-
-        grid.get_cell_mut(6, 6).active = true;
-        grid.get_cell_mut(6, 6).elements[0] = 1000;
-        grid.get_cell_mut(6, 6).genome.set_value(8, 10000); // 耐性低
-
-        apply_crisis(&mut grid, CrisisType::IceAge, 0, 0);
-
-        let res_cell_val = grid.get_cell(5, 5).elements[0];
-        let low_cell_val = grid.get_cell(6, 6).elements[0];
-
-        // 耐性最大のセルは元素減少が完全に防がれる (factor = 100%)
-        assert_eq!(
-            res_cell_val, 1000,
-            "Resistant cell should not lose elements"
-        );
-        // 耐性低のセルは元素が減少する (80% + 20*10000/65535 = 約83% に減少)
-        assert!(
-            low_cell_val < 1000,
-            "Low resistance cell should lose elements"
-        );
-        assert!(
-            res_cell_val > low_cell_val,
-            "Resistant cell should retain more elements than low resistance cell"
-        );
+        assert!(!grid.get_cell(5, 5).is_frozen);
+        assert!(!grid.get_cell(10, 10).is_frozen);
     }
 }

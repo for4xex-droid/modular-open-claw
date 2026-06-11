@@ -47,7 +47,8 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
     let mut dream_state = DreamState::new(state.provider.get_inner().clone())
         .with_eval_logger(state.eval_logger.get_inner().clone())
         .with_incident_repo(incident_repo.clone())
-        .with_event_sender(state.event_sender.get_inner().clone());
+        .with_event_sender(state.event_sender.get_inner().clone())
+        .with_cost_ops(job_queue_inner.clone());
 
     if let Some(biome) = state.biome_engine.as_opt() {
         dream_state = dream_state.with_biome_engine(biome.clone());

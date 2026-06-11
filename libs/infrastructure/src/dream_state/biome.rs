@@ -63,21 +63,49 @@ impl DreamState {
             gen
         );
 
-        let resp = self
+        let resp_result = self
             .llm
             .complete(
                 &prompt,
                 Some("You are a Biome Ecologist AI. Generate creative simulation insights."),
             )
-            .await?;
+            .await;
 
-        let json_str = crate::llm::utils::extract_json(&resp.content)?;
-        let data: serde_json::Value = serde_json::from_str(json_str.as_ref())?;
+        let (message, recommendation) = match resp_result {
+            Ok(resp) => {
+                if let Ok(json_str) = crate::llm::utils::extract_json(&resp.content) {
+                    if let Ok(data) = serde_json::from_str::<serde_json::Value>(json_str.as_ref()) {
+                        let msg = data["message"]
+                            .as_str()
+                            .unwrap_or("Stable biome environment observed steadily.")
+                            .to_string();
+                        let rec = data["recommendation"].as_str().map(|s| s.to_string());
+                        (msg, rec)
+                    } else {
+                        (
+                            "Stable biome environment observed steadily.".to_string(),
+                            None,
+                        )
+                    }
+                } else {
+                    (
+                        "Stable biome environment observed steadily.".to_string(),
+                        None,
+                    )
+                }
+            }
+            Err(e) => {
+                warn!(
+                    "⚠️ [DreamState] LLM failed in biome dream: {}. Using fallback.",
+                    e
+                );
+                (
+                    "Stable biome environment observed steadily.".to_string(),
+                    None,
+                )
+            }
+        };
 
-        let message = data["message"]
-            .as_str()
-            .unwrap_or("Stable biome environment observed.")
-            .to_string();
         let rarity_str = match rarity {
             biome_engine::rarity::BiomeRarity::Legendary => "Legendary",
             biome_engine::rarity::BiomeRarity::Epic => "Epic",
@@ -86,7 +114,6 @@ impl DreamState {
             biome_engine::rarity::BiomeRarity::Common => "Common",
         }
         .to_string();
-        let recommendation = data["recommendation"].as_str().map(|s| s.to_string());
 
         info!(
             "🧬 [DreamState] Biome Gen {} - Rarity: {} - Msg: {}",

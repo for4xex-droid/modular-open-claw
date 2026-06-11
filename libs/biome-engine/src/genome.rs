@@ -14,7 +14,7 @@ pub const ELEMENT_FE: usize = 6;
 pub const ELEMENT_SI: usize = 7;
 
 #[wasm_bindgen]
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CellGenome {
     // 32次元のゲノム情報 (0-7: 元素の蓄積・適応値, 8-31: 生理・形態形質)
     values: [u16; GENOME_SIZE],

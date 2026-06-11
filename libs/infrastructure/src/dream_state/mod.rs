@@ -13,6 +13,8 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::aegis::incident_repo::IncidentRepository;
+use crate::job_queue::CostOps;
+use crate::llm::cost_breaker::CostCircuitBreaker;
 use aiome_core_contracts::events::CoreEvent;
 use tokio::sync::broadcast;
 
@@ -20,6 +22,7 @@ use tokio::sync::broadcast;
 mod aegis;
 mod biome;
 mod communication;
+mod crisis_guardian;
 mod exploration;
 mod observability;
 mod reflection;
@@ -58,6 +61,7 @@ pub struct DreamState {
     event_sender: Option<broadcast::Sender<CoreEvent>>,
     biome_engine: Option<Arc<tokio::sync::RwLock<biome_engine::BiomeEngine>>>,
     soul_store: Option<Arc<crate::soul_store::UniversalSoulStore>>,
+    cost_ops: Option<Arc<dyn CostOps>>,
 }
 
 impl DreamState {
@@ -72,7 +76,13 @@ impl DreamState {
             event_sender: None,
             biome_engine: None,
             soul_store: None,
+            cost_ops: None,
         }
+    }
+
+    pub fn with_cost_ops(mut self, ops: Arc<dyn CostOps>) -> Self {
+        self.cost_ops = Some(ops);
+        self
     }
 
     pub fn with_eval_logger(
@@ -114,6 +124,15 @@ impl DreamState {
         trend_sonar: &ExternalTrendSonar,
         level: i32,
     ) -> Result<Option<DreamResult>, Box<dyn Error + Send + Sync>> {
+        // Layer 1: CostCircuitBreaker
+        if let Some(ref ops) = self.cost_ops {
+            let breaker = CostCircuitBreaker::new(ops.clone(), 10.0);
+            if let Err(e) = breaker.enforce().await {
+                tracing::warn!("🚨 [DreamState] Cost limit reached, skipping dream: {}", e);
+                return Ok(None);
+            }
+        }
+
         info!(
             "💤 [DreamState] AI (Lv{}) is entering a contemplative Dream State...",
             level

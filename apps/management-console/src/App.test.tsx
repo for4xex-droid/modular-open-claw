@@ -9,6 +9,10 @@ jest.mock('./config', () => ({
 
 import App from './App';
 
+// Mock scrollIntoView which is not implemented in JSDOM
+window.HTMLElement.prototype.scrollIntoView = jest.fn();
+
+
 // Mock framer-motion to skip animation delays using a Proxy to handle any motion.elem
 jest.mock('framer-motion', () => {
     const React = jest.requireActual('react');
@@ -39,9 +43,10 @@ jest.mock('./i18n', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
   useLanguage: () => ({ lang: 'en', setLang: jest.fn() })
 }));
+const mockUseSystemVitality = jest.fn();
 jest.mock('./hooks/useSystemVitality', () => ({
   __esModule: true,
-  useSystemVitality: () => ({ events: [], lastEvent: null, connectionStatus: 'connected', toggleConnection: jest.fn(), lastPingMs: 0 })
+  useSystemVitality: () => mockUseSystemVitality()
 }));
 jest.mock('./hooks/useAvatarState', () => ({
   __esModule: true,
@@ -73,7 +78,13 @@ jest.mock('./components/LoginScreen', () => ({
 
 jest.mock('./components/BiotopeView', () => ({
   __esModule: true,
-  default: () => <div data-testid="biotope-view-mock">mock</div>
+  default: ({ recentEvents }: any) => (
+    <div data-testid="biotope-view-mock">
+      {recentEvents.map((event: any) => (
+        <div key={event.id}>{event.title}</div>
+      ))}
+    </div>
+  )
 }));
 
 jest.mock('./hooks/useTreasure', () => ({
@@ -93,7 +104,7 @@ jest.mock('./lib/auth', () => ({
 jest.mock('./hooks/AvatarContext', () => ({
   __esModule: true,
   AvatarProvider: ({ children }: any) => <>{children}</>,
-  useAvatarCharacter: () => ({ character: 'female', setCharacter: jest.fn(), proportion: 'taller', setProportion: jest.fn() })
+  useAvatarCharacter: () => ({ character: 'female', setCharacter: jest.fn(), proportion: 'taller', setProportion: jest.fn(), getAssetPath: jest.fn().mockReturnValue('mock-path') })
 }));
 
 // Type-safe reference to the mocked hook
@@ -104,6 +115,13 @@ describe('App - Global Token Health', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        mockUseSystemVitality.mockReturnValue({
+            events: [],
+            lastEvent: null,
+            connectionStatus: 'connected',
+            toggleConnection: jest.fn(),
+            lastPingMs: 0
+        });
         window.fetch = jest.fn(() => Promise.resolve({
             ok: true,
             json: () => Promise.resolve({ mode: 'normal' })
@@ -264,5 +282,96 @@ describe('App - Global Token Health', () => {
 
         // Assert: should not be stuck on loading, and should not show SetupWizard
         expect(screen.queryByTestId('setup-wizard-mock')).not.toBeInTheDocument();
+    });
+});
+
+describe('App - SSE Biome Events', () => {
+    const originalFetch = window.fetch;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockUseSystemVitality.mockReturnValue({
+            events: [],
+            lastEvent: null,
+            connectionStatus: 'connected',
+            toggleConnection: jest.fn(),
+            lastPingMs: 0
+        });
+        window.fetch = jest.fn(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ mode: 'normal' })
+        })) as jest.Mock;
+    });
+
+    afterEach(() => {
+        window.fetch = originalFetch;
+    });
+
+    it('should process biome_evolution event and add it to recent events log', async () => {
+        // Arrange
+        mockUseSystemVitality.mockReturnValue({
+            events: [],
+            lastEvent: {
+                type: 'biome_evolution',
+                data: { generation: 20, rarity: 'Legendary', message: 'Specimen mutated!' }
+            },
+            connectionStatus: 'connected',
+            toggleConnection: jest.fn(),
+            lastPingMs: 0
+        });
+
+        mockUseTokenHealth.mockReturnValue({
+            isExpired: false,
+            lastChecked: null,
+            checkHealth: jest.fn(),
+            dismiss: jest.fn()
+        });
+
+        // Act
+        render(<App />);
+
+        // Switch to biotope/dashboard tab where recent events log is displayed
+        const dashboardTab = await screen.findByText('nav.biotope');
+        act(() => {
+            dashboardTab.click();
+        });
+
+        // Assert
+        await screen.findByText('event.biomeEvolution');
+        expect(screen.getByText('event.biomeEvolution')).toBeInTheDocument();
+    });
+
+    it('should process crisis_prediction event and add it to recent events log', async () => {
+        // Arrange
+        mockUseSystemVitality.mockReturnValue({
+            events: [],
+            lastEvent: {
+                type: 'crisis_prediction',
+                data: { crisis_type: 'meteor', seconds_remaining: 1800, description: 'Meteor storm detected' }
+            },
+            connectionStatus: 'connected',
+            toggleConnection: jest.fn(),
+            lastPingMs: 0
+        });
+
+        mockUseTokenHealth.mockReturnValue({
+            isExpired: false,
+            lastChecked: null,
+            checkHealth: jest.fn(),
+            dismiss: jest.fn()
+        });
+
+        // Act
+        render(<App />);
+
+        // Switch to biotope/dashboard tab where recent events log is displayed
+        const dashboardTab = await screen.findByText('nav.biotope');
+        act(() => {
+            dashboardTab.click();
+        });
+
+        // Assert
+        await screen.findByText('event.crisisPrediction');
+        expect(screen.getByText('event.crisisPrediction')).toBeInTheDocument();
     });
 });

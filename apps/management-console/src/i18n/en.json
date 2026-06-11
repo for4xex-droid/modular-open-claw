@@ -75,7 +75,9 @@
     "societyOfThought": "Thinking Process",
     "deliberationUpdate": "Deliberation update: {{type}}",
     "aegisSentinel": "Security Alert",
-    "aegisAlert": "Immune system alert triggered."
+    "aegisAlert": "Immune system alert triggered.",
+    "biomeEvolution": "🧬 Biome Evolution",
+    "crisisPrediction": "⚠️ Crisis Imminent"
   },
   "loading": "SYSTEM SYNC...",
   "biotope": {

@@ -9,8 +9,9 @@ jest.mock('biome-engine', () => {
     }),
     BiomeEngine: jest.fn().mockImplementation(() => {
       let generation = 0;
+      const genMock = jest.fn().mockImplementation(() => generation);
       return {
-        generation: () => generation,
+        generation: genMock,
         tick: jest.fn(() => {
           generation += 1;
         }),
@@ -32,14 +33,90 @@ jest.mock('biome-engine', () => {
         get_mutation_boost: () => 1.0,
         ticks_since_mutation: () => 0,
         free: jest.fn(),
+        serialize: jest.fn().mockReturnValue('{"generation":0,"seed":42}'),
       };
     }),
   };
 });
 
+// static メソッドをモックするために追加定義
+const wasm = require('biome-engine');
+wasm.BiomeEngine.deserialize = jest.fn().mockImplementation((json: string) => {
+  const data = JSON.parse(json);
+  let generation = data.generation || 0;
+  const genMock = jest.fn().mockImplementation(() => generation);
+  return {
+    generation: genMock,
+    tick: jest.fn(() => {
+      generation += 1;
+    }),
+    apply_tachyon_rewind: jest.fn((g: number) => {
+      if (g <= generation) {
+        generation -= g;
+        return true;
+      }
+      return false;
+    }),
+    render_data_ptr: () => 0,
+    render_data_len: () => 16384 * 12,
+    get_cell_detail: jest.fn(),
+    inject_element: jest.fn(),
+    apply_crisis: jest.fn(),
+    get_rarity: () => 0,
+    get_active_cell_count: () => 100,
+    get_element_balance: () => new Uint16Array([40, 30, 10, 20, 0, 0, 0, 0]),
+    get_mutation_boost: () => 1.0,
+    ticks_since_mutation: () => 0,
+    free: jest.fn(),
+    serialize: jest.fn().mockReturnValue('{"generation":0,"seed":42}'),
+  };
+});
+
+let mockDbStore: Record<string, any> = {};
+const mockIndexedDB = {
+  open: jest.fn().mockImplementation(() => {
+    const request: any = {
+      result: {
+        objectStoreNames: {
+          contains: jest.fn().mockImplementation((name) => name === 'engine_states'),
+        },
+        transaction: jest.fn().mockImplementation(() => ({
+          objectStore: jest.fn().mockImplementation(() => ({
+            put: jest.fn().mockImplementation((value, key) => {
+              mockDbStore[key] = value;
+              const req: any = {};
+              setTimeout(() => {
+                if (req.onsuccess) req.onsuccess();
+              }, 0);
+              return req;
+            }),
+            get: jest.fn().mockImplementation((key) => {
+              const req: any = { result: mockDbStore[key] };
+              setTimeout(() => {
+                if (req.onsuccess) req.onsuccess();
+              }, 0);
+              return req;
+            }),
+          })),
+        })),
+      },
+    };
+    setTimeout(() => {
+      if (request.onsuccess) request.onsuccess();
+    }, 0);
+    return request;
+  }),
+};
+
 describe('useBiomeEngine Hook', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockDbStore = {};
+    Object.defineProperty(window, 'indexedDB', {
+      value: mockIndexedDB,
+      configurable: true,
+      writable: true,
+    });
   });
 
 
@@ -204,6 +281,31 @@ describe('useBiomeEngine Hook', () => {
     expect(result.current.rewind).toBe(initialRewind);
     expect(result.current.injectElement).toBe(initialInject);
     expect(result.current.applyCrisis).toBe(initialApplyCrisis);
+  });
+
+  it('IndexedDB に保存された状態がある場合、初期化時に deserialize で状態を復元すること', async () => {
+    mockDbStore['seed_42'] = '{"generation":150,"seed":42}';
+    
+    const { result } = renderHook(() => useBiomeEngine({ seed: 42 }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    
+    expect(wasm.BiomeEngine.deserialize).toHaveBeenCalledWith('{"generation":150,"seed":42}');
+    expect(result.current.generation).toBe(150);
+  });
+
+  it('tick や rewind の実行時に状態が IndexedDB に自動保存されること', async () => {
+    const { result } = renderHook(() => useBiomeEngine({ seed: 42 }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    
+    // tick 実行
+    act(() => {
+      result.current.tick();
+    });
+    
+    // 非同期保存を待つ
+    await waitFor(() => {
+      expect(mockDbStore['seed_42']).toBe('{"generation":0,"seed":42}');
+    });
   });
 });
 

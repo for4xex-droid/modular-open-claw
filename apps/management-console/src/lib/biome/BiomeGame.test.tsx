@@ -77,7 +77,12 @@ const mockGetContext = jest.fn().mockReturnValue({
   activeTexture: jest.fn(),
   drawArrays: jest.fn(),
 });
-HTMLCanvasElement.prototype.getContext = mockGetContext as any;
+// config のモックを追加して import.meta.env エラーを防ぐ
+jest.mock('../../config', () => ({
+  API_BASE: 'http://localhost:3015',
+  APP_VERSION: 'v1.0.2',
+  STRIPE_PRICE_ID: 'price_gold_monthly',
+}));
 
 import { BiomeGame } from './BiomeGame';
 

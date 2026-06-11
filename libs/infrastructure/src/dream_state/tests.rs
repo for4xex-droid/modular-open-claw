@@ -8,6 +8,7 @@
 #[cfg(test)]
 mod tests {
     use super::super::*;
+    use crate::job_queue::CostOps;
     use crate::job_queue::EvaluationOps;
     use crate::soul_store::UniversalSoulStore;
     use aiome_core_contracts::commune::CommuneMessage;
@@ -1322,5 +1323,298 @@ mod tests {
         assert!(matched_marker.is_some());
         let marker = matched_marker.unwrap();
         assert!(marker.is_permanent);
+    }
+
+    #[derive(Debug)]
+    struct MockCostOps {
+        cost_24h: std::sync::atomic::AtomicU64,
+    }
+
+    #[async_trait::async_trait]
+    impl SettingsOps for MockCostOps {
+        async fn do_get_setting(&self, key: &str) -> Result<Option<String>, AiomeError> {
+            if key == "cost_limit_24h" {
+                return Ok(Some("10.0".to_string()));
+            }
+            Ok(None)
+        }
+        async fn do_set_setting(
+            &self,
+            _k: &str,
+            _v: &str,
+            _c: &str,
+            _s: bool,
+        ) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn do_get_all_settings(
+            &self,
+        ) -> Result<Vec<aiome_core_contracts::contracts::SystemSetting>, AiomeError> {
+            Ok(vec![])
+        }
+        async fn get_auto_expression_enabled(&self) -> Result<bool, AiomeError> {
+            Ok(false)
+        }
+        async fn set_auto_expression_enabled(&self, _e: bool) -> Result<(), AiomeError> {
+            Ok(())
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl CostOps for MockCostOps {
+        async fn aggregate_cost_hours(&self, _hours: i64) -> Result<f64, AiomeError> {
+            let bits = self.cost_24h.load(std::sync::atomic::Ordering::Relaxed);
+            Ok(f64::from_bits(bits))
+        }
+        async fn aggregate_cost_days(&self, _days: i64) -> Result<f64, AiomeError> {
+            Ok(0.0)
+        }
+        async fn aggregate_cost_by_job(&self, _job_id: &str) -> Result<f64, AiomeError> {
+            Ok(0.0)
+        }
+    }
+
+    #[tokio::test]
+    async fn test_dream_cost_breaker_allows() {
+        use std::sync::atomic::AtomicU64;
+
+        let cost_ops = Arc::new(MockCostOps {
+            cost_24h: AtomicU64::new(5.0f64.to_bits()),
+        });
+
+        #[derive(Debug)]
+        struct MockLlm;
+        #[async_trait::async_trait]
+        impl aiome_core::llm_provider::LlmProvider for MockLlm {
+            fn name(&self) -> &str {
+                "mock"
+            }
+            async fn complete(
+                &self,
+                _: &str,
+                _: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                Ok(aiome_core::llm_provider::LlmResponse {
+                    content: "{}".into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    ..Default::default()
+                })
+            }
+            async fn complete_with_cache(
+                &self,
+                _: aiome_core_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+        }
+
+        let jq = BusyJQ;
+        let sonar = ExternalTrendSonar::new(vec![], None);
+        let llm = Arc::new(MockLlm);
+
+        let dream = DreamState::new(llm).with_cost_ops(cost_ops as Arc<dyn CostOps>);
+        let res = dream.dream(&jq, &sonar, 10).await;
+
+        assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_dream_cost_breaker_blocks() {
+        use std::sync::atomic::AtomicU64;
+
+        let cost_ops = Arc::new(MockCostOps {
+            cost_24h: AtomicU64::new(15.0f64.to_bits()),
+        });
+
+        #[derive(Debug)]
+        struct MockLlm;
+        #[async_trait::async_trait]
+        impl aiome_core::llm_provider::LlmProvider for MockLlm {
+            fn name(&self) -> &str {
+                "mock"
+            }
+            async fn complete(
+                &self,
+                _: &str,
+                _: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                Ok(aiome_core::llm_provider::LlmResponse {
+                    content: "{}".into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    ..Default::default()
+                })
+            }
+            async fn complete_with_cache(
+                &self,
+                _: aiome_core_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+        }
+
+        let jq = BusyJQ;
+        let sonar = ExternalTrendSonar::new(vec![], None);
+        let llm = Arc::new(MockLlm);
+
+        let dream = DreamState::new(llm).with_cost_ops(cost_ops as Arc<dyn CostOps>);
+        let res = dream.dream(&jq, &sonar, 10).await;
+
+        assert!(res.is_ok());
+        let opt = res.unwrap();
+        assert!(opt.is_none(), "Dream should be skipped and return None");
+    }
+
+    #[tokio::test]
+    async fn test_dream_llm_fallback() {
+        #[derive(Debug)]
+        struct ErrorLlm;
+        #[async_trait::async_trait]
+        impl aiome_core::llm_provider::LlmProvider for ErrorLlm {
+            fn name(&self) -> &str {
+                "error-llm"
+            }
+            async fn complete(
+                &self,
+                _: &str,
+                _: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                Err(AiomeError::Infrastructure {
+                    reason: "LLM API Error for testing".into(),
+                })
+            }
+            async fn complete_with_cache(
+                &self,
+                _: aiome_core_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+        }
+
+        let pool = crate::db::DatabasePool::new_sqlite("sqlite::memory:")
+            .await
+            .unwrap();
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
+        );
+        let jq = std::sync::Arc::new(
+            crate::job_queue::UniversalJobQueue::new(pool.clone(), None, ts)
+                .await
+                .unwrap(),
+        );
+        crate::job_queue::migrations::DbInitializer::init_db(&*jq)
+            .await
+            .unwrap();
+
+        let engine =
+            std::sync::Arc::new(tokio::sync::RwLock::new(biome_engine::BiomeEngine::new(42)));
+        let soul_store = std::sync::Arc::new(UniversalSoulStore::new(pool.clone()));
+        let system_agent_id = jq.get_system_agent_id().await.unwrap();
+        let soul = AgentSoul::new(system_agent_id.to_string());
+        soul_store.save_soul(&soul).await.unwrap();
+
+        let (tx, _) = broadcast::channel(16);
+        let dream = DreamState::new(Arc::new(ErrorLlm))
+            .with_biome_engine(engine)
+            .with_soul_store(soul_store)
+            .with_event_sender(tx);
+
+        let res_biome = dream.biome_evolution_dream(&*jq).await;
+        assert!(
+            res_biome.is_ok(),
+            "Biome evolution dream must succeed despite LLM failure"
+        );
+        let opt_biome = res_biome.unwrap();
+        assert!(opt_biome.is_some());
+        assert!(
+            opt_biome.unwrap().contains("steadily"),
+            "Insight should contain fallback message"
+        );
+
+        let res_sci = dream.scientific_dream(&*jq).await;
+        assert!(
+            res_sci.is_ok(),
+            "Scientific dream must succeed despite LLM failure"
+        );
+        let opt_sci = res_sci.unwrap();
+        assert!(opt_sci.is_some());
+        assert!(
+            opt_sci.unwrap().contains("Steady progress"),
+            "Scientific fallback insight check"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_guardian_llm_limit() {
+        use std::sync::atomic::AtomicU32;
+
+        #[derive(Debug)]
+        struct CounterLlm {
+            count: std::sync::atomic::AtomicU32,
+        }
+        #[async_trait::async_trait]
+        impl aiome_core::llm_provider::LlmProvider for CounterLlm {
+            fn name(&self) -> &str {
+                "counter-llm"
+            }
+            async fn complete(
+                &self,
+                _: &str,
+                _: Option<&str>,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.count
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                Ok(aiome_core::llm_provider::LlmResponse {
+                    content: "LLM Advice".into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    ..Default::default()
+                })
+            }
+            async fn complete_with_cache(
+                &self,
+                _: aiome_core_contracts::llm::LlmRequest,
+            ) -> Result<aiome_core::llm_provider::LlmResponse, AiomeError> {
+                self.complete("", None).await
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+        }
+
+        let llm = Arc::new(CounterLlm {
+            count: AtomicU32::new(0),
+        });
+        let dream = DreamState::new(llm.clone());
+        let epoch_counter = AtomicU32::new(0);
+
+        for _ in 0..3 {
+            let res = dream
+                .biome_crisis_guardian(&epoch_counter, "meteor", "vulnerability_report")
+                .await;
+            assert!(res.is_ok());
+            let opt = res.unwrap();
+            assert!(opt.is_some());
+            assert_eq!(opt.unwrap(), "LLM Advice");
+        }
+
+        assert_eq!(llm.count.load(std::sync::atomic::Ordering::Relaxed), 3);
+
+        let res4 = dream
+            .biome_crisis_guardian(&epoch_counter, "meteor", "vulnerability_report")
+            .await;
+        assert!(res4.is_ok());
+        let opt4 = res4.unwrap();
+        assert!(opt4.is_some());
+        assert!(opt4.unwrap().contains("元素カタリスト"));
+
+        assert_eq!(llm.count.load(std::sync::atomic::Ordering::Relaxed), 3);
     }
 }

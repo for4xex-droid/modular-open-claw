@@ -62,6 +62,9 @@ async fn main() -> Result<()> {
     migrate_table_approved_karma(&sqlite_pool, &pg_pool).await?;
     migrate_table_approved_rules(&sqlite_pool, &pg_pool).await?;
     migrate_table_approved_arena_matches(&sqlite_pool, &pg_pool).await?;
+    migrate_table_biome_runs(&sqlite_pool, &pg_pool).await?;
+    migrate_table_biome_specimens(&sqlite_pool, &pg_pool).await?;
+    migrate_table_biome_analytics(&sqlite_pool, &pg_pool).await?;
 
     info!("🎉 Migration complete!");
     Ok(())
@@ -336,5 +339,108 @@ async fn migrate_table_timeline_snapshots(sqlite: &SqlitePool, pg: &PgPool) -> R
         count += 1;
     }
     info!("✅ timeline_snapshots: migrated {} records", count);
+    Ok(())
+}
+
+async fn migrate_table_biome_runs(sqlite: &SqlitePool, pg: &PgPool) -> Result<()> {
+    use sqlx::Row;
+    info!("📦 Migrating biome_runs...");
+    let rows = sqlx::query("SELECT * FROM biome_runs")
+        .fetch_all(sqlite)
+        .await?;
+    let mut count = 0;
+    for row in rows {
+        let id: String = row.get("id");
+        let agent_id: String = row.get("agent_id");
+        let generation: i64 = row.get("generation");
+        let score: f64 = row.get("score");
+        let max_generation: i64 = row.get("max_generation");
+        let cell_count: i64 = row.get("cell_count");
+        let is_dendou: i64 = row.get("is_dendou");
+        let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
+
+        sqlx::query(
+            "INSERT INTO biome_runs (id, agent_id, generation, score, max_generation, cell_count, is_dendou, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (id) DO NOTHING"
+        )
+        .bind(id)
+        .bind(agent_id)
+        .bind(generation as i32)
+        .bind(score)
+        .bind(max_generation as i32)
+        .bind(cell_count as i32)
+        .bind(is_dendou as i32)
+        .bind(created_at)
+        .execute(pg)
+        .await?;
+        count += 1;
+    }
+    info!("✅ biome_runs: migrated {} records", count);
+    Ok(())
+}
+
+async fn migrate_table_biome_specimens(sqlite: &SqlitePool, pg: &PgPool) -> Result<()> {
+    use sqlx::Row;
+    info!("📦 Migrating biome_specimens...");
+    let rows = sqlx::query("SELECT * FROM biome_specimens")
+        .fetch_all(sqlite)
+        .await?;
+    let mut count = 0;
+    for row in rows {
+        let id: String = row.get("id");
+        let run_id: String = row.get("run_id");
+        let specimen_name: String = row.get("specimen_name");
+        let genome_data: String = row.get("genome_data");
+        let rarity: String = row.get("rarity");
+        let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
+
+        sqlx::query(
+            "INSERT INTO biome_specimens (id, run_id, specimen_name, genome_data, rarity, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING"
+        )
+        .bind(id)
+        .bind(run_id)
+        .bind(specimen_name)
+        .bind(genome_data)
+        .bind(rarity)
+        .bind(created_at)
+        .execute(pg)
+        .await?;
+        count += 1;
+    }
+    info!("✅ biome_specimens: migrated {} records", count);
+    Ok(())
+}
+
+async fn migrate_table_biome_analytics(sqlite: &SqlitePool, pg: &PgPool) -> Result<()> {
+    use sqlx::Row;
+    info!("📦 Migrating biome_analytics...");
+    let rows = sqlx::query("SELECT * FROM biome_analytics")
+        .fetch_all(sqlite)
+        .await?;
+    let mut count = 0;
+    for row in rows {
+        let id: String = row.get("id");
+        let run_id: String = row.get("run_id");
+        let active_cells: i64 = row.get("active_cells");
+        let frozen_cells: i64 = row.get("frozen_cells");
+        let element_imbalance: f64 = row.get("element_imbalance");
+        let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
+
+        sqlx::query(
+            "INSERT INTO biome_analytics (id, run_id, active_cells, frozen_cells, element_imbalance, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING"
+        )
+        .bind(id)
+        .bind(run_id)
+        .bind(active_cells as i32)
+        .bind(frozen_cells as i32)
+        .bind(element_imbalance)
+        .bind(created_at)
+        .execute(pg)
+        .await?;
+        count += 1;
+    }
+    info!("✅ biome_analytics: migrated {} records", count);
     Ok(())
 }
