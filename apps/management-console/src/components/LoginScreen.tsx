@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ShieldAlert, Zap, Loader2 } from 'lucide-react';
+import FluidBackground from './fluid/FluidBackground';
 import { API_BASE } from '../config';
 import { setAuthToken } from '../lib/auth';
 import { useTranslation } from '../i18n';
@@ -66,9 +67,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 9999,
-            backgroundImage: 'radial-gradient(circle at 50% -20%, var(--accent-cyan-10), transparent 70%)'
+            zIndex: 9999
         }}>
+            <FluidBackground />
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -80,12 +81,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => {
                     borderRadius: 'var(--radius-xl)',
                     textAlign: 'center',
                     boxShadow: 'var(--shadow-deep)',
-                    backdropFilter: 'blur(20px)'
+                    backdropFilter: 'blur(20px)',
+                    position: 'relative',
+                    zIndex: 1
                 }}
             >
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
                     <div style={{ padding: '1rem', background: 'var(--white-03)', borderRadius: '50%' }}>
-                        <Lock size={40} color="var(--accent-cyan)" />
+                        <Lock size={40} color="var(--fluid-warm-ivory)" />
                     </div>
                 </div>
 
@@ -156,7 +159,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => {
                             width: '100%',
                             padding: '1rem',
                             borderRadius: 'var(--radius-md)',
-                            background: isLoading ? 'var(--white-05)' : 'linear-gradient(90deg, var(--accent-cyan), var(--accent-purple))',
+                            background: isLoading ? 'var(--white-05)' : 'linear-gradient(135deg, var(--fluid-warm-ivory), var(--fluid-deep-gold))',
                             border: 'none',
                             color: 'var(--text-inverse)',
                             fontWeight: 700,
@@ -171,7 +174,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthenticated }) => {
                         }}
                     >
                         {isLoading ? (
-                            <Loader2 className="animate-spin" size={20} color="var(--accent-cyan)" />
+                            <Loader2 className="animate-spin" size={20} color="var(--fluid-warm-ivory)" />
                         ) : (
                             <>
                                 <Zap size={20} />

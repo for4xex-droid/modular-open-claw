@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { LineChart, Sparkles, AlertCircle } from 'lucide-react';
+import { useTranslation } from '../../i18n';
 import { authenticatedFetch } from '../../lib/auth';
 import { API_BASE } from '../../config';
 import type { components } from '../../types/generated';
@@ -7,6 +8,7 @@ import type { components } from '../../types/generated';
 type ForecastResponse = components['schemas']['ForecastResponse'];
 
 export default function ForecastView() {
+    const { t } = useTranslation();
     const [data, setData] = useState<ForecastResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export default function ForecastView() {
             setData(json);
         } catch (e) {
             console.error('Failed to fetch forecast', e);
-            setError('予測データの取得に失敗しました。TimesFM Sidecarがオフラインの可能性があります。');
+            setError(t('forecast.error'));
         } finally {
             setLoading(false);
         }
@@ -41,13 +43,13 @@ export default function ForecastView() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
                     <Sparkles size={20} color="var(--accent-purple)" />
-                    TimesFM 予測 (Experience Trend)
+                    {t('forecast.title')}
                 </h3>
                 <button 
                     className="icon-button" 
                     onClick={fetchForecast} 
                     disabled={loading}
-                    title="予測を更新"
+                    data-tooltip={t('forecast.refresh')}
                 >
                     <LineChart size={18} className={loading ? "ani-pulse" : ""} />
                 </button>
@@ -63,7 +65,7 @@ export default function ForecastView() {
             <div style={{ flex: 1, background: 'var(--bg-glass-light)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {loading && !data && (
                     <div style={{ color: 'var(--accent-purple)', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', width: '100%' }}>
-                        <span className="ani-pulse">予測モデルを計算中...</span>
+                        <span className="ani-pulse">{t('forecast.loading')}</span>
                     </div>
                 )}
                 
@@ -82,7 +84,7 @@ export default function ForecastView() {
                                             borderRadius: '2px 2px 0 0',
                                             minHeight: '4px'
                                         }} 
-                                        title={new Date(data.timestamps[idx]).toLocaleString()}
+                                        data-tooltip={new Date(data.timestamps[idx]).toLocaleString()}
                                     />
                                 </div>
                             );

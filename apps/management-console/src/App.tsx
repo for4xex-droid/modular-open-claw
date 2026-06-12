@@ -272,7 +272,7 @@ function App() {
 
     return (
       <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <div className="status-item persona-toggle" onClick={() => workspacePersona.setMode(workspacePersona.mode === 'agency' ? 'consumer' : 'agency')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: 'var(--black-40)', borderRadius: '6px' }}>
+        <div className="status-item persona-toggle" onClick={() => workspacePersona.setMode(workspacePersona.mode === 'agency' ? 'consumer' : 'agency')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: 'var(--black-40)', borderRadius: '6px' }} data-tooltip={workspacePersona.mode === 'agency' ? t('persona.agencyTooltip') : t('persona.consumerTooltip')}>
           <Briefcase size={14} color={workspacePersona.mode === 'agency' ? 'var(--accent-cyan)' : 'var(--text-secondary)'} />
           <span>{workspacePersona.mode === 'agency' ? 'Agency Mode' : 'Consumer Mode'}</span>
         </div>
@@ -283,7 +283,7 @@ function App() {
             cursor: 'pointer', border: '1px solid var(--white-05)', background: 'var(--black-40)',
             outline: 'none', transition: 'all 0.2s', padding: '0.5rem 1rem'
           }}
-          title="Click to toggle connection sync"
+          data-tooltip="Click to toggle connection sync"
         >
           <div className={dotClass} style={{
             background: connectionStatus === 'paused' ? 'var(--accent-amber)' : undefined,
@@ -328,7 +328,7 @@ function App() {
         position: 'absolute',
         width: 300 + Math.random() * 200,
         height: 300 + Math.random() * 200,
-        background: i % 2 === 0 ? 'radial-gradient(circle, var(--accent-cyan-05) 0%, transparent 70%)' : 'radial-gradient(circle, var(--accent-purple-glass) 0%, transparent 70%)',
+        background: i % 2 === 0 ? 'radial-gradient(circle, var(--fluid-obsidian-glow) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(var(--fluid-deep-gold-rgb), 0.04) 0%, transparent 70%)',
         borderRadius: '50%',
         filter: 'blur(50px)'
       }}
@@ -394,10 +394,12 @@ function App() {
       {/* Society of Thought Visualization */}
       <SoTProgressBar />
 
-      {/* Ambient Background Particles */}
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-        {ambientParticles}
-      </div>
+      {/* Ambient Background Particles — 認証後のみ表示（LoginScreen は FluidBackground を使用） */}
+      {isBootComplete && (
+        <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+          {ambientParticles}
+        </div>
+      )}
 
       {/* Sidebar — advanced mode only */}
       {viewMode === 'advanced' && <aside className={`sidebar ${isSidebarOpen ? '' : 'closed'}`}>
@@ -409,7 +411,7 @@ function App() {
           <button 
             className="sidebar-toggle-btn"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            title="Toggle Sidebar"
+            data-tooltip="Toggle Sidebar"
           >
             {isSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
           </button>

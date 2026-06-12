@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '../../i18n';
 import { motion, useSpring, useTransform } from 'framer-motion';
 import { Zap } from 'lucide-react';
 
@@ -8,6 +9,7 @@ export interface TokenSavingsIndicatorProps {
 }
 
 export const TokenSavingsIndicator: React.FC<TokenSavingsIndicatorProps> = ({ savedChars, variant = 'compact' }) => {
+  const { t } = useTranslation();
   // Use framer-motion useSpring for smooth counting
   const springValue = useSpring(savedChars, { stiffness: 60, damping: 15 });
   const displayChars = useTransform(springValue, (latest) => Math.round(latest));
@@ -20,7 +22,7 @@ export const TokenSavingsIndicator: React.FC<TokenSavingsIndicatorProps> = ({ sa
       return (
         <div className="stat-badge" style={{ background: 'color-mix(in srgb, var(--accent-emerald) 10%, transparent)', color: 'var(--accent-emerald)' }}>
           <Zap size={12} />
-          <span>⚡ 待機中...</span>
+          <span>⚡ {t('token.waiting')}</span>
         </div>
       );
     }
@@ -37,7 +39,7 @@ export const TokenSavingsIndicator: React.FC<TokenSavingsIndicatorProps> = ({ sa
         color: 'var(--text-muted)'
       }}>
         <div className="status-dot offline" />
-        <span>最適化待機中...</span>
+        <span>{t('token.waitingFull')}</span>
       </div>
     );
   }
@@ -55,7 +57,7 @@ export const TokenSavingsIndicator: React.FC<TokenSavingsIndicatorProps> = ({ sa
         }}
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        title={`約 ${Math.round(savedChars / 4)} トークン節約 (推定 $${((savedChars / 4) / 1000 * 0.01).toFixed(4)})`}
+        data-tooltip={t('token.savingsTooltip', { tokens: Math.round(savedChars / 4), cost: ((savedChars / 4) / 1000 * 0.01).toFixed(4) })}
       >
         <Zap size={12} />
         <motion.span data-testid="token-saved-chars-compact">{displayChars}</motion.span>

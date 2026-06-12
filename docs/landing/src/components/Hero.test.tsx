@@ -1,6 +1,13 @@
 import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import { Hero } from './Hero';
 import '../i18n/config'; // Setup i18n for tests
+
+// Mock FluidHeroBackground to avoid WebGL errors in test environment
+vi.mock('./FluidHeroBackground', () => ({
+  FluidHeroBackground: () => <div data-testid="mock-fluid-hero-background" />
+}));
+
 
 describe('Hero Component', () => {
   it('renders the hero title and subtitle', () => {
@@ -12,6 +19,11 @@ describe('Hero Component', () => {
     // Subtitle should contain key phrases
     const subtitleText = screen.getByText(/The autonomous operating system for AI agents/i);
     expect(subtitleText).toBeInTheDocument();
+  });
+
+  it('renders the fluid background component', () => {
+    render(<Hero />);
+    expect(screen.getByTestId('mock-fluid-hero-background')).toBeInTheDocument();
   });
 
   it('renders the aiome OGP hero logo (white-ogp)', () => {
@@ -36,3 +48,4 @@ describe('Hero Component', () => {
     expect(secondaryLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
 });
+

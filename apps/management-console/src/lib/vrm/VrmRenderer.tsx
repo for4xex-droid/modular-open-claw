@@ -9,6 +9,7 @@ import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MeshReflectorMaterial, Sparkles, Float } from '@react-three/drei';
 import CharacterBillboard from './CharacterBillboard';
+import FluidAura from './FluidAura';
 import { cssVar } from '../../utils/cssVar';
 
 interface VrmRendererProps {
@@ -71,6 +72,9 @@ const VrmRenderer: React.FC<VrmRendererProps> = ({ modelUrl, avatarState }) => {
                         <CharacterBillboard url={modelUrl} avatarState={avatarState} />
                     </Suspense>
                 </Float>
+
+                {/* Fluid Aura — organic warmth around the avatar */}
+                <FluidAura avatarState={avatarState} />
 
                 {/* === Reflector Floor === */}
                 <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.62, 0]}>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../../i18n';
 import { motion, useSpring, useTransform } from 'framer-motion';
 import { ShieldCheck } from 'lucide-react';
 import { authenticatedFetch } from '../../lib/auth';
@@ -12,6 +13,7 @@ export interface ProofPowerIndicatorProps {
 }
 
 export const ProofPowerIndicator: React.FC<ProofPowerIndicatorProps> = ({ variant = 'compact' }) => {
+  const { t } = useTranslation();
   const [proofPower, setProofPower] = useState<number>(0);
   
   useEffect(() => {
@@ -39,7 +41,7 @@ export const ProofPowerIndicator: React.FC<ProofPowerIndicatorProps> = ({ varian
       return (
         <div className="stat-badge" style={{ background: 'color-mix(in srgb, var(--accent-blue) 10%, transparent)', color: 'var(--accent-blue)' }}>
           <ShieldCheck size={12} />
-          <span>🛡️ 測定中...</span>
+          <span>🛡️ {t('proof.measuring')}</span>
         </div>
       );
     }
@@ -56,7 +58,7 @@ export const ProofPowerIndicator: React.FC<ProofPowerIndicatorProps> = ({ varian
         color: 'var(--text-muted)'
       }}>
         <div className="status-dot offline" />
-        <span>証明力測定中...</span>
+        <span>{t('proof.measuringFull')}</span>
       </div>
     );
   }
@@ -74,7 +76,7 @@ export const ProofPowerIndicator: React.FC<ProofPowerIndicatorProps> = ({ varian
         }}
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        title={`OxiLean 証明力: ${proofPower} OXP`}
+        data-tooltip={t('proof.powerTooltip', { power: proofPower })}
       >
         <ShieldCheck size={12} />
         <motion.span data-testid="proof-power-compact">{displayPower}</motion.span>

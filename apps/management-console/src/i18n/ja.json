@@ -5,7 +5,7 @@
       "control": "コントロール"
     },
     "biotope": "システム概要",
-    "homeV2": "新ホーム(Beta)",
+    "homeV2": "ホーム",
     "demo": "シナジーデモ",
     "chronicle": "アクティビティログ",
     "resonanceMap": "ナレッジグラフ",
@@ -26,7 +26,7 @@
   },
   "page": {
     "biotope": "システム概要",
-    "homeV2": "ホーム v2",
+    "homeV2": "ホーム",
     "demo": "自律デモ",
     "chronicle": "アクティビティログ",
     "resonanceMap": "ナレッジグラフ",
@@ -250,7 +250,8 @@
     "invalidJson": "無効なJSON形式またはネットワークエラー",
     "mcpArchitecture": "MCP アーキテクチャ (アナリティクス & ツール)",
     "mcpDesc": "外部のMCPサーバー (GA4, Stripe等) を定義します。$STRIPE_SECRET_KEY などの環境変数が安全に使用できます。保存するとMCPプロセスが動的に再起動します。",
-    "saveSyncTools": "保存してツールを同期"
+    "saveSyncTools": "保存してツールを同期",
+    "language": "言語"
   },
   "setup": {
     "welcome": "Aiomeへようこそ",
@@ -815,5 +816,73 @@
     "downloadButton": "データセットをダウンロード (JSONL)",
     "exporting": "エクスポート中...",
     "downloadFailed": "データセットのエクスポートに失敗しました"
+  },
+  "home": {
+    "mainTab": {
+      "home": "ホーム",
+      "shop": "ショップ",
+      "world": "ワールド",
+      "settings": "設定"
+    },
+    "tab": {
+      "store": "ストア",
+      "collection": "コレクション",
+      "p2p": "P2P対話",
+      "dashboard": "ダッシュボード",
+      "biome": "バイオーム",
+      "map": "マップ",
+      "trace": "トレース",
+      "chronicle": "クロニクル",
+      "demo": "デモ",
+      "general": "基本設定",
+      "security": "セキュリティ",
+      "skills": "スキル",
+      "training": "AI学習",
+      "expression": "表現",
+      "audit": "監査"
+    },
+    "tooltip": {
+      "home": "AIパートナーとの対話フィードとアクティビティログ",
+      "shop": "ボイスやアバターの購入・コレクション管理",
+      "world": "P2P対話・ナレッジグラフ・システム概要",
+      "settings": "AI設定・セキュリティ・スキル管理"
+    }
+  },
+  "ekyc": {
+    "verified": "本人確認（eKYC）が完了しています。マーケットプレイス機能が利用可能です",
+    "unverified": "本人確認（eKYC）が未完了です。一部の機能が制限されています",
+    "startVerification": "本人確認を開始する"
+  },
+  "character": {
+    "resonanceTooltip": "ユーザーとAIの対話の質を示すスコア。高いほど良好な対話関係を表します"
+  },
+  "soulStatus": {
+    "state_Awake": "AIは稼働中で、リクエストに応答できます",
+    "state_Resting": "AIは休息中です",
+    "attachment_Secure": "安全で信頼できる愛着スタイル",
+    "attachment_Anxious": "不安定な愛着スタイル — 積極的にケアが必要です",
+    "health_Healthy": "すべてのシステムが正常に動作しています",
+    "health_Stressed": "ストレスが検出されました — 負荷を軽減してください",
+    "curiosity_Curious": "知的好奇心の状態"
+  },
+  "forecast": {
+    "refresh": "予測を更新",
+    "title": "TimesFM 予測 (Experience Trend)",
+    "error": "予測データの取得に失敗しました。TimesFM Sidecarがオフラインの可能性があります。",
+    "loading": "予測モデルを計算中..."
+  },
+  "proof": {
+    "powerTooltip": "OxiLean 証明力: {{power}} OXP",
+    "measuring": "測定中...",
+    "measuringFull": "証明力測定中..."
+  },
+  "token": {
+    "savingsTooltip": "約 {{tokens}} トークン節約 (推定 ${{cost}})",
+    "waiting": "待機中...",
+    "waitingFull": "最適化待機中..."
+  },
+  "persona": {
+    "agencyTooltip": "エージェンシーモード: B2Bクライアント向けのAI自動化サービス管理画面",
+    "consumerTooltip": "コンシューマーモード: 個人利用向けのAIパートナー画面"
   }
 }

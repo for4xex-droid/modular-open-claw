@@ -66,18 +66,18 @@ describe('HomePage Component', () => {
             expect(screen.getByTestId('story-flow')).toBeTruthy();
         });
         
-        expect(screen.getByText('Home')).toBeTruthy();
-        expect(screen.getByText('Shop')).toBeTruthy();
+        expect(screen.getByText('home.mainTab.home')).toBeTruthy();
+        expect(screen.getByText('home.mainTab.shop')).toBeTruthy();
     });
 
     it('changes to Shop tab and renders shop content', async () => {
         render(<HomePage stats={mockStats} />);
         
-        fireEvent.click(screen.getByText('Shop'));
+        fireEvent.click(screen.getByText('home.mainTab.shop'));
         
         await waitFor(() => {
-            expect(screen.getByText('ストア')).toBeTruthy();
-            expect(screen.getByText('コレクション')).toBeTruthy();
+            expect(screen.getByText('home.tab.store')).toBeTruthy();
+            expect(screen.getByText('home.tab.collection')).toBeTruthy();
             expect(screen.getByTestId('voice-store')).toBeTruthy();
         });
     });
@@ -85,7 +85,7 @@ describe('HomePage Component', () => {
     it('changes to World tab and hides CharacterPanel', async () => {
         render(<HomePage stats={mockStats} />);
         
-        fireEvent.click(screen.getByText('World'));
+        fireEvent.click(screen.getByText('home.mainTab.world'));
         
         await waitFor(() => {
             expect(screen.queryByTestId('character-panel')).toBeNull();
@@ -96,13 +96,13 @@ describe('HomePage Component', () => {
     it('changes to Settings tab and renders settings content', async () => {
         render(<HomePage stats={mockStats} />);
         
-        fireEvent.click(screen.getByText('Settings'));
+        fireEvent.click(screen.getByText('home.mainTab.settings'));
         
         await waitFor(() => {
             expect(screen.queryByTestId('character-panel')).toBeNull();
             expect(screen.getByTestId('settings-page')).toBeTruthy();
-            expect(screen.getByText('基本設定')).toBeTruthy();
-            expect(screen.getByText('セキュリティ')).toBeTruthy();
+            expect(screen.getByText('home.tab.general')).toBeTruthy();
+            expect(screen.getByText('home.tab.security')).toBeTruthy();
         });
     });
 

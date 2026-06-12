@@ -67,7 +67,7 @@ const GraphView: React.FC = () => {
                             border: theme.nodes.karmaLocal.highlight.border,
                         }
                     },
-                    font: { color: theme.text, size: 12, face: 'Artemis Inter, Inter' },
+                    font: { color: theme.text, size: 12, face: 'Inter, system-ui' },
                     shape: 'dot',
                     size: 20 + (n.label.length / 5)
                 })));
@@ -209,7 +209,7 @@ const GraphView: React.FC = () => {
                         justifyContent: 'center',
                         transition: 'all 0.2s ease-in-out'
                     }}
-                    title={showArtifacts ? (t('graph.hideArtifacts') || "Hide Artifacts") : (t('graph.showArtifacts') || "Show Artifacts")}
+                    data-tooltip={showArtifacts ? (t('graph.hideArtifacts') || "Hide Artifacts") : (t('graph.showArtifacts') || "Show Artifacts")}
                 >
                     <Layers size={18} />
                 </button>

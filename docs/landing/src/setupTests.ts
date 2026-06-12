@@ -19,3 +19,10 @@ Object.defineProperty(globalThis, 'IntersectionObserver', {
   configurable: true,
   value: IntersectionObserverMock,
 });
+
+// Mock CSS custom properties for tests to avoid console warnings
+if (typeof document !== 'undefined') {
+  document.documentElement.style.setProperty('--color-fluid-warm-ivory', '#d4c5a9');
+  document.documentElement.style.setProperty('--color-fluid-deep-gold', '#b8965a');
+}
+

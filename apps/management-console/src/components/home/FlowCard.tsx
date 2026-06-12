@@ -132,14 +132,14 @@ const FlowCard: React.FC<FlowCardProps> = ({ type, title, content, timestamp, is
                     <button
                         onClick={() => onFeedback('positive')}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px' }}
-                        title="Helpful"
+                        data-tooltip="Helpful"
                     >
                         <ThumbsUp size={12} />
                     </button>
                     <button
                         onClick={() => onFeedback('negative')}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px' }}
-                        title="Not Helpful"
+                        data-tooltip="Not Helpful"
                     >
                         <ThumbsDown size={12} />
                     </button>

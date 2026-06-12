@@ -12,6 +12,11 @@ jest.mock('../../config', () => ({
     API_BASE: 'http://localhost:3015'
 }));
 
+// Mock translation
+jest.mock('../../i18n', () => ({
+  useTranslation: () => ({ t: (key: string) => key })
+}));
+
 // Mock the nested components
 jest.mock('../../lib/vrm/VrmRenderer', () => () => <div data-testid="vrm-renderer" />);
 jest.mock('../../lib/inx/InxRenderer', () => () => <div data-testid="inx-renderer" />);
@@ -70,7 +75,7 @@ describe('CharacterPanel', () => {
             expect(screen.getByTestId('ekyc-badge')).toHaveTextContent('false');
         });
 
-        expect(screen.getByText('本人確認を開始する')).toBeInTheDocument();
+        expect(screen.getByText('ekyc.startVerification')).toBeInTheDocument();
     });
 
     it('should NOT display verification button when ekycStatus is true (verified)', async () => {
@@ -90,13 +95,13 @@ describe('CharacterPanel', () => {
             expect(screen.getByTestId('ekyc-badge')).toHaveTextContent('true');
         });
 
-        expect(screen.queryByText('本人確認を開始する')).not.toBeInTheDocument();
+        expect(screen.queryByText('ekyc.startVerification')).not.toBeInTheDocument();
     });
 
     it('should create ekyc session and redirect when verification button is clicked', async () => {
         render(<CharacterPanel {...defaultProps} />);
 
-        const verifyBtn = await screen.findByText('本人確認を開始する');
+        const verifyBtn = await screen.findByText('ekyc.startVerification');
         fireEvent.click(verifyBtn);
 
         await waitFor(() => {

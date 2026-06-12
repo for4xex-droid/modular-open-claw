@@ -65,7 +65,7 @@ const CausalVisualizer: React.FC = () => {
                 title: `Step ${n.id}: ${n.step.action}`,
                 group: n.step.step_category.toLowerCase(),
                 color: getStepColor(n.step.step_category),
-                font: { color: cssVar('--text-primary'), size: 14, face: 'Artemis Inter, Inter' },
+                font: { color: cssVar('--text-primary'), size: 14, face: 'Inter, system-ui' },
                 shape: 'box',
                 margin: 10,
                 borderWidth: 2,

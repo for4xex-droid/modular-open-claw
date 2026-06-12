@@ -5,6 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 import React from 'react';
+import { useTranslation } from '../../i18n';
 import { AgentStats } from '../../types';
 import VrmRenderer from '../../lib/vrm/VrmRenderer';
 import InxRenderer from '../../lib/inx/InxRenderer';
@@ -29,6 +30,7 @@ interface CharacterPanelProps {
 }
 
 const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, isViewerOpen, modelUrl, avatarState, mode, sessionSavedChars }) => {
+    const { t } = useTranslation();
     const [ekycStatus, setEkycStatus] = React.useState<boolean | null>(null);
     const [soulState, setSoulState] = React.useState<string>('Awake');
     const [fetchedLevel, setFetchedLevel] = React.useState<number | null>(null);
@@ -122,7 +124,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
                         fontWeight: 900, 
                         letterSpacing: '0.04em',
                         textTransform: 'uppercase' as const,
-                        background: 'linear-gradient(135deg, var(--bg-secondary), var(--accent-cyan-70))',
+                        background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
                         WebkitBackgroundClip: 'text',
                         backgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
@@ -156,7 +158,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
                             cursor: 'pointer'
                         }}
                     >
-                        本人確認を開始する
+                        {t('ekyc.startVerification')}
                     </button>
                 )}
             </div>
@@ -164,7 +166,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
             <div style={{ flex: 1 }}></div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Resonance</span>
+                <span style={{ color: 'var(--text-secondary)', cursor: 'help' }} data-tooltip={t('character.resonanceTooltip')}>Resonance</span>
                 <span className="font-mono" style={{ color: 'white', fontWeight: 'bold' }}>{stats.resonance}</span>
             </div>
 

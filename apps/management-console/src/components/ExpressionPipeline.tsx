@@ -242,7 +242,7 @@ const ExpressionPipeline: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', gap: '0.15rem' }}>
                     {expr.karma_refs.map((ref, i) => (
-                      <div key={i} title={ref} style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'var(--accent-purple-20)', border: '1px solid var(--accent-purple)', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px' }}>
+                      <div key={i} data-tooltip={ref} style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'var(--accent-purple-20)', border: '1px solid var(--accent-purple)', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px' }}>
                         κ
                       </div>
                     ))}

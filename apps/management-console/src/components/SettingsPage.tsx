@@ -6,7 +6,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useAvatarCharacter } from '../hooks/AvatarContext';
-import { useTranslation } from '../i18n';
+import { useTranslation, useLanguage } from '../i18n';
 import { useDisplayMode } from '../hooks/useDisplayMode';
 import { useViewMode } from '../hooks/useViewMode';
 import { SettingEntry, ViewMode } from '../types';
@@ -28,6 +28,7 @@ const SettingsPage: React.FC = () => {
     const { mode, setMode } = useDisplayMode();
     const { viewMode, setViewMode } = useViewMode();
     const { t } = useTranslation();
+    const { lang, setLang } = useLanguage();
     const [settings, setSettings] = useState<SettingEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState<string | null>(null);
@@ -186,6 +187,18 @@ const SettingsPage: React.FC = () => {
                                         {m === 'vrm' ? '🌟 ' : m === 'lite' ? '⚡ ' : '🚫 '}{m}
                                     </button>
                                 ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={labelStyle}>{t('settings.language')}</label>
+                            <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--white-05)', padding: '4px', borderRadius: '10px' }}>
+                                <button onClick={() => setLang('en')} style={modeBtnStyle(lang === 'en')}>
+                                    🇺🇸 {t('language.en')}
+                                </button>
+                                <button onClick={() => setLang('ja')} style={modeBtnStyle(lang === 'ja')}>
+                                    🇯🇵 {t('language.ja')}
+                                </button>
                             </div>
                         </div>
 

@@ -162,7 +162,7 @@ export const SoTProgressBar: React.FC = () => {
                             background: 'var(--accent-amber-10)',
                             border: '1px solid var(--accent-amber-30)',
                             borderRadius: '4px'
-                        }} title={t('sot.abstentions')}>
+                        }} data-tooltip={t('sot.abstentions')}>
                             🤚 {currentSession.abstentionCount}
                         </span>
                     )}

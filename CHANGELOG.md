@@ -1,5 +1,36 @@
 ## [Unreleased]
 
+### Added
+- `en.json` および `ja.json` にメインタブ用の翻訳キー `home.mainTab` を追加
+- docs/landing (aiome.dev ランディングページ) の Hero セクションに three-fluid-fx ベース of WebGL 流体背景を追加
+- モバイルビューポートでの解像度自動低減、prefers-reduced-motion 環境での描画抑制と CSS グラデーションフォールバック表示を制御する useFluidConfig.ts フックの実装
+- LoginScreen に three-fluid-fx ベース of 流体背景エフェクトを追加
+- VRM アバターに FluidAura（有機的な暖色オーラ）を追加
+- 流体専用カラートークン（--fluid-warm-ivory, --fluid-deep-gold 等）
+- SettingsPage の Appearance セクションに言語切り替え（英語/日本語）トグル UI を追加
+- カスタムツールチップ用 CSS スタイル (`[data-tooltip]`) を `App.css` に定義し、表示遅延 150ms (`transition-delay: 0.15s`) を実装
+
+### Fixed
+- 管理コンソールの `HomePage` メインタブのラベル（Home, Shop, World, Settings）が英語に固定されていた問題を多言語化対応に修正（`home.mainTab.*` キーの適用）
+- カスタムツールチップ（`App.css`）に `:focus-visible` スタイルを追加し、キーボード操作によるフォーカス時の表示をサポート（アクセシビリティ向上）
+- ツールチップに下向きの三角矢印インジケータ（`::before` 疑似要素）を追加し、視覚的な関連性を強化
+- --bg-base トークンが tokens.css に未定義だったバグを修正
+- i18n 対応による `HomePage.test.tsx` のアサーションエラーを修正（モック `t()` が返す i18n キーを期待値とするように修正）
+- `CharacterPanel.test.tsx` および `SettingsPage.test.tsx` の多言語対応に伴うテスト仕様の整合性を確保
+
+### Changed
+- `HomePage.test.tsx` のタブレンダリングアサーションおよびインタラクションを、多言語化キーベースに修正
+- LoginScreen のボタングラデーションを暖色系に変更（cyan/purple → warm-ivory/deep-gold）
+- ambientParticles のカラーを流体トークンに統一
+- parseColorToRGB を BiomeRenderer から src/utils/colorUtils.ts に抽出
+- 管理コンソール内の全コンポーネントにおける `title` 属性をカスタムツールチップ `data-tooltip` に置換し、ハードコードされていた日本語テキストを `useTranslation` を用いて多言語対応（`t()` 関数）に移行
+- i18n 辞書ファイル (`ja.json` / `en.json`) に、ツールチップ用テキストおよび新規追加 UI のキー定義を同期
+- `HomePage` コンポーネント内のサブタブ定義をコンポーネント内に移動し、`useMemo` でラップして言語切り替え時の動的翻訳に対応
+- レガシーな Artemis フォント指定を完全に排除（`artemis-font.css` をバックアップ化し、`Inter`/`Outfit` へ置換）
+
+### Internal
+- ambientParticles を認証後のみ表示するよう移動（FluidBackground との2層重複防止）
+
 ### Fixed
 - **Local LLM First の追加 Reflexion 改善 (TDD)**:
   - **R-1 (P1) SemaphoreGuardedProvider テストの厳密化**: `libs/infrastructure/src/llm/semaphore_guard.rs` のテストにおいて `AtomicUsize` を使用し、最大同時実行数（`max_concurrent`）を厳密に追跡・アサートするよう検証を改善。

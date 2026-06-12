@@ -5,7 +5,7 @@
       "control": "Control"
     },
     "biotope": "System Overview",
-    "homeV2": "Home v2(Beta)",
+    "homeV2": "Home",
     "demo": "Synergy Demo",
     "chronicle": "Activity Log",
     "resonanceMap": "Knowledge Graph",
@@ -26,7 +26,7 @@
   },
   "page": {
     "biotope": "System Overview",
-    "homeV2": "Home v2",
+    "homeV2": "Home",
     "demo": "Autonomous Demo",
     "chronicle": "Activity Log",
     "resonanceMap": "Knowledge Graph",
@@ -250,7 +250,8 @@
     "invalidJson": "Invalid JSON or network error",
     "mcpArchitecture": "MCP Architecture (Analytics & Tools)",
     "mcpDesc": "Define external MCP servers (GA4, Stripe, etc). Safe to use environment variables like $STRIPE_SECRET_KEY. Saving will restart MCP processes dynamically.",
-    "saveSyncTools": "Save & Sync Tools"
+    "saveSyncTools": "Save & Sync Tools",
+    "language": "Language"
   },
   "setup": {
     "welcome": "Welcome to Aiome",
@@ -815,5 +816,73 @@
     "downloadButton": "Download Dataset (JSONL)",
     "exporting": "Exporting...",
     "downloadFailed": "Failed to export dataset"
+  },
+  "home": {
+    "mainTab": {
+      "home": "Home",
+      "shop": "Shop",
+      "world": "World",
+      "settings": "Settings"
+    },
+    "tab": {
+      "store": "Store",
+      "collection": "Collection",
+      "p2p": "P2P Dialogue",
+      "dashboard": "Dashboard",
+      "biome": "Biome",
+      "map": "Map",
+      "trace": "Trace",
+      "chronicle": "Chronicle",
+      "demo": "Demo",
+      "general": "General Settings",
+      "security": "Security",
+      "skills": "Skills",
+      "training": "AI Training",
+      "expression": "Expression",
+      "audit": "Audit"
+    },
+    "tooltip": {
+      "home": "Dialogue feed and activity logs with your AI partner",
+      "shop": "Purchase and manage voices, avatars, and collections",
+      "world": "P2P dialogue, knowledge graph, and system overview",
+      "settings": "AI configuration, security, and skills management"
+    }
+  },
+  "ekyc": {
+    "verified": "Identity verification (eKYC) completed. Marketplace features enabled.",
+    "unverified": "Identity verification (eKYC) incomplete. Some features are restricted.",
+    "startVerification": "Start Verification"
+  },
+  "character": {
+    "resonanceTooltip": "Resonance score indicates interaction quality between you and AI."
+  },
+  "soulStatus": {
+    "state_Awake": "AI is awake and ready to respond.",
+    "state_Resting": "AI is resting.",
+    "attachment_Secure": "Secure attachment style",
+    "attachment_Anxious": "Anxious attachment style — active care required",
+    "health_Healthy": "All systems operating normally.",
+    "health_Stressed": "Stress detected — reduce load",
+    "curiosity_Curious": "Intellectual curiosity state"
+  },
+  "forecast": {
+    "refresh": "Refresh Forecast",
+    "title": "TimesFM Forecast (Experience Trend)",
+    "error": "Failed to fetch forecast. TimesFM Sidecar might be offline.",
+    "loading": "Calculating forecast models..."
+  },
+  "proof": {
+    "powerTooltip": "OxiLean Proof Power: {{power}} OXP",
+    "measuring": "Measuring...",
+    "measuringFull": "Measuring Proof Power..."
+  },
+  "token": {
+    "savingsTooltip": "Saved ~{{tokens}} tokens (Est. ${{cost}})",
+    "waiting": "Waiting...",
+    "waitingFull": "Waiting for optimization..."
+  },
+  "persona": {
+    "agencyTooltip": "Agency Mode: B2B client automation services dashboard",
+    "consumerTooltip": "Consumer Mode: Personal companion interface"
   }
 }

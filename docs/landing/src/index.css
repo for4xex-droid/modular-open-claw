@@ -8,6 +8,12 @@
   --color-brand-purple: #bc8cff;     /* console: --accent-purple */
   --color-brand-rose: #ff4d94;       /* console: --accent-rose */
   
+  /* Fluid / Warm palette — synced from console DESIGN.md */
+  --color-fluid-warm-ivory: #d4c5a9;
+  --color-fluid-deep-gold: #b8965a;
+  --color-fluid-ember: #8b6d4a;
+  --color-fluid-soft-white: rgba(240, 235, 225, 0.6);
+
   /* Typography — same fonts as console */
   --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;

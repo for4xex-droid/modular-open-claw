@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, lazy, Suspense, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, ShoppingBag, Globe, Settings } from 'lucide-react';
 import { AgentStats, VitalityUIEvent } from '../../types';
@@ -97,38 +97,7 @@ const MiniTabBar: React.FC<{
     </div>
 );
 
-// === Sub-tab configs ===
-const shopSubTabs = [
-    { key: 'store', label: 'ストア' },
-    { key: 'collection', label: 'コレクション' },
-];
-
-const worldSubTabs = [
-    { key: 'p2p', label: 'P2P対話' },
-    { key: 'dashboard', label: 'ダッシュボード' },
-    { key: 'biome', label: 'バイオーム' },
-    { key: 'map', label: 'マップ' },
-    { key: 'trace', label: 'トレース' },
-    { key: 'chronicle', label: 'クロニクル' },
-    { key: 'demo', label: 'デモ' },
-];
-
-const settingsSubTabs = [
-    { key: 'general', label: '基本設定' },
-    { key: 'security', label: 'セキュリティ' },
-    { key: 'skills', label: 'スキル' },
-    { key: 'training', label: 'AI学習' },
-    { key: 'expression', label: '表現' },
-    { key: 'audit', label: '監査' },
-];
-
-// === Main tab config ===
-const mainTabConfig: { key: MainTab; icon: React.ReactNode; labelKey: string }[] = [
-    { key: 'home', icon: <Home size={15} />, labelKey: 'Home' },
-    { key: 'shop', icon: <ShoppingBag size={15} />, labelKey: 'Shop' },
-    { key: 'world', icon: <Globe size={15} />, labelKey: 'World' },
-    { key: 'settings', icon: <Settings size={15} />, labelKey: 'Settings' },
-];
+// Configs are moved into the component to support useTranslation
 
 // === Main Component ===
 const HomePage: React.FC<HomePageProps> = ({
@@ -140,6 +109,37 @@ const HomePage: React.FC<HomePageProps> = ({
     sessionSavedChars = 0,
 }) => {
     const { t } = useTranslation();
+
+    const shopSubTabs = useMemo(() => [
+        { key: 'store', label: t('home.tab.store') },
+        { key: 'collection', label: t('home.tab.collection') },
+    ], [t]);
+
+    const worldSubTabs = useMemo(() => [
+        { key: 'p2p', label: t('home.tab.p2p') },
+        { key: 'dashboard', label: t('home.tab.dashboard') },
+        { key: 'biome', label: t('home.tab.biome') },
+        { key: 'map', label: t('home.tab.map') },
+        { key: 'trace', label: t('home.tab.trace') },
+        { key: 'chronicle', label: t('home.tab.chronicle') },
+        { key: 'demo', label: t('home.tab.demo') },
+    ], [t]);
+
+    const settingsSubTabs = useMemo(() => [
+        { key: 'general', label: t('home.tab.general') },
+        { key: 'security', label: t('home.tab.security') },
+        { key: 'skills', label: t('home.tab.skills') },
+        { key: 'training', label: t('home.tab.training') },
+        { key: 'expression', label: t('home.tab.expression') },
+        { key: 'audit', label: t('home.tab.audit') },
+    ], [t]);
+
+    const mainTabConfig = useMemo(() => [
+        { key: 'home' as MainTab, icon: <Home size={15} />, labelKey: 'home.mainTab.home', tooltip: t('home.tooltip.home') },
+        { key: 'shop' as MainTab, icon: <ShoppingBag size={15} />, labelKey: 'home.mainTab.shop', tooltip: t('home.tooltip.shop') },
+        { key: 'world' as MainTab, icon: <Globe size={15} />, labelKey: 'home.mainTab.world', tooltip: t('home.tooltip.world') },
+        { key: 'settings' as MainTab, icon: <Settings size={15} />, labelKey: 'home.mainTab.settings', tooltip: t('home.tooltip.settings') },
+    ], [t]);
     const avatarState = useAvatarState() as AvatarStateLiteral;
     const { mode } = useDisplayMode();
     const { getAssetPath } = useAvatarCharacter();
@@ -249,6 +249,7 @@ const HomePage: React.FC<HomePageProps> = ({
                             <button
                                 key={tab.key}
                                 onClick={() => setActiveMainTab(tab.key)}
+                                data-tooltip={tab.tooltip}
                                 style={{
                                     flex: 1,
                                     display: 'flex',
@@ -268,7 +269,7 @@ const HomePage: React.FC<HomePageProps> = ({
                                 }}
                             >
                                 {tab.icon}
-                                {tab.labelKey}
+                                {t(tab.labelKey)}
                                 {isActive && (
                                     <motion.div
                                         layoutId="subtab-active"

@@ -1,4 +1,3 @@
-@import './styles/artemis-font.css';
 @import './styles/tokens.css';
 @import './styles/animations.css';
 
@@ -22,7 +21,7 @@ body {
 }
 
 /* =============================================
- * Artemis Typography Hierarchy — Global Rules
+ * Typography Hierarchy — Global Rules
  * Inter (body) / Outfit (display) / JetBrains Mono (code)
  *
  * Outfit はジオメトリックサンセリフ。San Francisco (system-ui)
@@ -59,7 +58,7 @@ h5 {
 }
 
 /* =============================================
- * Artemis Utility Classes
+ * Utility Classes
  * ============================================= */
 .artemis-heading {
   font-family: var(--font-display);
@@ -624,4 +623,52 @@ code, pre, kbd, samp, .font-mono {
   border-color: var(--accent-cyan);
   background: var(--accent-cyan-10);
   color: var(--accent-cyan);
+}
+
+/* Custom Tooltip Styling */
+[data-tooltip] {
+  position: relative;
+}
+[data-tooltip]::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px 5px 0;
+  border-style: solid;
+  border-color: var(--bg-secondary) transparent;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 9990;
+  transition: opacity 0.12s ease;
+}
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.4rem 0.7rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  border-radius: 6px;
+  border: 1px solid var(--border-glass);
+  white-space: pre-line;
+  max-width: 280px;
+  width: max-content;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 9990;
+  transition: opacity 0.12s ease;
+  box-shadow: 0 4px 12px var(--black-40);
+}
+[data-tooltip]:hover::before,
+[data-tooltip]:focus-visible::before,
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transition-delay: 0.15s;
 }

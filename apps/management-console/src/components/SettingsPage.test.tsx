@@ -23,9 +23,14 @@ jest.mock('../hooks/useDisplayMode', () => ({
 }));
 
 // Mock translation
+export const mockSetLang = jest.fn();
 jest.mock('../i18n', () => ({
   useTranslation: () => ({
     t: (key: string) => key
+  }),
+  useLanguage: () => ({
+    lang: 'ja',
+    setLang: mockSetLang
   })
 }));
 
@@ -549,5 +554,24 @@ describe('SettingsPage Integrations', () => {
     fireEvent.keyDown(secretInput, { key: 'Enter', code: 'Enter' });
 
     expect(await screen.findByText(/settings.connectionFailed/)).toBeInTheDocument();
+  });
+
+  it('renders Language Selector UI and triggers change', async () => {
+    mockViewMode = 'beginner'; // beginnerでも表示されることを検証
+    render(<SettingsPage />);
+    await screen.findByText('settings.appearance');
+
+    // 言語ラベルの存在確認
+    expect(screen.getByText('settings.language')).toBeInTheDocument();
+
+    // 🇺🇸 language.en ボタンと 🇯🇵 language.ja ボタンの存在確認
+    const enButton = screen.getByText('🇺🇸 language.en');
+    const jaButton = screen.getByText('🇯🇵 language.ja');
+    expect(enButton).toBeInTheDocument();
+    expect(jaButton).toBeInTheDocument();
+
+    // 🇺🇸 language.en をクリックしたら mockSetLang が呼ばれるか検証
+    fireEvent.click(enButton);
+    expect(mockSetLang).toHaveBeenCalledWith('en');
   });
 });

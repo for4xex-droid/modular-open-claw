@@ -78,6 +78,16 @@ Key dependencies include (but are not limited to):
 
 ---
 
+## npm Dependencies (Frontend)
+
+### three-fluid-fx
+- **URL**: https://github.com/artcodev/three-fluid-fx
+- **License**: MIT
+- **Usage**: Fluid simulation overlay effect for the LoginScreen and FluidAura effect for the VRM avatar.
+- **Copyright**: (c) 2026 Artem Korenevych
+
+---
+
 ## npm / Node.js Dependencies
 
 Frontend dependencies for the Management Console (Tauri + React) are managed by npm.
@@ -89,4 +99,4 @@ npx license-checker --summary
 
 ---
 
-*Last updated: 2026-03-25*
+*Last updated: 2026-06-12*

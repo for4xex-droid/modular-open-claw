@@ -16,6 +16,8 @@ jest.mock('../lib/auth', () => ({
   setAuthToken: jest.fn()
 }));
 
+jest.mock('./fluid/FluidBackground', () => () => <div data-testid="fluid-bg" />);
+
 global.fetch = jest.fn();
 
 describe('LoginScreen Component', () => {

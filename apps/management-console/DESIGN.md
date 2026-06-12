@@ -1,6 +1,15 @@
 ---
 colors:
   bg-primary: "#0b0b0f"
+  bg-base: "var(--bg-primary)"
+  fluid-warm-ivory: "#d4c5a9"
+  fluid-warm-ivory-rgb: "212, 197, 169"
+  fluid-deep-gold: "#b8965a"
+  fluid-deep-gold-rgb: "184, 150, 90"
+  fluid-soft-white: "rgba(240, 235, 225, 0.6)"
+  fluid-obsidian-glow: "rgba(212, 197, 169, 0.04)"
+  fluid-ember: "#8b6d4a"
+  fluid-ember-rgb: "139, 109, 74"
   bg-secondary: "#0f0f18"
   bg-tertiary: "#161625"
   bg-dark-sidebar: "rgba(11, 11, 15, 0.85)"

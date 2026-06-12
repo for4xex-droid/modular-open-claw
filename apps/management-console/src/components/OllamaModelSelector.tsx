@@ -89,7 +89,7 @@ export const OllamaModelSelector: React.FC<{ value: string, onSelect: (v: string
                         <option value={value} style={{ background: 'var(--bg-primary)' }}>{value} {t('settings.current')}</option>
                     )}
                 </select>
-                <button onClick={fetchModels} disabled={loading} title="Refresh Models" style={{ ...testBtnStyle, padding: '0.5rem 0.8rem' }}>
+                <button onClick={fetchModels} disabled={loading} data-tooltip="Refresh Models" style={{ ...testBtnStyle, padding: '0.5rem 0.8rem' }}>
                     {loading ? <Loader2 size={14} className="ani-spin" /> : t('settings.refresh')}
                 </button>
             </div>
