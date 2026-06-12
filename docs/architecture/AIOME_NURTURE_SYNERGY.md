@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-06-10
+> **最終更新**: 2026-06-13
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -1057,6 +1057,8 @@ gantt
 | **PWA (2D-6)** | モバイルから NURTURE マーケットプレイスへのアクセスが可能に → 移動中のアセット購入 |
 | **Minecraft MCP (6-4)** | ゲーム内の成果が Karma に反映 → NURTURE の ReputationScore に影響 |
 | **視覚認識 (7-6)** | 画面の内容を理解した上でのコンテキスト購入推薦 → NURTURE の購買体験が飛躍的に向上 |
+| **開発オンボーディング (docs/)** | Samsara 人格データフローや Nurture 連携（S2S EdDSA認証、OxiLean証明書保護、`/internal/deduct`決済プロトコル）の Mermaid シーケンス図を完全網羅し、オンボーディングを迅速化（詳細は [DEVELOPER_ONBOARDING.md](file:///Users/motista/Desktop/antigravity/aiome/docs/DEVELOPER_ONBOARDING.md) を参照） |
+| **開発者向けテンプレート (templates/)** | WASM Skill、Node.js 経済連携（`use_escrow`等）、Python MCP サーバーの 3 テンプレートを提供し、他エコシステム（Dify等）からの移行や NURTURE 経済連携の実装を支援 |
 
 ---
 

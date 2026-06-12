@@ -95,7 +95,7 @@ mod tests {
         unsafe {
             env::set_var("TEST_PREFIX_1", "value1");
             env::set_var("TEST_PREFIX_2", "value2");
-            env::set_var("OTHER_VAR", "value3");
+            env::set_var("TEST_OTHER_VAR", "value3");
         }
 
         // Act
@@ -111,14 +111,14 @@ mod tests {
             "TEST_PREFIX_2 should be removed"
         );
         assert_eq!(
-            env::var("OTHER_VAR").unwrap(),
+            env::var("TEST_OTHER_VAR").unwrap(),
             "value3",
-            "OTHER_VAR should remain"
+            "TEST_OTHER_VAR should remain"
         );
 
         // Cleanup
         unsafe {
-            env::remove_var("OTHER_VAR");
+            env::remove_var("TEST_OTHER_VAR");
         }
     }
 

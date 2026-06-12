@@ -198,6 +198,7 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 
 ## 📚 ドキュメント (Documentation)
 
+- **[開発者オンボーディング (Developer Onboarding)](docs/DEVELOPER_ONBOARDING.md)**: 開発環境の準備、物理構造、システム間データフローおよび Nurture S2S 連携。
 - **[AI憲法 (Architecture Law)](docs/architecture/ARCHITECTURE_LAW.md)**: 知的誠実性と安全性を担保する基本原則。
 - **[運用マニュアル (Operations Manual)](docs/guides/OPERATIONS_MANUAL.md)**: 詳細な環境構築と運用手順。
 - **[セキュリティ設計 (Security Design)](docs/architecture/SECURITY_DESIGN.md)**: 多層防御の詳細。

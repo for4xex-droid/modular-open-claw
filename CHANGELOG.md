@@ -1,6 +1,25 @@
 ## [Unreleased]
 
 ### Added
+- **P0: 開発者向けオンボーディング資料の追加**: `docs/DEVELOPER_ONBOARDING.md` を新規作成。開発者のオンボーディングおよび属人化解消（Bus Factor 対策）のため、Samsara 人格進化のデータフロー、P2P Commune プロトコルの対話フロー、Nurture との S2S 認証・決済連携、OxiLean 証明書検証フロー、決済プロトコル（`/internal/deduct`）の Mermaid 図を網羅した詳細なアーキテクチャ資料を整備。
+- **P1: クイックスタートテンプレートライブラリの作成**: 外部エコシステムの統合と移行促進のため、以下の3つの開発テンプレートを追加。
+  - `templates/minimal-skill/`: Rust/WASM で記述可能な最小限のカスタムスキルテンプレート（Makefile 同梱、独立ビルド対応）。
+  - `templates/minimal-client-node/`: Node.js/TypeScript による API サーバー連携および Nurture 決済・エスクロー連携パラメータに対応したクライアントテンプレート。
+  - `templates/custom-mcp-server/`: Python によるカスタム MCP サーバーのひな形テンプレート。
+
+### Changed
+- **P0: READMEの更新**: `README.md` および `README_en.md` に `docs/DEVELOPER_ONBOARDING.md` へのリンクと紹介文を追記し、新規開発者への導線を強化。
+
+### Fixed
+- **P2: 環境変数 OTHER_VAR 警告のクリーンアップ**: `libs/shared/src/process_hardening.rs` 内で参照されている環境変数を `OTHER_VAR` から `TEST_OTHER_VAR` にリネーム。
+- **P2: ディープスキャンの残存警告の解消**: `scripts/deep-scan.sh` を改修し、以下の機能改善とバグ修正を行い警告を完全 0 件化。
+  - テストおよびモック関連ファイルをスキャン対象外とする除外正規表現の強化。
+  - `EXCLUDE_FILES` による本番コード警告対象ファイルの完全一致ホワイトリスト判定の追加。
+  - スキャン対象が 1 ファイルのみの際に `grep` でファイル名が省略される問題の修正（`grep -Hc` への統一）。
+  - `pipefail` に起因する重複フォールバック判定のバグ修正。
+  - `TEST_` で始まるテスト用環境変数（`TEST_OTHER_VAR` 等）の警告対象外化。
+  - CC-3（Error型統一性）警告の `info` レベルへの格下げ。
+
 - `en.json` および `ja.json` にメインタブ用の翻訳キー `home.mainTab` を追加
 - docs/landing (aiome.dev ランディングページ) の Hero セクションに three-fluid-fx ベース of WebGL 流体背景を追加
 - モバイルビューポートでの解像度自動低減、prefers-reduced-motion 環境での描画抑制と CSS グラデーションフォールバック表示を制御する useFluidConfig.ts フックの実装

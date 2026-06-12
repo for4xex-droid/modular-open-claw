@@ -198,6 +198,7 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 
 ## 📚 Documentation
 
+- **[Developer Onboarding](docs/DEVELOPER_ONBOARDING.md)**: Guidelines for local environment setup, crate architecture, system data flows, and Nurture S2S integration.
 - **[Architecture Law](docs/architecture/ARCHITECTURE_LAW.md)**: Foundational principles guaranteeing intellectual honesty and safety.
 - **[Operations Manual](docs/guides/OPERATIONS_MANUAL.md)**: Detailed environment setup and operational procedures.
 - **[Security Design](docs/architecture/SECURITY_DESIGN.md)**: Deep dive into the defense-in-depth mechanisms.

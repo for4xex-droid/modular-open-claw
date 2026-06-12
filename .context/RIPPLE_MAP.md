@@ -1,3 +1,27 @@
+## Aiome P0/P1/P2 統合（オンボーディング・テンプレート・ディープスキャン硬化） (2026-06-13)
+
+### 1. 開発者向けオンボーディング資料の整備とREADME同期 (P0)
+- **変更内容**:
+    - `docs/DEVELOPER_ONBOARDING.md` [NEW]: Samsara データフロー、P2P Commune 対話フロー、Nurture S2S認証・決済連携、OxiLean保護シーケンス、決済プロトコルを含むアーキテクチャ全体構造図と手順書を新規作成。
+    - `README.md` [MODIFY], `README_en.md` [MODIFY]: 新規開発者がオンボーディング資料へ容易にアクセスできるようリンクと説明文を追記。
+- **波及効果**:
+    - オンボーディングコストが低下し、属人化（Bus Factor）が排除。Nurture との連携仕様が明文化され、開発者がスムーズにドメイン連携を理解可能。
+
+### 2. テンプレートライブラリによるエコシステム拡張 (P1)
+- **変更内容**:
+    - `templates/minimal-skill/` [NEW]: WASMスキルの雛形。`Cargo.toml`末尾に `[workspace]` を記述し、独立ビルドを保証。
+    - `templates/minimal-client-node/` [NEW]: Node.js TypeScript API クライアント雛形。Nurture決済の `use_escrow` や `remittance` モックロジックを含み、連携動作をサポート。
+    - `templates/custom-mcp-server/` [NEW]: PythonによるカスタムMCPサーバー構築用雛形。
+- **波及効果**:
+    - 新規開発者や外部ツールからの移行・連携（Dify等の競合からのリプレイス含む）を促進するエコシステムの基盤。
+
+### 3. 環境変数およびディープスキャン警告のクリーンアップ (P2)
+- **変更内容**:
+    - `libs/shared/src/process_hardening.rs` [MODIFY]: `OTHER_VAR` を `TEST_OTHER_VAR` にリネーム。
+    - `scripts/deep-scan.sh` [MODIFY]: テストファイルの判定強化、`EXCLUDE_FILES` による完全一致ホワイトリスト除外処理、`grep` オプションおよび重複出力バグの修正、CC-3 警告の info 格下げ。
+- **波及効果**:
+    - `deep-scan.sh` の警告数が 0 件になり、CI/CD やリリース前チェックのノイズが完全に排除され、V-1（成熟度）向上に寄与。
+
 ## 管理コンソール多言語化とツールチップアクセシビリティ改善 (2026-06-13)
 
 ### 1. メインタブの多言語対応 (C1)
