@@ -51,22 +51,35 @@ colors:
   black-90: "rgba(0, 0, 0, 0.9)"
   black-100: "#000000"
   white-100: "#ffffff"
-  accent-cyan: "#00f2ff"
-  accent-cyan-rgb: "0, 242, 255"
-  accent-cyan-70: "rgba(0, 242, 255, 0.7)"
-  accent-cyan-50: "rgba(0, 242, 255, 0.5)"
-  accent-cyan-30: "rgba(0, 242, 255, 0.3)"
-  accent-cyan-20: "rgba(0, 242, 255, 0.2)"
-  accent-cyan-15: "rgba(0, 242, 255, 0.15)"
-  accent-cyan-10: "rgba(0, 242, 255, 0.1)"
-  accent-cyan-05: "rgba(0, 242, 255, 0.05)"
-  accent-purple: "#bc8cff"
-  accent-purple-rgb: "188, 140, 255"
-  accent-purple-50: "rgba(188, 140, 255, 0.5)"
-  accent-purple-30: "rgba(188, 140, 255, 0.3)"
-  accent-purple-20: "rgba(188, 140, 255, 0.2)"
-  accent-purple-10: "rgba(188, 140, 255, 0.1)"
-  accent-purple-05: "rgba(188, 140, 255, 0.05)"
+  accent-cyan: "#38bdf8"
+  accent-cyan-rgb: "56, 189, 248"
+  accent-cyan-70: "rgba(56, 189, 248, 0.7)"
+  accent-cyan-50: "rgba(56, 189, 248, 0.5)"
+  accent-cyan-30: "rgba(56, 189, 248, 0.3)"
+  accent-cyan-20: "rgba(56, 189, 248, 0.2)"
+  accent-cyan-15: "rgba(56, 189, 248, 0.15)"
+  accent-cyan-10: "rgba(56, 189, 248, 0.1)"
+  accent-cyan-05: "rgba(56, 189, 248, 0.05)"
+  accent-primary: "var(--fluid-deep-gold)"
+  accent-primary-rgb: "var(--fluid-deep-gold-rgb)"
+  accent-primary-70: "rgba(var(--fluid-deep-gold-rgb), 0.7)"
+  accent-primary-50: "rgba(var(--fluid-deep-gold-rgb), 0.5)"
+  accent-primary-30: "rgba(var(--fluid-deep-gold-rgb), 0.3)"
+  accent-primary-20: "rgba(var(--fluid-deep-gold-rgb), 0.2)"
+  accent-primary-15: "rgba(var(--fluid-deep-gold-rgb), 0.15)"
+  accent-primary-12: "rgba(var(--fluid-deep-gold-rgb), 0.12)"
+  accent-primary-10: "rgba(var(--fluid-deep-gold-rgb), 0.1)"
+  accent-primary-05: "rgba(var(--fluid-deep-gold-rgb), 0.05)"
+  accent-primary-glass: "rgba(var(--fluid-deep-gold-rgb), 0.06)"
+  glow-primary: "0 0 20px rgba(var(--fluid-deep-gold-rgb), 0.25)"
+  gradient-heading: "linear-gradient(135deg, var(--fluid-deep-gold), var(--fluid-warm-ivory))"
+  accent-purple: "#a78bfa"
+  accent-purple-rgb: "167, 139, 250"
+  accent-purple-50: "rgba(167, 139, 250, 0.5)"
+  accent-purple-30: "rgba(167, 139, 250, 0.3)"
+  accent-purple-20: "rgba(167, 139, 250, 0.2)"
+  accent-purple-10: "rgba(167, 139, 250, 0.1)"
+  accent-purple-05: "rgba(167, 139, 250, 0.05)"
   accent-rose: "#ff4d94"
   accent-rose-rgb: "255, 77, 148"
   accent-rose-50: "rgba(255, 77, 148, 0.5)"
@@ -74,6 +87,7 @@ colors:
   accent-rose-20: "rgba(255, 77, 148, 0.2)"
   accent-rose-10: "rgba(255, 77, 148, 0.1)"
   accent-rose-05: "rgba(255, 77, 148, 0.05)"
+  accent-emerald-05: "rgba(16, 185, 129, 0.05)"
   accent-emerald-10: "rgba(16, 185, 129, 0.1)"
   accent-emerald-20: "rgba(16, 185, 129, 0.2)"
   accent-amber-05: "rgba(245, 158, 11, 0.05)"
@@ -112,6 +126,7 @@ spacing:
   space-md: "1.5rem"
   space-lg: "2rem"
   space-xl: "3rem"
+  space-2xl: "4rem"
   layout-sidebar-width: "280px"
   layout-main-padding: "var(--space-xl)"
   layout-panel-gap: "var(--space-md)"
@@ -175,16 +190,18 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 - **Inverse Background** — `var(--bg-inverse)` (#fff): Pure white for contrast elements.
 
 ### Brand Accents
-- **Cyan** — `var(--accent-cyan)` (#00f2ff): Primary interactive accent. CTAs, active navigation, status indicators. The signature Aiome color.
-- **Cyan Glass** — `var(--accent-cyan-glass)` (rgba(0, 242, 255, 0.08)): Subtle tint for active nav backgrounds and hover states.
-- **Purple** — `var(--accent-purple)` (#bc8cff): Secondary accent. Used in gradients and complementary highlights.
-- **Purple Glass** — `var(--accent-purple-glass)` (rgba(188, 140, 255, 0.08)): Subtle purple tint for secondary emphasis areas.
-- **Rose** — `var(--accent-rose)` (#ff4d94): Danger/error/disconnected states. Hot pink for urgency.
-- **Emerald** — `var(--accent-emerald)` (#10b981): Success/connected states. Green for health.
-- **Amber** — `var(--accent-amber)` (#f59e0b): Warning/paused states. Warm caution.
-- **Fuchsia** — `var(--accent-fuchsia)` (#d946ef): Tertiary accent for special highlights.
-- **Blue** — `var(--accent-blue)` (#3b82f6): Info/context state. Blue for helpful information.
-- **Orange** — `var(--accent-orange)` (#f97316): Paired interactive accent or tertiary glow.
+- **Primary Accent (Warm Gold)** — `var(--accent-primary)` (#b8965a): Primary interactive accent for premium warm theme. CTAs, active navigation, status indicators.
+- **Primary Accent Glass** — `var(--accent-primary-glass)` (rgba(184, 150, 90, 0.06)): Subtle warm gold tint for active nav backgrounds and hover states.
+- **Cyan** — `var(--accent-cyan)` (#38bdf8): Secondary interactive accent (legacy primary sky blue).
+- **Cyan Glass** — `var(--accent-cyan-glass)` (rgba(56, 189, 248, 0.06)): Subtle tint for active nav backgrounds and hover states.
+- **Purple** — `var(--accent-purple)` (#a78bfa): Secondary accent. Used in gradients and complementary highlights.
+- **Purple Glass** — `var(--accent-purple-glass)` (rgba(167, 139, 250, 0.06)): Subtle purple tint for secondary emphasis areas.
+- **Rose** — `var(--accent-rose)` (#f472b6): Danger/error/disconnected states. Hot pink for urgency.
+- **Emerald** — `var(--accent-emerald)` (#34d399): Success/connected states. Green for health.
+- **Amber** — `var(--accent-amber)` (#fbbf24): Warning/paused states. Warm caution.
+- **Fuchsia** — `var(--accent-fuchsia)` (#c084fc): Tertiary accent for special highlights.
+- **Blue** — `var(--accent-blue)` (#60a5fa): Info/context state. Blue for helpful information.
+- **Orange** — `var(--accent-orange)` (#fb923c): Paired interactive accent or tertiary glow.
 
 ### Chart Colors
 - **Chart 1** — `var(--chart-1)` (rgb(0, 242, 255)): Primary chart color, maps to Cyan.
@@ -374,6 +391,7 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 | `var(--space-md)` | 1.5rem (24px) | Section padding, card internal spacing |
 | `var(--space-lg)` | 2rem (32px) | Major section separation, card padding |
 | `var(--space-xl)` | 3rem (48px) | Page-level outer padding, sidebar vertical gap |
+| `var(--space-2xl)` | 4rem (64px) | Outer container padding, onboarding page wrapper |
 
 ### Grid System
 - **Stats Grid**: `grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))` — Responsive metric cards

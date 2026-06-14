@@ -44,6 +44,10 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
             || prompt.contains("JSON format")
             || prompt.contains("Oracle Judge");
 
+        let is_constitutional = sys
+            .map(|s| s.contains("Constitutional") || s.contains("Referee"))
+            .unwrap_or(false);
+
         let content = if prompt.contains("Cortex Wiki articles context") {
             "```json\n{\"answer_md\": \"This is a mock answer based on context.\", \"confidence\": 0.95}\n```".to_string()
         } else if is_json_req {
@@ -55,6 +59,8 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
             } else {
                 r#"{"passed": true, "score": 1.0, "detail": "Perfect"}"#.to_string()
             }
+        } else if is_constitutional {
+            "PASS".to_string()
         } else {
             "Dummy Output".to_string()
         };
@@ -447,6 +453,12 @@ impl aiome_contracts::proof::FormalProofGate for MockFormalProofGate {
 }
 
 pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
+    create_test_server_with_limit(5).await
+}
+
+pub async fn create_test_server_with_limit(
+    limit: u32,
+) -> (TestServer, AppState, tempfile::TempDir) {
     let tmp_dir = tempfile::TempDir::new().expect("tmp dir creation failed");
     let db_path = tmp_dir.path().join("test.db");
 
@@ -558,8 +570,8 @@ pub async fn create_test_server() -> (TestServer, AppState, tempfile::TempDir) {
 
     let commerce_engine = Arc::new(MockCommerceEngine);
 
-    let rate_limiter =
-        infrastructure::rate_limiter::AgentRateLimiter::new(5).expect("Constant 5 is valid");
+    let rate_limiter = infrastructure::rate_limiter::AgentRateLimiter::new(limit)
+        .expect("Rate limit value is valid");
 
     let soul_adapter = infrastructure::soul_adapter::CoreDomainAdapter::new(
         job_queue.clone(),

@@ -47,6 +47,7 @@ pub mod treasure;
 pub mod voice;
 pub mod watchtower;
 pub mod whisper;
+pub mod workflow;
 
 #[cfg(test)]
 pub mod polar_webhook_tests;

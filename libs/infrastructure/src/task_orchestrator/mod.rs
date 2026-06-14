@@ -10,6 +10,7 @@ pub mod geo_audit;
 pub mod llm_conductor;
 pub mod planner;
 pub mod seo_content;
+pub mod workflow_conductor;
 
 pub mod dispatch_loop;
 pub mod dispatcher;

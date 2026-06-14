@@ -43,4 +43,11 @@ describe('CausalVisualizer', () => {
     fireEvent.change(input, { target: { value: 'job-123' } });
     expect(input.value).toBe('job-123');
   });
+
+  it('places controls overlay inside the relative-positioned graph area to prevent title overlap', () => {
+    render(<CausalVisualizer />);
+    const graphArea = screen.getByTestId('causal-graph-area');
+    const controlsOverlay = screen.getByTestId('causal-controls-overlay');
+    expect(graphArea).toContainElement(controlsOverlay);
+  });
 });

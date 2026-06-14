@@ -80,22 +80,22 @@ export const AiaaOnboardingWizard = () => {
   };
 
   return (
-    <div className="wizard-container" style={{ padding: 'var(--space-2xl)', maxWidth: '800px', margin: '0 auto' }}>
-      <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
-        <Briefcase color="var(--accent-cyan)" />
+    <div className="wizard-container" style={{ padding: 'var(--space-2xl)', maxWidth: '50rem', margin: '0 auto' }}>
+      <h1 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginBottom: 'var(--space-lg)' }}>
+        <Briefcase color="var(--accent-primary)" />
         {t('aiaa.title') || 'B2B Client Onboarding'}
       </h1>
 
-      <div className="wizard-steps" style={{ display: 'flex', gap: '1rem', marginBottom: '3rem' }}>
+      <div className="wizard-steps" style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-xl)' }}>
         {[1, 2, 3].map(i => (
           <div
             key={i}
             style={{
               flex: 1,
-              height: '4px',
-              backgroundColor: step >= i ? 'var(--accent-cyan)' : 'var(--bg-tertiary)',
-              borderRadius: '2px',
-              transition: 'all 0.3s'
+              height: 'var(--size-bar-sm)',
+              backgroundColor: step >= i ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+              borderRadius: 'var(--radius-sm)',
+              transition: 'all var(--speed-base)'
             }}
           />
         ))}
@@ -111,11 +111,11 @@ export const AiaaOnboardingWizard = () => {
             className="form-group"
           >
             <h2>{t('aiaa.step1') || '1. Discovery Session'}</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)' }}>
               {t('aiaa.step1Desc') || "Define the client's business and the automations they need."}
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
               <input
                 type="text"
                 placeholder={t('aiaa.clientName') || 'Client / Company Name'}
@@ -132,7 +132,7 @@ export const AiaaOnboardingWizard = () => {
               />
 
               <h4>{t('aiaa.targetTasks') || 'Target Automations'}</h4>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
                 {([
                   { key: 'inboxTriage', fallback: 'Inbox Triage' },
                   { key: 'crmSync', fallback: 'CRM Sync' },
@@ -146,8 +146,8 @@ export const AiaaOnboardingWizard = () => {
                     onClick={() => toggleTask(task.key)}
                     className={`chip ${data.targetTasks.includes(task.key) ? 'active' : ''}`}
                     style={{
-                      border: data.targetTasks.includes(task.key) ? '1px solid var(--accent-cyan)' : '1px solid var(--border)',
-                      background: data.targetTasks.includes(task.key) ? 'var(--accent-cyan-glass)' : 'var(--bg-secondary)'
+                      border: data.targetTasks.includes(task.key) ? '1px solid var(--accent-primary)' : '1px solid var(--border-glass)',
+                      background: data.targetTasks.includes(task.key) ? 'var(--accent-primary-glass)' : 'var(--bg-secondary)'
                     }}
                   >
                     {label}
@@ -160,7 +160,7 @@ export const AiaaOnboardingWizard = () => {
                 className="aiome-btn-primary"
                 onClick={() => setStep(2)}
                 disabled={!data.clientName}
-                style={{ marginTop: '2rem', alignSelf: 'flex-end' }}
+                style={{ marginTop: 'var(--space-lg)', alignSelf: 'flex-end' }}
               >
                 {t('aiaa.nextStep') || 'Next Step'} <ChevronRight size={16} />
               </button>
@@ -177,11 +177,11 @@ export const AiaaOnboardingWizard = () => {
             className="form-group"
           >
             <h2>{t('aiaa.step2') || '2. Economics & ROI'}</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)' }}>
               {t('aiaa.step2Desc') || 'Set up the B2B pricing model based on the estimated value provided.'}
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
               <div>
                 <label>{t('aiaa.hoursSaved') || 'Estimated Hours Saved (per week)'}</label>
                 <input
@@ -211,14 +211,14 @@ export const AiaaOnboardingWizard = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-lg)' }}>
               <button className="aiome-btn-secondary" onClick={() => setStep(1)} disabled={isLoading}>
                 {t('common.back') || 'Back'}
               </button>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                 {error && (
-                  <span style={{ color: 'var(--accent-red)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
+                  <span style={{ color: 'var(--accent-rose)', display: 'flex', alignItems: 'center', gap: 'var(--space-2xs)', fontSize: 'var(--font-size-sm)' }}>
                     <AlertCircle size={14} /> {error}
                   </span>
                 )}
@@ -242,24 +242,24 @@ export const AiaaOnboardingWizard = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="form-group"
-            style={{ textAlign: 'center', padding: '3rem 0' }}
+            style={{ textAlign: 'center', padding: 'var(--space-xl) 0' }}
           >
-            <CheckCircle color="var(--accent-green)" size={64} style={{ margin: '0 auto 1rem' }} />
+            <CheckCircle color="var(--accent-emerald)" size={64} style={{ margin: '0 auto var(--space-sm)' }} />
             <h2>{t('aiaa.step3') || 'Blueprint Ready!'}</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-lg)' }}>
               {(t('aiaa.step3Desc') || 'The Automation Blueprint has been created and securely stored. Send this link to {{client}} to begin their subscription.').replace('{{client}}', data.clientName)}
             </p>
 
             <div
               style={{
                 background: 'var(--bg-secondary)',
-                padding: '1rem',
-                borderRadius: '8px',
+                padding: 'var(--space-sm)',
+                borderRadius: 'var(--radius-sm)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '1rem',
-                marginBottom: '2rem',
-                border: '1px solid var(--border)'
+                gap: 'var(--space-sm)',
+                marginBottom: 'var(--space-lg)',
+                border: '1px solid var(--border-glass)'
               }}
             >
               <LinkIcon size={20} color="var(--text-secondary)" />

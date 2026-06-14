@@ -1,3 +1,96 @@
+## サイドバー日本語表記 & UI ユーザビリティ改善 (Phase 10) (2026-06-14)
+
+### 1. サイドバー翻訳キー追加と日本語ラベルのユーザビリティ改善
+- **変更内容**:
+    - `apps/management-console/src/i18n/ja.json` [MODIFY], `en.json` [MODIFY]: 生キーが表示されていたサイドバー項目（`communeLab`, `nurtureEconomy`, `statusPage`, `banDashboard`, `buzzApproval`, `agencyOnboarding`）の翻訳テキスト、およびページヘッダーやセッション・ペルソナ用の多言語定義を追加。既存の分かりにくい日本語表現（「シナジーデモ」→「自律AIデモ」、「因果トレース」→「原因分析」など）を直感的にわかりやすい言葉へ大幅に改善。
+- **波及効果**:
+    - ユーザーが管理コンソールの各機能で「何ができるのか」をひと目で理解できるようになり、UIのユーザビリティが劇的に向上しました。
+
+### 2. Management Console (App.tsx) のハードコード排除とバグ修正
+- **変更内容**:
+    - `apps/management-console/src/App.tsx` [MODIFY]: 英語がハードコードされていた14箇所を `t()` 関数へ置き換え、サイドバーとページタイトルの完全な多言語対応を実現。また、WorkflowBuilder コンポーネントをレイアウトに新規統合。
+    - `App.tsx` [MODIFY] (Reflexion): i18n リファクタの過程で意図せず削除されていた `isAuth` ガード条件（未認証ユーザーに期限切れアラートが表示される問題）およびセッション期限切れアラートの `animate.y` アニメーション座標 / `top` スタイル座標を元の状態へ完全復元。
+    - `apps/management-console/src/App.test.tsx` [MODIFY]: i18n モックの動作に合わせてテストアサーション文字列を `'session.expired'` に修正し、セッション期限切れユニットテストを正常化。
+- **波及効果**:
+    - サイドバー・画面ヘッダー全体の多言語化が完成し、動的な日/英切り替えが正常に機能するようになりました。
+    - リファクタに伴う未認証時アラート誤表示バグやアニメーション位置のズレというリグレッションが、Reflexion によって完全に検知・修正され、システムの堅牢性が担保されました。
+
+## UI ウォームパレット刷新計画 v3 の実装 (Phase 9) (2026-06-14)
+
+### 1. セマンティックトークン新設とデザインシステムドキュメントの同期
+- **変更内容**:
+    - `apps/management-console/src/styles/tokens.css` [MODIFY]: セマンティックアクセントトークン `--accent-primary`（`var(--fluid-deep-gold)`）および関連バリアント、見出しグラデーション用の `--gradient-heading` を追加。また、インプットフォーカス用の `--accent-primary-12` や、未定義であったレイアウト用の `--space-2xl`、カラー用の `--accent-emerald-05` も新設 (Reflexion)。
+    - `apps/management-console/DESIGN.md` [MODIFY]: YAML フロントマター及び Brand Accents セクション、スペーシングスケール一覧に、新設トークン定義（`--accent-emerald-05` と `--space-2xl` を含む）を追加し、既存のアクセントカラー Hex 定義を `tokens.css` と同期。
+- **波及効果**:
+    - 全画面共通のアクセントカラーを一括定義するセマンティックトークンが整備され、LP に準拠したプレミアムダークウォームテーマの適用が容易になりました。
+
+### 2. グローバルスタイルおよびコンポーネントのウォームゴールド移行
+- **変更内容**:
+    - `apps/management-console/src/App.css` [MODIFY]: グローバルスタイルにおけるシアン・パープル配色を `--accent-primary` 関連トークンへ一括置換（30箇所）。また、`.main-panel` に `flex: 1` を追加してレイアウトを修正し、重複するスピナー用キーフレームをクリーンアップ。グラデーション部の `rgba()` 生値をトークン参照にリファクタリング、サイドバー内のシアン参照漏れをゴールドに修正 (Reflexion)。
+    - `apps/management-console/src/components/AiaaOnboardingWizard.tsx` [MODIFY]: チップ、インジケータ、ボタンの配色を `--accent-primary` 関連トークンに更新。未定義 CSS 変数参照（`--border`, `--accent-red`, `--accent-green`）を semantic トークン（`--border-glass`, `--accent-rose`, `--accent-emerald`）に修正し、生 px 値を rem/tokens に置換。さらに `gap` プロパティのハードコード値（`1rem` / `0.5rem`）を、スペーシングトークン `var(--space-sm)` / `var(--space-xs)` に置換 (Reflexion)。
+    - `apps/management-console/src/components/Timeline.tsx` [MODIFY]: 高さ潰れを修正し、ドット配色やバッジ、グラデーション線をゴールド/アイボリー（ローカル）及びパープル（フェデレーテッド）へ移行。
+    - `apps/management-console/src/components/SeoPulseView.tsx` [MODIFY]: 未動作の Tailwind CSS クラスを Vanilla CSS (Artemis DS インラインスタイル + CSS 変数) へ全面書き換え。重複していた `boxShadow` 定義を削除してビルドエラー (TS1117) を解消し、生 px 値を rem に流体化 (Reflexion)。
+    - `apps/management-console/src/components/fluid/FluidBackground.test.tsx` [MODIFY], `useFluidConfig.test.ts` [MODIFY]: WebGL 用のカラーアサーションに `cssVar` ブリッジを適用して HEX のハードコード警告を解消 (Reflexion)。
+- **波及効果**:
+    - 管理コンソール全体のトーン＆マナーが、プレミアムなゴールド/アイボリー/エンバーのウォームパレットに統一されました。
+    - `Timeline.tsx` および `SeoPulseView.tsx` の高さが正しく伸長し、表示崩れが解消されました。
+    - `test_ui_hex_violations.py` によるデザイン検証が 0 violations (完全グリーン) で通過し、テーマ安全性が担保されました。
+
+## 拡張ノード (Timer/Delay & WASM Code) の TDD 実装 (2026-06-14)
+
+### 1. 拡張ノードのデータモデル、バリデーション、トランスパイルの実装
+- **変更内容**:
+    - `libs/infrastructure/src/workflow/schema.rs` [MODIFY]: `NodeType::Timer` および `NodeType::WasmCode` 定義とコスト算出ロジックを追加。
+    - `libs/infrastructure/src/workflow/validator.rs` [MODIFY]: `ValidationError::InvalidTimerDelay` と `ValidationError::InvalidWasmCode` および安全制約検証（Timer上限24時間、Wasm空コード・言語判定）を追加。
+    - `libs/infrastructure/src/workflow/transpiler.rs` [MODIFY]: `wf_timer` / `wf_wasm` カテゴリの Job へのコンパイルとパラメータ JSON の埋め込みを追加。
+    - `libs/infrastructure/src/workflow/transpiler.rs` [MODIFY] (Reflexion): `ParallelWaitMode::N` モード時の `wait_mode_n` パラメータが `karma_directives` で保持されないバグを修正。
+- **波及効果**:
+    - ノーコード・ビジュアルビルダーの機能拡張ノード（時間待機、隔離コード実行）の定義から Job 展開までのバックエンド基盤が完全に整備されました。
+    - 並列合流の Barrier ジョブにおいて、合流基準数（N値）が正しく Job の指示として伝達されるようになりました。
+
+### 2. 実行エンジン Conductor の拡張とテスト追加
+- **変更内容**:
+    - `libs/infrastructure/src/task_orchestrator/workflow_conductor.rs` [MODIFY]: `capable_categories` に `wf_timer` / `wf_wasm` を追加し、`conduct` 内での `tokio::time::sleep` 待機処理および Wasm シミュレーション実行ロジックを実装。Timerパース失敗時の警告ログを追加。
+    - `libs/infrastructure/src/workflow/mod.rs` [MODIFY]: TDD サイクル用の6つの新設テストを追加し、さらに Reflexion サイクルにて Timer 境界値・WASM 孤立エラー・Parallel N モードの 3 テストを追加。
+- **波及効果**:
+    - ワークフロー実行エンジンが新規拡張ノードを自律的に引き受けて安全に処理・完了できるようになりました。エラー時の診断性と安定性も向上しました。
+
+## Aiome ノーコード・ビジュアルビルダー機能の実装 (2026-06-14)
+
+### 1. `fork_workflow` エンドポイントの実装と統合 (P1)
+- **変更内容**:
+    - `apps/api-server/src/routes/workflow.rs` [MODIFY]: `fork_workflow` ハンドラを実装。所有権および可視性の検証、元のワークフローの最新バージョンの定義を複製し、新しいワークフローIDのバージョン1として保存する処理を実装。
+    - `apps/api-server/src/api_integration_tests/workflow.rs` [MODIFY]: `test_workflow_fork_api` 結合テストを追加し、所有権による権限制限、別ユーザーによるフォークの403制限、フォーク成功時のID/名前/フォーク元ID検証などを網羅。
+- **波及効果**:
+    - ワークフローのテンプレートを他のユーザーがコピーしてカスタマイズ可能にするための「フォーク」基盤が整い、エコシステムの共有・成長の基礎が完成。
+
+### 2. `WorkflowStore` 永続化機能の拡張 (P1)
+- **変更内容**:
+    - `libs/infrastructure/src/workflow/store.rs` [MODIFY]: フォークされたワークフローであることを追跡できるように、`fork_source_id` フィールドもセットして新規挿入を行う `create_workflow_fork` メソッドを実装。
+    - `apps/api-server/src/routes/workflow.rs` [MODIFY]: `get_workflow` APIのレスポンスにて、最新バージョン定義を返す際にも `fork_source_id` や `creator_id` などのメタデータをマージしてクライアントへ返却するようにマッピング処理を改善。
+- **波及効果**:
+    - ワークフローのフォーク元関係がDB内で完全に整合性を持ち、APIを介して正しく親ワークフローへのトレースが可能になりました。
+
+### 3. `WorkflowConductor` のサービス自動登録 (P1)
+- **変更内容**:
+    - `apps/api-server/src/bootstrap/core_services.rs` [MODIFY]: `init_core_services` 内で `WorkflowConductor` インスタンスを作成し、`task_dispatcher.register_conductor` を用いてタスク自動実行の対象として登録。
+- **波及効果**:
+    - ワークフロー関連のJobカテゴリ（`wf_llm`, `wf_http`, `wf_mcp` 等）がエンキューされた際に、ディスパッチャを介して自律的に `WorkflowConductor` がそれらのノードジョブを引き受けて処理するよう実行環境が結合されました。
+
+### 4. `AssetType::Workflow` の拡張と4段階スコープの対応 (P1)
+- **変更内容**:
+    - `libs/infrastructure/src/registry.rs` [MODIFY]: `AssetType::Workflow` バリアントを追加し、対応する `AsRef` および DB のロード処理を更新。
+    - `registry.rs` [MODIFY]: `list_assets_by_type` 内で `owned/private`, `unlisted`, `community`, `marketplace` の4段階スコープのクエリロジックを実装。
+- **波及効果**:
+    - コミュニティ公開の無料ワークフロー（`price_coins = 0`）とマーケットプレイスの有料ワークフロー（`price_coins > 0`）、および非公開の `private`・リンク共有のみの `unlisted` を registry レベルで論理分離し、将来のマーケットプレイス課金連携の準備が整いました。
+
+### 5. 実行コスト計算エンジン `estimate_cost` の実装 (P1)
+- **変更内容**:
+    - `libs/infrastructure/src/workflow/schema.rs` [MODIFY]: 各ノードの種別（LLM Prompt, MCP Tool Call, HTTP Request, Loop）ごとの実行コスト計算ロジック `estimate_cost` および返却用 `CostEstimate` 構造体を実装。
+    - `libs/infrastructure/src/workflow/mod.rs` [MODIFY]: `test_estimate_cost` ユニットテストを追加し、ループ最大実行数を考慮した安全上限ベースのコスト計算結果を検証。
+- **波及効果**:
+    - ワークフローの実行前に必要な想定コストが計算可能になり、ユーザーのバジェット制限やエスクロー決済との連携の基礎設計が確立。
+
 ## Aiome P0/P1/P2 統合（オンボーディング・テンプレート・ディープスキャン硬化） (2026-06-13)
 
 ### 1. 開発者向けオンボーディング資料の整備とREADME同期 (P0)

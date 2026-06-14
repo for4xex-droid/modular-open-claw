@@ -1,7 +1,75 @@
 ## [Unreleased]
 
 ### Added
-- **P0: 開発者向けオンボーディング資料の追加**: `docs/DEVELOPER_ONBOARDING.md` を新規作成。開発者のオンボーディングおよび属人化解消（Bus Factor 対策）のため、Samsara 人格進化のデータフロー、P2P Commune プロトコルの対話フロー、Nurture との S2S 認証・決済連携、OxiLean 証明書検証フロー、決済プロトコル（`/internal/deduct`）の Mermaid 図を網羅した詳細なアーキテクチャ資料を整備。
+- **サイドバー日本語表記 & UI ユーザビリティ改善 (Phase 10)**:
+  - `ja.json` および `en.json` に、サイドバーの生キー表示解消のための翻訳キーを追加（`nav.communeLab`, `nav.nurtureEconomy`, `nav.statusPage`, `nav.banDashboard`, `nav.buzzApproval`, `nav.agencyOnboarding` / `page.*` / `persona.*` / `session.*`）。
+
+### Changed
+- **サイドバー日本語表記 & UI ユーザビリティ改善 (Phase 10)**:
+  - `App.tsx` 内の14箇所のハードコードされた英語文字列を、i18n の `t()` 呼び出しに置き換え、多言語（日/英）切り替えに対応。
+  - `ja.json` 内の分かりにくい既存の翻訳表記を、ユーザーが直感的に理解しやすい表現に改善（「シナジーデモ」→「自律AIデモ」、「因果トレース」→「原因分析」、「コントロール」→「管理 & ツール」など）。
+
+### Fixed
+- **サイドバー日本語表記 & UI ユーザビリティ改善 (Phase 10)**:
+  - `App.test.tsx` のセッション期限切れテストにおいて、モックされた i18n の挙動に合わせて期待するアサーション文字列を `'session.expired'` に修正し、テストスイート全体の整合性を確保。
+  - `App.tsx` において、i18n リファクタの過程で意図せず削除されていた `isAuth` ガード条件（未認証ユーザーに期限切れアラートが表示される問題）を復元 (Reflexion)。
+  - `App.tsx` のセッション期限切れアラートで、意図せず変更されていた `animate.y` 座標 (0 → 20) および `top` 座標 (1rem → 0) スタイル定義を元のコードと同じ値に復元 (Reflexion)。
+
+### Added
+- **UI ウォームパレット刷新計画 v3 (Phase 9)**:
+  - `tokens.css` にセマンティックアクセントトークン `--accent-primary`（`var(--fluid-deep-gold)`）および関連バリアント、見出しグラデーション用の `--gradient-heading` を追加。
+  - `DESIGN.md` の YAML フロントマター及び Brand Accents セクションに、新規セマンティックトークンを追加し、既存のアクセントカラー Hex 定義を `tokens.css` と同期。
+  - `tokens.css` にインプットフォーカス用の `--accent-primary-12` トークンを追加 (Reflexion)。
+  - `FluidBackground.test.tsx` および `useFluidConfig.test.ts` のアサーションで `cssVar()` ブリッジをインポートして適用し、U-002 検証スクリプトとの適合を保証 (Reflexion)。
+
+### Changed
+- **UI ウォームパレット刷新計画 v3 (Phase 9)**:
+  - `App.css` 内のグローバルスタイルからシアン・パープル配色を一括置換（30箇所）し、ゴールド/アイボリー/エンバーのプレミアムダークウォームパレットへ移行。また `.main-panel` に `flex: 1` を追加し、重複するスピナー用キーフレームを削除。
+  - `App.css` 内の `rgba()` 直書きを `--accent-primary-12/30` などのデザインシステムトークン参照に置換 (Reflexion)。
+  - `App.css` 内のサイドバースクロールバーにおける旧テーマ変数 `--accent-cyan-50` の参照漏れを `--accent-primary-50` に移行 (Reflexion)。
+  - `AiaaOnboardingWizard.tsx` にて `var(--accent-cyan)` 等を `--accent-primary` に変更し、UI をウォームパレット化。また、生 px 指定（`800px` など）を `50rem` などの流体単位や `var(--space-*)` トークンに置換 (Reflexion)。
+  - `Timeline.tsx` のルート `div` に `flex: 1` 等を追加して高さ潰れを修正。ドット配色やバッジ、グラデーション線をゴールド/アイボリー（ローカル）及びパープル（フェデレーテッド）へ美化。
+  - `SeoPulseView.tsx` の不要な Tailwind CSS クラスを Vanilla CSS (Artemis DS インラインスタイル + CSS 変数) へ全面書き換え。また、viseme 表示部の生 px 値を rem 単位へリファクタリング (Reflexion)。
+
+### Fixed
+- **UI ウォームパレット刷新計画 v3 (Phase 9) - Reflexion**:
+  - `SeoPulseView.tsx` の viseme 表示エリアにおける重複する `boxShadow` 定義を修正し、TypeScript コンパイルエラー (TS1117) を解消。
+  - `AiaaOnboardingWizard.tsx` 内の未定義 CSS 変数参照（`--border`, `--accent-red`, `--accent-green`）を、定義済みの `--border-glass`, `--accent-rose`, `--accent-emerald` へ置換・修正。
+  - WebGL 流体描画テストにおける HEX ハードコード検出のバグを、テストコードの `cssVar` 移行により解消し、U-002 検証スクリプト (`test_ui_hex_violations.py`) を完全 GREEN 化。
+  - `tokens.css` および `DESIGN.md` において、UI から参照されている未定義変数 `--space-2xl` と `--accent-emerald-05` を定義し、カラー・レイアウトの整合性エラーを修正。
+  - `AiaaOnboardingWizard.tsx` の `gap` に残存していたハードコード値（`1rem` / `0.5rem`）を、デザインシステム規約 (U-002) に準拠するため、スペーシングトークン `var(--space-sm)` / `var(--space-xs)` に置換。
+
+### Fixed
+- **CausalVisualizer の FIT MAP 重なりバグおよび高さ潰れバグの修正**:
+  - `CausalVisualizer.tsx` のズーム・フィットコントロール群 (Controls Overlay) が親コンテナの `position: relative` 欠落によりヘッダータイトルと重なって描画される問題を、コントロール群を `position: relative` が設定されたグラフ描画領域 (Graph Area) の内部へ移設することで解消。
+  - コントロール群が `causal-graph-area` 内に移動した際に、WebKit / Flexbox でコンポーネント全体の高さが 0 に潰れて見えなくなる問題を、`CausalVisualizer.tsx` 自体に `height: '100%'` を設定し、さらに `App.tsx` の親 `motion.div` に `style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}` を追加することで高さを正しく伸長・継承させ、真っ暗になるレイアウト潰れバグを解消。
+  - テストコード `CausalVisualizer.test.tsx` に、コントロールがグラフ描画領域の DOM 要素内に正しく包含されているかを検証するアサーションを追加。
+- **API_BASE 欠落バグの修正**:
+  - `useWorkflowApi.ts` および `DpoDatasetExport.tsx` 内の `authenticatedFetch` 呼び出しに `API_BASE` プレフィックスを結合するよう修正し、ブラウザ環境でリクエストが正しい API サーバーポート（`3015`）に送信されないバグを解消。
+  - テストコード `useWorkflowApi.test.ts`、`WorkflowBuilder.test.tsx`、`DpoDatasetExport.test.tsx` において `jest.mock('../config')` による `API_BASE` のモック設定を追加し、期待される宛先 URL のアサーションを更新・正常化。
+
+
+### Added
+- **Phase 6: フロントエンド・バックエンド結合 (R-1〜R-8) の実装と統合**:
+  - `apps/management-console/src/components/WorkflowBuilder.tsx` に対する多言語化対応。`useTranslation` を用いて、ノードパレットのタイトル・ノード名・ノード説明文、ツールバーの保存・検証・実行などのアクション、ステータス、想定コスト、および設定パネルの各種編集フィールドの完全多言語化（英語/日本語）を完了。
+  - `apps/management-console/src/i18n/en.json` および `ja.json` に `workflowBuilder` 翻訳オブジェクトを新設・同期。
+  - `npx jest src/components/WorkflowBuilder.test.tsx` の 8 つの統合テストをグリーン化。
+- **Phase 5: 拡張ノード（Timer/Delay および WASM Code）の実装と統合**:
+  - `libs/infrastructure/src/workflow/schema.rs` に `NodeType::Timer` および `NodeType::WasmCode` 定義と実行コスト算出の追加。
+  - `libs/infrastructure/src/workflow/validator.rs` に `ValidationError::InvalidTimerDelay` と `ValidationError::InvalidWasmCode` および安全制約検証（Timer上限24時間、Wasm空コード・言語判定）の追加。
+  - `libs/infrastructure/src/workflow/transpiler.rs` にて `wf_timer` / `wf_wasm` カテゴリ of Job へのコンパイル処理を追加。
+  - `libs/infrastructure/src/task_orchestrator/workflow_conductor.rs` に `wf_timer` (sleep処理) および `wf_wasm` (シミュレーション隔離実行) を処理する Conductor 実装を追加。
+  - `libs/infrastructure/src/workflow/mod.rs` に 6つの新設テストを追加し、TDD サイクルをパスすることを確認。
+  - **Reflexion 追記**: Timer の境界値（86400秒/86401秒）および WASM エラー種別（空コード / サポート外言語）の分離テストケースを追加。
+  - **Reflexion 追記**: `ParallelWaitMode::N` モードで指定した合流数 `n` がトランスパイル後の `karma_directives` で保持されることを検証するテストケースを追加。
+- **P1: `fork_workflow` エンドポイントの実装と統合**: `apps/api-server/src/routes/workflow.rs` に `fork_workflow` ハンドラを実装。所有権の検証、フォーク元の定義のコピー、バージョン1としての保存処理を追加。
+
+### Fixed
+- **Reflexion: Parallel Wait Mode N での `wait_mode_n` 欠落の修正**: `WorkflowTranspiler` にて `ParallelWaitMode::N(n)` をトランスパイルする際、合流数 `n` が `karma_directives` にシリアライズされないバグを修正。
+- **Reflexion: Timer 実行時のパース失敗ロギング改善**: `WorkflowConductor` にて `wf_timer` ジョブの `topic` デシリアライズに失敗した場合、単にデフォルト値 (1s) を割り当てるだけでなく、警告ログ（`tracing::warn`）を出力するように改善。
+
+### Added (previous)
+- **P0: 開発者向けオンボーディング資料 of 追加**: `docs/DEVELOPER_ONBOARDING.md` を新規作成。開発者のオンボーディングおよび属人化解消（Bus Factor 対策）のため、Samsara 人格進化のデータフロー、P2P Commune プロトコルの対話フロー、Nurture との S2S 認証・決済連携、OxiLean 証明書検証フロー、決済プロトコル（`/internal/deduct`）の Mermaid 図を網羅した詳細なアーキテクチャ資料を整備。
 - **P1: クイックスタートテンプレートライブラリの作成**: 外部エコシステムの統合と移行促進のため、以下の3つの開発テンプレートを追加。
   - `templates/minimal-skill/`: Rust/WASM で記述可能な最小限のカスタムスキルテンプレート（Makefile 同梱、独立ビルド対応）。
   - `templates/minimal-client-node/`: Node.js/TypeScript による API サーバー連携および Nurture 決済・エスクロー連携パラメータに対応したクライアントテンプレート。

@@ -453,6 +453,25 @@ pub fn build_app(
                         .rate_limit(5, std::time::Duration::from_secs(1)),
                 ),
         )
+        .nest(
+            "/api/v1/workflows",
+            Router::new()
+                .route(
+                    "/",
+                    get(routes::workflow::list_workflows).post(routes::workflow::create_workflow),
+                )
+                .route(
+                    "/:id",
+                    get(routes::workflow::get_workflow)
+                        .put(routes::workflow::update_workflow)
+                        .delete(routes::workflow::delete_workflow),
+                )
+                .route("/:id/execute", post(routes::workflow::execute_workflow))
+                .route("/:id/validate", post(routes::workflow::validate_workflow))
+                .route("/:id/fork", post(routes::workflow::fork_workflow))
+                .route("/:id/versions", get(routes::workflow::list_versions))
+                .route("/:id/executions", get(routes::workflow::list_executions)),
+        )
         .route(
             "/api/v1/settings",
             get(routes::settings::get_settings)

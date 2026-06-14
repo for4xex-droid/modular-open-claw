@@ -9,6 +9,10 @@ jest.mock('../lib/auth', () => ({
   authenticatedFetch: jest.fn(),
 }));
 
+jest.mock('../config', () => ({
+  API_BASE: 'http://localhost:3000'
+}));
+
 // Mock i18n: t() returns the key, which enables the fallback `||` operator in the component
 jest.mock('../i18n', () => ({
   useTranslation: () => ({
@@ -75,7 +79,7 @@ describe('DpoDatasetExport', () => {
     expect(button).toBeDisabled();
 
     await waitFor(() => {
-      expect(authenticatedFetch).toHaveBeenCalledWith('/api/v1/cortex/dpo/dataset');
+      expect(authenticatedFetch).toHaveBeenCalledWith('http://localhost:3000/api/v1/cortex/dpo/dataset');
       expect(mockCreateObjectURL).toHaveBeenCalledWith(mockBlob);
       expect(mockLink.download).toBe('dpo_dataset.jsonl');
       expect(mockClick).toHaveBeenCalled();

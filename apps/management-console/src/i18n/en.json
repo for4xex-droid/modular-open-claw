@@ -22,7 +22,14 @@
     "promptStats": "LLM Provider Stats",
     "seoPulse": "SEO Pulse",
     "mcpDashboard": "MCP Servers",
-    "settings": "Settings"
+    "workflowBuilder": "Workflow Builder",
+    "settings": "Settings",
+    "communeLab": "Multi-Agent",
+    "nurtureEconomy": "Economy",
+    "statusPage": "System Health",
+    "banDashboard": "Governance",
+    "buzzApproval": "Approvals",
+    "agencyOnboarding": "Agency Onboarding"
   },
   "page": {
     "biotope": "System Overview",
@@ -44,7 +51,13 @@
     "promptStats": "LLM Observability",
     "seoPulse": "SEO Pulse Dashboard",
     "mcpDashboard": "MCP Server Management",
-    "settings": "System Settings"
+    "workflowBuilder": "Workflow Builder",
+    "settings": "System Settings",
+    "nurtureEconomy": "Economy Dashboard",
+    "statusPage": "System Health",
+    "banDashboard": "Governance Dashboard",
+    "buzzApproval": "Approval Queue",
+    "agencyOnboarding": "Agency Onboarding"
   },
   "status": {
     "connected": "Connected",
@@ -883,6 +896,102 @@
   },
   "persona": {
     "agencyTooltip": "Agency Mode: B2B client automation services dashboard",
-    "consumerTooltip": "Consumer Mode: Personal companion interface"
+    "consumerTooltip": "Consumer Mode: Personal companion interface",
+    "agencyMode": "Agency Mode",
+    "consumerMode": "Consumer Mode"
+  },
+  "workflowBuilder": {
+    "palette": {
+      "title": "Node Palette",
+      "info": "Click to add to canvas",
+      "nodes": {
+        "Start": {
+          "label": "Start Node",
+          "desc": "Manual/Cron/Webhook trigger"
+        },
+        "LlmPrompt": {
+          "label": "LLM Prompt",
+          "desc": "Text generation & prompts"
+        },
+        "McpToolCall": {
+          "label": "MCP Tool Call",
+          "desc": "Execute registered MCP tool"
+        },
+        "HttpRequest": {
+          "label": "HTTP Request",
+          "desc": "Call external REST API"
+        },
+        "Transform": {
+          "label": "Transform",
+          "desc": "Transform & map JSON data"
+        },
+        "Condition": {
+          "label": "Condition",
+          "desc": "Conditional branch"
+        },
+        "Timer": {
+          "label": "Timer",
+          "desc": "Wait for specified duration"
+        },
+        "WasmCode": {
+          "label": "WasmCode",
+          "desc": "Execute sandboxed Wasm code"
+        },
+        "HumanApproval": {
+          "label": "Human Approval",
+          "desc": "Await human response"
+        },
+        "Loop": {
+          "label": "Loop",
+          "desc": "Loop through a list"
+        },
+        "Parallel": {
+          "label": "Parallel",
+          "desc": "Parallel execution & barrier"
+        },
+        "SubWorkflow": {
+          "label": "SubWorkflow",
+          "desc": "Call another workflow"
+        }
+      }
+    },
+    "toolbar": {
+      "validate": "Validate",
+      "save": "Save",
+      "execute": "Execute",
+      "estimatedCost": "Estimated Cost",
+      "nodesCount": "{{count}} nodes",
+      "processing": "Processing...",
+      "valid": "Workflow is valid! ✅",
+      "saved": "Workflow saved successfully! 💾",
+      "started": "Execution started: {{id}} 🚀",
+      "error": "Error"
+    },
+    "validationErrors": {
+      "title": "Validation Errors"
+    },
+    "status": {
+      "title": "Workflow Execution Status",
+      "label": "Status",
+      "progress": "Progress: {{percent}}%",
+      "completed": "Completed successfully!"
+    },
+    "config": {
+      "title": "Node Configuration",
+      "nodeId": "Node ID",
+      "label": "Label",
+      "llmModel": "LLM Model",
+      "temperature": "Temperature",
+      "delaySeconds": "Delay Seconds",
+      "language": "Language",
+      "wasmCode": "WASM Code",
+      "evaluationMode": "Evaluation Mode",
+      "expression": "Expression",
+      "close": "Close Panel"
+    }
+  },
+  "session": {
+    "expired": "Session expired. Please update your API secret.",
+    "goToSettings": "Go to Settings"
   }
 }

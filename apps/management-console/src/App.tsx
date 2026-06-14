@@ -61,6 +61,7 @@ const CausalVisualizer = React.lazy(() => import("./components/CausalVisualizer"
 const CortexView = React.lazy(() => import("./components/cortex/CortexView"));
 const NurtureDashboard = React.lazy(() => import("./components/commerce/NurtureDashboard"));
 const BuzzApproval = React.lazy(() => import("./components/BuzzApproval"));
+const WorkflowBuilder = React.lazy(() => import("./components/WorkflowBuilder"));
 import DioramaView from "./components/diorama/DioramaView";
 const TaskApprovalOverlay = React.lazy(() => import("./components/TaskApprovalOverlay"));
 import { SoTProgressBar } from "./components/SoTProgressBar";
@@ -274,7 +275,7 @@ function App() {
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         <div className="status-item persona-toggle" onClick={() => workspacePersona.setMode(workspacePersona.mode === 'agency' ? 'consumer' : 'agency')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: 'var(--black-40)', borderRadius: '6px' }} data-tooltip={workspacePersona.mode === 'agency' ? t('persona.agencyTooltip') : t('persona.consumerTooltip')}>
           <Briefcase size={14} color={workspacePersona.mode === 'agency' ? 'var(--accent-cyan)' : 'var(--text-secondary)'} />
-          <span>{workspacePersona.mode === 'agency' ? 'Agency Mode' : 'Consumer Mode'}</span>
+          <span>{workspacePersona.mode === 'agency' ? t('persona.agencyMode') : t('persona.consumerMode')}</span>
         </div>
         <button
           className={badgeClass}
@@ -300,7 +301,7 @@ function App() {
 
   const isVisible = (tab: string) => {
     const beginner = ['home-v2', 'agent', 'artifacts', 'settings'];
-    const intermediate = [...beginner, 'dashboard', 'demo', 'cortex', 'vault', 'store', 'nurture', 'mcp-dashboard', 'seo-pulse', 'status-page'];
+    const intermediate = [...beginner, 'dashboard', 'demo', 'cortex', 'vault', 'store', 'nurture', 'mcp-dashboard', 'seo-pulse', 'status-page', 'workflow-builder'];
     const advanced = [...intermediate, 'karma', 'graph', 'causal', 'commune', 'audit', 'prompt-stats', 'immune', 'lora', 'expressions', 'ban-dashboard'];
     
     if (viewMode === 'beginner') return beginner.includes(tab);
@@ -362,17 +363,25 @@ function App() {
             animate={{ opacity: 1, y: 20 }}
             exit={{ opacity: 0, y: -50 }}
             style={{
-              position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 10000,
-              background: 'var(--accent-rose-10)', border: '1px solid var(--accent-rose-30)',
-              borderRadius: 'var(--radius-md)', padding: '1rem',
-              display: 'flex', alignItems: 'center', gap: '1rem',
+              position: 'fixed',
+              top: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 10000,
+              background: 'var(--accent-rose-10)',
+              border: '1px solid var(--accent-rose-30)',
+              borderRadius: 'var(--radius-md)',
+              padding: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
               boxShadow: '0 10px 30px var(--black-50), 0 0 20px var(--accent-rose-10)',
               backdropFilter: 'blur(10px)'
             }}
           >
             <Shield size={20} color="var(--accent-rose)" />
             <span style={{ color: 'var(--accent-rose)', fontWeight: 600, fontSize: '0.9rem' }}>
-              Session expired. Please update your API secret.
+              {t('session.expired')}
             </span>
             <button
                onClick={() => { setActiveTab("settings"); dismiss(); }}
@@ -382,7 +391,7 @@ function App() {
                  fontWeight: 700, cursor: 'pointer', fontSize: '0.8rem'
                }}
             >
-               Go to Settings
+               {t('session.goToSettings')}
             </button>
           </motion.div>
         )}
@@ -431,7 +440,7 @@ function App() {
           {workspacePersona.mode === 'agency' && (
             <NavItem
               icon={<Briefcase size={18} />}
-              label="Agency Onboarding"
+              label={t('nav.agencyOnboarding')}
               active={activeTab === "agency"}
               onClick={() => setActiveTab("agency")}
             />
@@ -487,7 +496,7 @@ function App() {
           {isVisible("buzz-approval") && (
             <NavItem
               icon={<Zap size={20} />}
-              label={t('nav.buzzApproval', { defaultValue: 'Buzz Protocol' }) as string}
+              label={t('nav.buzzApproval')}
               active={activeTab === "buzz-approval"}
               onClick={() => setActiveTab("buzz-approval")}
             />
@@ -535,9 +544,17 @@ function App() {
           {isVisible("nurture") && (
             <NavItem
               icon={<Coins size={20} />}
-              label={t('nav.nurtureEconomy', { defaultValue: 'Economy' }) as string}
+              label={t('nav.nurtureEconomy')}
               active={activeTab === "nurture"}
               onClick={() => setActiveTab("nurture")}
+            />
+          )}
+          {isVisible("workflow-builder") && (
+            <NavItem
+              icon={<Network size={20} />}
+              label={t('nav.workflowBuilder')}
+              active={activeTab === "workflow-builder"}
+              onClick={() => setActiveTab("workflow-builder")}
             />
           )}
         </nav>
@@ -547,7 +564,7 @@ function App() {
           {isVisible("status-page") && (
             <NavItem
               icon={<Shield size={20} />}
-              label={t('nav.statusPage', { defaultValue: 'System Integrity' }) as string}
+              label={t('nav.statusPage')}
               active={activeTab === "status-page"}
               onClick={() => setActiveTab("status-page")}
             />
@@ -555,7 +572,7 @@ function App() {
           {isVisible("ban-dashboard") && (
             <NavItem
               icon={<Shield size={20} />}
-              label="Governance & BAN Dashboard"
+              label={t('nav.banDashboard')}
               active={activeTab === "ban-dashboard"}
               onClick={() => setActiveTab("ban-dashboard")}
             />
@@ -688,13 +705,14 @@ function App() {
             {activeTab === "expressions" && t('page.expressions')}
             {activeTab === "commune" && t('page.communeLab')}
             {activeTab === "store" && t('page.voiceStore')}
-            {activeTab === "ban-dashboard" && "Governance & BAN Dashboard"}
-            {activeTab === "nurture" && (t('page.nurtureEconomy', { defaultValue: 'Nurture Economy' }) as string)}
+            {activeTab === "ban-dashboard" && t('page.banDashboard')}
+            {activeTab === "nurture" && t('page.nurtureEconomy')}
+            {activeTab === "workflow-builder" && t('page.workflowBuilder')}
             {activeTab === "causal" && t('page.causalTrace')}
             {activeTab === "lora" && t('page.loraAutotuner')}
             {activeTab === "settings" && t('page.settings')}
-            {activeTab === "agency" && "Agency Onboarding"}
-            {activeTab === "status-page" && (t('page.statusPage', { defaultValue: 'System Integrity' }) as string)}
+            {activeTab === "agency" && t('page.agencyOnboarding')}
+            {activeTab === "status-page" && t('page.statusPage')}
           </motion.h2>
 
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -721,6 +739,7 @@ function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
+              style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
             >
               {activeTab === "home-v2" && <HomePage stats={stats} vitalityEvents={vitalityEvents} connectionStatus={connectionStatus} recentEvents={recentEvents} lastEvent={lastEvent} sessionSavedChars={sessionSavedChars} />}
               {activeTab === "dashboard" && <BiotopeView stats={stats} isConnected={isConnected} recentEvents={recentEvents} sessionSavedChars={sessionSavedChars} />}
@@ -741,6 +760,7 @@ function App() {
               {activeTab === "store" && <VoiceStore />}
               {activeTab === "ban-dashboard" && <BanDashboard />}
               {activeTab === "nurture" && <NurtureDashboard />}
+              {activeTab === "workflow-builder" && <WorkflowBuilder />}
               {activeTab === "buzz-approval" && <BuzzApproval />}
               {activeTab === "causal" && <CausalVisualizer />}
               {activeTab === "lora" && <LoraTrainingView />}

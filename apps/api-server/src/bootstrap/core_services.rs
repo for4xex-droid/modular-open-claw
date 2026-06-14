@@ -770,6 +770,11 @@ pub async fn init_core_services(
     );
     task_dispatcher.register_conductor(seo_conductor);
 
+    // Register dedicated WorkflowConductor for no-code workflow execution
+    let workflow_conductor =
+        Arc::new(infrastructure::task_orchestrator::workflow_conductor::WorkflowConductor::new());
+    task_dispatcher.register_conductor(workflow_conductor);
+
     let task_dispatcher = Arc::new(task_dispatcher);
 
     // Spawn the loop

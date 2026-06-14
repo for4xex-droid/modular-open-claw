@@ -56,6 +56,7 @@
 
   /* ── Status Accents ── */
   --accent-emerald: #34d399;
+  --accent-emerald-05: rgba(52, 211, 153, 0.05);
   --accent-emerald-10: rgba(52, 211, 153, 0.1);
   --accent-emerald-15: rgba(52, 211, 153, 0.15);
   --accent-emerald-20: rgba(52, 211, 153, 0.2);
@@ -130,7 +131,31 @@
   --glow-cyan: 0 0 20px rgba(56, 189, 248, 0.2);
   --glow-purple: 0 0 20px rgba(167, 139, 250, 0.2);
   --glow-rose: 0 0 20px rgba(244, 114, 182, 0.2);
+  --glow-gold: 0 0 15px rgba(184, 150, 90, 0.25);
+  --glow-ivory: 0 0 12px rgba(212, 197, 169, 0.18);
+  --glow-amber: 0 0 20px rgba(251, 191, 36, 0.2);
   --shadow-deep: 0 20px 50px var(--black-50);
+
+  /* ── Warm Glass Tokens ── */
+  --gold-glass-bg: rgba(184, 150, 90, 0.12);
+  --gold-glass-border: rgba(184, 150, 90, 0.28);
+  --ivory-glass-bg: rgba(212, 197, 169, 0.08);
+  --ember-glass-bg: rgba(139, 109, 74, 0.10);
+
+  /* ── Semantic Accent (Primary UI accent — warm gold) ── */
+  --accent-primary: var(--fluid-deep-gold);
+  --accent-primary-rgb: var(--fluid-deep-gold-rgb);
+  --accent-primary-70: rgba(var(--fluid-deep-gold-rgb), 0.7);
+  --accent-primary-50: rgba(var(--fluid-deep-gold-rgb), 0.5);
+  --accent-primary-30: rgba(var(--fluid-deep-gold-rgb), 0.3);
+  --accent-primary-20: rgba(var(--fluid-deep-gold-rgb), 0.2);
+  --accent-primary-15: rgba(var(--fluid-deep-gold-rgb), 0.15);
+  --accent-primary-12: rgba(var(--fluid-deep-gold-rgb), 0.12);
+  --accent-primary-10: rgba(var(--fluid-deep-gold-rgb), 0.1);
+  --accent-primary-05: rgba(var(--fluid-deep-gold-rgb), 0.05);
+  --accent-primary-glass: rgba(var(--fluid-deep-gold-rgb), 0.06);
+  --glow-primary: 0 0 20px rgba(var(--fluid-deep-gold-rgb), 0.25);
+  --gradient-heading: linear-gradient(135deg, var(--fluid-deep-gold), var(--fluid-warm-ivory));
 
   /* ── Timing ── */
   --speed-fast: 0.15s;
@@ -149,6 +174,7 @@
   --space-md: 1.5rem;
   --space-lg: 2rem;
   --space-xl: 3rem;
+  --space-2xl: 4rem;
 
   /* ── Layout ── */
   --layout-sidebar-width: 280px;

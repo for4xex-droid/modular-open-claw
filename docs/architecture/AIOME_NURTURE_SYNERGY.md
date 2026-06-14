@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-06-13
+> **最終更新**: 2026-06-14
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -958,6 +958,23 @@ classDiagram
     class SupportEscalator {
         +escalate(incident) Result~()~
     }
+    class WorkflowConductor {
+        +conduct(job) Result~JobResult~
+        +capable_categories() Vec~String~
+    }
+    class WorkflowStore {
+        +get_workflow(id) Result~Option~Workflow~~
+        +create_workflow(wf) Result~Uuid~
+        +create_workflow_fork(wf_id, creator_id) Result~Uuid~
+    }
+    class NodeType {
+        <<enum>>
+        LlmPrompt
+        McpToolCall
+        HttpRequest
+        Timer
+        WasmCode
+    }
 
     CommerceEngine <|.. StripeCommerceEngine : implements
     CommerceEngine <|.. NurtureCommerceBridge : implements
@@ -965,10 +982,13 @@ classDiagram
     AlertManager --> AlertNotifier
     CircuitBreaker --> AlertManager
     SupportFeedbackCollector --> SupportIncidentRepository
+    WorkflowConductor --> WorkflowStore
+    WorkflowStore --> NodeType
 
     note for CommerceEngine "Aiome OSS 側で定義\nNURTURE側で実装"
     note for LlmProvider "Aiome OSS 側で定義・実装\nNURTUREは触れない"
     note for IdempotencyStore "Sprint D: Webhook 冪等性 (48h TTL)"
+```,StartLine:958,TargetContent:
 ```
 
 ---
@@ -1085,7 +1105,7 @@ gantt
 | `aiome-contracts` | 19 | `LlmProvider`, `CommerceEngine`, `GiftEngine`, `FormalProofGate`, `GigMetadataUpdater` |
 | `aiome-core-contracts` | 70+ | `JobQueue`, `KarmaRegistry`, `ArtifactStore`, `Publisher` |
 | `shared` | 30+ | `AppDataResolver` (CBA Cell-ID Namespacing), `SecurityPolicy`, `Guardrails` |
-| `infrastructure` | 150+ | `RegistryManager`, `WordPressAdapter`, `ContextEngine`, `SoTEngine`, `EvaluationLogger`, `SemanticCacheRepository`, `DistillationOps`, `SupportClassifier`, `SupportResponder`, `SupportIncidentRepository`, `SupportFeedbackCollector` |
+| `infrastructure` | 150+ | `RegistryManager`, `WordPressAdapter`, `ContextEngine`, `SoTEngine`, `EvaluationLogger`, `SemanticCacheRepository`, `DistillationOps`, `SupportClassifier`, `SupportResponder`, `SupportIncidentRepository`, `SupportFeedbackCollector`, `WorkflowConductor`, `WorkflowStore` |
 | `soul` | 20+ | `AgentSoul`, `SoulPipeline`, `SomaticMarker`, `SemanticRecaller`, `DreamState`, `FrozenTraitSnapshot` |
 | `biome-engine` | 15+ | `BiomeEngine`, `CellGenome`, `Element`, `Rarity`, `Grid`, `Particle` |
 | `core` | 20+ | `OllamaProvider`, `GeminiProvider`, `ClaudeProvider`, `OpenAiProvider` |

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Download, Loader2 } from 'lucide-react';
 import { authenticatedFetch } from '../lib/auth';
 import { useTranslation } from '../i18n';
+import { API_BASE } from '../config';
 
 export default function DpoDatasetExport() {
   const { t } = useTranslation();
@@ -12,7 +13,7 @@ export default function DpoDatasetExport() {
     setLoading(true);
     setError(null);
     try {
-      const res = await authenticatedFetch('/api/v1/cortex/dpo/dataset');
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/cortex/dpo/dataset`);
       if (!res.ok) {
         throw new Error(t('dpoExport.downloadFailed') || 'Failed to export dataset');
       }

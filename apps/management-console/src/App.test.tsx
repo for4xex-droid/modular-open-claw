@@ -70,10 +70,19 @@ jest.mock('./components/SetupWizard', () => ({
   __esModule: true,
   default: () => <div data-testid="setup-wizard-mock">SetupWizard Mock</div>
 }));
-
 jest.mock('./components/LoginScreen', () => ({
   __esModule: true,
   default: () => <div data-testid="login-screen-mock">LoginScreen Mock</div>
+}));
+
+jest.mock('./components/WorkflowBuilder', () => ({
+  __esModule: true,
+  default: () => <div data-testid="workflow-builder-mock">WorkflowBuilder Mock</div>
+}));
+
+jest.mock('./components/SetupWizard', () => ({
+  __esModule: true,
+  default: () => <div data-testid="setup-wizard-mock">SetupWizard Mock</div>
 }));
 
 jest.mock('./components/BiotopeView', () => ({
@@ -148,8 +157,8 @@ describe('App - Global Token Health', () => {
         render(<App />);
 
         // Wait to finish render and assert
-        await screen.findByText(/Session expired/i);
-        expect(screen.getByText(/Session expired/i)).toBeInTheDocument();
+        await screen.findByText('session.expired');
+        expect(screen.getByText('session.expired')).toBeInTheDocument();
 
         // Wait for async component mounts and fetches to finish
         await act(async () => {
@@ -170,7 +179,7 @@ describe('App - Global Token Health', () => {
         render(<App />);
 
         // Assert
-        expect(screen.queryByText(/Session expired/i)).not.toBeInTheDocument();
+        expect(screen.queryByText('session.expired')).not.toBeInTheDocument();
 
         // Wait for async component mounts and fetches to finish
         await act(async () => {
@@ -373,5 +382,35 @@ describe('App - SSE Biome Events', () => {
         // Assert
         await screen.findByText('event.crisisPrediction');
         expect(screen.getByText('event.crisisPrediction')).toBeInTheDocument();
+    });
+
+    it('should navigate to workflow-builder and render WorkflowBuilder component', async () => {
+        // Arrange
+        mockUseTokenHealth.mockReturnValue({
+            isExpired: false,
+            lastChecked: null,
+            checkHealth: jest.fn(),
+            dismiss: jest.fn()
+        });
+
+        // Act
+        render(<App />);
+
+        // Wait to finish render
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 10));
+        });
+
+        const workflowTab = await screen.findByText('nav.workflowBuilder');
+        expect(workflowTab).toBeInTheDocument();
+
+        act(() => {
+            workflowTab.click();
+        });
+
+        // Assert
+        await screen.findByTestId('workflow-builder-mock');
+        expect(screen.getByTestId('workflow-builder-mock')).toBeInTheDocument();
+        expect(screen.getByText('page.workflowBuilder')).toBeInTheDocument();
     });
 });

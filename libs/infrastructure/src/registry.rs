@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// アセット種別
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum AssetType {
     /// TTS向けボイスモデル
     VoiceModel,
@@ -22,6 +22,8 @@ pub enum AssetType {
     Plugin,
     /// MCP サーバー (stdio/sse)
     McpServer,
+    /// ノーコードワークフロー
+    Workflow,
 }
 
 impl AsRef<str> for AssetType {
@@ -32,6 +34,7 @@ impl AsRef<str> for AssetType {
             AssetType::Inochi2D => "inochi2d",
             AssetType::Plugin => "plugin",
             AssetType::McpServer => "mcp",
+            AssetType::Workflow => "workflow",
         }
     }
 }
@@ -141,6 +144,7 @@ impl RegistryManager {
             "lora" => AssetType::LoRA,
             "inochi2d" => AssetType::Inochi2D,
             "mcp" => AssetType::McpServer,
+            "workflow" => AssetType::Workflow,
             _ => AssetType::Plugin,
         };
 
@@ -184,7 +188,7 @@ impl RegistryManager {
             i64,
             String,
             Option<String>,
-        )> = if scope == "owned" {
+        )> = if scope == "owned" || scope == "private" {
             if let Some(agent) = agent_id {
                 const Q_OWNED_SQLITE: &str = r#"
                     SELECT DISTINCT a.id, a.creator_id, a.asset_type, a.name, a.description, a.price_coins, a.safety_level, a.metadata
@@ -219,9 +223,51 @@ impl RegistryManager {
                 )?
             } else {
                 return Err(AiomeError::Infrastructure {
-                    reason: "agent_id is required for owned scope".into(),
+                    reason: "agent_id is required for owned/private scope".into(),
                 });
             }
+        } else if scope == "unlisted" {
+            vec![]
+        } else if scope == "community" {
+            const Q_COM_SQLITE: &str = "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE asset_type = ? AND price_coins = 0";
+            const Q_COM_PG: &str = "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE asset_type = $1 AND price_coins = 0";
+
+            crate::sql_fetch_all!(
+                &self.pool,
+                (
+                    String,
+                    String,
+                    String,
+                    String,
+                    String,
+                    i64,
+                    String,
+                    Option<String>
+                ),
+                sqlite: Q_COM_SQLITE,
+                pg: Q_COM_PG,
+                type_str
+            )?
+        } else if scope == "marketplace" {
+            const Q_MKT_SQLITE: &str = "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE asset_type = ? AND price_coins > 0";
+            const Q_MKT_PG: &str = "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE asset_type = $1 AND price_coins > 0";
+
+            crate::sql_fetch_all!(
+                &self.pool,
+                (
+                    String,
+                    String,
+                    String,
+                    String,
+                    String,
+                    i64,
+                    String,
+                    Option<String>
+                ),
+                sqlite: Q_MKT_SQLITE,
+                pg: Q_MKT_PG,
+                type_str
+            )?
         } else {
             const Q_PUB_SQLITE: &str = "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE asset_type = ?";
             const Q_PUB_PG: &str = "SELECT id, creator_id, asset_type, name, description, price_coins, safety_level, metadata FROM asset_registry WHERE asset_type = $1";

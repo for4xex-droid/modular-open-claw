@@ -98,10 +98,10 @@ const Timeline: React.FC = () => {
     }, []);
 
     return (
-        <div className="main-panel ani-fade">
+        <div className="main-panel ani-fade" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <div className="panel-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <Clock size={20} color="var(--accent-cyan)" />
+                    <Clock size={20} color="var(--accent-primary)" />
                     <h3>{t('timeline.title')}</h3>
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -133,7 +133,7 @@ const Timeline: React.FC = () => {
                             top: '0',
                             bottom: '0',
                             width: '2px',
-                            background: 'linear-gradient(to bottom, var(--accent-cyan), var(--accent-purple), transparent)',
+                            background: 'linear-gradient(to bottom, var(--accent-primary), var(--fluid-warm-ivory), transparent)',
                             opacity: 0.2
                         }} />
 
@@ -154,11 +154,11 @@ const Timeline: React.FC = () => {
                                             width: '24px',
                                             height: '24px',
                                             borderRadius: '50%',
-                                            background: !isKarma ? 'var(--accent-amber)' : (isLocal ? 'var(--accent-cyan)' : 'var(--accent-purple)'),
+                                            background: !isKarma ? 'var(--accent-amber)' : (isLocal ? 'var(--accent-primary)' : 'var(--accent-purple)'),
                                             border: '4px solid var(--bg-primary)',
                                             zIndex: 2,
                                             marginTop: '4px',
-                                            boxShadow: !isKarma ? 'var(--glow-amber)' : (isLocal ? 'var(--glow-cyan)' : 'var(--glow-purple)')
+                                            boxShadow: !isKarma ? 'var(--glow-amber)' : (isLocal ? 'var(--glow-primary)' : 'var(--glow-purple)')
                                         }} />
 
                                         <div style={{
@@ -177,8 +177,8 @@ const Timeline: React.FC = () => {
                                                         fontWeight: 800,
                                                         padding: '0.2rem 0.5rem',
                                                         borderRadius: '4px',
-                                                        background: !isKarma ? 'var(--accent-amber-10)' : (isLocal ? 'var(--accent-cyan-10)' : 'var(--accent-purple-10)'),
-                                                        color: !isKarma ? 'var(--accent-amber)' : (isLocal ? 'var(--accent-cyan)' : 'var(--accent-purple)'),
+                                                        background: !isKarma ? 'var(--accent-amber-10)' : (isLocal ? 'var(--accent-primary-10)' : 'var(--accent-purple-10)'),
+                                                        color: !isKarma ? 'var(--accent-amber)' : (isLocal ? 'var(--accent-primary)' : 'var(--accent-purple)'),
                                                         letterSpacing: '0.1em'
                                                     }}>
                                                         {isKarma ? (isLocal ? t('timeline.localMemory') : t('timeline.federatedMemory')) : t('timeline.evolutionStep')}
@@ -197,7 +197,7 @@ const Timeline: React.FC = () => {
                                             </div>
 
                                             {e.inspiration && (
-                                                <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: 'var(--white-05)', borderRadius: '4px', fontSize: '0.85rem', color: 'var(--accent-cyan)', borderLeft: '2px solid var(--accent-cyan)' }}>
+                                                <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: 'var(--white-05)', borderRadius: '4px', fontSize: '0.85rem', color: 'var(--accent-primary)', borderLeft: '2px solid var(--accent-primary)' }}>
                                                     <Sparkles size={12} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} />
                                                     {e.inspiration}
                                                 </div>

@@ -189,6 +189,7 @@ pub mod validator;
 /// ベクトル演算の統一インターフェース (Phase 39)
 pub mod vector_ops;
 pub mod whisper_transcription;
+pub mod workflow;
 pub mod workspace_manager;
 pub mod x_signal_probe;
 

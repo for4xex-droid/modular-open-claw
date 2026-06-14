@@ -1,6 +1,7 @@
 import { render } from '@testing-library/react';
 import FluidBackground from './FluidBackground';
 import { useFluidConfig } from './useFluidConfig';
+import { cssVar } from '../../utils/cssVar';
 
 // Mock useFluidConfig
 jest.mock('./useFluidConfig');
@@ -14,8 +15,8 @@ describe('FluidBackground', () => {
       dyeResolution: 512,
       intensity: 0.3,
       colors: {
-        primary: '#d4c5a9',
-        secondary: '#b8965a',
+        primary: cssVar('--fluid-warm-ivory', '#d4c5a9'),
+        secondary: cssVar('--fluid-deep-gold', '#b8965a'),
         primaryRGB: [1, 1, 1],
         secondaryRGB: [0, 0, 0]
       },
@@ -33,8 +34,8 @@ describe('FluidBackground', () => {
     mockUseFluidConfig.mockReturnValue({
       enabled: false,
       colors: {
-        primary: '#d4c5a9',
-        secondary: '#b8965a',
+        primary: cssVar('--fluid-warm-ivory', '#d4c5a9'),
+        secondary: cssVar('--fluid-deep-gold', '#b8965a'),
         primaryRGB: [1, 1, 1],
         secondaryRGB: [0, 0, 0]
       }

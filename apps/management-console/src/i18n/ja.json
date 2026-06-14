@@ -2,32 +2,39 @@
   "nav": {
     "section": {
       "synergyHub": "ダッシュボード",
-      "control": "コントロール"
+      "control": "管理 & ツール"
     },
     "biotope": "システム概要",
     "homeV2": "ホーム",
-    "demo": "シナジーデモ",
+    "demo": "自律AIデモ",
     "chronicle": "アクティビティログ",
     "resonanceMap": "ナレッジグラフ",
-    "causalTrace": "因果トレース",
+    "causalTrace": "原因分析",
     "artifactVault": "ファイル",
     "audit": "監査ログ",
-    "expressions": "表現パイプライン",
-    "voiceStore": "音声",
+    "expressions": "AI 自己表現",
+    "voiceStore": "ボイスストア",
     "immuneSystem": "セキュリティ",
     "agentConsole": "AIチャット",
     "cortex": "ナレッジベース",
     "skillVault": "スキル",
-    "loraAutotuner": "LoRA オートチューナー",
-    "promptStats": "LLM コスト・遅延統計",
+    "loraAutotuner": "LoRA チューニング",
+    "promptStats": "LLM 統計",
     "seoPulse": "SEO パルス",
     "mcpDashboard": "MCPサーバー",
-    "settings": "設定"
+    "workflowBuilder": "ワークフロー",
+    "settings": "設定",
+    "communeLab": "マルチエージェント",
+    "nurtureEconomy": "エコノミー",
+    "statusPage": "稼働モニター",
+    "banDashboard": "ガバナンス",
+    "buzzApproval": "承認キュー",
+    "agencyOnboarding": "法人オンボーディング"
   },
   "page": {
     "biotope": "システム概要",
     "homeV2": "ホーム",
-    "demo": "自律デモ",
+    "demo": "自律AIデモ",
     "chronicle": "アクティビティログ",
     "resonanceMap": "ナレッジグラフ",
     "immuneSystem": "セキュリティ",
@@ -36,15 +43,21 @@
     "skillVault": "スキル",
     "artifactVault": "ファイル",
     "audit": "システム監査ログ",
-    "expressions": "AI 自己表現パイプライン",
+    "expressions": "AI 自己表現",
     "communeLab": "マルチエージェントラボ",
     "voiceStore": "音声管理",
     "loraAutotuner": "LoRA オートチューナー",
-    "causalTrace": "因果推論トレース",
-    "promptStats": "LLM オブザーバビリティ",
+    "causalTrace": "原因分析トレース",
+    "promptStats": "LLM 利用統計",
     "seoPulse": "SEO パルスダッシュボード",
     "mcpDashboard": "MCPサーバー管理",
-    "settings": "システム設定"
+    "workflowBuilder": "ワークフロービルダー",
+    "settings": "システム設定",
+    "nurtureEconomy": "エコノミーダッシュボード",
+    "statusPage": "稼働モニター",
+    "banDashboard": "ガバナンス管理",
+    "buzzApproval": "承認キュー",
+    "agencyOnboarding": "法人オンボーディング"
   },
   "status": {
     "connected": "接続済み",
@@ -883,6 +896,102 @@
   },
   "persona": {
     "agencyTooltip": "エージェンシーモード: B2Bクライアント向けのAI自動化サービス管理画面",
-    "consumerTooltip": "コンシューマーモード: 個人利用向けのAIパートナー画面"
+    "consumerTooltip": "コンシューマーモード: 個人利用向けのAIパートナー画面",
+    "agencyMode": "エージェンシーモード",
+    "consumerMode": "コンシューマーモード"
+  },
+  "workflowBuilder": {
+    "palette": {
+      "title": "ノードパレット",
+      "info": "クリックしてキャンバスに追加",
+      "nodes": {
+        "Start": {
+          "label": "Start Node",
+          "desc": "手動/Cron/Webhook起動"
+        },
+        "LlmPrompt": {
+          "label": "LLM Prompt",
+          "desc": "テキスト生成・プロンプト指示"
+        },
+        "McpToolCall": {
+          "label": "MCP Tool Call",
+          "desc": "登録済みMCPツールの実行"
+        },
+        "HttpRequest": {
+          "label": "HTTP Request",
+          "desc": "外部REST APIの呼び出し"
+        },
+        "Transform": {
+          "label": "Transform",
+          "desc": "JSONデータの加工・変換"
+        },
+        "Condition": {
+          "label": "Condition",
+          "desc": "条件分岐 (Expression/LLM判定)"
+        },
+        "Timer": {
+          "label": "Timer",
+          "desc": "指定時間待機（Delay）"
+        },
+        "WasmCode": {
+          "label": "WasmCode",
+          "desc": "安全に隔離されたWasmコード実行"
+        },
+        "HumanApproval": {
+          "label": "Human Approval",
+          "desc": "人間の手動承認・対話待ち"
+        },
+        "Loop": {
+          "label": "Loop",
+          "desc": "リストに対する繰り返し処理"
+        },
+        "Parallel": {
+          "label": "Parallel",
+          "desc": "並列分岐とBarrier同期合流"
+        },
+        "SubWorkflow": {
+          "label": "SubWorkflow",
+          "desc": "別ワークフローのサブルーチン呼び出し"
+        }
+      }
+    },
+    "toolbar": {
+      "validate": "検証",
+      "save": "保存",
+      "execute": "実行",
+      "estimatedCost": "想定コスト",
+      "nodesCount": "{{count}} ノード",
+      "processing": "処理中...",
+      "valid": "ワークフローは有効です! ✅",
+      "saved": "ワークフローを保存しました! 💾",
+      "started": "実行を開始しました: {{id}} 🚀",
+      "error": "エラー"
+    },
+    "validationErrors": {
+      "title": "検証エラー"
+    },
+    "status": {
+      "title": "ワークフロー実行ステータス",
+      "label": "ステータス",
+      "progress": "進捗: {{percent}}%",
+      "completed": "正常に完了しました！"
+    },
+    "config": {
+      "title": "ノード設定",
+      "nodeId": "ノード ID",
+      "label": "ラベル",
+      "llmModel": "LLM モデル",
+      "temperature": "Temperature",
+      "delaySeconds": "遅延時間（秒）",
+      "language": "言語",
+      "wasmCode": "WASM コード",
+      "evaluationMode": "評価モード",
+      "expression": "式",
+      "close": "パネルを閉じる"
+    }
+  },
+  "session": {
+    "expired": "セッションが期限切れです。API シークレットを更新してください。",
+    "goToSettings": "設定画面へ"
   }
 }

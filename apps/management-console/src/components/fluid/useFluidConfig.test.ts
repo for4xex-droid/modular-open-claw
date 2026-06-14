@@ -1,5 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { useFluidConfig } from './useFluidConfig';
+import { cssVar } from '../../utils/cssVar';
 
 // Mock window.matchMedia for jsdom environment
 Object.defineProperty(window, 'matchMedia', {
@@ -29,8 +30,8 @@ describe('useFluidConfig', () => {
     expect(result.current).toHaveProperty('simResolution');
     expect(result.current).toHaveProperty('dyeResolution');
     expect(result.current.colors).toEqual({
-      primary: '#d4c5a9',
-      secondary: '#b8965a',
+      primary: cssVar('--fluid-warm-ivory', '#d4c5a9'),
+      secondary: cssVar('--fluid-deep-gold', '#b8965a'),
       primaryRGB: [212 / 255, 197 / 255, 169 / 255],
       secondaryRGB: [184 / 255, 150 / 255, 90 / 255]
     });

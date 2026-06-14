@@ -136,7 +136,7 @@ const CausalVisualizer: React.FC = () => {
     };
 
     return (
-        <div className="main-panel ani-fade" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minHeight: 0 }}>
+        <div className="main-panel ani-fade" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minHeight: 0, height: '100%' }}>
             <div className="panel-header" style={{ flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <GitBranch size={20} color="var(--accent-cyan)" />
@@ -166,7 +166,7 @@ const CausalVisualizer: React.FC = () => {
 
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                 {/* Graph Area */}
-                <div style={{ flex: 1, position: 'relative', background: 'var(--bg-primary)' }}>
+                <div data-testid="causal-graph-area" style={{ flex: 1, position: 'relative', background: 'var(--bg-primary)' }}>
                     <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
                     
                     {loading && (
@@ -190,6 +190,35 @@ const CausalVisualizer: React.FC = () => {
                             </div>
                         </div>
                     )}
+
+                    {/* Controls Overlay */}
+                    <div data-testid="causal-controls-overlay" style={{ position: 'absolute', left: '1.5rem', bottom: '1.5rem', display: 'flex', gap: '0.5rem', zIndex: 10 }}>
+                        <button className="nav-item" style={{ margin: 0, padding: '0.4rem 0.75rem', background: 'var(--bg-glass-heavy)' }} onClick={(e) => { e.stopPropagation(); networkRef.current?.fit(); }}>
+                            <Maximize size={14} style={{ marginRight: '6px' }} /> {t('causal.fitMap')}
+                        </button>
+                        <button 
+                            className="nav-item" 
+                            style={{ margin: 0, padding: '0.4rem 1rem', background: 'var(--bg-glass-heavy)' }} 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const scale = networkRef.current?.getScale() || 1;
+                                networkRef.current?.moveTo({ scale: scale / 1.2 });
+                            }}
+                        >
+                            <ZoomOut size={16} />
+                        </button>
+                        <button 
+                            className="nav-item" 
+                            style={{ margin: 0, padding: '0.4rem 1rem', background: 'var(--bg-glass-heavy)' }} 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const scale = networkRef.current?.getScale() || 1;
+                                networkRef.current?.moveTo({ scale: scale * 1.2 });
+                            }}
+                        >
+                            <ZoomIn size={16} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Properties Sidebar */}
@@ -275,32 +304,6 @@ const CausalVisualizer: React.FC = () => {
                 </AnimatePresence>
             </div>
 
-            {/* Controls Overlay */}
-            <div style={{ position: 'absolute', left: '1.5rem', bottom: '1.5rem', display: 'flex', gap: '0.5rem', zIndex: 10 }}>
-                <button className="nav-item" style={{ margin: 0, padding: '0.4rem 0.75rem', background: 'var(--bg-glass-heavy)' }} onClick={() => networkRef.current?.fit()}>
-                    <Maximize size={14} style={{ marginRight: '6px' }} /> {t('causal.fitMap')}
-                </button>
-                <button 
-                    className="nav-item" 
-                    style={{ margin: 0, padding: '0.4rem 1rem', background: 'var(--bg-glass-heavy)' }} 
-                    onClick={() => {
-                        const scale = networkRef.current?.getScale() || 1;
-                        networkRef.current?.moveTo({ scale: scale / 1.2 });
-                    }}
-                >
-                    <ZoomOut size={16} />
-                </button>
-                <button 
-                    className="nav-item" 
-                    style={{ margin: 0, padding: '0.4rem 1rem', background: 'var(--bg-glass-heavy)' }} 
-                    onClick={() => {
-                        const scale = networkRef.current?.getScale() || 1;
-                        networkRef.current?.moveTo({ scale: scale * 1.2 });
-                    }}
-                >
-                    <ZoomIn size={16} />
-                </button>
-            </div>
         </div>
     );
 };

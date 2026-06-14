@@ -104,67 +104,86 @@ export default function SeoPulseView() {
         .slice(0, 10);
 
     return (
-        <div className="bg-gradient-to-br from-[var(--surface-color)] to-[var(--surface-color-secondary)] p-4 rounded-xl border border-[var(--border-color)] mt-4 shadow-xl">
-            <h2 className="text-xl font-bold text-[var(--accent-color)] mb-2 flex items-center">
-                <span className="mr-2 text-2xl">🌍</span>
-                GEO Pulse
-            </h2>
-            <div className="mb-4 text-sm text-[var(--text-color-secondary)]">
-                Status: {geoOptimizerStatus ? (
-                    <span className={`font-semibold ${geoOptimizerStatus.status === 'ok' ? 'text-[var(--success-color)]' : 'text-[var(--danger-color)]'}`}>
-                        {geoOptimizerStatus.status}
-                    </span>
-                ) : (
-                    '...'
-                )}
+        <div className="main-panel ani-fade" style={{ flex: 1, display: 'flex', flexDirection: 'column', marginTop: 'var(--space-md)' }}>
+            <div className="panel-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+                    <span style={{ fontSize: 'var(--font-size-lg)' }}>🌍</span>
+                    <h3 className="artemis-heading" style={{ margin: 0, fontSize: 'var(--font-size-lg)' }}>GEO Pulse</h3>
+                </div>
+                <div style={{ fontSize: 'var(--font-size-base)', color: 'var(--text-secondary)' }}>
+                    Status: {geoOptimizerStatus ? (
+                        <span style={{ fontWeight: 600, color: geoOptimizerStatus.status === 'ok' ? 'var(--accent-emerald)' : 'var(--accent-rose)' }}>
+                            {geoOptimizerStatus.status}
+                        </span>
+                    ) : (
+                        '...'
+                    )}
+                </div>
             </div>
 
-            {/* Viseme Visualizer */}
-            <div className="mt-4 p-3 bg-[var(--background-color)] rounded-lg border border-[var(--border-color)]">
-                <div className="text-xs font-semibold text-[var(--text-color-secondary)] mb-2 uppercase tracking-wider">
-                    Procedural Lip-Sync
-                </div>
-                <div className="flex items-center space-x-2">
-                    <div className="text-sm">Active Viseme:</div>
-                    <div className={`px-3 py-1 rounded text-sm font-bold transition-all duration-75 ${currentViseme ? 'bg-[var(--accent-color)] text-white scale-110 shadow-lg' : 'bg-[var(--surface-color)] text-[var(--text-color-secondary)]'}`}>
-                        {currentViseme || 'SIL'}
+            <div style={{ padding: 'var(--space-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', overflowY: 'auto' }}>
+                {/* Viseme Visualizer */}
+                <div className="glass-panel" style={{ padding: 'var(--space-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)' }}>
+                    <div style={{ fontSize: 'var(--font-size-2xs)', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 'var(--space-xs)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        Procedural Lip-Sync
                     </div>
-                    {/* Visual mouth shape indicator */}
-                    <div className="flex-1 flex justify-center items-center h-8">
-                        <div className={`transition-all duration-100 rounded-full border-2 border-[var(--accent-color)] ${
-                            currentViseme === 'AA' ? 'w-6 h-6' :
-                            currentViseme === 'IH' ? 'w-8 h-2' :
-                            currentViseme === 'OU' ? 'w-3 h-3' :
-                            currentViseme === 'EE' ? 'w-7 h-2' :
-                            currentViseme === 'OH' ? 'w-4 h-5' :
-                            'w-4 h-1 border-[var(--border-color)]'
-                        }`} />
-                    </div>
-                </div>
-            </div>
-            
-            <div className="mt-4 space-y-2">
-                {combinedEvents.length === 0 ? (
-                    <div className="text-[var(--text-color-secondary)] italic text-sm">
-                        {t('seoPulse.noEvents', { defaultValue: 'No recent audits...' }) as string}
-                    </div>
-                ) : (
-                    combinedEvents.map((ev) => (
-                        <div key={ev.id || ev.job_id} className="flex justify-between items-center p-2 rounded bg-[var(--background-color)]">
-                            <span className="text-sm font-medium">{ev.conductor || 'Audit'}</span>
-                            <div className="flex items-center space-x-3">
-                                <span className={`text-sm ${ev.passed ? 'text-[var(--success-color)]' : 'text-[var(--warning-color)]'}`}>
-                                    Score: {ev.score != null ? ev.score : '—'}
-                                </span>
-                                {ev.created_at && safeTimeString(ev.created_at) && (
-                                    <span className="text-xs text-[var(--text-color-secondary)]">
-                                        {safeTimeString(ev.created_at)}
-                                    </span>
-                                )}
-                            </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                        <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>Active Viseme:</div>
+                        <div className="chip active" style={{ 
+                            padding: 'var(--space-2xs) var(--space-xs)', 
+                            fontSize: 'var(--font-size-xs)',
+                            borderRadius: 'var(--radius-sm)',
+                            transform: currentViseme ? 'scale(1.05)' : 'none',
+                            transition: 'all 0.075s'
+                        }}>
+                            {currentViseme || 'SIL'}
                         </div>
-                    ))
-                )}
+                        {/* Visual mouth shape indicator */}
+                        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '2rem' }}>
+                            <div style={{ 
+                                transition: 'all 0.1s', 
+                                borderRadius: '50%', 
+                                border: '2px solid var(--accent-primary)',
+                                width: currentViseme === 'AA' ? '1.5rem' :
+                                       currentViseme === 'IH' ? '2rem' :
+                                       currentViseme === 'OU' ? '0.75rem' :
+                                       currentViseme === 'EE' ? '1.75rem' :
+                                       currentViseme === 'OH' ? '1rem' : '1rem',
+                                height: currentViseme === 'AA' ? '1.5rem' :
+                                        currentViseme === 'IH' ? '0.5rem' :
+                                        currentViseme === 'OU' ? '0.75rem' :
+                                        currentViseme === 'EE' ? '0.5rem' :
+                                        currentViseme === 'OH' ? '1.25rem' : '0.25rem',
+                                borderColor: currentViseme ? 'var(--accent-primary)' : 'var(--border-glass)',
+                                boxShadow: currentViseme ? 'var(--glow-primary)' : 'none'
+                            }} />
+                        </div>
+                    </div>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+                    {combinedEvents.length === 0 ? (
+                        <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: 'var(--font-size-sm)' }}>
+                            {t('seoPulse.noEvents', { defaultValue: 'No recent audits...' }) as string}
+                        </div>
+                    ) : (
+                        combinedEvents.map((ev) => (
+                            <div key={ev.id || ev.job_id} className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--space-xs) var(--space-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-glass)' }}>
+                                <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500, color: 'var(--text-primary)' }}>{ev.conductor || 'Audit'}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+                                    <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: ev.passed ? 'var(--accent-emerald)' : 'var(--accent-amber)' }}>
+                                        Score: {ev.score != null ? ev.score : '—'}
+                                    </span>
+                                    {ev.created_at && safeTimeString(ev.created_at) && (
+                                        <span style={{ fontSize: 'var(--font-size-2xs)', color: 'var(--text-muted)' }}>
+                                            {safeTimeString(ev.created_at)}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
             </div>
         </div>
     );
