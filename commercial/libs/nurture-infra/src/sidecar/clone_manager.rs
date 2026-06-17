@@ -15,7 +15,9 @@ use chrono::{DateTime, Duration, Utc};
 use commerce_protocol::identity::ActorId;
 use dashmap::DashMap;
 use ed25519_dalek::{SigningKey, VerifyingKey};
+#[cfg(unix)]
 use nix::sys::signal::{self, Signal};
+#[cfg(unix)]
 use nix::unistd::Pid;
 use nurture_core::ledger::{EconomyLedger, EntryType, LedgerEntry};
 use rand::rngs::OsRng;
@@ -435,9 +437,9 @@ impl CloneManager {
             };
             let pid: i64 = row.get("pid");
 
-            // PID が存在するか確認 (nix crate 使用)
+            // PID が存在するか確認
             let alive = if pid > 0 {
-                i32::try_from(pid).is_ok_and(|p| signal::kill(Pid::from_raw(p), None).is_ok())
+                i32::try_from(pid).is_ok_and(is_process_alive)
             } else {
                 false
             };
@@ -465,7 +467,7 @@ impl CloneManager {
                     pid
                 );
                 if let Ok(p) = i32::try_from(pid) {
-                    if let Err(e) = signal::kill(Pid::from_raw(p), Signal::SIGKILL) {
+                    if let Err(e) = kill_process(p) {
                         tracing::warn!("⚠️ Failed to kill orphan process {}: {:?}", pid, e);
                     }
                 }
@@ -507,5 +509,40 @@ impl CloneManager {
                 let s: String = row.get(0);
                 Uuid::parse_str(&s).ok()
             })
+    }
+}
+
+#[cfg(unix)]
+fn is_process_alive(pid: i32) -> bool {
+    signal::kill(Pid::from_raw(pid), None).is_ok()
+}
+
+#[cfg(unix)]
+fn kill_process(pid: i32) -> Result<(), String> {
+    signal::kill(Pid::from_raw(pid), Signal::SIGKILL).map_err(|e| e.to_string())
+}
+
+#[cfg(not(unix))]
+fn is_process_alive(pid: i32) -> bool {
+    if let Ok(output) = std::process::Command::new("tasklist")
+        .args(&["/FI", &format!("PID eq {}", pid), "/NH"])
+        .output()
+    {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        stdout.contains(&pid.to_string())
+    } else {
+        false
+    }
+}
+
+#[cfg(not(unix))]
+fn kill_process(pid: i32) -> Result<(), String> {
+    let status = std::process::Command::new("taskkill")
+        .args(&["/F", "/PID", &pid.to_string()])
+        .status();
+    match status {
+        Ok(s) if s.success() => Ok(()),
+        Ok(s) => Err(format!("taskkill exited with status: {}", s)),
+        Err(e) => Err(e.to_string()),
     }
 }

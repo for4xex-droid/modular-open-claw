@@ -1,8 +1,72 @@
 ## [Unreleased]
 
 ### Added
+- **Tauri デスクトップサイドカー安全ガードレール構築 (TDD)**:
+  - サイドカーバイナリのライフサイクル構築と製品リリース時のダミー混入事故を防ぐ自動検証スクリプト `scripts/desktop_sidecar_manager.py` をTDDで実装。
+  - ホストのターゲットトリプル自動検出（`rustc -vV` または `sys.platform` / `platform.machine()` からのフォールバック）、`--setup-placeholders`（ダミーシェルスクリプト/バッチの自動生成）、`--build`（AWS SDK除外フラグ付き `nurture-api` を含むRust製サイドカーのビルドと自動コピー）、および2段階検証（ステージ1コア検証 `--check-core` / ステージ2完全検証 `--check-all`）を実装。
+  - バイナリの検証に、Mach-O/ELF/PEのマジックバイト確認とファイルサイズ（100KB以上）判定の物理判定を導入。
+  - `desktop_sidecar_manager.py` で `generate_placeholders` が `target_binaries` パラメータを受け取れるよう拡張し、特定のバイナリ（例: `obscura` のみ）を指定してプレースホルダーを生成可能に変更 (Reflexion)。
+  - `desktop_sidecar_manager.py` において引数未指定時に `sys.exit(1)` で終了させ、誤った呼び出しを確実に検知可能に変更 (Reflexion)。
+  - `.gitignore` に `/apps/management-console/src-tauri/binaries/` ルールを追加し、巨大な実バイナリやプレースホルダーが Git に誤コミットされるのを物理ロックダウン。
+  - 既に追跡されていた `obscura-aarch64-apple-darwin` を Git 追跡から削除。
+  - `.agent/skills/tauri-development.md` に T-006 (No Mock Sidecars in Prod) と T-007 (Git Binary Lockdown) を追記。
+  - 新しいワークフロー定義ファイル `.agent/workflows/desktop-sidecar.md` を作成。
+  - `scripts/test_desktop_sidecar_manager.py` において、ゼロバイト、99999バイト、100000バイトの境界値、Mach-Oヘッダー長不足、FAT Mach-Oなどのエッジケーステスト5件を追加し、テスト総数を 14件 から 19件 へ拡張 (Reflexion)。
+
+- **Tauri デスクトップアプリ化 (Phase 4 - Nurture ハイブリッド統合)**:
+  - `apps/management-console/src-tauri/src/lib.rs` に `NurtureMode` enum、`resolve_nurture_mode()`、`generate_session_secret()` を実装。
+  - `SidecarState` に `nurture_child` と `nurture_status` フィールドを追加。`SidecarStatus` に `nurture` フィールドを追加。
+  - `start_sidecars()` を拡張し、`NurtureMode::Local` 時には `nurture-api` を起動。またセッションごとの一時トークンを生成し、`nurture-api` および `api-server` の双方に `NURTURE_INTERNAL_SECRET` として注入。
+  - `stop_sidecars()` を拡張し、`nurture-api` 子プロセスの SIGTERM によるクリーンアップ処理を構築。
+  - 新規 IPC コマンド `get_nurture_status` を実装・登録。
+  - トレイメニューのステータス文字列表示に Economy 状態（Local/Cloud/Off）を追加。
+  - `apps/management-console/src-tauri/Cargo.toml` に `getrandom` および `hex` 依存関係を追加。
+  - `tauri.conf.json` の `externalBin` および `capabilities/default.json` の `shell:allow-execute` に `nurture-api` を追加。
+  - `.env.example` に `Nurture Hybrid Mode (Desktop)` 設定パラメータを追加。
+  - `.agent/skills/tauri-development.md` の T-002 コントラクトに Nurture の環境変数・起動停止順序契約を追加。
+  - `nurture-infra` および `nurture-api` (Project-Nurture および aiome/commercial の双方) において `cloud-storage` feature flag を導入し、デスクトップ（desktop）向けビルドで AWS SDK が排除されてビルドできるように条件付きコンパイルガードを追加。
+  - `nurture-bridge` および `nurture-infra`（双方のリポジトリ）において、`aiome-core` の改名（`biome` -> `commune`）に伴うモジュール名・トレイト名・メッセージ名の不整合を解消。これにより、デスクトップ向けビルド（AWS SDK 排除状態）の `nurture-api` が両ワークスペースで正常にビルドできることを保証。
+
+- **Tauri デスクトップアプリ化 (Phase 2 - Tauri シェル強化 / IPC + サイドカー自動起動)**:
+  - `apps/management-console/src-tauri/src/lib.rs` に新規 IPC コマンド（`get_data_dir`, `get_sidecar_status`, `restart_sidecar`, `get_system_info`）を実装しハンドラへ登録。
+  - `lib.rs` の `.setup()` フックにて `sidecar-auto` が有効かつ通常起動時（テスト外）にサイドカープロセスを自動起動し、`app.run` ループの `ExitRequested` イベントを検知してグレースフルに全サイドカープロセスをクリーンアップするライフサイクル管理を構築。
+  - トレイメニュー構築（`build_tray_menu`）を強化し、動作ステータスの表示（`Status: Running/Stopped`）、エンジン再起動（`Restart Engine`）、データディレクトリを直接開く（`Open Data Dir`）メニュー項目を追加し、対応するトレイイベントハンドラを実装。
+  - `apps/management-console/src-tauri/Cargo.toml` に `sysinfo` および `shared` 依存関係を追加。
+
+- **Tauri デスクトップアプリ化 (Phase 1 - データパス統一 & 基盤整備)**:
+  - `libs/shared/src/app_data.rs` に環境変数 `AIOME_DATA_DIR` が設定されている場合に最優先でそのディレクトリパスをアプリデータルートとして使用するオーバーライド機能を追加。
+  - `.agent/skills/tauri-development.md` にエージェントおよび開発者が遵守すべき Tauri 開発の絶対ルール（T-001〜T-005）を追加。
+  - `apps/management-console/src-tauri/Cargo.toml` に `[features]` セクションを追加し、サイドカー自動起動機能用の `sidecar-auto` フラグを定義。
+
+- **Windows/クロスプラットフォーム環境でのビルド対応 (Phase 12)**:
+  - `libs/aiome-contracts/Cargo.toml` および `libs/aiome-core-contracts/Cargo.toml` の `[build-dependencies]` に `protobuf-src = "2"` を追加。
+  - `libs/aiome-contracts/build.rs` および `libs/aiome-core-contracts/build.rs` に、`protoc` 不足時に Pure Rust 実装の `protobuf-src` に自動フォールバックするクロスプラットフォーム検出ロジックを追加。
+  - `commercial/libs/nurture-infra/src/sidecar/clone_manager.rs` に、非Unix環境向けのプロセス存在確認 (`tasklist` を利用) と強制終了 (`taskkill` を利用) を行う Windows 互換フォールバックロジック (`is_process_alive`, `kill_process`) を追加。
+
 - **サイドバー日本語表記 & UI ユーザビリティ改善 (Phase 10)**:
   - `ja.json` および `en.json` に、サイドバーの生キー表示解消のための翻訳キーを追加（`nav.communeLab`, `nav.nurtureEconomy`, `nav.statusPage`, `nav.banDashboard`, `nav.buzzApproval`, `nav.agencyOnboarding` / `page.*` / `persona.*` / `session.*`）。
+
+### Changed
+- **Windows/クロスプラットフォーム環境でのビルド対応 (Phase 12)**:
+  - UNIX専用クレートである `nix` を、`libs/shared/Cargo.toml`, `apps/key-proxy/Cargo.toml`, `apps/api-server/Cargo.toml`, `commercial/libs/nurture-infra/Cargo.toml` において、`[dependencies]` から `[target.'cfg(unix)'.dependencies]` に移動し、非Unix環境でのビルド依存から排除。
+  - `libs/shared/src/process_hardening.rs` の `disable_core_dumps()` を `#[cfg(unix)]` の場合にコンパイルするように制限し、`#[cfg(not(unix))]` の場合は No-op になるよう安全なフォールバックを追加。
+  - `commercial/libs/nurture-infra/src/sidecar/clone_manager.rs` において、`nix` クレートの import 部分を `#[cfg(unix)]` ガードで囲み、内部の `signal::kill` を `is_process_alive` / `kill_process` ヘルパーを介した実装に置き換え。
+
+- **Vibe Coding セキュリティ強化 (Phase 11)**:
+  - `libs/aiome-core-contracts/src/traits.rs` に `ConstitutionalVerdict` 定義および拡張メソッド `verify_constitutional_extended` を追加。
+  - `libs/shared/src/guardrails.rs` に出力先別サニタイズのための `OutputContext` 列挙型および `sanitize_for_context` 関数を追加。
+  - `sanitize_for_context` でのサニタイズ処理を大幅に強化 (Reflexion)：
+    - **SqlQuery**: ダブルクォート、バックスラッシュ、NULL、`--`、`/*`、`*/` の完全除去を導入し、Prepared Statementを推奨するコメントの記述。
+    - **FilePath**: 再帰的ループ処理により、`....//` や `..././` などのディレクトリトラバーサルバイパス手法を完全に無効化。
+    - **HttpHeader**: `OnceLock` で `CRLF_ENCODED_REGEX` を安全に保持し、非推奨な `unwrap()` を排除してパニックを防ぐパターンマッチへ変更。
+  - `BeggingSupervisor` で `timestamp_nanos_opt()` が `None` を返した場合のフォールバックコメント（安全側に倒す）を追加 (Reflexion)。
+  - `libs/shared/src/guardrails.rs` での SqlQuery (4件) および FilePath (1件) のサニタイズテストを追加 (Reflexion)。
+  - `apps/api-server/src/bootstrap/helpers.rs` の `test_init_cors` に `#[serial_test::serial]` を追加し、並列テスト実行時の競合（flaky test）を排除 (Reflexion)。
+  - `helpers.rs` での `tracing` から of 未使用のインポート警告に `#[allow(unused_imports)]` および説明コメントを追加 (Reflexion)。
+
+- **サイドバー日本語表記 & UI ユーザビリティ改善 (Phase 10)**:
+  - `App.tsx` 内の14箇所のハードコードされた英語文字列を、i18n の `t()` 呼び出しに置き換え、多言語（日/英）切り替えに対応。
+  - `ja.json` 内の分かりにくい既存の翻訳表記を、ユーザーが直感的に理解しやすい表現に改善（「シナジーデモ」→「自律AIデモ」、「因果トレース」→「原因分析」、「コントロール」→「管理 & ツール」など）。
 
 ### Changed
 - **サイドバー日本語表記 & UI ユーザビリティ改善 (Phase 10)**:

@@ -102,6 +102,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_validation_success() {
         let validator = MockConstitutionalValidator { should_fail: false };
         let wf_id = Uuid::new_v4();
@@ -124,7 +125,7 @@ mod tests {
                 "http-1",
                 NodeType::HttpRequest {
                     method: "GET".to_string(),
-                    url_template: "https://api.example.com".to_string(),
+                    url_template: "https://github.com".to_string(),
                 },
             ),
         ];
@@ -490,6 +491,88 @@ mod tests {
             }
             other => panic!("Expected SecurityViolation for SSRF, got {:?}", other),
         }
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_validation_ssrf_dns_and_dev_mode() {
+        let run_validation = |url: &str| {
+            let url = url.to_string();
+            async move {
+                let validator = MockConstitutionalValidator { should_fail: false };
+                let nodes = vec![
+                    create_test_node(
+                        "start-1",
+                        NodeType::Start {
+                            trigger: TriggerType::Manual,
+                        },
+                    ),
+                    create_test_node(
+                        "http-1",
+                        NodeType::HttpRequest {
+                            method: "GET".to_string(),
+                            url_template: url,
+                        },
+                    ),
+                ];
+                let edges = vec![create_test_edge("start-1", "http-1")];
+                let wf = WorkflowDefinition {
+                    id: Uuid::new_v4(),
+                    name: "SSRF Test".to_string(),
+                    description: "SSRF Test".to_string(),
+                    version: 1,
+                    nodes,
+                    edges,
+                    variables: HashMap::new(),
+                    created_at: "2026".to_string(),
+                    updated_at: "2026".to_string(),
+                };
+                WorkflowValidator::validate(&wf, &validator).await
+            }
+        };
+
+        // 1. 予約ドメインのブロック (localhost, *.local)
+        assert!(
+            run_validation("http://myhost.local/").await.is_err(),
+            "myhost.local should be blocked"
+        );
+        assert!(
+            run_validation("http://myhost.localhost/").await.is_err(),
+            "myhost.localhost should be blocked"
+        );
+        assert!(
+            run_validation("http://example.test/").await.is_err(),
+            "example.test should be blocked"
+        );
+
+        // 2. DNS Rebinding 防御
+        std::env::remove_var("AIOME_DEV_MODE");
+        std::env::remove_var("CI");
+        let res_rebinding = run_validation("http://127.0.0.1.nip.io/").await;
+        assert!(
+            res_rebinding.is_err(),
+            "Should block DNS rebinding target in production/Fail-Closed mode"
+        );
+
+        // 3. 本番モードでの DNS エラー Fail-Closed
+        std::env::set_var("AIOME_DEV_MODE", "false");
+        let res_fail = run_validation("http://nonexistent-domain-xyz123.com/").await;
+        assert!(
+            res_fail.is_err(),
+            "Should fail-closed for non-existent domain in production"
+        );
+
+        // 4. 開発モードでの DNS エラー Fail-Open
+        std::env::set_var("AIOME_DEV_MODE", "true");
+        let res_open = run_validation("http://nonexistent-domain-xyz123.com/").await;
+        assert!(
+            res_open.is_ok(),
+            "Should fail-open for non-existent domain in dev mode, got: {:?}",
+            res_open
+        );
+
+        // クリーンアップ
+        std::env::remove_var("AIOME_DEV_MODE");
     }
 
     #[test]

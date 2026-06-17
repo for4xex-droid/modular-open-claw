@@ -3,7 +3,9 @@ use commerce_protocol::error::NurtureError;
 use commerce_protocol::identity::ActorId;
 use uuid::Uuid;
 
+#[cfg(feature = "cloud-storage")]
 pub mod s3;
+#[cfg(feature = "cloud-storage")]
 pub use s3::S3AssetStorage;
 
 #[async_trait]

@@ -20,8 +20,10 @@ zeroize = { version = "1.7", features = ["derive"] }
 thiserror = { workspace = true }
 tower = { workspace = true, features = ["buffer", "limit"] }
 tower-http = { version = "0.5", features = ["full", "limit"] }
-nix = { workspace = true }
 dotenvy = "0.15"
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true }
 subtle = "2.6.1"
 uuid = { workspace = true }
 

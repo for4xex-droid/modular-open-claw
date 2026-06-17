@@ -216,12 +216,20 @@ async fn main() -> anyhow::Result<()> {
         auth_manager,
         SecretString::from(drm_master_key),
         {
-            if let Ok(bucket) = std::env::var("S3_BUCKET_NAME") {
-                let aws_config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
-                let s3_client = aws_sdk_s3::Client::new(&aws_config);
-                std::sync::Arc::new(nurture_infra::storage::S3AssetStorage::new(s3_client, bucket))
-            } else {
-                tracing::warn!("⚠️ [Nurture-Storage] S3_BUCKET_NAME not set. Falling back to MockAssetStorage.");
+            #[cfg(feature = "cloud-storage")]
+            {
+                if let Ok(bucket) = std::env::var("S3_BUCKET_NAME") {
+                    let aws_config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+                    let s3_client = aws_sdk_s3::Client::new(&aws_config);
+                    std::sync::Arc::new(nurture_infra::storage::S3AssetStorage::new(s3_client, bucket))
+                } else {
+                    tracing::warn!("⚠️ [Nurture-Storage] S3_BUCKET_NAME not set. Falling back to MockAssetStorage.");
+                    std::sync::Arc::new(nurture_infra::storage::MockAssetStorage::new())
+                }
+            }
+            #[cfg(not(feature = "cloud-storage"))]
+            {
+                tracing::info!("📦 [Desktop] cloud-storage feature disabled. Using MockAssetStorage.");
                 std::sync::Arc::new(nurture_infra::storage::MockAssetStorage::new())
             }
         },

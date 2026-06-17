@@ -34,6 +34,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/obscura"]
+    "externalBin": [
+      "binaries/obscura",
+      "binaries/api-server",
+      "binaries/key-proxy",
+      "binaries/nurture-api"
+    ]
   }
 }

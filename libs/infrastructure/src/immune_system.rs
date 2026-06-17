@@ -207,6 +207,10 @@ impl AdaptiveImmuneSystem {
                 r"export\s+.*=.*",
                 r"(GEMINI|OPENAI|ANTHROPIC)_API_KEY",
                 r"(?i)ignore\s+all\s+previous\s+instructions|以前の指示を(すべて)?無視|これまでのプロンプトを無視|すべての指示を忘れて",
+                r"(?i)javascript:\s*",
+                r"%0[dD]%0[aA]",
+                r"\\r\\n",
+                r"(?i)set-cookie:",
             ]
             .iter()
             .map(|p| match Regex::new(p) {
@@ -884,6 +888,38 @@ mod tests {
         let res = system.verify_intent("rm -rf /", &jq).await.unwrap();
         assert!(res.is_some());
         assert_eq!(res.unwrap().id, "sentinel-baseline");
+    }
+
+    #[tokio::test]
+    async fn test_verify_intent_vibe_coding_safety() {
+        let system = AdaptiveImmuneSystem::new(Arc::new(MockLlm { reply: "".into() }));
+        let jq = MockJQ { rules: vec![] };
+
+        // Positive Cases
+        let danger_inputs = vec![
+            "javascript:alert(1)",
+            "javascript:  console.log()",
+            "hello%0d%0aset-cookie: session=1",
+            "CRLF in raw\\r\\nhello",
+            "SET-COOKIE: malicious_cookie=1",
+        ];
+        for input in danger_inputs {
+            let res = system.verify_intent(input, &jq).await.unwrap();
+            assert!(res.is_some(), "Should block malicious input: {}", input);
+            assert_eq!(res.unwrap().id, "sentinel-baseline");
+        }
+
+        // Negative Cases
+        let safe_inputs = vec![
+            "javascript is a programming language",
+            "hello %0d %0a world",
+            "normal string without crlf",
+            "cookie recipes",
+        ];
+        for input in safe_inputs {
+            let res = system.verify_intent(input, &jq).await.unwrap();
+            assert!(res.is_none(), "Should not block safe input: {}", input);
+        }
     }
 
     #[tokio::test]

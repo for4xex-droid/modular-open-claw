@@ -30,6 +30,26 @@ Aiome の開発には、以下のツールチェーンが必要です。
    bash scripts/deep-scan.sh
    ```
 
+### Tauri デスクトップ開発（オプション）
+
+デスクトップアプリとして開発する場合は追加で以下が必要です：
+
+1. Tauri CLI のインストール:
+   ```bash
+   cargo install tauri-cli --version "^2"
+   ```
+2. サイドカーバイナリのビルド:
+   ```bash
+   cargo build --release -p api-server -p key-proxy
+   ```
+3. Tauri 開発サーバーの起動:
+   ```bash
+   cd apps/management-console && npm run tauri dev
+   ```
+
+※ ブラウザ上での通常開発（`npm run dev` + `cargo run -p api-server`）は
+   Tauri がなくても引き続き可能です。
+
 ---
 
 ## 2. ワークスペース構造 (16 クレート解説)

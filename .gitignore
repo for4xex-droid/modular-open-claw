@@ -134,3 +134,7 @@ test_logic
 
 # SARIF results (can be regenerated)
 *.sarif
+
+# Tauri Sidecar Binaries (strictly kept local)
+/apps/management-console/src-tauri/binaries/
+

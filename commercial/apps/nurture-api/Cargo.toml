@@ -9,7 +9,7 @@ publish = false
 aiome-core-contracts = { path = "../../../libs/aiome-core-contracts", features = ["grpc"] }
 commerce-protocol = { path = "../../libs/commerce-protocol", features = ["axum"] }
 nurture-core = { path = "../../libs/nurture-core" }
-nurture-infra = { path = "../../libs/nurture-infra" }
+nurture-infra = { path = "../../libs/nurture-infra", default-features = false }
 nurture-bridge = { path = "../../libs/nurture-bridge" }
 axum = { workspace = true }
 tokio-util = { version = "0.7", features = ["rt"] }
@@ -31,11 +31,17 @@ base64 = { workspace = true }
 secrecy = { workspace = true }
 tower-http = { version = "0.5", features = ["set-header", "limit", "timeout", "cors"] }
 subtle = "2"
-aws-config = "1.8.16"
-aws-sdk-s3 = "1.131.0"
+aws-config = { version = "1.8.16", optional = true }
+aws-sdk-s3 = { version = "1.131.0", optional = true }
 tonic = "0.12.3"
 futures-util = "0.3.32"
 async-stream = "0.3.6"
+
+[features]
+default = ["cloud-storage", "stripe"]
+stripe = ["nurture-infra/stripe"]
+cloud-storage = ["nurture-infra/cloud-storage", "dep:aws-config", "dep:aws-sdk-s3"]
+desktop = ["stripe"]
 
 [dev-dependencies]
 axum-test = "16"

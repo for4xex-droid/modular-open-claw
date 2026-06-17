@@ -916,10 +916,30 @@ pub trait Publisher: Send + Sync {
 
 // LlmProvider is now defined in aiome_core_contracts::llm (ADR-021)
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub enum ConstitutionalVerdict {
+    Pass,
+    PassWithWarnings { warnings: Vec<String> },
+    Fail { reason: String },
+}
+
 /// 憲法バリデーター (ConstitutionalValidator)
 #[async_trait]
 pub trait ConstitutionalValidator: Send + Sync {
     async fn verify_constitutional(&self, output: &str, soul_md: &str) -> Result<(), AiomeError>;
+
+    async fn verify_constitutional_extended(
+        &self,
+        output: &str,
+        soul_md: &str,
+    ) -> Result<ConstitutionalVerdict, AiomeError> {
+        match self.verify_constitutional(output, soul_md).await {
+            Ok(()) => Ok(ConstitutionalVerdict::Pass),
+            Err(e) => Ok(ConstitutionalVerdict::Fail {
+                reason: e.to_string(),
+            }),
+        }
+    }
 }
 
 /// ログ出力インターフェース (AiomeLogger)

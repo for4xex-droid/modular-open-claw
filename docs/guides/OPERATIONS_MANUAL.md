@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
 **Version:** 3.2  
-**Last Updated:** 2026-06-12
+**Last Updated:** 2026-06-18
 
 ---
 
@@ -90,6 +90,15 @@ TIMESFM_AUTH_TOKEN=your_secure_token             # TimesFM 予測側認証トー
 TIMESFM_SIDECAR_URL=http://localhost:3020        # TimesFM サイドカーURL
 CONTAINER_RUNTIME=podman                         # DockerConductor/ Delegator で強制利用するコンテナランタイム (podman or docker). 指定がない場合は podman 優先の自動フォールバック。
 LOCAL_LLM_CONCURRENCY=2                          # Fast tier 用ローカルモデルへの同時実行セマフォ制限数 (デフォルト: 2)
+
+# --- Nurture Hybrid Mode (Desktop) ---
+NURTURE_INTERNAL_SECRET=your_secret              # Nurture-API とのS2S認証用シークレット
+NURTURE_API_URL=http://localhost:3020            # Nurture-APIのローカルサイドカーURL
+# NURTURE_CLOUD_URL=https://nurture.your-domain.com # リモートの Nurture インスタンスを使用する場合設定
+# NURTURE_DISABLED=true                           # 経済機能を無効化しOSSモードで動作させる場合設定
+
+# --- Data Directory Override ---
+# AIOME_DATA_DIR=/path/to/custom/data             # CLIとTauriデスクトップアプリで同じデータ領域を参照するためのパスオーバーライド
 ```
 
 > **Note**: すべての環境変数は `libs/shared/src/config.rs` の `AiomeConfig::load()` で一元管理されています。デフォルト値が設定されているため、必須のもの以外は未設定でも起動可能です。
@@ -227,6 +236,9 @@ RUST_LOG=info cargo run -p api-server
 - [ ] Polar Webhook 連携: `POLAR_API_KEY` および `POLAR_WEBHOOK_SECRET` が設定されているか確認 (P-1)
 - [ ] 運用アラート: `AlertManager` による重複排除キャッシュやサーキットブレーカーとの連動確認 (A-3)
 - [ ] 運用アラート: Discord Webhook アラート送信のために `.env` に `DISCORD_WEBHOOK_URL` を設定 (Phase C-4)
+- [ ] Tauri デスクトップビルド: `scripts/desktop_sidecar_manager.py` によるサイドカーバイナリの物理検証（`--check-core` または `--check-all`）を実行し、合格していることを確認 (Reflexion)
+- [ ] Tauri 環境変数: Nurture をローカル稼働させる場合は `.env` で `NURTURE_INTERNAL_SECRET` が安全に定義されているか確認。リモート利用時は `NURTURE_CLOUD_URL` が正しく設定されているか確認 (Reflexion)
+
 
 ### 9. local Embedding Server (ruri-v3) の起動
 1. `tools/ruri-embed-server` に移動。

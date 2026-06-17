@@ -51,12 +51,18 @@ pub fn pre_main_hardening() {
     disable_ptrace();
 }
 
+#[cfg(unix)]
 fn disable_core_dumps() {
     use nix::sys::resource::{setrlimit, Resource};
     // コアダンプのファイルサイズ制限を0に設定
     if let Err(e) = setrlimit(Resource::RLIMIT_CORE, 0, 0) {
         eprintln!("Failed to disable core dumps: {}", e);
     }
+}
+
+#[cfg(not(unix))]
+fn disable_core_dumps() {
+    // Non-Unix OS: No-op for now
 }
 
 #[cfg(target_os = "macos")]

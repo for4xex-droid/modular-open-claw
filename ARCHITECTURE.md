@@ -80,6 +80,7 @@ graph TD
     napi-bridge --> aiome-core
     napi-bridge --> infrastructure
     napi-bridge --> shared
+    management-console --> shared
     aiome-core-contracts --> aiome-contracts
     soul --> aiome-core-contracts
     aiome-migrate --> aiome-core
@@ -150,4 +151,4 @@ API_SERVER_SECRET, NURTURE_INTERNAL_SECRET, NURTURE_API_URL, ALLOWED_ORIGINS, FE
 ```
 
 ---
-*Last Auto-Generated: 2026-06-14 UTC*
+*Last Auto-Generated: 2026-06-19 UTC*

@@ -28,6 +28,14 @@ impl AppDataResolver {
     /// `CELL_ID` 環境変数が設定されている場合、ルートパスの末尾にセル名前空間を追加します。
     /// パストラバーサル防止のため、`CELL_ID` は英数字・ハイフン・アンダースコアのみ許可されます。
     pub fn new() -> Result<Self, String> {
+        if let Ok(data_dir) = std::env::var("AIOME_DATA_DIR") {
+            if !data_dir.is_empty() {
+                return Ok(Self {
+                    root: PathBuf::from(data_dir),
+                });
+            }
+        }
+
         let cell_id = match std::env::var("CELL_ID") {
             Ok(val) => val,
             Err(_) => {
@@ -238,5 +246,19 @@ mod tests {
         assert!(!AppDataResolver::is_safe_cell_id("cell/0"));
         assert!(!AppDataResolver::is_safe_cell_id("cell 0"));
         assert!(!AppDataResolver::is_safe_cell_id(&"a".repeat(65)));
+    }
+
+    #[test]
+    #[serial]
+    fn test_resolve_root_override_via_env() {
+        let custom_path = env::temp_dir().join("aiome-custom-data-test");
+        env::set_var("AIOME_DATA_DIR", custom_path.to_str().unwrap());
+        env::set_var("CELL_ID", "override-test-cell");
+
+        let resolver = AppDataResolver::new().unwrap();
+        assert_eq!(resolver.root(), custom_path);
+
+        env::remove_var("AIOME_DATA_DIR");
+        clean_cell_id();
     }
 }

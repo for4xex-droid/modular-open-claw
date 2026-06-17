@@ -22,8 +22,10 @@ base64 = "0.22"
 rand = "0.8"
 sysinfo.workspace = true
 tracing = { workspace = true }
-nix = { workspace = true }
 dirs = "5.0"
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true }
 tokio-util = { workspace = true }
 bastion = { package = "bastion-core", version = "1.0.0", features = ["fs", "net"] }
 anyhow = { workspace = true }

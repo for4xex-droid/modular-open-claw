@@ -27,18 +27,21 @@ ed25519-dalek = { workspace = true }
 base64 = { workspace = true }
 secrecy = { workspace = true }
 rand = { workspace = true }
-nix = { workspace = true }
 async-stripe = { version = "1.0.0-rc.5", features = ["rustls-tls-webpki-roots", "rustls-aws-lc-rs"], optional = true }
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true }
 async-stripe-webhook = { workspace = true, optional = true }
 sha2 = { workspace = true }
 svix = "1.92.2"
 http = "1.4.0"
 hmac-sha256 = "1.1.14"
-aws-config = "1.8.16"
-aws-sdk-s3 = "1.131.0"
+aws-config = { version = "1.8.16", optional = true }
+aws-sdk-s3 = { version = "1.131.0", optional = true }
 tokio-util = "0.7.18"
 
 [features]
-default = ["stripe"]
+default = ["stripe", "cloud-storage"]
 stripe = ["dep:async-stripe", "dep:async-stripe-webhook"]
+cloud-storage = ["dep:aws-config", "dep:aws-sdk-s3"]
 mock = []

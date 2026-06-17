@@ -165,6 +165,8 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 9. **GDPR/RTBF & Content Compliance**: 単一トランザクションで最大7テーブルの完全な物理パージ（`forget_actor`）と安全な外部削除伝播を保証。さらに、有害コンテンツを自動検知してフィルタリングする安全フィルターを搭載。
 10. **Aegis Sentinel**: WASM実行時のインシデントを常時監視・記録し、LLMによるパッチ生成とKaniによる形式検証を経て、システム稼働中にコードを自己修復・入れ替え（HotSwap）する事後修復システム。
 11. **Adaptive Immune System**: 実行前に入力脅威パターンを検知し、学習ルールのドリフトを防止する事前防御システム（事後修復の **Aegis Sentinel** とともに多層免疫システムを形成）。
+12. **Multi-Context Sanitization**: 出力コンテキスト（SqlQuery, FilePath, HttpHeader等）に応じた厳格なサニタイズ処理。SQLインジェクション対策（ダブルクォートやコメント等の除去）、再帰トラバーサルバイパス防止、OnceLockによるパニックフリーなHttpHeader処理などを一元化。
+13. **Sidecar Physical Validation**: リリース・ビルド時にTauriサイドカーバイナリ（api-server等）の物理情報（マジックバイト・ファイルサイズ100KB以上）を自動検証し、開発用ダミープレースホルダーの混入を物理的に排除。
 
 ---
 

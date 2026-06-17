@@ -33,6 +33,7 @@ prost = { workspace = true, optional = true }
 
 [build-dependencies]
 tonic-build = { workspace = true }
+protobuf-src = "2"
 
 [features]
 axum = ["dep:axum"]

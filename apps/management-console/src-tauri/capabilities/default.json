@@ -10,7 +10,12 @@
     "core:menu:default",
     {
       "identifier": "shell:allow-execute",
-      "allow": [{ "name": "obscura" }]
+      "allow": [
+        { "name": "obscura" },
+        { "name": "api-server" },
+        { "name": "key-proxy" },
+        { "name": "nurture-api" }
+      ]
     }
   ]
 }

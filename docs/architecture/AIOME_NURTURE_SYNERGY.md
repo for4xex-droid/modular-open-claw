@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-06-14
+> **最終更新**: 2026-06-18
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -75,7 +75,7 @@ graph TB
             MGMT["Management Console (60 screens)"]
             SEOPULSE["SeoPulseView"]
             PROXY["key-proxy (AbyssVault/WP)"]
-            TAURI["Tauri Desktop (計画)"]
+            TAURI["Tauri Desktop (Tauri v2)"]
         end
     end
 
@@ -661,6 +661,35 @@ sequenceDiagram
     API-->>MC: JSON (共有ゲノムリスト)
 ```
 
+### 5.11 Nurture ハイブリッドモード（ローカル/クラウド）起動フロー
+
+```mermaid
+sequenceDiagram
+    participant TS as Tauri Shell (lib.rs)
+    participant NA as nurture-api (:3020)
+    participant AS as api-server (:3015)
+    participant KP as key-proxy (:3017)
+
+    Note over TS: resolve_nurture_mode() を実行
+    alt ローカルモード (デフォルト)
+        TS->>TS: generate_session_secret() でランダム256-bitトークン生成
+        TS->>NA: spawn() with DATABASE_URL & NURTURE_INTERNAL_SECRET (secret)
+        NA-->>TS: spawn OK
+        TS->>AS: spawn() with KEY_PROXY_URL, NURTURE_API_URL=http://localhost:3020, NURTURE_INTERNAL_SECRET (secret)
+        AS-->>TS: spawn OK
+    else クラウドモード (NURTURE_CLOUD_URL設定時)
+        TS->>AS: spawn() with NURTURE_API_URL=NURTURE_CLOUD_URL
+        AS-->>TS: spawn OK
+    else 無効モード (NURTURE_DISABLED=true設定時)
+        TS->>AS: spawn() (NURTURE_API_URL未設定 -> OSSフォールバック)
+        AS-->>TS: spawn OK
+    end
+
+    TS->>KP: spawn() with GEMINI_API_KEY
+    KP-->>TS: spawn OK
+```
+
+
 ---
 
 
@@ -1049,7 +1078,8 @@ gantt
 
     section Aiome OSS MVP
     Phase 2-PRE Path Standard.  :a1, 2026-04, 1w
-    Phase 2C Tauri              :a2, after a1, 2w
+    Phase 2C Tauri (シェル/自動起動) :active, a2, after a1, 2w
+    Phase 4 Nurture ハイブリッド統合 :active, a2b, 2026-06, 1w
     Phase 2D E2E                :a3, after a2, 2w
     Phase 1 TTS + LoRA          :a4, after a3, 4w
     Phase 4 Inochi2D            :a5, 2026-07, 4w

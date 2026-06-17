@@ -81,12 +81,12 @@ pub fn validate_input(input: &str) -> ValidationResult {
 
     // 4. Devモード (DX向上リスクへの対応)
     // エンフォースモードがオフの場合、警告をログに出しつつパスさせる
+    #[cfg(debug_assertions)]
     if matches!(result, ValidationResult::Blocked(_)) {
         let enforce = std::env::var("ENFORCE_GUARDRAIL")
             .map(|v| v.to_lowercase() == "true")
             .unwrap_or(true); // デフォルトは true (Security First)
 
-        #[cfg(debug_assertions)]
         if !enforce {
             tracing::warn!("⚠️  Guardrail Security Warning (DevMode): {:?}", result);
             return ValidationResult::Valid;
@@ -106,6 +106,8 @@ use std::sync::OnceLock;
 
 static EMAIL_REGEX: OnceLock<Option<Regex>> = OnceLock::new();
 static PHONE_REGEX: OnceLock<Option<Regex>> = OnceLock::new();
+/// CRLF injection 用の正規表現（HttpHeader サニタイズで使用）
+static CRLF_ENCODED_REGEX: OnceLock<Option<Regex>> = OnceLock::new();
 static CREDIT_CARD_REGEX: OnceLock<Option<Regex>> = OnceLock::new();
 
 /// ログ出力前などに PII (個人特定情報) をマスキングする (GDPR P-2-C)
@@ -224,6 +226,8 @@ impl BeggingSupervisor {
                 let diff = now - last;
 
                 // Expert Review 指摘: 25〜35日のランダムなジッター。
+                // timestamp_nanos_opt() は 2262年以降で i64 オーバーフローにより None を返す。
+                // その場合は seed=0 にフォールバックし、jitter_days=25 として安全側に倒す。
                 let seed = last.timestamp_nanos_opt().unwrap_or(0).unsigned_abs();
                 let jitter_days = 25 + (seed % 11) as i64;
 
@@ -241,6 +245,78 @@ impl BeggingSupervisor {
 
         // おねだりワードが含まれていなければ、通常の会話として通す
         ValidationResult::Valid
+    }
+}
+
+/// 出力コンテキストの列挙型
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutputContext {
+    /// HTTPヘッダーコンテキスト
+    HttpHeader,
+    /// HTML属性コンテキスト
+    HtmlAttribute,
+    /// SQLクエリコンテキスト
+    SqlQuery,
+    /// シェルコマンドコンテキスト
+    ShellCommand,
+    /// ファイルパスコンテキスト
+    FilePath,
+}
+
+/// コンテキストに応じた安全なサニタイズ処理を実行する
+///
+/// # 注意
+/// `SqlQuery` コンテキストはメタ文字の除去による簡易防御です。
+/// 本番環境ではパラメタライズドクエリ（Prepared Statement）を使用してください。
+pub fn sanitize_for_context(input: &str, context: OutputContext) -> String {
+    match context {
+        OutputContext::HttpHeader => {
+            let s = input.replace(['\r', '\n'], "");
+            let re = CRLF_ENCODED_REGEX.get_or_init(|| Regex::new("(?i)%0[da]").ok());
+            match re {
+                Some(re) => re.replace_all(&s, "").into_owned(),
+                None => s,
+            }
+        }
+        OutputContext::HtmlAttribute => {
+            let trimmed = input.trim();
+            let lower = trimmed.to_lowercase();
+            if lower.starts_with("javascript:") || lower.starts_with("data:") {
+                String::new()
+            } else {
+                trimmed
+                    .replace('&', "&amp;")
+                    .replace('<', "&lt;")
+                    .replace('>', "&gt;")
+                    .replace('"', "&quot;")
+                    .replace('\'', "&#x27;")
+            }
+        }
+        OutputContext::SqlQuery => {
+            // 簡易防御: メタ文字を除去する。本来はパラメタライズドクエリが唯一の正解。
+            input
+                .replace(['\'', '"', '\\', '\0'], "")
+                .replace("--", "")
+                .replace("/*", "")
+                .replace("*/", "")
+        }
+        OutputContext::ShellCommand => input
+            .chars()
+            .filter(|&c| !matches!(c, ';' | '&' | '|' | '$' | '`' | '>' | '<' | '(' | ')'))
+            .collect(),
+        OutputContext::FilePath => {
+            // 再帰的に `..` を除去し、`....//` → `../` のバイパスを防止
+            let mut s = input.to_string();
+            loop {
+                let next = s.replace("..", "");
+                if next == s {
+                    break;
+                }
+                s = next;
+            }
+            s = s.replace(['/', '\\'], "");
+            s
+        }
     }
 }
 
@@ -442,6 +518,85 @@ mod tests {
             BeggingSupervisor::validate_output("投げ銭していただけると嬉しいです"),
             ValidationResult::Blocked(_)
         ));
+    }
+
+    #[test]
+    fn test_sanitize_for_context() {
+        // HttpHeader CRLF injection mitigation
+        let header_input = "malicious\r\nSet-Cookie: session=123\nhello%0d%0aworld";
+        let header_output = sanitize_for_context(header_input, OutputContext::HttpHeader);
+        assert!(!header_output.contains('\r'));
+        assert!(!header_output.contains('\n'));
+        assert!(!header_output.contains("%0d"));
+        assert!(!header_output.contains("%0a"));
+        assert!(!header_output.contains("%0D"));
+        assert!(!header_output.contains("%0A"));
+
+        // HtmlAttribute XSS mitigation
+        let html_js = "javascript:alert(1)";
+        assert_eq!(
+            sanitize_for_context(html_js, OutputContext::HtmlAttribute),
+            ""
+        );
+        let html_data = "data:text/html,<script>alert(1)</script>";
+        assert_eq!(
+            sanitize_for_context(html_data, OutputContext::HtmlAttribute),
+            ""
+        );
+        let html_safe = "https://example.com/image.png";
+        assert_eq!(
+            sanitize_for_context(html_safe, OutputContext::HtmlAttribute),
+            "https://example.com/image.png"
+        );
+
+        // SqlQuery sql injection mitigation (meta character escaping)
+        let sql_input = "select * from users where name = 'admin' or '1'='1'";
+        let sql_output = sanitize_for_context(sql_input, OutputContext::SqlQuery);
+        assert!(!sql_output.contains('\''));
+
+        // SqlQuery: double quote removal
+        let sql_dq = r#"SELECT * FROM users WHERE name = "admin""#;
+        let sql_dq_out = sanitize_for_context(sql_dq, OutputContext::SqlQuery);
+        assert!(!sql_dq_out.contains('"'));
+
+        // SqlQuery: backslash removal
+        let sql_bs = r"admin\' OR 1=1";
+        let sql_bs_out = sanitize_for_context(sql_bs, OutputContext::SqlQuery);
+        assert!(!sql_bs_out.contains('\\'));
+
+        // SqlQuery: SQL comment removal
+        let sql_comment = "admin'-- drop table users";
+        let sql_comment_out = sanitize_for_context(sql_comment, OutputContext::SqlQuery);
+        assert!(!sql_comment_out.contains("--"));
+
+        // SqlQuery: block comment removal
+        let sql_block = "admin'/* injection */";
+        let sql_block_out = sanitize_for_context(sql_block, OutputContext::SqlQuery);
+        assert!(!sql_block_out.contains("/*"));
+        assert!(!sql_block_out.contains("*/"));
+
+        // ShellCommand shell injection mitigation
+        let shell_input = "ls -la; rm -rf /; echo `id` & fg";
+        let shell_output = sanitize_for_context(shell_input, OutputContext::ShellCommand);
+        for meta in &[';', '&', '|', '$', '`'] {
+            assert!(!shell_output.contains(*meta));
+        }
+
+        // FilePath directory traversal mitigation
+        let path_input = "../../../etc/passwd";
+        let path_output = sanitize_for_context(path_input, OutputContext::FilePath);
+        assert!(!path_output.contains(".."));
+        assert!(!path_output.contains('/'));
+        assert!(!path_output.contains('\\'));
+
+        // FilePath: recursive bypass (....// -> ../)
+        let path_bypass = "....//....//etc/passwd";
+        let path_bypass_out = sanitize_for_context(path_bypass, OutputContext::FilePath);
+        assert!(
+            !path_bypass_out.contains(".."),
+            "Recursive traversal bypass should be prevented"
+        );
+        assert!(!path_bypass_out.contains('/'));
     }
 }
 

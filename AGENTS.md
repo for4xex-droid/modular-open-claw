@@ -37,6 +37,7 @@
 9. **Mission Control** — 大規模変更前に `.agent/skills/mission-control-principles.md` の4原則を実行。
 10. **DESIGN.md** — `tokens.css` / `animations.css` 変更時、DESIGN.md も同期。
 11. **SYNERGY.md** — トレイト/クレート/MCP ツール追加・変更時、`docs/architecture/AIOME_NURTURE_SYNERGY.md` の該当セクション（クラス図・シーケンス図・依存マップ）も同期。
+12. **tauri.conf.json** — CSP / externalBin 変更時、`.agent/skills/tauri-development.md` の T-003 を確認。
 
 ## 🚨 Impact Analysis (影響範囲の特定)
 
@@ -177,8 +178,9 @@ Negative Test を最初から実行していれば、1回目の報告で発覚�
 2. **暗号化**: `key-proxy/`, `AbyssVault`, `sovereign_verifier`
 3. **経済処理**: `commerce.rs`, `StripeCommerceEngine`, Webhook ハンドラ
 4. **データ削除**: `DELETE` エンドポイント、DB マイグレーション of `DROP`
-5. **外部送信**: メール送信、Webhook 発火、SNS 投稿の自律実行
+5. **外部送信**: メール送信, Webhook 発火, SNS 投稿の自律実行
 6. **CI/CD**: `.github/workflows/`, `pattern-enforcer.sh`
+7. **Tauri シェル**: `src-tauri/src/lib.rs`, `tauri.conf.json`, サイドカー起動ロジック
 
 ### なぜこのルールが存在するか
 rust-lang/rust-forge PR #1040 の原則: 安全性に直結するコードは

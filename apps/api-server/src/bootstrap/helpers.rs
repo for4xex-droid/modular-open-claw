@@ -15,7 +15,8 @@
 #![allow(clippy::manual_inspect)]
 
 use tower_http::cors::{AllowOrigin, CorsLayer};
-use tracing::{info, warn};
+#[allow(unused_imports)] // error! は #[cfg(not(debug_assertions))] 内で使用
+use tracing::{error, info, warn};
 
 pub fn init_cors() -> anyhow::Result<CorsLayer> {
     use axum::http::HeaderValue;
@@ -107,6 +108,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[serial_test::serial]
     fn test_init_cors() {
         std::env::set_var("ALLOWED_ORIGINS", "http://localhost:1420");
         let result = init_cors();

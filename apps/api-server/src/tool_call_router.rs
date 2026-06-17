@@ -136,22 +136,102 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 return;
             }
 
+            fn is_private_ip(ip: std::net::IpAddr) -> bool {
+                match ip {
+                    std::net::IpAddr::V4(ip4) => {
+                        ip4.is_loopback()
+                            || ip4.is_private()
+                            || ip4.is_link_local()
+                            || ip4.is_unspecified()
+                            || ip4.is_broadcast()
+                    }
+                    std::net::IpAddr::V6(ip6) => {
+                        ip6.is_loopback()
+                            || ip6.is_unspecified()
+                            || (ip6.segments()[0] & 0xfe00) == 0xfc00
+                            || (ip6.segments()[0] & 0xffc0) == 0xfe80
+                    }
+                }
+            }
+
             // === Security Guardrail: SSRF & robots.txt ===
             if sn == "firecrawl_scrape" || sn == "browser_navigate" || sn == "fetch_url" {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(&si) {
                     if let Some(url_str) = json.get("url").and_then(|u| u.as_str()) {
                         if let Ok(parsed_url) = url::Url::parse(url_str) {
-                            let host = parsed_url.host_str().unwrap_or("");
-                            if host == "localhost"
-                                || host == "127.0.0.1"
-                                || host.starts_with("192.168.")
-                                || host.starts_with("10.")
-                            {
-                                let _ = tx_clone.send(ToolExecutionEvent::Error("[Guardrail Block] SSRF attempt detected: internal networks are not allowed".to_string())).await;
-                                return;
+                            if let Some(host) = parsed_url.host_str() {
+                                let host_lower = host.to_lowercase();
+                                let mut is_malicious = false;
+                                let mut error_msg = String::new();
+
+                                if host_lower == "localhost"
+                                    || host_lower.ends_with(".local")
+                                    || host_lower.ends_with(".localhost")
+                                    || host_lower.ends_with(".test")
+                                    || host_lower.ends_with(".example")
+                                    || host_lower.ends_with(".invalid")
+                                {
+                                    is_malicious = true;
+                                    error_msg = format!("Blocked reserved domain: {}", host);
+                                } else if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+                                    if is_private_ip(ip) {
+                                        is_malicious = true;
+                                        error_msg = format!("Blocked private IP: {}", ip);
+                                    }
+                                } else {
+                                    let dev_mode = std::env::var("AIOME_DEV_MODE")
+                                        .map(|v| v == "true")
+                                        .unwrap_or(false)
+                                        || std::env::var("CI")
+                                            .map(|v| v == "true")
+                                            .unwrap_or(false);
+
+                                    let host_to_resolve = host.to_string();
+                                    let resolve_result = tokio::time::timeout(
+                                        std::time::Duration::from_millis(2000),
+                                        tokio::net::lookup_host(format!("{}:80", host_to_resolve)),
+                                    )
+                                    .await;
+
+                                    match resolve_result {
+                                        Ok(Ok(addrs)) => {
+                                            let mut found_private = false;
+                                            for addr in addrs {
+                                                if is_private_ip(addr.ip()) {
+                                                    found_private = true;
+                                                    error_msg = format!("Blocked private resolved IP: {} for host {}", addr.ip(), host);
+                                                    break;
+                                                }
+                                            }
+                                            if found_private {
+                                                is_malicious = true;
+                                            }
+                                        }
+                                        _ => {
+                                            if !dev_mode {
+                                                is_malicious = true;
+                                                error_msg = format!("DNS resolution failed or timed out for host: {}", host);
+                                            } else {
+                                                tracing::warn!("⚠️ DNS resolution failed or timed out for host '{}' in dev mode. Passing anyway.", host);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if is_malicious {
+                                    let _ = tx_clone
+                                        .send(ToolExecutionEvent::Error(format!(
+                                            "[Guardrail Block] SSRF attempt detected: {}",
+                                            error_msg
+                                        )))
+                                        .await;
+                                    return;
+                                }
                             }
+
                             // robots.txt check
                             if !check_robots_txt_policy(url_str).await {
+                                let host = parsed_url.host_str().unwrap_or("");
                                 let _ = tx_clone.send(ToolExecutionEvent::Error(format!("[Guardrail Block] Access to {} is prohibited by robots.txt policy", host))).await;
                                 return;
                             }
@@ -663,6 +743,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_tool_call_router_ssrf_guard() {
         let router = DefaultToolCallRouter;
         let (mut state, _guard) = setup_mock_state().await;
@@ -684,6 +765,64 @@ mod tests {
             }
         }
         assert!(got_ssrf_error, "SSRF attempt should be blocked");
+
+        // 2. DNS Rebinding 防御
+        std::env::remove_var("AIOME_DEV_MODE");
+        std::env::remove_var("CI");
+        let input_rebinding = r#"{"url": "http://127.0.0.1.nip.io/admin"}"#;
+        let mut rx_rebinding = router
+            .execute_skill("firecrawl_scrape", input_rebinding, &state)
+            .await;
+        let mut got_rebinding_error = false;
+        while let Some(evt) = rx_rebinding.recv().await {
+            if let ToolExecutionEvent::Error(msg) = evt {
+                if msg.contains("SSRF") {
+                    got_rebinding_error = true;
+                }
+            }
+        }
+        assert!(
+            got_rebinding_error,
+            "DNS Rebinding attempt should be blocked"
+        );
+
+        // 3. 本番モードでの DNS エラー Fail-Closed
+        std::env::set_var("AIOME_DEV_MODE", "false");
+        let input_fail = r#"{"url": "http://nonexistent-domain-xyz123.com/admin"}"#;
+        let mut rx_fail = router
+            .execute_skill("firecrawl_scrape", input_fail, &state)
+            .await;
+        let mut got_fail_error = false;
+        while let Some(evt) = rx_fail.recv().await {
+            if let ToolExecutionEvent::Error(msg) = evt {
+                if msg.contains("SSRF") || msg.contains("DNS") {
+                    got_fail_error = true;
+                }
+            }
+        }
+        assert!(got_fail_error, "DNS error should fail-closed in production");
+
+        // 4. 開発モードでの DNS エラー Fail-Open
+        std::env::set_var("AIOME_DEV_MODE", "true");
+        let input_open = r#"{"url": "http://nonexistent-domain-xyz123.com/admin"}"#;
+        let mut rx_open = router
+            .execute_skill("firecrawl_scrape", input_open, &state)
+            .await;
+        let mut got_ssrf_block = false;
+        while let Some(evt) = rx_open.recv().await {
+            if let ToolExecutionEvent::Error(msg) = evt {
+                if msg.contains("SSRF") {
+                    got_ssrf_block = true;
+                }
+            }
+        }
+        assert!(
+            !got_ssrf_block,
+            "DNS error should not block with SSRF in dev mode"
+        );
+
+        // クリーンアップ
+        std::env::remove_var("AIOME_DEV_MODE");
     }
 
     #[tokio::test]
