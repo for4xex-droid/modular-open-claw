@@ -7592,6 +7592,7 @@ dependencies = [
  "hex",
  "serde",
  "serde_json",
+ "serial_test 3.4.0",
  "shared",
  "sysinfo",
  "tauri",
