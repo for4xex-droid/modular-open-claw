@@ -41,38 +41,41 @@ export function BiomeResult({ generation, rarity, onSave, onClose }: BiomeResult
   const saveButtonStyle: React.CSSProperties = {
     ...buttonStyle,
     background: 'linear-gradient(135deg, var(--accent-amber), var(--accent-amber-30))',
-    color: 'var(--text-inverse)',
+    color: 'var(--text-inverse, #0c0f1d)',
     border: 'none'
   };
 
   return (
     <div style={containerStyle}>
-      <h2 style={{ fontSize: '24px', margin: '0 0 16px 0', letterSpacing: '1px' }}>SIMULATION LEGACY</h2>
+      <h2 style={{ fontSize: '24px', margin: '0 0 16px 0', letterSpacing: '1px' }}>🏆 シミュレーション完了</h2>
       
       <div style={{ margin: '24px 0' }}>
-        <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>FINAL RARITY</div>
-        <div style={{
-          fontSize: '32px',
-          fontWeight: '900',
-          color: rarity === 'Legendary' ? 'var(--accent-amber)' : rarity === 'Epic' ? 'var(--accent-purple)' : rarity === 'Rare' ? 'var(--accent-cyan)' : 'var(--text-muted)',
-          margin: '8px 0',
-          textShadow: rarity === 'Legendary' ? '0 0 16px var(--accent-amber-30)' : 'none'
-        }}>
+        <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>最終評価ランク</div>
+        <div 
+          style={{
+            fontSize: '32px',
+            fontWeight: '900',
+            color: rarity === 'Legendary' ? 'var(--accent-amber)' : rarity === 'Epic' ? 'var(--accent-purple)' : rarity === 'Rare' ? 'var(--accent-cyan)' : 'var(--text-muted)',
+            margin: '8px 0',
+            textShadow: rarity === 'Legendary' ? '0 0 16px var(--accent-amber-30)' : 'none'
+          }}
+          data-testid="result-rarity"
+        >
           {rarity}
         </div>
       </div>
 
       <div style={{ margin: '16px 0', fontSize: '16px' }}>
-        <span style={{ color: 'var(--text-muted)' }}>Survival Generations: </span>
-        <strong style={{ fontSize: '20px' }}>{generation}</strong>
+        <span style={{ color: 'var(--text-muted)' }}>生存世代数: </span>
+        <strong style={{ fontSize: '20px' }} data-testid="result-generation">{generation}</strong>
       </div>
 
       <div style={{ marginTop: '32px' }}>
-        <button style={saveButtonStyle} onClick={onSave} aria-label="Save">
-          SAVE SPECIMEN
+        <button style={saveButtonStyle} onClick={onSave} aria-label="Save" data-testid="result-save">
+          💾 標本を保存
         </button>
-        <button style={buttonStyle} onClick={onClose} aria-label="Close">
-          CLOSE
+        <button style={buttonStyle} onClick={onClose} aria-label="Close" data-testid="result-close">
+          ✕ 閉じる
         </button>
       </div>
     </div>

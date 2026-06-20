@@ -225,6 +225,73 @@ const HomePage: React.FC<HomePageProps> = ({
                         mode={mode}
                         sessionSavedChars={sessionSavedChars}
                     />
+
+                    {/* クイック起動「バイオーム」カード */}
+                    <div style={{
+                        padding: '1rem',
+                        background: 'var(--bg-glass-heavy, rgba(17, 24, 39, 0.7))',
+                        backdropFilter: 'blur(12px)',
+                        border: '1px solid var(--border-glass-bright, rgba(255, 255, 255, 0.15))',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+                    }} data-testid="biome-quick-card">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '1.25rem' }}>🎮</span>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--white-100)' }}>バイオーム進化シミュレーター</span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>AIエージェントの動作を見守りながら遊ぶ</span>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                                onClick={() => {
+                                    setActiveMainTab('world');
+                                    setWorldSubTab('biome');
+                                }}
+                                style={{
+                                    flex: 1,
+                                    padding: '6px 10px',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    background: 'linear-gradient(135deg, var(--accent-cyan, #06b6d4), #3b82f6)',
+                                    color: '#0c0f1d',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 0 8px rgba(6, 182, 212, 0.25)',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                data-testid="quick-start-biome"
+                            >
+                                🚀 ゲーム開始
+                            </button>
+                            <button
+                                onClick={() => window.open('/biome-popup.html', 'Biome Game', 'width=1100,height=800,menubar=no,toolbar=no,location=no,status=no')}
+                                style={{
+                                    padding: '6px 10px',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--white-15)',
+                                    background: 'var(--white-05)',
+                                    color: 'var(--white-90)',
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--white-10)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--white-05)'}
+                                title="別ウインドウで開く"
+                                data-testid="quick-popup-biome"
+                            >
+                                🪟 ポップアップ
+                            </button>
+                        </div>
+                    </div>
+
                     <Suspense fallback={null}>
                         <TreasureBox />
                     </Suspense>

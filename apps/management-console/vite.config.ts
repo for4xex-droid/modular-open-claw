@@ -8,6 +8,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
+import { resolve } from "path";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
@@ -22,6 +23,10 @@ export default defineConfig(async ({ mode }) => ({
   },
   build: {
     rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        biomePopup: resolve(__dirname, 'biome-popup.html'),
+      },
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
@@ -32,6 +37,11 @@ export default defineConfig(async ({ mode }) => ({
         }
       }
     }
+  },
+
+  // WASM パッケージを Vite の依存関係最適化から除外
+  optimizeDeps: {
+    exclude: ['biome-engine'],
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
@@ -53,6 +63,13 @@ export default defineConfig(async ({ mode }) => ({
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
+    },
+    fs: {
+      // biome-engine パッケージが ../../libs/ にあるため、
+      // ワークスペースルートまでファイル配信を許可する
+      allow: [
+        resolve(__dirname, '../..'),
+      ],
     },
   },
 }));

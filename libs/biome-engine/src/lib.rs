@@ -407,4 +407,63 @@ mod tests {
         assert!(restored_cell.active);
         assert_eq!(restored_cell.elements[0], original_cell.elements[0]);
     }
+
+    #[test]
+    fn test_inject_changes_element_balance() {
+        let mut engine = BiomeEngine::new(42);
+
+        // 初期配置: 中央13x13にC/N/P各4000を注入 (BiomeGame.tsxと同じ)
+        for y in 58..=70 {
+            for x in 58..=70 {
+                engine.inject_element(x, y, 0, 4000); // C
+                engine.inject_element(x, y, 1, 4000); // N
+                engine.inject_element(x, y, 2, 4000); // P
+            }
+        }
+
+        // 200 tick 回す (ゲームの標準的な進行)
+        for _ in 0..200 {
+            engine.tick();
+        }
+
+        let balance_before = engine.get_element_balance();
+        let active_before = engine.get_active_cell_count();
+        println!("--- After 200 ticks (initial setup) ---");
+        println!("Active cells: {}", active_before);
+        println!(
+            "Balance: C={}% N={}% P={}% H={}%",
+            balance_before[0], balance_before[1], balance_before[2], balance_before[3]
+        );
+
+        // ユーザーのクリック注入: 5x5 x 15000 of C
+        for y in 62..=66 {
+            for x in 62..=66 {
+                engine.inject_element(x, y, 0, 15000); // C
+            }
+        }
+
+        let balance_after_inject = engine.get_element_balance();
+        println!("\n--- After inject (5x5 x 15000 C) ---");
+        println!(
+            "Balance: C={}% N={}% P={}% H={}%",
+            balance_after_inject[0],
+            balance_after_inject[1],
+            balance_after_inject[2],
+            balance_after_inject[3]
+        );
+
+        let c_diff = balance_after_inject[0] as i32 - balance_before[0] as i32;
+        println!(
+            "C change: {}% -> {}% (diff: {}%)",
+            balance_before[0], balance_after_inject[0], c_diff
+        );
+
+        // C の割合は inject 前より増えている必要がある
+        assert!(
+            balance_after_inject[0] > balance_before[0],
+            "C balance should increase after injection: before={}%, after={}%",
+            balance_before[0],
+            balance_after_inject[0]
+        );
+    }
 }

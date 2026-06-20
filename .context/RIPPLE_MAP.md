@@ -1,3 +1,59 @@
+## Biome 細胞形態の多様性革命 (Phase 8) (2026-06-20)
+
+### 1. 3データテクスチャ構成への拡張とWASMデータ・パッキング精度崩壊の修正
+- **変更内容**:
+    - `apps/management-console/src/lib/biome/BiomeRenderer.tsx` [MODIFY]: float32 での u16 値パッキング（`cVal + nVal * 65536` 等）によるビット破壊・カラー多様性消失（赤色に固定）を防ぐため、パッキングを完全廃止。3枚目のデータテクスチャ（`gridTex2`）を追加し、12次元の `renderView` データをすべて f32 生値のまま転送するデータパイプラインを構築（`tex1Data` に C,N,P,H を、`tex2Data` に O,S,Fe,Si を格納）。
+    - `apps/management-console/src/lib/biome/BiomeRenderer.test.tsx` [MODIFY]: WebGLモックに `texSubImage2D` や `isContextLost` を追加し、`TEXTURE4` へのデータテクスチャバインド（`uniform1i` 呼び出し）を検証するユニットテストに加え、生値元素データ転送アサーションを追加して TDD でグリーン化。
+    - `apps/management-console/src/lib/biome/BiomeComponents.test.tsx` [MODIFY]: `BiomeHUD` の全レアリティ（Legendary/Epic/Uncommon/Common）の表示装飾を網羅するテストを TDD で追加し、ラインカバレッジ 100% を達成。
+- **波及効果**:
+    - WASMエンジンでシミュレーションされた全8元素の比率データが 100% の精度でシェーダーに伝送され、色の多様性とグラデーションの滑らかな遷移が完全に復元されました。
+
+### 2. 有機的なメタボール融合と美しく多様なビジュアル演出の実装
+- **変更内容**:
+    - `apps/management-console/src/lib/biome/shaders/grid.frag` [MODIFY]: 3x3近傍のセルに対する 1/(d²+0.15) 距離場によるメタボール融合（アメーバ状セルクラスタ）を実装。
+    - `grid.frag` [MODIFY]: 精度崩壊の修正に伴い、`getElementColor` および `getEnergy` におけるパッキング解除処理（`mod/floor`）を廃止し、2つのデータテクスチャ（`u_gridTex1`, `u_gridTex2`）から直接 texelFetch を行うように全面改修。
+    - `grid.frag` [MODIFY]: 任意のUV座標でのメタボール場を取得する `getFieldAtUV()` を実装し、それを用いたメタボール輪郭の法線計算および Phong ライティング（ベース拡散光 + specular 鏡面反射）による立体感（3Dジェル感）を追加。
+    - `grid.frag` [MODIFY]: セル内部の微細構造（中心の細胞核：輝点、外周の細胞膜：半透明リング）および視線角度に基づくフレネルリム発光効果（端が青く光る半透明の生物感）を実装。
+    - `grid.frag` [MODIFY]: 形態別（Basic, Producer, Consumer, Predator, Decomposer）の内部模様（微粒子、同心円脈動、流線型波動、放射状トゲ、渦巻き）の描画コントラストを強化し、形態ごとに固有の色味シフト（緑み、赤み、暖色、紫など）を適用する色相・彩度補正を導入。
+    - `apps/management-console/src/lib/biome/shaders/grid.vert` [MODIFY]: パススルー頂点シェーダーへ簡略化。
+- **波及効果**:
+    - ベタ塗りだったアメーバ融合細胞が、立体的な美しさを放つ有機的なビジュアル表現へ進化し、形態や元素の違いが視覚的に強くフィードバックされるプレミアムな意匠を実現しました。
+
+## Biome UXおよびビジュアル品質の向上 (2026-06-19)
+
+### 1. インタラクティブなキャンバス操作と詳細ツールチップの実装
+- **変更内容**:
+    - `apps/management-console/src/lib/biome/BiomeGame.tsx` [MODIFY]: クリック/ドラッグによる元素（C/N/P/H）注入機能、ホバー座標に基づきWASMからセル詳細情報を取得して表示するツールチップ（生存状態、エネルギー、形態、元素比率、凍結状態）を追加。
+    - `apps/management-console/src/lib/biome/utils/gridCoords.ts` [NEW]: キャンバス上のピクセル座標を WebGL の Y軸反転を考慮して 128x128 グリッド座標に変換する共通ユーティリティを実装。
+    - `apps/management-console/src/lib/biome/utils/gridCoords.test.ts` [NEW]: 境界値クランプおよび無効座標の null 返却をテストする Jest ユニットテストを実装。
+- **波及効果**:
+    - ユーザーがキャンバスを直接タッチして元素エネルギーを供給したり、詳細状態を視覚的に検査できるようになり、静的で単調だったシミュレーション画面が動的でインタラクティブなゲーム体験に進化しました。
+
+### 2. Bloomポストプロセスおよび背景グリッド等のビジュアル強化
+- **変更内容**:
+    - `apps/management-console/src/lib/biome/shaders/bloom.frag` [NEW]: 輝度抽出・2方向ブラー・合成を2パスで行うポストプロセスBloomシェーダーを実装。
+    - `apps/management-console/src/lib/biome/shaders/grid.frag` [MODIFY], `grid.vert` [MODIFY]: 背景のサイバーグリッドを動的に明滅させ、形態別カラーリングを適用し、マウスホバー時にその位置のグリッドセルを強調ハイライトするビジュアル強化を実装。
+    - `apps/management-console/src/lib/biome/BiomeRenderer.tsx` [MODIFY]: Bloom用のFBO/テクスチャバッファ初期化と2パス描画パイプラインを構築し、ホバー・クリック座標判定を呼び出し元へ通知するコールバックインタラクションを統合。
+- **波及効果**:
+    - チープだった画面描画が、Bloomによる発光効果と動的なグリッドアニメーションによって、プレミアムでサイバー感溢れるリッチなWebGL意匠に劇的にアップグレードされました。
+
+### 3. スポットライト対話型チュートリアルの実装
+- **変更内容**:
+    - `apps/management-console/src/lib/biome/BiomeTutorial.tsx` [NEW]: 5つの進化・操作手順（キャンバス、速度制御、元素、災害、伝説進化目標）をスポットライトハイライトで案内するモーダルチュートリアルコンポーネントを新規実装。
+    - `apps/management-console/src/lib/biome/BiomeGame.tsx` [MODIFY]: 初回起動時（`localStorage` の未完了状態）にチュートリアルを自動起動する `useEffect` と State を統合。
+    - `apps/management-console/src/lib/biome/BiomeControls.tsx` [MODIFY]: ❓ 遊び方ボタンのクリック時にチュートリアルを再表示するハンドラを接続。
+- **波及効果**:
+    - ルールや遊び方が分からなかった問題が完全に解消され、初めてゲームを起動したユーザーでも段階的なスポットライトガイドに沿って遊び方を直感的に習得できるようになりました。
+
+### 4. 別ウインドウ（ポップアップ）対応およびホーム画面クイック起動
+- **変更内容**:
+    - `apps/management-console/biome-popup.html` [NEW]: ポップアップ専用のHTMLファイルを新設し、WASMの unsafe-eval を許可する強固な CSP を定義。
+    - `apps/management-console/src/biome-popup-entry.tsx` [NEW]: `BiomeGame` を `standalone` モードでマウント・フルスクリーン表示する専用エントリーポイントを実装。
+    - `apps/management-console/vite.config.ts` [MODIFY]: `biome-popup.html` を Rollup のマルチエントリー `input` に登録し、ビルドおよび開発時にアクセス可能に変更。
+    - `apps/management-console/src/components/home/HomePage.tsx` [MODIFY]: ホーム画面の左側サイドバーにグラスモーフィズムデザインの「🎮 バイオーム」起動カードを統合し、直接メイン画面での起動、または別ウインドウへのポップアップ起動をサポート。
+- **波及効果**:
+    - AIエージェントを稼働させている間の暇つぶしとして、メイン画面の邪魔をしない別ウインドウでの常時ゲームプレイが可能となり、ホーム画面からのアクセス導線も最短化されました。
+
 ## Vibe Coding セキュリティ強化 (Phase 11) - Reflexion 改善 (2026-06-18)
 
 ### 1. サニタイズ処理の強化とパニック防止の徹底

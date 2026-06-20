@@ -70,6 +70,7 @@ export interface UseBiomeEngineOptions {
 
 export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [generation, setGeneration] = useState(0);
   const engineRef = useRef<BiomeEngine | null>(null);
   const wasmMemoryRef = useRef<WebAssembly.Memory | null>(null);
@@ -103,6 +104,9 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
       
       // デフォルトの初期化関数を実行して InitOutput (memoryを含む) を取得
       const initOutput = await wasm.default();
+      
+      if (!active) return;
+      
       wasmMemoryRef.current = initOutput.memory;
 
       // 古いインスタンスがあれば解放する
@@ -119,6 +123,9 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
       const key = `seed_${validatedSeed}`;
       try {
         const savedJson = await loadState(key);
+        
+        if (!active) return;
+        
         if (savedJson) {
           engine = wasm.BiomeEngine.deserialize(savedJson);
         } else {
@@ -134,6 +141,10 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
       setLoading(false);
     }).catch((err) => {
       console.error('Failed to load biome-engine WASM', err);
+      if (active) {
+        setError(err instanceof Error ? err.message : String(err));
+        setLoading(false);
+      }
     });
 
     return () => {
@@ -227,6 +238,26 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
   const injectElement = useCallback((x: number, y: number, idx: number, amount: number) => {
     if (!engineRef.current) return;
     engineRef.current.inject_element(x, y, idx, amount);
+
+    // render_buffer を即座にピンポイント更新（tick() を待たずに描画反映）
+    // WASM メモリに直接書き込む。serde 変換なし・O(1)。
+    if (wasmMemoryRef.current) {
+      const ptr = engineRef.current.render_data_ptr();
+      const len = engineRef.current.render_data_len();
+      const buf = new Float32Array(wasmMemoryRef.current.buffer, ptr, len);
+      const cellIdx = y * 128 + x;
+      const offset = cellIdx * 12;
+      if (offset + 12 <= len) {
+        buf[offset]     = x;
+        buf[offset + 1] = y;
+        buf[offset + 2] = 1.0;  // active = true (inject always activates)
+        // buf[offset + 3] = morphology: 既存値保持（tick で更新される）
+        // 元素値を加算
+        const currentVal = buf[offset + 4 + idx] || 0;
+        buf[offset + 4 + idx] = currentVal + amount;
+      }
+    }
+
     saveCurrentState();
   }, [saveCurrentState]);
 
@@ -278,6 +309,7 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
 
   return {
     loading,
+    error,
     generation,
     tick,
     rewind,

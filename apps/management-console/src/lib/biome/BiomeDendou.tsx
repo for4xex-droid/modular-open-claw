@@ -24,27 +24,31 @@ export function BiomeDendou({ list, onLoad }: BiomeDendouProps) {
       color: 'var(--white-100)',
       fontFamily: 'system-ui, sans-serif'
     }}>
-      <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 'bold' }}>HALL OF FAME</h3>
+      <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 'bold' }}>🏛️ 殿堂入り標本</h3>
       {list.length === 0 ? (
         <div style={{ color: 'var(--text-muted)', fontSize: '14px', textAlign: 'center', padding: '16px' }}>
-          No legendary specimens saved yet.
+          保存された標本はまだありません。
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {list.map((sp) => (
-            <div key={sp.id} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              background: 'var(--white-02)',
-              border: '1px solid var(--white-04)',
-              borderRadius: '8px',
-              padding: '12px 16px'
-            }}>
+            <div 
+              key={sp.id} 
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'var(--white-02)',
+                border: '1px solid var(--white-04)',
+                borderRadius: '8px',
+                padding: '12px 16px'
+              }}
+              data-testid="dendou-specimen"
+            >
               <div>
                 <div style={{ fontWeight: '600', fontSize: '14px' }}>{sp.name}</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Gen: {sp.generation} | {sp.rarity} | {sp.date}
+                  世代: {sp.generation} | ランク: {sp.rarity} | 日付: {sp.date}
                 </div>
               </div>
               <button
@@ -61,8 +65,9 @@ export function BiomeDendou({ list, onLoad }: BiomeDendouProps) {
                 }}
                 onClick={() => onLoad(sp.id)}
                 aria-label="Load"
+                data-testid="dendou-load"
               >
-                Load
+                📂 読込
               </button>
             </div>
           ))}

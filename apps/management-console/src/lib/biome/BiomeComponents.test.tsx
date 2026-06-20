@@ -20,30 +20,77 @@ describe('Biome HUD & Controls Components', () => {
     expect(screen.getByText(/Rare/)).toBeInTheDocument();
   });
 
+  it('正常系: BiomeHUD が Legendary, Epic, Uncommon, Common の各レアリティに応じた装飾を正しく表示すること', () => {
+    // 1. Legendary
+    const { rerender } = render(
+      <BiomeHUD
+        generation={200}
+        rarity="Legendary"
+        elementBalance={{ C: 50 }}
+      />
+    );
+    expect(screen.getByText('🔥')).toBeInTheDocument();
+    
+    // 2. Epic
+    rerender(
+      <BiomeHUD
+        generation={200}
+        rarity="Epic"
+        elementBalance={{ C: 50 }}
+      />
+    );
+    expect(screen.getByText('🔮')).toBeInTheDocument(); 
+
+    // 3. Uncommon
+    rerender(
+      <BiomeHUD
+        generation={200}
+        rarity="Uncommon"
+        elementBalance={{ C: 50 }}
+      />
+    );
+    expect(screen.getByText('🌟')).toBeInTheDocument();
+
+    // 4. Common (default)
+    rerender(
+      <BiomeHUD
+        generation={200}
+        rarity="Common"
+        elementBalance={{ C: 50 }}
+      />
+    );
+    expect(screen.getByText('🍃')).toBeInTheDocument();
+  });
+
   it('BiomeControls のボタン押下がハンドラーを呼び出すこと', () => {
-    const onInjectElement = jest.fn();
-    const onTriggerCrisis = jest.fn();
+    const onSelectElement = jest.fn();
+    const onSelectCrisis = jest.fn();
     const onRewind = jest.fn();
 
     render(
       <BiomeControls
-        onInjectElement={onInjectElement}
-        onTriggerCrisis={onTriggerCrisis}
+        selectedElement={null}
+        onSelectElement={onSelectElement}
+        selectedCrisis={null}
+        onSelectCrisis={onSelectCrisis}
+        onInjectElement={jest.fn()}
+        onTriggerCrisis={jest.fn()}
+        onRollSubstance={jest.fn()}
         onRewind={onRewind}
         paused={false}
         onTogglePause={jest.fn()}
       />
     );
 
-    // 元素注入ボタンのテスト
+    // 元素選択ボタンのテスト
     const injectBtn = screen.getByRole('button', { name: /C/ });
     fireEvent.click(injectBtn);
-    expect(onInjectElement).toHaveBeenCalledWith('C');
+    expect(onSelectElement).toHaveBeenCalledWith('C');
 
-    // 災害トリガーボタンのテスト
+    // 災害選択ボタンのテスト
     const meteorBtn = screen.getByRole('button', { name: /Meteor/i });
     fireEvent.click(meteorBtn);
-    expect(onTriggerCrisis).toHaveBeenCalledWith('Meteor');
+    expect(onSelectCrisis).toHaveBeenCalledWith('Meteor');
 
     // 巻き戻しボタンのテスト
     const rewindBtn = screen.getByRole('button', { name: /Rewind/i });
@@ -55,8 +102,13 @@ describe('Biome HUD & Controls Components', () => {
     const onNewSeed = jest.fn();
     render(
       <BiomeControls
+        selectedElement={null}
+        onSelectElement={jest.fn()}
+        selectedCrisis={null}
+        onSelectCrisis={jest.fn()}
         onInjectElement={jest.fn()}
         onTriggerCrisis={jest.fn()}
+        onRollSubstance={jest.fn()}
         onRewind={jest.fn()}
         paused={false}
         onTogglePause={jest.fn()}
@@ -73,8 +125,13 @@ describe('Biome HUD & Controls Components', () => {
   it('BiomeControls が onNewSeed ハンドラーを持たない場合に New Seed ボタンを表示しないこと', () => {
     render(
       <BiomeControls
+        selectedElement={null}
+        onSelectElement={jest.fn()}
+        selectedCrisis={null}
+        onSelectCrisis={jest.fn()}
         onInjectElement={jest.fn()}
         onTriggerCrisis={jest.fn()}
+        onRollSubstance={jest.fn()}
         onRewind={jest.fn()}
         paused={false}
         onTogglePause={jest.fn()}

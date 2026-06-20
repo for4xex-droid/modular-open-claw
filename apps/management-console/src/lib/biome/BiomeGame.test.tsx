@@ -6,6 +6,7 @@ jest.mock('./shaders/grid.vert?raw', () => 'void main() {}', { virtual: true });
 jest.mock('./shaders/grid.frag?raw', () => 'void main() {}', { virtual: true });
 jest.mock('./shaders/higgs.frag?raw', () => 'void main() {}', { virtual: true });
 jest.mock('./shaders/tachyon.frag?raw', () => 'void main() {}', { virtual: true });
+jest.mock('./shaders/bloom.frag?raw', () => 'void main() {}', { virtual: true });
 
 // BiomeEngine WASM のモック
 jest.mock('biome-engine', () => {
@@ -29,6 +30,9 @@ jest.mock('biome-engine', () => {
         get_element_balance: () => new Uint16Array([40, 30, 10, 20, 0, 0, 0, 0]),
         get_mutation_boost: () => 1.0,
         ticks_since_mutation: () => 0,
+        roll_substance: () => 0,
+        serialize_genome: () => '{}',
+        set_mutation_boost: jest.fn(),
       };
     }),
   };
@@ -84,6 +88,9 @@ jest.mock('../../config', () => ({
   STRIPE_PRICE_ID: 'price_gold_monthly',
 }));
 
+// Mock canvas elements
+HTMLCanvasElement.prototype.getContext = mockGetContext as any;
+
 import { BiomeGame } from './BiomeGame';
 
 describe('BiomeGame Component', () => {
@@ -99,8 +106,8 @@ describe('BiomeGame Component', () => {
     });
 
     // 各統合パーツが描画されていることを確認
-    expect(screen.getByText(/GENERATION/i)).toBeInTheDocument();
-    expect(screen.getByText(/INJECT ELEMENTS/i)).toBeInTheDocument();
+    expect(screen.getByTestId('biome-generation')).toBeInTheDocument();
+    expect(screen.getByText(/元素注入/i)).toBeInTheDocument();
     
     const canvas = document.querySelector('canvas');
     expect(canvas).toBeInTheDocument();
@@ -113,7 +120,7 @@ describe('BiomeGame Component', () => {
       expect(screen.queryByText(/Loading/i)).not.toBeInTheDocument();
     });
 
-    expect(screen.getByText(/GENERATION/i)).toBeInTheDocument();
+    expect(screen.getByTestId('biome-generation')).toBeInTheDocument();
   });
 });
 
