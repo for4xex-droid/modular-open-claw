@@ -142,7 +142,7 @@ pub async fn stripe_webhook(
                 status, related_url
             );
             if status.is_client_error() {
-                return Err(AppError::bad_request(&format!(
+                return Err(AppError::bad_request(format!(
                     "Stripe v2 object fetch failed: {}",
                     status
                 )));
@@ -153,7 +153,7 @@ pub async fn stripe_webhook(
         let fetched_object: serde_json::Value = fetch_res
             .json()
             .await
-            .map_err(|e| AppError::internal(&format!("v2 object parse error: {}", e)))?;
+            .map_err(|e| AppError::internal(format!("v2 object parse error: {}", e)))?;
 
         info!(
             "🔄 [StripeWebhook] v2 thin event resolved: {} → {}",
