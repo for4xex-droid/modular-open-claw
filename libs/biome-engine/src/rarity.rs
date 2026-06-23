@@ -56,8 +56,8 @@ pub fn determine_rarity_with_progress(grid: &BiomeGrid) -> RarityProgress {
                 CellMorphology::Decomposer => decomposer_count += 1,
             }
 
-            for e in 0..8 {
-                element_totals[e] += cell.elements[e] as u64;
+            for (e, &val) in cell.elements.iter().enumerate() {
+                element_totals[e] += val as u64;
             }
         }
     }
