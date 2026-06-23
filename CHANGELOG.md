@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+- **key-proxy テストコンパイルエラーの修正**:
+  - `apps/key-proxy/src/tests.rs` にて、`--release` モードコンパイル時に `MockAuthManager` が除外される問題に対し、`JwtAuthManager::try_new_generated()` によるテストへ切り替えてコンパイルエラーを解消。
+
 ### Added
 - **Stripe Webhook v2 thin event および複数署名検証への対応**:
   - `libs/aiome-commerce/src/stripe/mod.rs` にて、カンマ区切りによる複数の Webhook シークレットの読み込みと検証ループ処理を実装。パースエラー（`BadParse`）を「署名検証成功」として処理するフォールバックロジックを導入。

@@ -48,7 +48,7 @@ async fn create_test_state() -> AppState {
         vault_secret: Arc::new(SecretString::from("test_vault_secret".to_string())),
         client: aiome_core::http::get_http_client().clone(),
         state: Arc::new(RwLock::new(QuotaState::default())),
-        auth_manager: Arc::new(infrastructure::auth::MockAuthManager::new()),
+        auth_manager: Arc::new(infrastructure::auth::JwtAuthManager::try_new_generated().unwrap()),
         persistence_path: std::path::PathBuf::from("/tmp/key_proxy_test.json"),
         caller_quotas: {
             let mut q = HashMap::new();
