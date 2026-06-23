@@ -292,6 +292,164 @@ pub fn scrub_env(key: &str) {
     }
 }
 
+/// Maps keys that are allowed to be fetched from AbyssVault (§CISO-1)
+pub const ALLOWED_VAULT_SECRETS: &[&str] = &[
+    "GEMINI_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "TTS_OPENAI_API_KEY",
+    "FAL_KEY",
+    "SEARCH_API_KEY",
+    "X_BEARER_TOKEN",
+    "TREMENDOUS_API_KEY",
+    "STRIPE_API_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "POLAR_API_KEY",
+    "POLAR_WEBHOOK_SECRET",
+    "API_SERVER_SECRET",
+    "FEDERATION_SECRET",
+    "TIMESFM_AUTH_TOKEN",
+    "JWT_PRIVATE_KEY_B64",
+    "DISCORD_TOKEN",
+    "TELEGRAM_TOKEN",
+];
+
+/// key-proxy からシークレットを取得して環境変数に注入する (§CISO-1)
+pub async fn fetch_and_inject_secrets() -> Result<()> {
+    let key_proxy_url = match std::env::var("KEY_PROXY_URL") {
+        Ok(url) if !url.is_empty() => url,
+        _ => {
+            tracing::info!("KEY_PROXY_URL not set or empty, skipping AbyssVault secrets injection");
+            return Ok(());
+        }
+    };
+
+    let vault_secret = match std::env::var("VAULT_SECRET") {
+        Ok(secret) if !secret.is_empty() => secret,
+        _ => {
+            tracing::info!("VAULT_SECRET not set or empty, skipping AbyssVault secrets injection");
+            return Ok(());
+        }
+    };
+
+    // タイムアウトを10秒に設定
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()?;
+
+    let url = format!("{}/api/v1/secrets", key_proxy_url.trim_end_matches('/'));
+
+    #[derive(Serialize)]
+    struct RequestBody {
+        keys: Vec<String>,
+    }
+
+    let body = RequestBody {
+        keys: ALLOWED_VAULT_SECRETS
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+    };
+
+    let res = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", vault_secret))
+        .json(&body)
+        .send()
+        .await?;
+
+    if !res.status().is_success() {
+        let status = res.status();
+        let body = res.text().await.unwrap_or_default();
+        anyhow::bail!(
+            "Failed to fetch secrets from key-proxy: status={}, body={}",
+            status,
+            body
+        );
+    }
+
+    let secrets: std::collections::HashMap<String, String> = res.json().await?;
+    for (k, v) in secrets {
+        // Zero-Trust: key-proxy からのレスポンスキーもホワイトリストで検証する
+        if !ALLOWED_VAULT_SECRETS.contains(&k.as_str()) {
+            tracing::warn!("🛡️ Ignoring unexpected key '{}' in key-proxy response", k);
+            continue;
+        }
+        #[allow(deprecated, unsafe_code)]
+        // SAFETY: 起動時の単一スレッドフェーズでのみ呼び出される。
+        unsafe {
+            std::env::set_var(&k, &v);
+        }
+        tracing::debug!("Successfully injected secret: {}", k);
+    }
+
+    Ok(())
+}
+
+/// macOS Keychain からシークレットを取得する (§CISO-1)
+pub fn get_keychain_secret(service: &str) -> Option<String> {
+    #[cfg(target_os = "macos")]
+    {
+        let user = match std::env::var("USER") {
+            Ok(u) => u,
+            Err(_) => {
+                tracing::warn!("USER environment variable not found, falling back to 'aiome-user' for Keychain access");
+                "aiome-user".to_string()
+            }
+        };
+        let output = std::process::Command::new("security")
+            .args(["find-generic-password", "-a", &user, "-s", service, "-w"])
+            .output();
+
+        match output {
+            Ok(out) if out.status.success() => {
+                let password = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                if !password.is_empty() {
+                    return Some(password);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// macOS Keychain にシークレットを保存する (§CISO-1)
+pub fn set_keychain_secret(service: &str, secret: &str) -> Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        let user = match std::env::var("USER") {
+            Ok(u) => u,
+            Err(_) => {
+                tracing::warn!("USER environment variable not found, falling back to 'aiome-user' for Keychain write");
+                "aiome-user".to_string()
+            }
+        };
+        let status = std::process::Command::new("security")
+            .args([
+                "add-generic-password",
+                "-a",
+                &user,
+                "-s",
+                service,
+                "-w",
+                secret,
+                "-U",
+            ])
+            .status()?;
+
+        if status.success() {
+            Ok(())
+        } else {
+            anyhow::bail!("security command failed to add password to Keychain");
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        anyhow::bail!("Keychain integration is only supported on macOS");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -584,163 +742,5 @@ mod tests {
             .await
             .is_err());
         Ok(())
-    }
-}
-
-/// AbyssVault からのフェッチが許可されている環境変数シークレットキーのホワイトリスト (§CISO-1)
-pub const ALLOWED_VAULT_SECRETS: &[&str] = &[
-    "GEMINI_API_KEY",
-    "OPENAI_API_KEY",
-    "ANTHROPIC_API_KEY",
-    "TTS_OPENAI_API_KEY",
-    "FAL_KEY",
-    "SEARCH_API_KEY",
-    "X_BEARER_TOKEN",
-    "TREMENDOUS_API_KEY",
-    "STRIPE_API_KEY",
-    "STRIPE_WEBHOOK_SECRET",
-    "POLAR_API_KEY",
-    "POLAR_WEBHOOK_SECRET",
-    "API_SERVER_SECRET",
-    "FEDERATION_SECRET",
-    "TIMESFM_AUTH_TOKEN",
-    "JWT_PRIVATE_KEY_B64",
-    "DISCORD_TOKEN",
-    "TELEGRAM_TOKEN",
-];
-
-/// key-proxy からシークレットを取得して環境変数に注入する (§CISO-1)
-pub async fn fetch_and_inject_secrets() -> Result<()> {
-    let key_proxy_url = match std::env::var("KEY_PROXY_URL") {
-        Ok(url) if !url.is_empty() => url,
-        _ => {
-            tracing::info!("KEY_PROXY_URL not set or empty, skipping AbyssVault secrets injection");
-            return Ok(());
-        }
-    };
-
-    let vault_secret = match std::env::var("VAULT_SECRET") {
-        Ok(secret) if !secret.is_empty() => secret,
-        _ => {
-            tracing::info!("VAULT_SECRET not set or empty, skipping AbyssVault secrets injection");
-            return Ok(());
-        }
-    };
-
-    // タイムアウトを10秒に設定
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()?;
-
-    let url = format!("{}/api/v1/secrets", key_proxy_url.trim_end_matches('/'));
-
-    #[derive(Serialize)]
-    struct RequestBody {
-        keys: Vec<String>,
-    }
-
-    let body = RequestBody {
-        keys: ALLOWED_VAULT_SECRETS
-            .iter()
-            .map(|s| s.to_string())
-            .collect(),
-    };
-
-    let res = client
-        .post(&url)
-        .header("Authorization", format!("Bearer {}", vault_secret))
-        .json(&body)
-        .send()
-        .await?;
-
-    if !res.status().is_success() {
-        let status = res.status();
-        let body = res.text().await.unwrap_or_default();
-        anyhow::bail!(
-            "Failed to fetch secrets from key-proxy: status={}, body={}",
-            status,
-            body
-        );
-    }
-
-    let secrets: std::collections::HashMap<String, String> = res.json().await?;
-    for (k, v) in secrets {
-        // Zero-Trust: key-proxy からのレスポンスキーもホワイトリストで検証する
-        if !ALLOWED_VAULT_SECRETS.contains(&k.as_str()) {
-            tracing::warn!("🛡️ Ignoring unexpected key '{}' in key-proxy response", k);
-            continue;
-        }
-        #[allow(deprecated, unsafe_code)]
-        // SAFETY: 起動時の単一スレッドフェーズでのみ呼び出される。
-        unsafe {
-            std::env::set_var(&k, &v);
-        }
-        tracing::debug!("Successfully injected secret: {}", k);
-    }
-
-    Ok(())
-}
-
-/// macOS Keychain からシークレットを取得する (§CISO-1)
-pub fn get_keychain_secret(service: &str) -> Option<String> {
-    #[cfg(target_os = "macos")]
-    {
-        let user = match std::env::var("USER") {
-            Ok(u) => u,
-            Err(_) => {
-                tracing::warn!("USER environment variable not found, falling back to 'aiome-user' for Keychain access");
-                "aiome-user".to_string()
-            }
-        };
-        let output = std::process::Command::new("security")
-            .args(&["find-generic-password", "-a", &user, "-s", service, "-w"])
-            .output();
-
-        match output {
-            Ok(out) if out.status.success() => {
-                let password = String::from_utf8_lossy(&out.stdout).trim().to_string();
-                if !password.is_empty() {
-                    return Some(password);
-                }
-            }
-            _ => {}
-        }
-    }
-    None
-}
-
-/// macOS Keychain にシークレットを保存する (§CISO-1)
-pub fn set_keychain_secret(service: &str, secret: &str) -> Result<()> {
-    #[cfg(target_os = "macos")]
-    {
-        let user = match std::env::var("USER") {
-            Ok(u) => u,
-            Err(_) => {
-                tracing::warn!("USER environment variable not found, falling back to 'aiome-user' for Keychain write");
-                "aiome-user".to_string()
-            }
-        };
-        let status = std::process::Command::new("security")
-            .args(&[
-                "add-generic-password",
-                "-a",
-                &user,
-                "-s",
-                service,
-                "-w",
-                secret,
-                "-U",
-            ])
-            .status()?;
-
-        if status.success() {
-            return Ok(());
-        } else {
-            anyhow::bail!("security command failed to add password to Keychain");
-        }
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        anyhow::bail!("Keychain integration is only supported on macOS");
     }
 }
