@@ -668,7 +668,10 @@ pub async fn create_test_server_with_limit(
             config.openai_api_key = None;
             config.anthropic_api_key = None;
             config.api_server_port = 0;
-            config.key_proxy_url = "".to_string();
+            config.key_proxy_url = std::env::var("TEST_KEY_PROXY_URL").unwrap_or_default();
+            config.vault_secret = std::env::var("TEST_VAULT_SECRET")
+                .ok()
+                .map(secrecy::SecretString::from);
             config.samsara_hub_url = "".to_string();
             config.allowed_origins = vec![];
             config.abyss_vault_path = tmp_dir.path().to_str().unwrap().to_string();
@@ -884,6 +887,7 @@ pub async fn create_test_server_with_limit(
             infrastructure::buzz::scheduler::BuzzScheduler::new(90, 4),
         )),
         stripe_price_subscription_monthly: std::env::var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY").ok(),
+        stripe_api_key: None,
         biome_engine: Component::new(std::sync::Arc::new(tokio::sync::RwLock::new(
             biome_engine::BiomeEngine::new(42),
         ))),

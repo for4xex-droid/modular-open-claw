@@ -378,6 +378,7 @@ pub async fn assemble_app_state(
             .secrets
             .stripe_price_subscription_monthly
             .clone(),
+        stripe_api_key: core.stripe_key_raw.clone(),
         biome_engine: Component::new(std::sync::Arc::new(tokio::sync::RwLock::new(
             biome_engine::BiomeEngine::new(42),
         ))),

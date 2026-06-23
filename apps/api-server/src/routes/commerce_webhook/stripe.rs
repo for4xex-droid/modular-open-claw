@@ -65,13 +65,106 @@ pub async fn stripe_webhook(
     }
 
     // 4. イベントのパース
-    let event_val: serde_json::Value = match serde_json::from_str(&body) {
+    let mut event_val: serde_json::Value = match serde_json::from_str(&body) {
         Ok(ev) => ev,
         Err(e) => {
             error!("❌ [StripeWebhook] Failed to parse webhook JSON: {}", e);
             return Err(AppError::bad_request("Invalid webhook JSON payload"));
         }
     };
+
+    // 4.5 v2 thin event の自動解決
+    if event_val["object"].as_str() == Some("v2.core.event") {
+        // related_object は nullable — null の場合は処理せず 200 OK で応答
+        let related_obj = &event_val["related_object"];
+        if related_obj.is_null() || related_obj["url"].as_str().is_none() {
+            warn!("⚠️ [StripeWebhook] v2 thin event without related_object — acknowledging without processing");
+            return Ok(StatusCode::OK);
+        }
+        // 借用チェッカー対策: event_val への不変参照を owned String に変換してから可変書き込みを行う
+        let related_url = related_obj["url"]
+            .as_str()
+            .ok_or_else(|| {
+                error!("❌ [StripeWebhook] v2 thin event related_object missing 'url' field");
+                AppError::bad_request("v2 thin event related_object missing 'url' field")
+            })?
+            .to_string();
+
+        // SSRF 防御: related_url が Stripe API の正当なパスであることを検証
+        // KI: http_request_patterns.md — Directory Traversal Blocking
+        if !related_url.starts_with("/v1/") && !related_url.starts_with("/v2/") {
+            error!(
+                "🚨 [StripeWebhook] SSRF blocked: suspicious related_url '{}'",
+                related_url
+            );
+            return Err(AppError::bad_request("Invalid related_object URL path"));
+        }
+        if related_url.contains("..") {
+            error!(
+                "🚨 [StripeWebhook] SSRF blocked: path traversal in related_url '{}'",
+                related_url
+            );
+            return Err(AppError::bad_request("Invalid related_object URL path"));
+        }
+
+        let event_type_raw = event_val["type"].as_str().unwrap_or_default().to_string();
+        let v1_type = event_type_raw
+            .strip_prefix("v1.")
+            .unwrap_or(&event_type_raw)
+            .to_string();
+
+        // Stripe API キーで related_object のフルデータを取得
+        let stripe_api_key = state.stripe_api_key.as_ref().ok_or_else(|| {
+            error!("❌ [StripeWebhook] STRIPE_API_KEY required for v2 thin event resolution");
+            AppError::internal("STRIPE_API_KEY required for v2 thin event resolution")
+        })?;
+
+        let full_url = format!("https://api.stripe.com{}", related_url);
+        let http_client = state.http_client.get_inner();
+        let fetch_res = http_client
+            .get(&full_url)
+            .header("Authorization", format!("Bearer {}", stripe_api_key))
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await
+            .map_err(|e| {
+                error!(
+                    "❌ [StripeWebhook] Failed to fetch v2 related object: {}",
+                    e
+                );
+                AppError::internal("Failed to fetch Stripe v2 object")
+            })?;
+
+        let status = fetch_res.status();
+        if !status.is_success() {
+            error!(
+                "❌ [StripeWebhook] Stripe API returned {} for {}",
+                status, related_url
+            );
+            if status.is_client_error() {
+                return Err(AppError::bad_request(&format!(
+                    "Stripe v2 object fetch failed: {}",
+                    status
+                )));
+            }
+            return Err(AppError::internal("Stripe v2 object fetch failed"));
+        }
+
+        let fetched_object: serde_json::Value = fetch_res
+            .json()
+            .await
+            .map_err(|e| AppError::internal(&format!("v2 object parse error: {}", e)))?;
+
+        info!(
+            "🔄 [StripeWebhook] v2 thin event resolved: {} → {}",
+            event_type_raw, v1_type
+        );
+
+        // v1 形式に書き換え — 後続の全ハンドラが変更不要
+        event_val["type"] = serde_json::Value::String(v1_type);
+        event_val["data"] = serde_json::json!({ "object": fetched_object });
+        event_val["object"] = serde_json::Value::String("event".to_string());
+    }
 
     let event_id = event_val["id"]
         .as_str()

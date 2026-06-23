@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-06-18
+> **最終更新**: 2026-06-23
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -497,6 +497,51 @@ sequenceDiagram
         Collector->>Incident: update_status(incident_id, Escalated)
     end
     Note over Collector: 関連する Karma ID が見つからない場合は警告ログを出力
+```
+
+### 5.4.3 Stripe Webhook v2 thin event 自動解決フロー
+
+Stripe Webhook v2 では、イベント発生時にペイロード内に詳細データを含まない「thin events（薄いイベント）」が送信されます。`api-server` は、受信したイベントが v2 形式（`v2.core.event`）であることを検知した場合、内部で自動的に Stripe API を呼び出してフルデータをフェッチし、v1 互換形式に書き換えることで、既存の決済ハンドラ群を一切変更することなく後方互換性を維持します。
+
+```mermaid
+sequenceDiagram
+    participant Stripe as Stripe Webhook
+    participant API as api-server (Aiome)
+    participant StripeAPI as Stripe API (stripe.com)
+    participant DB as Database (Aiome)
+    participant NAPI as nurture-api (Nurture)
+    participant Ledger as EconomyLedger
+
+    Stripe->>API: POST /api/v1/commerce/webhook (v2.core.event)
+    API->>API: verify_signature(stripe-signature) [複数シークレットループ試行]
+    API->>API: event_val["object"] == "v2.core.event" 判定
+    
+    alt related_object が null
+        API-->>Stripe: 200 OK (即座に受信受領、処理スキップ)
+    else related_object が存在 (通常フロー)
+        API->>API: SSRF防御チェック (プレフィックス/v1/or/v2/, トラバーサル..ブロック)
+        API->>StripeAPI: GET https://api.stripe.com/v2/core/events/... (Bearer STRIPE_API_KEY)
+        StripeAPI-->>API: 200 OK (フルオブジェクト詳細データ)
+        API->>API: ペイロードを v1 形式へ透過的書き換え (type: v1.xxx, data.object)
+        
+        API->>DB: INSERT stripe_webhook_events (冪等性ガード)
+        alt 重複イベント
+            DB-->>API: UNIQUE violation → 200 OK (skip)
+        else 新規イベント
+            DB-->>API: 1 row inserted
+            API->>DB: RevenueSplitter.split_revenue() (15% platform fee)
+            API->>DB: grant_license_with_tx(agent_id, asset_id)
+            API->>DB: tx.commit()
+
+            loop 指数バックオフリトライ (最大3回)
+                API->>NAPI: POST /internal/coin-charge {actor_id, amount, idempotency_key=event_id}
+                NAPI->>Ledger: record_entry(tx_id=UUID_v5(event_id))
+                Ledger-->>NAPI: OK
+                NAPI-->>API: 200 OK → break
+            end
+        end
+        API-->>Stripe: 200 OK
+    end
 ```
 
 ### 5.5 S2S マーケットプレイスアップロード (CSAM → 登録)

@@ -130,6 +130,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 106 | **OOM Alert Spike (Notification DoS)** | **Alert storms during high-load/OOM leading to system starvation** | 🟡 Mid | **AlertManager Memory Cache Eviction & 60s Debounce cache (Phase E / A-3)** |
 | 107 | **Mock Sidecar Contamination** | **Mock sidecar binaries bundled into production builds** | 🔴 High | **Physical sidecar binary validation (desktop_sidecar_manager.py) & CI 2-Stage Verification** |
 | 108 | **Output-based Sanitization Bypass** | **Evading regex filters using encoded CRLF or recursive path traversal (....//)** | 🔴 High | **Multi-Context Sanitization (SqlQuery esc, FilePath loop, OnceLock HttpHeader) (Reflexion Phase 11)** |
+| 109 | **Stripe v2 SSRF Bypass** | **Malicious related_object.url injecting traversal/local host path** | 🔴 High | **SSRF Double Defense: Prefix check (/v1/ or /v2/) + Traversal blocking (contains("..")) + Domain lock (https://api.stripe.com) (v2 Webhook)** |
 
 ## 3. Defense Architecture
 
@@ -170,6 +171,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Hybrid Context Isolation (Phase 5)**: `InteractionsGeminiProvider` isolates conversation state per session using `interaction_id`. This prevents cross-session context leakage and ensures that the agent's "chain of thought" (Reasoning Log) is tied to specific, authenticated job contexts within the `TrajectoryStore`.
 - **Port-Level SSRF Shield (Phase 53)**: `SecurityPolicy::validate_url` explicitly blocks access to `127.0.0.1` and `localhost` UNLESS the destination port matches allowed internal services (8188 for ComfyUI, 11434 for Ollama). This prevents agents from attacking local administration interfaces or data stores (e.g., Redis, DB) via SSRF.
 - **Cross-Service OXP Trust (Nurture Phase 4)**: `StripeCommerceEngine` acts as an HTTP proxy that bridges all economic mutations (transfers, points, refunds) to the centralized `nurture-api` ledger. Every proxy request is cryptographically signed using an `OxiLeanProofCertificate`, ensuring that Nurture API only honors requests from verified Aiome core nodes with sufficient `oxp_score`.
+- **Stripe Webhook v2 SSRF Defense (v2 Webhook)**: For v2 thin event resolution, the system enforces a strict double defense: 1) Path validation requiring `/v1/` or `/v2/` prefix, 2) Directory traversal rejection for `..` sequences, 3) Forced binding to the official `https://api.stripe.com` host, preventing local or intranet port scanning attacks via arbitrary Stripe webhook payload redirects.
 
 ### Layer 3: Audit Log & Hash Chains
 - Every tool invocation and systemic decision is logged for post-hoc analysis.
@@ -256,4 +258,4 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 For SEO integrations like WordPress, Aiome avoids direct API token injection into the main server. Instead, `key-proxy` exposes a bespoke `/api/v1/wp/publish` endpoint that handles authentication with upstream servers and acts as a semantic boundary, ensuring payloads (e.g. `status` fields) conform to strict whitelists before execution, neutralizing parameter manipulation attacks entirely.
 
 ---
-*最終更新: 2026-06-18 (SqlQuery/FilePath/HttpHeader sanitization hardening & physical sidecar verification)*
+*最終更新: 2026-06-23 (Stripe Webhook v2 integration, multiple secrets and SSRF double defense)*

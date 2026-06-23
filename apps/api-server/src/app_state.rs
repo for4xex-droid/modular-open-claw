@@ -185,6 +185,8 @@ pub struct AppState {
     pub buzz_scheduler: Component<Arc<infrastructure::buzz::scheduler::BuzzScheduler>>,
     // --- Stripe Production Config ---
     pub stripe_price_subscription_monthly: Option<String>,
+    /// Stripe API キー（v2 thin event 解決時の REST API 呼び出し用）
+    pub stripe_api_key: Option<String>,
     pub alert_manager: Component<Arc<infrastructure::alerts::AlertManager>>,
     // --- Biome Engine (Phase 3) ---
     pub biome_engine: Component<Arc<tokio::sync::RwLock<biome_engine::BiomeEngine>>>,

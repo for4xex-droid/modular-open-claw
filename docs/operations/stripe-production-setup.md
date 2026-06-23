@@ -26,10 +26,10 @@ Stripe の本番アカウント申請承認に伴い、Aiome 課金システム�
 
 ```bash
 # === Stripe Production Configuration ===
-# 本番実決済を有効化するための本番用シークレットキー
+# 本番実決済を有効化するための本番用シークレットキー (v2 thin event 自動解決に必要)
 STRIPE_API_KEY="sk_live_xxxx" # gitleaks:allow
 
-# Webhook 署名検証用のシークレット
+# Webhook 署名検証用のシークレット (移行時はカンマ区切りで複数指定可能)
 STRIPE_WEBHOOK_SECRET="whsec_live_xxxx" # gitleaks:allow
 
 # 本番モードをオンにするため、必ず false に設定
@@ -42,6 +42,7 @@ STRIPE_PRICE_SUBSCRIPTION_MONTHLY="price_xxxx"
 > [!CAUTION]
 > - `STRIPE_TEST_MODE="false"` に設定されると、起動時プリフライトチェックで `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` が未設定の場合は**サーバーの起動を拒否**する安全ガードが稼働します。
 > - 本番モード下では、テスト用のモック署名 (`whsec_test`) による Webhook リクエストはすべて**厳格に拒否**されます。
+> - **Webhook シークレットの移行・ローテーション**: `STRIPE_WEBHOOK_SECRET` はカンマ区切りでの複数設定に対応しています（例: `whsec_live_old...,whsec_live_new...`）。Stripe 側で Webhook 宛先を切り替える際、両方の署名を同時に有効にすることで、ダウンタイムなしに安全にキーのローテーションが行えます。詳細な手順は [api_key_rotation.md](file:///Users/motista/Desktop/antigravity/aiome/docs/operations/api_key_rotation.md) を参照してください。
 
 ---
 

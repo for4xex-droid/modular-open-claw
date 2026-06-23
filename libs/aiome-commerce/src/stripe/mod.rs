@@ -14,6 +14,8 @@ use uuid::Uuid;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod v2_tests;
 
 /// Stripe Webhook イベントを処理する商用エンジン実装
 pub struct StripeCommerceEngine {
@@ -655,18 +657,48 @@ impl CommerceEngine for StripeCommerceEngine {
     }
 
     fn verify_signature(&self, payload: &str, sig_header: &str) -> Result<(), AiomeError> {
-        if !self.is_mock && self.webhook_secret.expose_secret() == "whsec_test" {
-            tracing::error!("🚨 [SECURITY] Stripe Webhook verification rejected: Test secret ('whsec_test') used in production mode!");
-            return Err(AiomeError::Infrastructure {
-                reason: "Stripe Webhook verification failed: Test secret used in production mode!"
-                    .into(),
-            });
+        // カンマ区切りで複数シークレットに対応 (v2 thin + snapshot 用)
+        let raw_secret = self.webhook_secret.expose_secret();
+        let mut last_err = None;
+        let mut secret_count: usize = 0;
+
+        for secret in raw_secret.split(',') {
+            let trimmed = secret.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            // テストシークレットの個別検知（複数シークレットの1つが whsec_test でも拒否）
+            if !self.is_mock && trimmed == "whsec_test" {
+                tracing::error!("\u{1F6A8} [SECURITY] Stripe Webhook verification rejected: Test secret ('whsec_test') found in secret #{}", secret_count + 1);
+                return Err(AiomeError::Infrastructure {
+                    reason:
+                        "Stripe Webhook verification failed: Test secret used in production mode!"
+                            .into(),
+                });
+            }
+
+            secret_count += 1;
+            match Webhook::construct_event(payload, sig_header, trimmed) {
+                Ok(_) => return Ok(()),
+                Err(stripe_webhook::WebhookError::BadParse(_)) => {
+                    // デシリアライズ（パース）エラーは、署名自体は正しく一致していることを意味します。
+                    // したがって、署名検証の観点からは「成功」です。
+                    return Ok(());
+                }
+                Err(e) => {
+                    last_err = Some(e);
+                }
+            }
         }
-        Webhook::construct_event(payload, sig_header, self.webhook_secret.expose_secret())
-            .map(|_| ())
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Stripe Webhook verification failed: {}", e),
-            })
+
+        Err(AiomeError::Infrastructure {
+            reason: format!(
+                "Stripe Webhook verification failed with {} secret(s): {}",
+                secret_count,
+                last_err.map(|e| e.to_string()).unwrap_or_default()
+            ),
+        })
     }
 
     async fn create_checkout_session(

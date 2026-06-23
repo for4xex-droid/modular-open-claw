@@ -26,8 +26,8 @@ Proプラン（$9.99/月）の定期支払い用の価格IDを作成します。
 2. **「エンドポイントを追加」** をクリックします。
 3. 以下の項目を設定します。
    - **エンドポイントURL**: 
-     - 開発時（ローカル）: `stripe listen --forward-to localhost:3015/api/v1/ekyc/webhook` のようなローカルフォワーディングで取得したアドレス。
-     - 本番環境: `https://yourdomain.com/api/v1/ekyc/webhook`
+     - 開発時（ローカル）: `stripe listen --forward-to localhost:3015/api/v1/commerce/webhook` のようなローカルフォワーディングで取得したアドレス。
+     - 本番環境: `https://yourdomain.com/api/v1/commerce/webhook`
    - **送信するイベント**: 以下の8つのイベントを選択して登録します。
      - `checkout.session.completed` (チェックアウト完了、ライセンス付与)
      - `invoice.paid` (サブスクリプション更新成功)
@@ -38,16 +38,17 @@ Proプラン（$9.99/月）の定期支払い用の価格IDを作成します。
      - `checkout.session.expired` (セッション期限切れ)
 4. 登録後、**「署名シークレット」 (Signing secret)** を表示し、`whsec_...` から始まるキーをコピーします。
 5. このキーを環境変数 `STRIPE_WEBHOOK_SECRET` に設定します。
+   - **移行・ローテーション時**: Stripe Webhook v2 移行やキー更新の際は、カンマ区切りで複数のシークレットを指定できます（例: `whsec_old...,whsec_new...`）。これにより新旧の Webhook イベントを同時に処理し、ダウンタイムゼロで移行可能です。
 
 ## 4. 環境変数の設定
 取得したキーを `.env` ファイルに設定します。
 
 ```bash
 # === Stripe設定 ===
-# StripeのAPIキー（未設定の場合は自動でMockモードになります）
+# StripeのAPIキー（未設定の場合は自動でMockモードになります。v2 thin event 解決時に使用されます）
 STRIPE_API_KEY="sk_test_your_key_here"
 
-# Stripe Webhookの署名シークレット
+# Stripe Webhookの署名シークレット (移行時はカンマ区切りで複数指定可能)
 STRIPE_WEBHOOK_SECRET="whsec_your_secret_here"
 
 # テストモードの有効化 (true/false)
