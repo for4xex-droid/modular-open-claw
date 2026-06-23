@@ -7,6 +7,11 @@
   - Webhook ハンドラ `apps/api-server/src/routes/commerce_webhook/stripe.rs` にて、`v2.core.event` を受信した際に Stripe API を介して `related_object.url` からフルデータを自動フェッチし、既存の v1 互換形式へとペイロードをパース・書き換えを行うことで、後方互換性を保ちながら既存ハンドラをそのまま動作させる自動解決処理を実装。
   - `v2_tests.rs` を新規追加し、複数シークレット下での署名検証成功（1つ目・2つ目のキー）および無効キーでの検証失敗に関するテストを実装。
   - `.env.secret.example` にカンマ区切りでの Stripe Webhook シークレット設定例を追加。
+  - **`key-proxy` 起動時の JWT デコードエラー安全フォールバック処理 (TDD による実装)**:
+    - `apps/key-proxy/src/main.rs` にて、JWTキー `JWT_PRIVATE_KEY_B64` のロード処理を `build_auth_manager` 関数に分離し、開発/デバッグ環境 (`debug_assertions`有効) においてプレースホルダー値（`<YOUR_KEY_HERE>` 等）や不正な Base64 文字列の場合は、プロセスをクラッシュさせずに `MockAuthManager` に安全にフォールバックするよう変更。
+    - `apps/key-proxy/src/tests.rs` にて、`build_auth_manager` の開発/本番環境別フォールバック挙動のアサーションを検証する TDD ユニットテストを3件追加。
+    - `scripts/test_all.sh` 内の `key-proxy` 起動コマンドに `JWT_PRIVATE_KEY_B64=""` を明示指定し、プレースホルダーの影響を排除してワークスペース全体の統合テストが安定して実行できるように修正。
+
 
 - **統一APIキー管理システム（GUI / CLI 統合）の実装**:
   - `infrastructure` の `UniversalVaultBackend` にキー一覧取得 `list_secret_keys` と削除 `delete_secret` メソッドを追加。

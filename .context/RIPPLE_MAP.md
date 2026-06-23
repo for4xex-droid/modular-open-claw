@@ -8,6 +8,9 @@
     - `apps/api-server/src/api_integration_tests/common.rs` [MODIFY]: `create_test_server_with_limit` での `AppState` 構造体初期化に `stripe_api_key: None` を追加。
     - `apps/api-server/src/routes/commerce_webhook/stripe.rs` [MODIFY]: `v2.core.event` 受信時に Stripe API を介して `related_object.url` からフルデータを自動フェッチし、v1互換形式へとペイロードをパース・書き換えを行う自動解決処理を実装。
     - `.env.secret.example` [MODIFY]: カンマ区切りでの Stripe Webhook シークレット設定例を追加。
+    - `apps/key-proxy/src/main.rs` [MODIFY]: JWT署名キー `JWT_PRIVATE_KEY_B64` のロード処理を `build_auth_manager` 関数へリファクタリング。開発ビルド時（`debug_assertions`有効）にプレースホルダーや不正な値の場合はエラー終了させず `MockAuthManager` へ安全にフォールバックする機能を追加。
+    - `apps/key-proxy/src/tests.rs` [MODIFY]: `build_auth_manager` のフォールバックとリリースビルド時のエラー挙動を検証するユニットテストを3件追加。
+    - `scripts/test_all.sh` [MODIFY]: `key-proxy` 起動時の環境変数に `JWT_PRIVATE_KEY_B64=""` を明示指定してプレースホルダーをオーバーライド。
 - **波及効果**:
     - Stripe API v2 thin event の受信が可能になり、`related_object.url` から動的にフルデータを安全に取得・解決できるようになりました（SSRF防止策として `https://api.stripe.com` に宛先を固定）。
     - 従来の v1 ペイロードも変更なしでそのまま通る（後方互換性担保）ため、既存の全ての決済・ライセンス付与ハンドラを変更することなく Stripe Webhook v2 移行が完了。
