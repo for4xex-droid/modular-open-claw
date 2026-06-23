@@ -20,4 +20,5 @@ pub mod jobs;
 pub mod mcp;
 pub mod setup;
 pub mod system;
+pub mod vault;
 pub mod workflow;

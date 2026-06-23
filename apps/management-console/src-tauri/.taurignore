@@ -1,0 +1,5 @@
+# Ignore temporary workspaces and databases from Tauri watcher to prevent infinite rebuilding loop
+workspace/
+aiome.db
+aiome.db.pre_migration.bak
+binaries/

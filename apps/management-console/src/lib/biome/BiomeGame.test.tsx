@@ -1,12 +1,38 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 
-// Vite ?raw バーチャルモック
-jest.mock('./shaders/grid.vert?raw', () => 'void main() {}', { virtual: true });
-jest.mock('./shaders/grid.frag?raw', () => 'void main() {}', { virtual: true });
-jest.mock('./shaders/higgs.frag?raw', () => 'void main() {}', { virtual: true });
-jest.mock('./shaders/tachyon.frag?raw', () => 'void main() {}', { virtual: true });
-jest.mock('./shaders/bloom.frag?raw', () => 'void main() {}', { virtual: true });
+// R3F + postprocessing モック
+jest.mock('@react-three/fiber', () => ({
+  Canvas: ({ children, ...props }: any) => <div data-testid="r3f-canvas" {...props}>{children}</div>,
+  useFrame: jest.fn(),
+  extend: jest.fn(),
+}));
+jest.mock('@react-three/drei', () => ({
+  Sparkles: (props: any) => <div data-testid="sparkles" {...props} />,
+  shaderMaterial: jest.fn(() => function MockMaterial() {}),
+  OrthographicCamera: (props: any) => <div data-testid="orthographic-camera" {...props} />,
+}));
+jest.mock('@react-three/postprocessing', () => ({
+  EffectComposer: ({ children }: any) => <div>{children}</div>,
+  Bloom: (props: any) => <div data-testid="bloom" {...props} />,
+}));
+jest.mock('postprocessing', () => ({
+  Effect: class MockEffect {
+    uniforms: Map<string, { value: any }>;
+    constructor(name: string, shader: string, options: any = {}) {
+      this.uniforms = options.uniforms || new Map();
+    }
+    dispose() {}
+  },
+  SavePass: jest.fn().mockImplementation(() => ({
+    render: jest.fn(),
+    dispose: jest.fn(),
+  })),
+  CopyPass: jest.fn().mockImplementation(() => ({
+    render: jest.fn(),
+    dispose: jest.fn(),
+  })),
+}));
 
 // BiomeEngine WASM のモック
 jest.mock('biome-engine', () => {
@@ -33,63 +59,29 @@ jest.mock('biome-engine', () => {
         roll_substance: () => 0,
         serialize_genome: () => '{}',
         set_mutation_boost: jest.fn(),
+        get_rarity_progress: () => ({
+          rarity: 0,
+          active_cells: 0,
+          morphology_count: 0,
+          has_homeostasis: false,
+          diversity_index: 0.0,
+          condition_active_500: false,
+          condition_morph_3: false,
+          condition_morph_4: false,
+          condition_active_1000: false,
+        }),
+        get_last_tick_events: () => [],
       };
     }),
   };
 });
 
-// HTMLCanvasElement WebGL2 のモック
-const mockGetContext = jest.fn().mockReturnValue({
-  createShader: jest.fn().mockReturnValue({}),
-  shaderSource: jest.fn(),
-  compileShader: jest.fn(),
-  getShaderParameter: jest.fn().mockReturnValue(true),
-  createProgram: jest.fn().mockReturnValue({}),
-  attachShader: jest.fn(),
-  linkProgram: jest.fn(),
-  getProgramParameter: jest.fn().mockReturnValue(true),
-  useProgram: jest.fn(),
-  createBuffer: jest.fn().mockReturnValue({}),
-  bindBuffer: jest.fn(),
-  bufferData: jest.fn(),
-  enableVertexAttribArray: jest.fn(),
-  vertexAttribPointer: jest.fn(),
-  vertexAttribDivisor: jest.fn(),
-  createVertexArray: jest.fn().mockReturnValue({}),
-  bindVertexArray: jest.fn(),
-  deleteVertexArray: jest.fn(),
-  deleteBuffer: jest.fn(),
-  deleteProgram: jest.fn(),
-  viewport: jest.fn(),
-  clearColor: jest.fn(),
-  clear: jest.fn(),
-  drawArraysInstanced: jest.fn(),
-  createTexture: jest.fn().mockReturnValue({}),
-  bindTexture: jest.fn(),
-  texImage2D: jest.fn(),
-  texParameteri: jest.fn(),
-  deleteTexture: jest.fn(),
-  createFramebuffer: jest.fn().mockReturnValue({}),
-  bindFramebuffer: jest.fn(),
-  framebufferTexture2D: jest.fn(),
-  deleteFramebuffer: jest.fn(),
-  getUniformLocation: jest.fn().mockReturnValue({}),
-  uniform1f: jest.fn(),
-  uniform2f: jest.fn(),
-  uniform3f: jest.fn(),
-  uniform1i: jest.fn(),
-  activeTexture: jest.fn(),
-  drawArrays: jest.fn(),
-});
 // config のモックを追加して import.meta.env エラーを防ぐ
 jest.mock('../../config', () => ({
   API_BASE: 'http://localhost:3015',
   APP_VERSION: 'v1.0.2',
   STRIPE_PRICE_ID: 'price_gold_monthly',
 }));
-
-// Mock canvas elements
-HTMLCanvasElement.prototype.getContext = mockGetContext as any;
 
 import { BiomeGame } from './BiomeGame';
 
@@ -109,8 +101,7 @@ describe('BiomeGame Component', () => {
     expect(screen.getByTestId('biome-generation')).toBeInTheDocument();
     expect(screen.getByText(/元素注入/i)).toBeInTheDocument();
     
-    const canvas = document.querySelector('canvas');
-    expect(canvas).toBeInTheDocument();
+    expect(screen.getByTestId('r3f-canvas')).toBeInTheDocument();
   });
 
   it('seedプロパティが省略された場合でも正常にレンダリングされること', async () => {

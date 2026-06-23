@@ -44,6 +44,7 @@ pub mod skill;
 pub mod soul;
 pub mod syndicate;
 pub mod treasure;
+pub mod vault;
 pub mod voice;
 pub mod watchtower;
 pub mod whisper;

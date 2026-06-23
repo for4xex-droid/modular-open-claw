@@ -26,6 +26,16 @@ use super::*;
 pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
     // 1. Initial attempt from CWD (essential for dev environments to catch AIOME_DEV_MODE)
     dotenvy::dotenv().ok();
+    dotenvy::from_path(".env.secret").ok();
+
+    // Fetch and inject secrets from key-proxy if configured (§CISO-1)
+    if let Err(e) = shared::security::fetch_and_inject_secrets().await {
+        tracing::error!(
+            "🚨 Failed to fetch and inject secrets from key-proxy: {:?}",
+            e
+        );
+        return Err(e);
+    }
 
     let resolver = shared::app_data::AppDataResolver::new()
         .map_err(|e| anyhow::anyhow!("🚨 [FATAL] Failed to resolve app data directory: {}", e))?;
@@ -36,6 +46,13 @@ pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
         tracing::info!(
             "Loaded explicit environment from {}",
             app_env_path.display()
+        );
+    }
+    let app_secret_path = resolver.root().join(".env.secret");
+    if app_secret_path.exists() && dotenvy::from_path(&app_secret_path).is_ok() {
+        tracing::info!(
+            "Loaded explicit secret environment from {}",
+            app_secret_path.display()
         );
     }
 
@@ -228,4 +245,114 @@ pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
         live_manager,
         db_url,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+
+    #[tokio::test]
+    #[serial]
+    #[allow(deprecated, unsafe_code)]
+    async fn test_dotenv_secret_loaded() {
+        // Arrange
+        unsafe {
+            std::env::remove_var("TEST_DOTENV_SECRET_LOADED");
+        }
+
+        let backup_exists = std::path::Path::new(".env.secret").exists();
+        if backup_exists {
+            std::fs::rename(".env.secret", ".env.secret.bak").unwrap();
+        }
+
+        std::fs::write(".env.secret", "TEST_DOTENV_SECRET_LOADED=true_secret_value").unwrap();
+
+        // Act
+        let _ = init_env_and_preflight().await;
+
+        // Clean up
+        let _ = std::fs::remove_file(".env.secret");
+        if backup_exists {
+            let _ = std::fs::rename(".env.secret.bak", ".env.secret");
+        }
+
+        // Assert
+        let loaded_val = std::env::var("TEST_DOTENV_SECRET_LOADED").unwrap_or_default();
+        unsafe {
+            std::env::remove_var("TEST_DOTENV_SECRET_LOADED");
+        }
+
+        assert_eq!(loaded_val, "true_secret_value");
+    }
+
+    #[tokio::test]
+    #[serial]
+    #[allow(deprecated, unsafe_code)]
+    async fn test_fetch_and_inject_secrets() {
+        use std::collections::HashMap;
+        use wiremock::matchers::{header, method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+
+        unsafe {
+            std::env::set_var("KEY_PROXY_URL", mock_server.uri());
+            std::env::set_var("VAULT_SECRET", "test_vault_secret");
+        }
+
+        let mut expected_secrets = HashMap::new();
+        expected_secrets.insert(
+            "STRIPE_API_KEY".to_string(),
+            "mock_stripe_key_val".to_string(),
+        );
+        expected_secrets.insert(
+            "GEMINI_API_KEY".to_string(),
+            "mock_gemini_key_val".to_string(),
+        );
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/secrets"))
+            .and(header("Authorization", "Bearer test_vault_secret"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(expected_secrets))
+            .mount(&mock_server)
+            .await;
+
+        let result = shared::security::fetch_and_inject_secrets().await;
+        assert!(result.is_ok());
+
+        assert_eq!(
+            std::env::var("STRIPE_API_KEY").unwrap_or_default(),
+            "mock_stripe_key_val"
+        );
+        assert_eq!(
+            std::env::var("GEMINI_API_KEY").unwrap_or_default(),
+            "mock_gemini_key_val"
+        );
+
+        // --- Negative Test: Invalid VAULT_SECRET ---
+        unsafe {
+            std::env::set_var("VAULT_SECRET", "wrong_vault_secret");
+        }
+        Mock::given(method("POST"))
+            .and(path("/api/v1/secrets"))
+            .and(header("Authorization", "Bearer wrong_vault_secret"))
+            .respond_with(ResponseTemplate::new(401))
+            .mount(&mock_server)
+            .await;
+
+        let neg_result = shared::security::fetch_and_inject_secrets().await;
+        assert!(
+            neg_result.is_err(),
+            "Expected failure with invalid vault secret"
+        );
+
+        // --- Revert ---
+        unsafe {
+            std::env::remove_var("KEY_PROXY_URL");
+            std::env::remove_var("VAULT_SECRET");
+            std::env::remove_var("STRIPE_API_KEY");
+            std::env::remove_var("GEMINI_API_KEY");
+        }
+    }
 }

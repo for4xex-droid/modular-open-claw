@@ -993,5 +993,41 @@
   "session": {
     "expired": "セッションが期限切れです。API シークレットを更新してください。",
     "goToSettings": "設定画面へ"
+  },
+  "vault": {
+    "title": "Abyss Vault シークレットマネージャ",
+    "description": "key-proxy経由で管理されるAPIキーおよびインフラ構造シークレット。ゼロトラスト保護（管理者権限が必要）。",
+    "permissionRequired": "Abyss Vault にアクセスするには管理者権限が必要です。",
+    "category": {
+      "ai": "🤖 AI サービス",
+      "commerce": "💳 コマース＆決済",
+      "bridge": "🔗 外部チャネルブリッジ",
+      "infrastructure": "🏗️ インフラ＆コア"
+    },
+    "status": {
+      "set": "設定済み",
+      "notSet": "未設定",
+      "actions": "操作",
+      "configure": "設定",
+      "delete": "削除",
+      "deleteConfirm": "このシークレットを Vault から削除してもよろしいですか？"
+    },
+    "modal": {
+      "title": "シークレットの設定: {{key}}",
+      "placeholder": "シークレットの値を入力してください...",
+      "save": "保存",
+      "cancel": "キャンセル"
+    },
+    "toast": {
+      "saveSuccess": "シークレットが正常に保存されました",
+      "deleteSuccess": "シークレットが正常に削除されました",
+      "saveError": "シークレットの保存に失敗しました: {{error}}",
+      "deleteError": "シークレットの削除に失敗しました: {{error}}",
+      "loadError": "Vault ステータスの読み込みに失敗しました: {{error}}"
+    },
+    "indicator": {
+      "managed": "🔐 Abyss Vault で管理中"
+    }
   }
 }
+

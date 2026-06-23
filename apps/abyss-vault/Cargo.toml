@@ -1,0 +1,16 @@
+[package]
+name = "abyss-vault"
+version = "0.1.0"
+edition = "2021"
+license = "BUSL-1.1"
+
+[dependencies]
+tokio = { workspace = true, features = ["full"] }
+clap = { workspace = true }
+dotenvy = "0.15"
+anyhow = { workspace = true }
+shared = { path = "../../libs/shared" }
+infrastructure = { path = "../../libs/infrastructure" }
+sqlx = { workspace = true }
+rpassword = "7.3"
+

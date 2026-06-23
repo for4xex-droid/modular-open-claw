@@ -21,6 +21,8 @@ import { setAuthToken, authenticatedFetch, clearAuthToken } from '../lib/auth';
 import EscrowManagementView from './EscrowManagementView';
 import { OriginManager } from './OriginManager';
 import { ToxicityConfig } from './ToxicityConfig';
+import { VaultSecretsManager } from './VaultSecretsManager';
+import { VaultKeyStatus } from './VaultKeyStatus';
 
 
 const SettingsPage: React.FC = () => {
@@ -34,9 +36,27 @@ const SettingsPage: React.FC = () => {
     const [saving, setSaving] = useState<string | null>(null);
     const [testResults, setTestResults] = useState<Record<string, { success: boolean, message: string, loading: boolean }>>({});
     const [globalError, setGlobalError] = useState<string | null>(null);
+    const [vaultSecrets, setVaultSecrets] = useState<{key: string, is_set: boolean}[]>([]);
+
+    const fetchVaultStatus = async () => {
+        try {
+            const res = await authenticatedFetch(`${API_BASE}/api/v1/vault/status`);
+            if (res.ok) {
+                const data = await res.json();
+                setVaultSecrets(data.secrets || []);
+            }
+        } catch (e) {
+            console.error("Failed to fetch vault status in SettingsPage", e);
+        }
+    };
+
+    const isVaultSet = (key: string): boolean => {
+        return vaultSecrets.find(s => s.key === key)?.is_set || false;
+    };
 
     useEffect(() => {
         fetchSettings();
+        fetchVaultStatus();
     }, []);
 
     const fetchSettings = async () => {
@@ -314,43 +334,55 @@ const SettingsPage: React.FC = () => {
 
                         {getSetting('commerce_provider') === 'stripe' && (
                             <>
-                                <SettingInput 
-                                    label={t('settings.stripeApiKey', { defaultValue: 'Stripe API Key' }) as string} 
-                                    value={getSetting('stripe_api_key')}
-                                    placeholder="sk_live_..."
-                                    onBlur={(v) => updateSetting('stripe_api_key', v, 'commerce')}
-                                    saving={saving === 'stripe_api_key'}
-                                    isPassword
-                                />
-                                <SettingInput 
-                                    label={t('settings.stripeWebhookSecret', { defaultValue: 'Stripe Webhook Secret' }) as string} 
-                                    value={getSetting('stripe_webhook_secret')}
-                                    placeholder="whsec_..."
-                                    onBlur={(v) => updateSetting('stripe_webhook_secret', v, 'commerce')}
-                                    saving={saving === 'stripe_webhook_secret'}
-                                    isPassword
-                                />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
+                                    <SettingInput 
+                                        label={t('settings.stripeApiKey', { defaultValue: 'Stripe API Key' }) as string} 
+                                        value={getSetting('stripe_api_key')}
+                                        placeholder="sk_live_..."
+                                        onBlur={(v) => updateSetting('stripe_api_key', v, 'commerce')}
+                                        saving={saving === 'stripe_api_key'}
+                                        isPassword
+                                    />
+                                    <VaultKeyStatus isSet={isVaultSet('STRIPE_API_KEY')} />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
+                                    <SettingInput 
+                                        label={t('settings.stripeWebhookSecret', { defaultValue: 'Stripe Webhook Secret' }) as string} 
+                                        value={getSetting('stripe_webhook_secret')}
+                                        placeholder="whsec_..."
+                                        onBlur={(v) => updateSetting('stripe_webhook_secret', v, 'commerce')}
+                                        saving={saving === 'stripe_webhook_secret'}
+                                        isPassword
+                                    />
+                                    <VaultKeyStatus isSet={isVaultSet('STRIPE_WEBHOOK_SECRET')} />
+                                </div>
                             </>
                         )}
 
                         {getSetting('commerce_provider') === 'polar' && (
                             <>
-                                <SettingInput 
-                                    label={t('settings.polarApiKey', { defaultValue: 'Polar API Key' }) as string} 
-                                    value={getSetting('polar_api_key')}
-                                    placeholder="polar_at_..."
-                                    onBlur={(v) => updateSetting('polar_api_key', v, 'commerce')}
-                                    saving={saving === 'polar_api_key'}
-                                    isPassword
-                                />
-                                <SettingInput 
-                                    label={t('settings.polarWebhookSecret', { defaultValue: 'Polar Webhook Secret' }) as string} 
-                                    value={getSetting('polar_webhook_secret')}
-                                    placeholder="whsec_..."
-                                    onBlur={(v) => updateSetting('polar_webhook_secret', v, 'commerce')}
-                                    saving={saving === 'polar_webhook_secret'}
-                                    isPassword
-                                />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
+                                    <SettingInput 
+                                        label={t('settings.polarApiKey', { defaultValue: 'Polar API Key' }) as string} 
+                                        value={getSetting('polar_api_key')}
+                                        placeholder="polar_at_..."
+                                        onBlur={(v) => updateSetting('polar_api_key', v, 'commerce')}
+                                        saving={saving === 'polar_api_key'}
+                                        isPassword
+                                    />
+                                    <VaultKeyStatus isSet={isVaultSet('POLAR_API_KEY')} />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
+                                    <SettingInput 
+                                        label={t('settings.polarWebhookSecret', { defaultValue: 'Polar Webhook Secret' }) as string} 
+                                        value={getSetting('polar_webhook_secret')}
+                                        placeholder="whsec_..."
+                                        onBlur={(v) => updateSetting('polar_webhook_secret', v, 'commerce')}
+                                        saving={saving === 'polar_webhook_secret'}
+                                        isPassword
+                                    />
+                                    <VaultKeyStatus isSet={isVaultSet('POLAR_WEBHOOK_SECRET')} />
+                                </div>
                             </>
                         )}
                     </div>
@@ -366,20 +398,28 @@ const SettingsPage: React.FC = () => {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <SettingInput 
-                            label={t('settings.xBearerToken')} 
-                            value={getSetting('x_bearer_token')}
-                            placeholder={t('settings.enterApiKey')}
-                            onBlur={(v) => updateSetting('x_bearer_token', v, 'integrations')}
-                            saving={saving === 'x_bearer_token'}
-                            isPassword
-                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+                            <SettingInput 
+                                label={t('settings.xBearerToken')} 
+                                value={getSetting('x_bearer_token')}
+                                placeholder={t('settings.enterApiKey')}
+                                onBlur={(v) => updateSetting('x_bearer_token', v, 'integrations')}
+                                saving={saving === 'x_bearer_token'}
+                                isPassword
+                            />
+                            <VaultKeyStatus isSet={isVaultSet('X_BEARER_TOKEN')} />
+                        </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                             {t('settings.xBearerTokenNotice')}
                         </div>
                     </div>
                 </section>
                 )}
+
+                {/* 🔐 Vault Secrets Manager — 全モードで常時表示 */}
+                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
+                    <VaultSecretsManager />
+                </section>
 
                 {/* 3. Security & Infrastructure */}
                 {viewMode !== 'beginner' && (

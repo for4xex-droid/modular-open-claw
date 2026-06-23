@@ -1,6 +1,100 @@
 ## [Unreleased]
 
 ### Added
+- **Stripe Webhook v2 thin event および複数署名検証への対応**:
+  - `libs/aiome-commerce/src/stripe/mod.rs` にて、カンマ区切りによる複数の Webhook シークレットの読み込みと検証ループ処理を実装。パースエラー（`BadParse`）を「署名検証成功」として処理するフォールバックロジックを導入。
+  - `apps/api-server/src/app_state.rs` および `state_assembly.rs` にて `stripe_api_key` フィールドを追加し、`CoreServicesResult` の `stripe_key_raw` からマッピング。
+  - Webhook ハンドラ `apps/api-server/src/routes/commerce_webhook/stripe.rs` にて、`v2.core.event` を受信した際に Stripe API を介して `related_object.url` からフルデータを自動フェッチし、既存の v1 互換形式へとペイロードをパース・書き換えを行うことで、後方互換性を保ちながら既存ハンドラをそのまま動作させる自動解決処理を実装。
+  - `v2_tests.rs` を新規追加し、複数シークレット下での署名検証成功（1つ目・2つ目のキー）および無効キーでの検証失敗に関するテストを実装。
+  - `.env.secret.example` にカンマ区切りでの Stripe Webhook シークレット設定例を追加。
+
+- **統一APIキー管理システム（GUI / CLI 統合）の実装**:
+  - `infrastructure` の `UniversalVaultBackend` にキー一覧取得 `list_secret_keys` と削除 `delete_secret` メソッドを追加。
+  - `key-proxy` に管理コンソール向けの管理 API（`GET /api/v1/admin/status`, `PUT /api/v1/admin/secrets`, `DELETE /api/v1/admin/secrets/:key`）を追加し、ホワイトリスト検証を適用。
+  - `api-server` に上記 key-proxy 管理 API へのプロキシエンドポイント（`/api/v1/vault/*`）を `admin_only_middleware` 保護付きで実装。
+  - 管理コンソールに統一 API キー管理用の GUI コンポーネント `VaultSecretsManager` を常時表示エリアに追加し、Stripe や X 等の Commerce / Bridge の個別設定箇所に `<VaultKeyStatus />` ステータスインジケータを並置。
+  - `abyss-vault` CLI に `status`, `list`, `get`, `delete`, `set` (非表示対話入力サポート), `setup` (一括対話セットアップ) コマンドを追加し、`rpassword` 依存関係を導入。
+
+
+### Added
+- **ゼロトラスト・シークレット隔離機構の堅牢化 (Reflexion指摘対応)**:
+  - `key-proxy` の `/api/v1/secrets` エンドポイントを GET から POST (JSONボディ) に変更し、アクセスログからのキー名漏洩リスクを低減。
+  - `key-proxy` に許可されたシークレットキーのみを要求可能なホワイトリスト制限を追加し、任意の環境変数へのアクセスをブロック。
+  - `key-proxy` での取得失敗時に、全体を 404 エラーとするのではなく、存在するキーのみを返却する Partial Success (部分成功) 挙動に改修。
+  - `shared::security::fetch_and_inject_secrets` に 10 秒の接続タイムアウトを設定。また、注入時のログ出力レベルを `debug!` に変更。
+  - macOS Keychain アクセス時の `USER` 環境変数未定義に対する警告ログを追加。
+  - 各種テストコードでの `std::env::set_var` / `remove_var` 等の環境変数操作について、Rust unsafe/deprecated 警告への適切な属性付与・ブロック適用を実施。
+  - **APIキー/シークレットのローテーション（更新）運用手順書の作成**:
+    - `abyss-vault` CLIを用いたシークレットの個別追加・更新、一括インポート、Keychain登録手順および実行中プロセスへの反映フロー（再起動要件）を [api_key_rotation.md](file:///Users/motista/Desktop/antigravity/aiome/docs/operations/api_key_rotation.md) としてドキュメント化。
+
+### Added
+- **ゼロトラスト・シークレット隔離アーキテクチャの高度化 (Phase 1 - AbyssVault & macOS Keychain 移行)**:
+  - ブートストラップ・シークレット (`VAULT_MASTER_PASSWORD`, `VAULT_SECRET`, `GEMINI_API_KEY`) を安全に保管・ロードするための macOS Keychain 連携を `shared` クレートに実装 (`get_keychain_secret`, `set_keychain_secret`)。
+  - `key-proxy` / `sqlite_vault_backend.rs` の初期化プロセスを修正し、Keychain から優先ロードしてフォールバックとして環境変数を使用するセキュアな構造へ移行。
+  - `key-proxy` に認証ミドルウェアで保護されたシークレット一括取得エンドポイント `/api/v1/secrets` を実装し、AbyssVault (SQLite + XChaCha20-Poly1305) から動的に復号して返却する仕組みを構築。
+  - 各起動バイナリ (`api-server`, `samsara-hub`, `nurture-api`) のブートストラップ時に `key-proxy` に問い合わせてシークレットを動的注入する共通ロジック `shared::security::fetch_and_inject_secrets()` を実装・統合。
+  - 新規にシークレットの管理、Keychain 登録、および `.env.secret` の一括暗号化インポートを行う CLI ツール `abyss-vault` を `apps/abyss-vault` に追加し、Cargo ワークスペースへ登録。
+  - `api-server` および `samsara-hub` にて `wiremock` を用いた正常系・異常系・クリーンアップ（Positive / Negative / Revert）を含む TDD 検証コードを整備し、全テストを完全に PASS。
+
+### Added
+- **環境変数のシークレット情報分離と隔離設計の導入 (Phase 0 - 即時隔離)**:
+  - 秘密情報（APIキー、暗号化鍵、トークン等）を安全に防衛するための `.env.secret` ロード機能の追加。
+  - プロジェクトルートの `.env` 内の機密データを自動検出して `.env.secret` に安全に分離・移行し、元の `.env` の該当変数をプレースホルダーへと置換する移行スクリプト（`scratch/isolate_secrets.py`）を実装・実行。
+  - `.gitignore` に `.env.secret` を明示的に追加し、秘密情報が誤って Git 管理下にコミットされることを物理ロック。
+  - 不使用の構成変数 `VAULT_MASTER_KEY` を `.env.example` から完全削除し、設定テンプレートをクリーン化。
+  - 4つの起動バイナリ（`api-server`, `key-proxy`, `samsara-hub`, `nurture-api`）に、起動時にカレントディレクトリ（CWD）および application data resolver ルートの双方から `.env.secret` を自動検出して読み込むフォールバック付ロード処理を統合。
+  - `api-server` の起動プレフライト部に、`.env.secret` からのシークレット自動ロードを担保する TDD 単体テスト `test_dotenv_secret_loaded` を新規追加。
+  - テスト駆動開発（TDD）に基づき、Verification Protocol（Positive / Negative / Revert テスト）をすべて正常完了し、動作のデグレードがないことを実証。
+
+### Fixed
+- **Biome 3D キャンバス描画不具合の修正 (Orthographic カメラのフラスタム補正)**:
+  - `@react-three/fiber` v9.5 において `<Canvas orthographic>` を使用した際にビューポートのピクセルサイズでフラスタムが自動上書きされる問題を、`@react-three/drei` の `<OrthographicCamera>` を明示的に追加して `manual` プロパティを指定することで解決。
+  - カメラの配置位置を `[0, 0, 10]`、フラスタムを `[left=0, right=128, top=128, bottom=0]` に固定し、lookAt の原点指向特性と座標系を一致させることで、128x128 のセルグリッドおよび背景、入力判定領域がキャンバス全域に正しく描画・フィットされるよう修正。
+  - テスト環境での `OrthographicCamera` モック不足によるレンダリングエラーを防ぐため、`BiomeCanvas.test.tsx` および `BiomeGame.test.tsx` の drei モックへ `OrthographicCamera` の定義を追記。
+
+### Added
+- **R3F InstancedMesh によるバイオーム描画完全移行 (Phase 0-5)**:
+  - 128x128グリッドのセル描画を手書き WebGL2 レンダラー（`BiomeRenderer.tsx`）から Three.js / React Three Fiber (R3F) `InstancedMesh` ベースの新アーキテクチャ（`BiomeCanvas.tsx`）へ完全移行。
+  - セル形態（Basic, Producer, Consumer, Predator, Decomposer）ごとに個別の `InstancedMesh` (計5個) を割り当て、毎フレーム `renderView` データを基にインスタンスの行列・色・スケールを更新する高性能描画システムを構築。
+  - `grid.frag` のシェーダーロジックを `biomeCell.ts` (drei `shaderMaterial`) に移植し、Phongライティング、形態別パターン、細胞核・細胞膜構造、およびフレネルリムライトとレアリティ光沢を完全再現。
+  - ボロノイ背景を `BiomeBackground.tsx` で 2D Plane と呼吸アニメーション（`u_time`）付きで再現。
+  - `postprocessing` / `@react-three/postprocessing` を用いた Bloom、およびカスタムエフェクト `TachyonEffect`（SavePass パターンによる残像）、`HiggsEffect`（重力レンズ歪み + 色収差）を実装。
+  - テスト環境（Jest）での R3F / postprocessing モックを構築し、`BiomeGame.test.tsx` の WebGL2 モックを R3F に適合化し、新規に `BiomeCanvas.test.tsx` のテストを実装。
+  - **TypeScriptコンパイルエラーおよび postprocessing 統合のバグ修正**:
+    - `postprocessing` の型定義と CJS エクスポートの乖離による `SavePass` ランタイムインスタンス化エラーを、正式な実体クラス `CopyPass` に置き換え、引数仕様の不整合（`render` メソッドへの null 引数追加）を解消。
+    - `TachyonEffect` と `HiggsEffect` において、異なる `Uniform` インスタンス（`number`, `Vector2`, `Texture`）混在に伴う TypeScript 型推論の乖離を `Map<string, Uniform<any>>` で型強制し解消。
+    - `@react-three/postprocessing` の `EffectComposer` の children 型制約（`null` のレンダリング不可）に適合するため、適用するエフェクトのみを `passes` 配列に動的構築して渡す構造へリファクタリング。`disableNormalPass` prop を型定義に沿って削除。
+- **Biome HUD の CSS 変数化と TDD リファクタリング**:
+  - `BiomeHUD.tsx` 内の HEX カラーコードハードコード（レアリティカラーやゲージグラデーション、元素カラーなど）を完全に排除し、`App.css` の CSS 変数 (`--biome-rarity-legendary` 等) へ移行。
+  - `dangerouslySetInnerHTML` でのインライン keyframes アニメーション（`hudPulse`, `neonGlow`）定義を削除し、`styles/animations.css` へ集約。
+  - レアリティカラーを CSS 変数で表示するようアサートする TDD テストケースを `BiomeComponents.test.tsx` に追加し、RED から GREEN への遷移を検証。
+- **TypeScript 型定義の厳密化**:
+  - `useBiomeEngine.ts` の `getRarityProgress` と `getLastTickEvents` の `any`/`any[]` 型を、具体的な `RarityProgress | null` と `BiomeEvent[]` に置き換え。
+- **WASMマジックナンバーの定数化**:
+  - `libs/biome-engine/src/element.rs` に元素インデックス定数および反応閾値定数を追加し、反応ロジック内のハードコードを排除。
+- **堅牢性の向上**:
+  - `BiomeDendou.tsx` の空の `try/catch` ブロックを修正し、解析失敗時に警告ログ（`console.warn`）を出力するように改善。
+  - `BiomeRenderer.tsx` において、cleanup 関数内で `canvasRef.current` を直接参照せず、Effect の開始時に変数へキャプチャして使用するようにクリーンアップ漏れを防止。
+- **図鑑と錬金術拡張の統合 (Phase 3)**:
+  - **データベース詳細フィールドの拡張**: 標本詳細を永続化するため、SQLiteおよびPostgreSQLの `biome_specimens` テーブルに `element_balance`, `morphology_distribution`, `discovered_reactions`, `active_cell_count` の4つのカラムを追加するSQLマイグレーションを実装。
+  - **APIサーバー機能強化**: `api-server`の `biome.rs` を修正し、`BiomeSpecimenPayload` に新カラムのフィールド（Option型）を追加。保存（save）および一覧取得（list）のSQLクエリおよびペイロード処理に新データをシームレスに結合。 `biome_db_tests.rs` による統合テストを拡充。
+  - **WASM新規レア反応の追加**: `element.rs` に「超伝導合成 (Superconductivity)」と「生命活性化 (Vital Catalysis)」のレア反応2件を追加。質量保存を検証するアサーションテストをTDDで実装し、テストをすべてパス。
+  - **フロントエンド UI の詳細表示**: 図鑑コンポーネント `BiomeDendou.tsx` を修正し、アコーディオンで展開して元素比率（カラーゲージ表示）、形態分布（比率バー表示）、発見した反応（タグリスト表示）、活性セル数を表示可能に。リザルトコンポーネント `BiomeResult.tsx` も同様の詳細データを表示するように拡張。
+  - **対話型チュートリアルの拡張**: `BiomeTutorial.tsx` に新ステップ「元素反応の連鎖」を追加し、プレイヤーへ元素反応のルールを解説するステップを統合。
+  - **リファクタリングと自己修正 (Reflexion)**:
+    - 重複コード（`getPercentageMap`, `elementColors`, `morphColors`）を新設した `biomeHelpers.ts` に集約・共有化。
+    - インライン HEX カラーや `rgba` ハードコードを `App.css` の CSS 変数に移行し、デザイントークン参照規律（U-002）に完全準拠。
+    - TypeScript の未使用変数警告（TS6133）および `wasm` インポート呼び出しシグネチャの不整合を解消。
+    - WASMビルドターゲットに `--target web` を指定し、Vite の WASM ローダーと型定義を完全同期。
+    - 複数元素反応が 1サイクルで連鎖的に機能するシナリオを検証する `test_chained_reactions_sequence` テストを `element.rs` に追加。
+    - 不正な JSON データや null/undefined 入力に対する `BiomeDendou` の堅牢性を検証するテストおよび `biomeHelpers` の単体テストを Jest に追加し、すべて合格。
+- **バイオーム・ゲームデザインの根本改革 (Phase 1)**:
+  - **条件型レアリティシステム**: 8元素のバランスと形態の多様性（Shannonの多様性指数）、アクティブセル数を加味した進捗チェックリストUIを `BiomeHUD.tsx` に追加。WASM側の `determine_rarity_with_progress` APIを介して 10 世代ごとにバッチ取得。
+  - **8元素すべての注入UI**: 従来の4元素に加え、O(酸素), S(硫黄), Fe(鉄), Si(ケイ素) の注入に対応。`BiomeControls.tsx` を拡張し、キャンバスクリックでの注入ロジックに波及。
+  - **ジュース強化**: 元素注入成功時に画面シェイクエフェクト（`shakeOffset` による translate）と、800ms以内の連続注入でコンボ数が上昇する演出を導入。フローティングテキストにコンボ表示を結合。
+  - **WASM側イベント検知**: `BiomeEngine` に `last_tick_events` を追加し、`tick()` 内で細胞の形態変化イベントを検出する仕組みを実装。フロントエンドに `BiomeEventToast.tsx` を新規追加し、進化した細胞の形態を美しくトースト表示。
+  - **チュートリアルの更新**: 8元素の注入および化学反応を説明するテキストへチュートリアルを更新。
+  - **テストスイートの拡張**: WASM mock の更新、HUD チェックリストレンダリングの有無を検証する Jest ユニットテスト、WASM側での多様性指数および新規元素反応の TDD テストを追加し、すべて PASS することを確認。
 - **TDDサイクルによるテスト品質およびカバレッジ強化**:
   - `BiomeRenderer.test.tsx` に WASM 元素データ（C, N, P, H および O, S, Fe, Si）が生値 float32 のまま正しく転送バッファに展開され `texSubImage2D` に流れていることをアサートする検証テストを追加。
   - `BiomeComponents.test.tsx` に `BiomeHUD` の全レアリティ評価ランク（Legendary, Epic, Uncommon, Common）の表示装飾を網羅するテストを追加。これにより `BiomeHUD.tsx` のラインカバレッジ 100% を達成。

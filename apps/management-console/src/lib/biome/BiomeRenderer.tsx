@@ -1,3 +1,4 @@
+// @legacy - This is the legacy WebGL2 custom renderer. It has been replaced by the React Three Fiber (R3F) BiomeCanvas.tsx. Keep this file for reference and backward compatibility of legacy tests.
 import { useEffect, useRef } from 'react';
 import { compileShader, createProgram, setupQuad } from './utils/webgl-helpers';
 import { cssVar } from '../../utils/cssVar';
@@ -41,7 +42,6 @@ export interface BiomeRendererProps {
 
 const GRID_WIDTH = 128;
 const GRID_HEIGHT = 128;
-const INSTANCE_COUNT = GRID_WIDTH * GRID_HEIGHT;
 
 
 // パススルー用の頂点シェーダーとコピー用のフラグメントシェーダー
@@ -691,9 +691,9 @@ export function BiomeRenderer({
         if (hTexs[1]) g.deleteTexture(hTexs[1]);
       }
       // コンテキストロストイベントのクリーンアップ
-      if (canvasRef.current) {
-        canvasRef.current.removeEventListener('webglcontextlost', handleContextLost);
-        canvasRef.current.removeEventListener('webglcontextrestored', handleContextRestored);
+      if (canvas) {
+        canvas.removeEventListener('webglcontextlost', handleContextLost);
+        canvas.removeEventListener('webglcontextrestored', handleContextRestored);
       }
     };
   }, [width, height]);

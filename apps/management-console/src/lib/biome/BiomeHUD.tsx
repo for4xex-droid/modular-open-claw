@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 export interface BiomeHUDProps {
   generation: number;
@@ -7,6 +7,16 @@ export interface BiomeHUDProps {
   mutationBoost?: number;
   ticksSinceMutation?: number;
   activeCellCount?: number;
+  rarityProgress?: {
+    active_cells: number;
+    morphology_count: number;
+    has_homeostasis: boolean;
+    diversity_index: number;
+    condition_active_500: boolean;
+    condition_morph_3: boolean;
+    condition_morph_4: boolean;
+    condition_active_1000: boolean;
+  } | null;
 }
 
 export function BiomeHUD({
@@ -15,16 +25,47 @@ export function BiomeHUD({
   elementBalance,
   mutationBoost = 1.0,
   ticksSinceMutation = 0,
-  activeCellCount = 0
+  activeCellCount = 0,
+  rarityProgress = null
 }: BiomeHUDProps) {
   // レアリティごとの色と絵文字設定
   const getRarityDecor = (r: string) => {
     switch (r) {
-      case 'Legendary': return { color: '#f59e0b', emoji: '🔥', label: 'Legendary' };
-      case 'Epic': return { color: '#d946ef', emoji: '🔮', label: 'Epic' };
-      case 'Rare': return { color: '#06b6d4', emoji: '💎', label: 'Rare' };
-      case 'Uncommon': return { color: '#10b981', emoji: '🌟', label: 'Uncommon' };
-      default: return { color: '#94a3b8', emoji: '🍃', label: 'Common' };
+      case 'Legendary': return {
+        color: 'var(--biome-rarity-legendary)',
+        border: 'var(--biome-rarity-legendary-border)',
+        glow: 'var(--biome-rarity-legendary-glow)',
+        emoji: '🔥',
+        label: 'Legendary'
+      };
+      case 'Epic': return {
+        color: 'var(--biome-rarity-epic)',
+        border: 'var(--biome-rarity-epic-border)',
+        glow: 'var(--biome-rarity-epic-glow)',
+        emoji: '🔮',
+        label: 'Epic'
+      };
+      case 'Rare': return {
+        color: 'var(--biome-rarity-rare)',
+        border: 'var(--biome-rarity-rare-border)',
+        glow: 'var(--biome-rarity-rare-glow)',
+        emoji: '💎',
+        label: 'Rare'
+      };
+      case 'Uncommon': return {
+        color: 'var(--biome-rarity-uncommon)',
+        border: 'var(--biome-rarity-uncommon-border)',
+        glow: 'var(--biome-rarity-uncommon-glow)',
+        emoji: '🌟',
+        label: 'Uncommon'
+      };
+      default: return {
+        color: 'var(--biome-rarity-common)',
+        border: 'var(--biome-rarity-common-border)',
+        glow: 'var(--biome-rarity-common-glow)',
+        emoji: '🍃',
+        label: 'Common'
+      };
     }
   };
 
@@ -44,20 +85,6 @@ export function BiomeHUD({
       fontFamily: 'var(--font-main)',
       position: 'relative'
     }}>
-      {/* HUD専用アニメーション定義 */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes hudPulse {
-          0% { opacity: 0.9; filter: brightness(1); }
-          50% { opacity: 0.7; filter: brightness(1.2); }
-          100% { opacity: 0.9; filter: brightness(1); }
-        }
-        @keyframes neonGlow {
-          0% { text-shadow: 0 0 2px rgba(6, 182, 212, 0.4); }
-          50% { text-shadow: 0 0 8px rgba(6, 182, 212, 0.9); }
-          100% { text-shadow: 0 0 2px rgba(6, 182, 212, 0.4); }
-        }
-      `}} />
-
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-2xs)' }}>
         <div>
           <span style={{ fontSize: 'var(--font-size-2xs)', color: 'var(--text-muted)', fontWeight: '600' }}>現在の世代</span>
@@ -75,12 +102,12 @@ export function BiomeHUD({
               fontSize: '0.85rem',
               fontWeight: 'bold',
               color: decor.color,
-              background: 'rgba(255, 255, 255, 0.03)',
+              background: 'var(--white-03, rgba(255, 255, 255, 0.03))',
               padding: '4px 8px',
               borderRadius: 'var(--radius-sm)',
               marginTop: '4px',
-              border: `1px solid ${decor.color}33`,
-              boxShadow: `0 0 8px ${decor.color}22`,
+              border: `1px solid ${decor.border}`,
+              boxShadow: `0 0 8px ${decor.glow}`,
               display: 'flex',
               alignItems: 'center',
               gap: '4px'
@@ -105,6 +132,47 @@ export function BiomeHUD({
         </div>
       </div>
 
+      {/* 条件型レアリティ進捗チェックリスト */}
+      {rarityProgress && (
+        <div style={{
+          borderTop: '1px solid var(--border-glass)',
+          paddingTop: 'var(--space-2xs)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px'
+        }}>
+          <span style={{ fontSize: 'var(--font-size-2xs)', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', fontWeight: '600' }}>
+            ランクアップ条件 (Legendary)
+          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: rarityProgress.condition_active_500 ? 'var(--biome-rarity-uncommon)' : 'var(--white-60)' }}>
+              <span>{rarityProgress.condition_active_500 ? '✅' : '🔳'} 活性セル 500+</span>
+              <span>({rarityProgress.active_cells}/500)</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: rarityProgress.condition_morph_3 ? 'var(--biome-rarity-uncommon)' : 'var(--white-60)' }}>
+              <span>{rarityProgress.condition_morph_3 ? '✅' : '🔳'} 特殊形態 3種類+</span>
+              <span>({rarityProgress.morphology_count}/3)</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: rarityProgress.condition_morph_4 ? 'var(--biome-rarity-uncommon)' : 'var(--white-60)' }}>
+              <span>{rarityProgress.condition_morph_4 ? '✅' : '🔳'} 特殊形態 4種類+</span>
+              <span>({rarityProgress.morphology_count}/4)</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: rarityProgress.condition_active_1000 ? 'var(--biome-rarity-uncommon)' : 'var(--white-60)' }}>
+              <span>{rarityProgress.condition_active_1000 ? '✅' : '🔳'} 活性セル 1000+</span>
+              <span>({rarityProgress.active_cells}/1000)</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: rarityProgress.has_homeostasis ? 'var(--biome-rarity-uncommon)' : 'var(--white-60)' }}>
+              <span>{rarityProgress.has_homeostasis ? '✅' : '🔳'} 元素バランス (Homeostasis)</span>
+              <span>{rarityProgress.has_homeostasis ? '安定' : '偏りあり'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--white-80)' }}>
+              <span>📊 多様性指数 (Shannon)</span>
+              <span>{rarityProgress.diversity_index.toFixed(3)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ブーストゲージ & 天井カウンター */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', borderTop: '1px solid var(--border-glass)', paddingTop: 'var(--space-2xs)' }}>
         <div>
@@ -121,7 +189,7 @@ export function BiomeHUD({
             <div style={{
               height: '100%',
               width: `${Math.min(100, Math.max(0, ((mutationBoost - 1.0) / 1.0) * 100))}%`,
-              background: 'linear-gradient(90deg, #06b6d4, #3b82f6)',
+              background: 'linear-gradient(90deg, var(--biome-gauge-boost-start), var(--biome-gauge-boost-end))',
               borderRadius: '3px',
               transition: 'width var(--speed-fast) ease',
               animation: 'hudPulse 1.5s infinite ease-in-out'
@@ -143,7 +211,7 @@ export function BiomeHUD({
             <div style={{
               height: '100%',
               width: `${Math.min(100, (ticksSinceMutation / 1000) * 100)}%`,
-              background: 'linear-gradient(90deg, #f43f5e, #f97316)',
+              background: 'linear-gradient(90deg, var(--biome-gauge-pity-start), var(--biome-gauge-pity-end))',
               borderRadius: '3px',
               transition: 'width var(--speed-fast) ease',
               animation: ticksSinceMutation > 800 ? 'hudPulse 0.5s infinite ease-in-out' : 'none'
@@ -160,8 +228,8 @@ export function BiomeHUD({
           {Object.entries(elementBalance).map(([el, val]) => {
             // 元素固有カラー
             const elColors: Record<string, string> = {
-              C: '#33ff55', N: '#4488ff', P: '#ff9922', H: '#cc44ff',
-              O: '#00ddff', S: '#ffdd33', Fe: '#ff5544', Si: '#aaaaee'
+              C: 'var(--biome-element-c)', N: 'var(--biome-element-n)', P: 'var(--biome-element-p)', H: 'var(--biome-element-h)',
+              O: 'var(--biome-element-o)', S: 'var(--biome-element-s)', Fe: 'var(--biome-element-fe)', Si: 'var(--biome-element-si)'
             };
             const barColor = elColors[el] || '#888';
             return (

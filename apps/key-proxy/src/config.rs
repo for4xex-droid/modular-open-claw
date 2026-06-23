@@ -82,4 +82,6 @@ pub(crate) struct AppState {
     pub(crate) wp_api_token: Option<Arc<SecretString>>,
     pub(crate) gemini_model: String,
     pub(crate) gemini_embed_model: String,
+    pub(crate) vault_backend:
+        Arc<infrastructure::security::sqlite_vault_backend::UniversalVaultBackend>,
 }

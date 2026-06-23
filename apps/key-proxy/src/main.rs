@@ -11,7 +11,7 @@
 use axum::{
     Router,
     http::StatusCode,
-    routing::{get, post},
+    routing::{delete, get, post, put},
 };
 use secrecy::SecretString;
 use std::env;
@@ -32,6 +32,7 @@ use crate::config::{AppState, QuotaState};
 use crate::handlers::{
     llm::{handle_llm_complete, handle_llm_embed, handle_llm_stream},
     passthrough::handle_gemini_passthrough,
+    secrets::handle_get_secrets,
     wordpress::handle_wp_publish,
 };
 
@@ -67,8 +68,36 @@ async fn main() -> anyhow::Result<()> {
 
     // 2. Load keys and SELF-WIPE ENV
     dotenvy::dotenv().ok();
+    dotenvy::from_path(".env.secret").ok();
 
     let resolver = shared::app_data::AppDataResolver::new().map_err(|e| anyhow::anyhow!(e))?;
+
+    // Initialize AbyssVault SQLite database for secrets storing (§CISO-1)
+    let vault_db_path = env::var("ABYSS_VAULT_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| resolver.root().join("abyss_vault.db"));
+
+    if let Some(parent) = vault_db_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+
+    let vault_db_url = format!("sqlite:{}?mode=rwc", vault_db_path.to_string_lossy());
+    let vault_pool = sqlx::sqlite::SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect(&vault_db_url)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to connect to AbyssVault DB: {}", e))?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS vault_secrets (key TEXT PRIMARY KEY, encrypted_value BLOB NOT NULL)"
+    )
+    .execute(&vault_pool)
+    .await?;
+
+    let db_pool = infrastructure::db::DatabasePool::Sqlite(vault_pool);
+    let vault_backend = Arc::new(
+        infrastructure::security::sqlite_vault_backend::UniversalVaultBackend::new(db_pool),
+    );
 
     let app_env_path = resolver.root().join(".env");
     if app_env_path.exists() && dotenvy::from_path(&app_env_path).is_ok() {
@@ -77,15 +106,26 @@ async fn main() -> anyhow::Result<()> {
             app_env_path.display()
         );
     }
-    let gemini_key = env::var("GEMINI_API_KEY").unwrap_or_else(|_| {
-        error!("🚨 [CRITICAL] GEMINI_API_KEY must be set in key-proxy/.env");
-        std::process::exit(1);
-    });
+    let app_secret_path = resolver.root().join(".env.secret");
+    if app_secret_path.exists() && dotenvy::from_path(&app_secret_path).is_ok() {
+        tracing::info!(
+            "Loaded explicit secret environment from {}",
+            app_secret_path.display()
+        );
+    }
+    let gemini_key = shared::security::get_keychain_secret("com.aiome.gemini-api-key")
+        .or_else(|| env::var("GEMINI_API_KEY").ok())
+        .unwrap_or_else(|| {
+            error!("🚨 [CRITICAL] GEMINI_API_KEY must be set in macOS Keychain or environment");
+            std::process::exit(1);
+        });
 
-    let vault_secret = env::var("VAULT_SECRET").unwrap_or_else(|_| {
-        error!("🚨 [CRITICAL] VAULT_SECRET must be set for Abyss Vault access!");
-        std::process::exit(1);
-    });
+    let vault_secret = shared::security::get_keychain_secret("com.aiome.vault-secret")
+        .or_else(|| env::var("VAULT_SECRET").ok())
+        .unwrap_or_else(|| {
+            error!("🚨 [CRITICAL] VAULT_SECRET must be set in macOS Keychain or environment");
+            std::process::exit(1);
+        });
 
     let wp_api_url = env::var("WP_API_URL").ok();
     let wp_api_token = env::var("WP_API_TOKEN").ok();
@@ -162,6 +202,7 @@ async fn main() -> anyhow::Result<()> {
         wp_api_token: wp_api_token.map(|t| Arc::new(SecretString::from(t))),
         gemini_model,
         gemini_embed_model,
+        vault_backend,
     };
 
     let app = Router::new()
@@ -169,6 +210,19 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/llm/stream", post(handle_llm_stream))
         .route("/api/v1/llm/embed", post(handle_llm_embed))
         .route("/api/v1/wp/publish", post(handle_wp_publish))
+        .route("/api/v1/secrets", post(handle_get_secrets))
+        .route(
+            "/api/v1/admin/status",
+            get(crate::handlers::vault_admin::handle_vault_status),
+        )
+        .route(
+            "/api/v1/admin/secrets",
+            put(crate::handlers::vault_admin::handle_vault_store),
+        )
+        .route(
+            "/api/v1/admin/secrets/:key",
+            delete(crate::handlers::vault_admin::handle_vault_delete),
+        )
         .route("/api/v1/health", get(|| async { StatusCode::OK }))
         .route("/proxy/gemini/*path", post(handle_gemini_passthrough))
         .route("/proxy/gemini/*path", get(handle_gemini_passthrough))

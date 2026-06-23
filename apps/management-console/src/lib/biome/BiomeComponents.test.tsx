@@ -4,6 +4,7 @@ import { BiomeHUD } from './BiomeHUD';
 import { BiomeControls } from './BiomeControls';
 import { BiomeResult } from './BiomeResult';
 import { BiomeDendou } from './BiomeDendou';
+import { BiomeTutorial } from './BiomeTutorial';
 
 describe('Biome HUD & Controls Components', () => {
   it('BiomeHUD が正しく情報を表示すること', () => {
@@ -18,6 +19,35 @@ describe('Biome HUD & Controls Components', () => {
     // 世代数やレアリティが表示されていることをアサート
     expect(screen.getByText(/150/)).toBeInTheDocument();
     expect(screen.getByText(/Rare/)).toBeInTheDocument();
+    // 進行度チェックリストが表示されていないことをアサート
+    expect(screen.queryByText(/ランクアップ条件/)).not.toBeInTheDocument();
+  });
+
+  it('BiomeHUD が rarityProgress 提供時にチェックリストを正しく描画すること', () => {
+    const progress = {
+      active_cells: 550,
+      morphology_count: 3,
+      has_homeostasis: true,
+      diversity_index: 0.85,
+      condition_active_500: true,
+      condition_morph_3: true,
+      condition_morph_4: false,
+      condition_active_1000: false,
+    };
+
+    render(
+      <BiomeHUD
+        generation={150}
+        rarity="Rare"
+        elementBalance={{ C: 40 }}
+        rarityProgress={progress}
+      />
+    );
+
+    expect(screen.getByText(/ランクアップ条件/)).toBeInTheDocument();
+    expect(screen.getByText(/活性セル 500\+/)).toBeInTheDocument();
+    expect(screen.getByText(/特殊形態 3種類\+/)).toBeInTheDocument();
+    expect(screen.getByText(/0.850/)).toBeInTheDocument();
   });
 
   it('正常系: BiomeHUD が Legendary, Epic, Uncommon, Common の各レアリティに応じた装飾を正しく表示すること', () => {
@@ -30,6 +60,9 @@ describe('Biome HUD & Controls Components', () => {
       />
     );
     expect(screen.getByText('🔥')).toBeInTheDocument();
+    const rarityBadge = screen.getByTestId('biome-rarity');
+    expect(rarityBadge.style.color).toBe('var(--biome-rarity-legendary)');
+
     
     // 2. Epic
     rerender(
@@ -180,5 +213,118 @@ describe('Biome HUD & Controls Components', () => {
     const loadBtn = screen.getByRole('button', { name: /Load/i });
     fireEvent.click(loadBtn);
     expect(onLoad).toHaveBeenCalledWith('1');
+  });
+  it('BiomeDendou が詳細情報（元素バランス、形態分布、発見した反応、活性セル数）を正しく描画すること', () => {
+    const mockList = [
+      {
+        id: '1',
+        name: 'Legendary Specimen A',
+        generation: 250,
+        rarity: 'Legendary',
+        date: '2026-06-10',
+        element_balance: '{"C":40,"N":30,"P":10,"H":20}',
+        morphology_distribution: '{"Predator":2,"Producer":1}',
+        discovered_reactions: '["N+P->C+H","Fe+O->Si"]',
+        active_cell_count: 50,
+      }
+    ];
+    const onLoad = jest.fn();
+
+    render(
+      <BiomeDendou
+        list={mockList}
+        onLoad={onLoad}
+      />
+    );
+
+    expect(screen.getByText('Legendary Specimen A')).toBeInTheDocument();
+    
+    // 詳細トグルボタンをクリック
+    const detailBtn = screen.getByRole('button', { name: /🔍 詳細/i });
+    fireEvent.click(detailBtn);
+
+    // 展開後に詳細が表示されていることをアサート
+    expect(screen.getByText(/活性セル数: 50/i)).toBeInTheDocument();
+    expect(screen.getByText('C')).toBeInTheDocument();
+    expect(screen.getByText('40.0%')).toBeInTheDocument();
+    expect(screen.getByText('Predator')).toBeInTheDocument();
+    expect(screen.getByText('66.7%')).toBeInTheDocument();
+    expect(screen.getByText(/N\+P->C\+H/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fe\+O->Si/i)).toBeInTheDocument();
+  });
+
+  it('BiomeResult が詳細情報（元素バランス、形態分布、発見した反応、活性セル数）を描画すること', () => {
+    const onSave = jest.fn();
+    render(
+      <BiomeResult
+        generation={300}
+        rarity="Legendary"
+        onSave={onSave}
+        onClose={jest.fn()}
+        elementBalance={{ C: 40, N: 30, P: 10, H: 20 }}
+        morphologyDistribution={{ Predator: 2, Producer: 1 }}
+        discoveredReactions={['N+P->C+H', 'Fe+O->Si']}
+        activeCellCount={50}
+      />
+    );
+
+    expect(screen.getByText(/Legendary/)).toBeInTheDocument();
+    expect(screen.getByText(/300/)).toBeInTheDocument();
+    expect(screen.getByText(/活性セル数: 50/)).toBeInTheDocument();
+    expect(screen.getByText('C')).toBeInTheDocument();
+    expect(screen.getByText('40.0%')).toBeInTheDocument();
+    expect(screen.getByText('Predator')).toBeInTheDocument();
+    expect(screen.getByText('66.7%')).toBeInTheDocument();
+    expect(screen.getByText(/N\+P->C\+H/)).toBeInTheDocument();
+    expect(screen.getByText(/Fe\+O->Si/)).toBeInTheDocument();
+  });
+
+  it('BiomeTutorial が新ステップ「元素反応の連鎖」を含むすべてのステップを正しく切り替えて表示すること', () => {
+    const onClose = jest.fn();
+    render(<BiomeTutorial onClose={onClose} />);
+
+    expect(screen.getByText('🧬 生命の進化を見守る')).toBeInTheDocument();
+
+    const nextBtn = screen.getByRole('button', { name: /次へ/i });
+    fireEvent.click(nextBtn);
+    fireEvent.click(nextBtn);
+    fireEvent.click(nextBtn);
+
+    expect(screen.getByText('⚗️ 元素反応の連鎖')).toBeInTheDocument();
+    expect(screen.getByText(/反応は質量を保存し/)).toBeInTheDocument();
+  });
+
+  it('BiomeDendou が空の detail データや不正な JSON でもクラッシュせずにレンダリングされること', () => {
+    const mockListWithInvalidData = [
+      {
+        id: '2',
+        name: 'Faulty Specimen',
+        generation: 100,
+        rarity: 'Common',
+        date: '2026-06-11',
+        element_balance: 'invalid-json',
+        morphology_distribution: '',
+        discovered_reactions: 'invalid-array',
+        active_cell_count: undefined,
+      }
+    ];
+
+    render(
+      <BiomeDendou
+        list={mockListWithInvalidData}
+        onLoad={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Faulty Specimen')).toBeInTheDocument();
+    
+    // 詳細トグルボタンをクリックして展開するが、解析失敗データのためパーセントバー等は描画されず、かつクラッシュもしないこと
+    const detailBtn = screen.getByRole('button', { name: /🔍 詳細/i });
+    fireEvent.click(detailBtn);
+
+    expect(screen.queryByText(/元素比率/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/形態分布/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/発見した反応/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/活性セル数/i)).not.toBeInTheDocument();
   });
 });

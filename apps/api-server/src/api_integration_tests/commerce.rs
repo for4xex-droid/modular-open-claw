@@ -931,13 +931,25 @@ async fn test_stripe_webhook_dispute_created_suspends_account() {
 
 #[serial]
 #[tokio::test]
+#[allow(deprecated, unsafe_code)]
 async fn test_preflight_production_mode_rejects_missing_price_id() {
-    std::env::set_var("STRIPE_TEST_MODE", "false");
-    std::env::remove_var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY");
+    // VAULT_SECRET をクリアして fetch_and_inject_secrets() を早期リターンさせる。
+    // KEY_PROXY_URL は .env から dotenvy で再ロードされるためクリアしても効果がない。
+    let old_vault_secret = std::env::var("VAULT_SECRET").ok();
+    unsafe {
+        std::env::remove_var("VAULT_SECRET");
+        std::env::set_var("STRIPE_TEST_MODE", "false");
+        std::env::remove_var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY");
+    }
 
     let result = crate::bootstrap::preflight::init_env_and_preflight().await;
 
-    std::env::set_var("STRIPE_TEST_MODE", "true");
+    unsafe {
+        std::env::set_var("STRIPE_TEST_MODE", "true");
+        if let Some(val) = old_vault_secret {
+            std::env::set_var("VAULT_SECRET", val);
+        }
+    }
 
     assert!(
         result.is_err(),

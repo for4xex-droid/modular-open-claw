@@ -5,7 +5,11 @@ edition = "2021"
 license = "BUSL-1.1"
 publish = false
 
+[lib]
+doctest = false
+
 [dependencies]
+shared = { path = "../../../libs/shared" }
 aiome-core-contracts = { path = "../../../libs/aiome-core-contracts", features = ["grpc"] }
 commerce-protocol = { path = "../../libs/commerce-protocol", features = ["axum"] }
 nurture-core = { path = "../../libs/nurture-core" }

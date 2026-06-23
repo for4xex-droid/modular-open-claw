@@ -993,5 +993,41 @@
   "session": {
     "expired": "Session expired. Please update your API secret.",
     "goToSettings": "Go to Settings"
+  },
+  "vault": {
+    "title": "Abyss Vault Secrets Manager",
+    "description": "API keys and infrastructure secrets managed via key-proxy. Zero-trust security, admin access required.",
+    "permissionRequired": "Administrative privileges required to access the Abyss Vault.",
+    "category": {
+      "ai": "🤖 AI Services",
+      "commerce": "💳 Commerce & Billing",
+      "bridge": "🔗 Channel Bridges",
+      "infrastructure": "🏗️ Infrastructure & Core"
+    },
+    "status": {
+      "set": "Configured",
+      "notSet": "Not Set",
+      "actions": "Actions",
+      "configure": "Configure",
+      "delete": "Delete",
+      "deleteConfirm": "Are you sure you want to delete this secret from the vault?"
+    },
+    "modal": {
+      "title": "Configure Secret: {{key}}",
+      "placeholder": "Enter secret value...",
+      "save": "Save Secret",
+      "cancel": "Cancel"
+    },
+    "toast": {
+      "saveSuccess": "Secret successfully saved to vault",
+      "deleteSuccess": "Secret deleted from vault",
+      "saveError": "Failed to save secret: {{error}}",
+      "deleteError": "Failed to delete secret: {{error}}",
+      "loadError": "Failed to load vault status: {{error}}"
+    },
+    "indicator": {
+      "managed": "🔐 Managed in Abyss Vault"
+    }
   }
 }
+

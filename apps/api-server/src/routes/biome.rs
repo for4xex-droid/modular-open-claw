@@ -35,6 +35,10 @@ pub struct BiomeSpecimenPayload {
     pub specimen_name: String,
     pub genome_data: String,
     pub rarity: String,
+    pub element_balance: Option<String>,
+    pub morphology_distribution: Option<String>,
+    pub discovered_reactions: Option<String>,
+    pub active_cell_count: Option<i32>,
 }
 
 pub async fn save_run(
@@ -140,28 +144,36 @@ pub async fn save_specimen(
     match &**state.db_pool.get_inner() {
         DatabasePool::Sqlite(pool) => {
             sqlx::query(
-                "INSERT INTO biome_specimens (id, run_id, specimen_name, genome_data, rarity) 
-                 VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO biome_specimens (id, run_id, specimen_name, genome_data, rarity, element_balance, morphology_distribution, discovered_reactions, active_cell_count) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             )
             .bind(&payload.id)
             .bind(&payload.run_id)
             .bind(&payload.specimen_name)
             .bind(&payload.genome_data)
             .bind(&payload.rarity)
+            .bind(payload.element_balance.as_deref().unwrap_or("{}"))
+            .bind(payload.morphology_distribution.as_deref().unwrap_or("{}"))
+            .bind(payload.discovered_reactions.as_deref().unwrap_or("[]"))
+            .bind(payload.active_cell_count.unwrap_or(0))
             .execute(pool)
             .await
             .map_err(|e| AppError::internal(e.to_string()))?;
         }
         DatabasePool::Postgres(pool) => {
             sqlx::query(
-                "INSERT INTO biome_specimens (id, run_id, specimen_name, genome_data, rarity) 
-                 VALUES ($1, $2, $3, $4, $5)",
+                "INSERT INTO biome_specimens (id, run_id, specimen_name, genome_data, rarity, element_balance, morphology_distribution, discovered_reactions, active_cell_count) 
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
             )
             .bind(&payload.id)
             .bind(&payload.run_id)
             .bind(&payload.specimen_name)
             .bind(&payload.genome_data)
             .bind(&payload.rarity)
+            .bind(payload.element_balance.as_deref().unwrap_or("{}"))
+            .bind(payload.morphology_distribution.as_deref().unwrap_or("{}"))
+            .bind(payload.discovered_reactions.as_deref().unwrap_or("[]"))
+            .bind(payload.active_cell_count.unwrap_or(0))
             .execute(pool)
             .await
             .map_err(|e| AppError::internal(e.to_string()))?;
@@ -180,8 +192,8 @@ pub async fn list_specimens(
 ) -> Result<Response, AppError> {
     let specimens = match &**state.db_pool.get_inner() {
         DatabasePool::Sqlite(pool) => {
-            sqlx::query_as::<_, (String, String, String, String, String, String)>(
-                "SELECT id, run_id, specimen_name, genome_data, rarity, strftime('%Y-%m-%dT%H:%M:%SZ', created_at) FROM biome_specimens"
+            sqlx::query_as::<_, (String, String, String, String, String, String, Option<String>, Option<String>, Option<String>, Option<i32>)>(
+                "SELECT id, run_id, specimen_name, genome_data, rarity, strftime('%Y-%m-%dT%H:%M:%SZ', created_at), element_balance, morphology_distribution, discovered_reactions, active_cell_count FROM biome_specimens"
             )
             .fetch_all(pool)
             .await
@@ -193,13 +205,17 @@ pub async fn list_specimens(
                 "specimen_name": r.2,
                 "genome_data": r.3,
                 "rarity": r.4,
-                "created_at": r.5
+                "created_at": r.5,
+                "element_balance": r.6.unwrap_or_else(|| "{}".to_string()),
+                "morphology_distribution": r.7.unwrap_or_else(|| "{}".to_string()),
+                "discovered_reactions": r.8.unwrap_or_else(|| "[]".to_string()),
+                "active_cell_count": r.9.unwrap_or(0)
             }))
             .collect::<Vec<_>>()
         }
         DatabasePool::Postgres(pool) => {
-            sqlx::query_as::<_, (String, String, String, String, String, DateTime<Utc>)>(
-                "SELECT id, run_id, specimen_name, genome_data, rarity, created_at FROM biome_specimens"
+            sqlx::query_as::<_, (String, String, String, String, String, DateTime<Utc>, Option<String>, Option<String>, Option<String>, Option<i32>)>(
+                "SELECT id, run_id, specimen_name, genome_data, rarity, created_at, element_balance, morphology_distribution, discovered_reactions, active_cell_count FROM biome_specimens"
             )
             .fetch_all(pool)
             .await
@@ -211,7 +227,11 @@ pub async fn list_specimens(
                 "specimen_name": r.2,
                 "genome_data": r.3,
                 "rarity": r.4,
-                "created_at": r.5.to_rfc3339()
+                "created_at": r.5.to_rfc3339(),
+                "element_balance": r.6.unwrap_or_else(|| "{}".to_string()),
+                "morphology_distribution": r.7.unwrap_or_else(|| "{}".to_string()),
+                "discovered_reactions": r.8.unwrap_or_else(|| "[]".to_string()),
+                "active_cell_count": r.9.unwrap_or(0)
             }))
             .collect::<Vec<_>>()
         }

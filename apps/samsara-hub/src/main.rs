@@ -55,6 +55,16 @@ async fn main() -> anyhow::Result<()> {
 
     // 1. Initial attempt from CWD (essential for dev environments)
     dotenvy::dotenv().ok();
+    dotenvy::from_path(".env.secret").ok();
+
+    // Fetch and inject secrets from key-proxy if configured (§CISO-1)
+    if let Err(e) = shared::security::fetch_and_inject_secrets().await {
+        tracing::error!(
+            "🚨 Failed to fetch and inject secrets from key-proxy: {:?}",
+            e
+        );
+        return Err(e);
+    }
 
     let resolver = shared::app_data::AppDataResolver::new()
         .map_err(|e| anyhow::anyhow!("Failed to initialize AppDataResolver: {}", e))?;
@@ -65,6 +75,13 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!(
             "Loaded explicit environment from {}",
             app_env_path.display()
+        );
+    }
+    let app_secret_path = resolver.root().join(".env.secret");
+    if app_secret_path.exists() && dotenvy::from_path(&app_secret_path).is_ok() {
+        tracing::info!(
+            "Loaded explicit secret environment from {}",
+            app_secret_path.display()
         );
     }
 

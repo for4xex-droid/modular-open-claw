@@ -29,8 +29,13 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
     },
     {
       title: '🌱 生命の種（元素）を注入する',
-      desc: 'C(炭素)・N(窒素) などの元素を選択して、画面上の好きな場所をタッチ/ドラッグすると、その周辺に元素エネルギーを直接注入して新しい生命を誕生させられます！',
+      desc: 'C(炭素)・N(窒素)・O(酸素)・Fe(鉄) など8種類の元素を選択して、画面上の好きな場所をタッチ/ドラッグすると、その周辺に元素エネルギーを直接注入して新しい生命を誕生させられます！元素の組み合わせで化学反応が起き、進化が加速します。',
       targetSelector: '[data-testid="inject-c"]'
+    },
+    {
+      title: '⚗️ 元素反応の連鎖',
+      desc: '注入した元素同士が近接セル内で混ざり合うと、元素反応が起こります（例：C+H→N、N+P→C+H、Fe+O→Siなど）。反応は質量を保存し、より上位の変異に必要な複雑な元素を生み出します。',
+      targetSelector: 'canvas'
     },
     {
       title: '☄️ 環境災害を引き起こす',
@@ -90,8 +95,8 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
         left: rect.left - pad,
         width: rect.width + pad * 2,
         height: rect.height + pad * 2,
-        border: '3px solid var(--accent-cyan, #06b6d4)',
-        boxShadow: '0 0 15px var(--accent-cyan), 0 0 0 9999px rgba(0, 0, 0, 0.75)',
+        border: '3px solid var(--accent-cyan)',
+        boxShadow: '0 0 15px var(--accent-cyan), 0 0 0 9999px var(--black-75, rgba(0, 0, 0, 0.75))',
         borderRadius: '8px',
         zIndex: 1000,
         transition: 'all 0.3s ease',
@@ -144,18 +149,18 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
         style={{
           ...tooltipStyle,
           pointerEvents: 'auto',
-          background: 'rgba(12, 15, 29, 0.95)',
-          border: '1px solid var(--border-glass-bright, rgba(255,255,255,0.15))',
+          background: 'var(--bg-deep-glass)',
+          border: '1px solid var(--border-glass-bright)',
           borderRadius: '12px',
           padding: '16px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(6, 182, 212, 0.1)',
+          boxShadow: '0 8px 32px var(--black-80, rgba(0, 0, 0, 0.8)), 0 0 20px var(--accent-cyan-10)',
           backdropFilter: 'blur(12px)',
-          color: 'var(--white-100, #fff)',
+          color: 'var(--white-100)',
           fontFamily: 'var(--font-main, sans-serif)'
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan, #06b6d4)', fontWeight: 'bold' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 'bold' }}>
             チュートリアル ({currentStep + 1} / {steps.length})
           </span>
           <button 
@@ -163,7 +168,7 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
             style={{
               background: 'none',
               border: 'none',
-              color: 'var(--white-40, rgba(255,255,255,0.4))',
+              color: 'var(--white-40)',
               cursor: 'pointer',
               fontSize: '0.75rem',
               fontWeight: '600'
@@ -174,7 +179,7 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
         </div>
 
         <h4 style={{ margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 'bold' }}>{step.title}</h4>
-        <p style={{ margin: '0 0 16px 0', fontSize: '0.8rem', lineHeight: '1.4', color: 'var(--white-80, rgba(255,255,255,0.8))' }}>
+        <p style={{ margin: '0 0 16px 0', fontSize: '0.8rem', lineHeight: '1.4', color: 'var(--white-80)' }}>
           {step.desc}
         </p>
 
@@ -183,10 +188,10 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
             onClick={handlePrev}
             disabled={currentStep === 0}
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: 'var(--white-05)',
+              border: '1px solid var(--white-10)',
               borderRadius: '6px',
-              color: currentStep === 0 ? 'rgba(255, 255, 255, 0.15)' : 'var(--white-90)',
+              color: currentStep === 0 ? 'var(--white-15)' : 'var(--white-90)',
               padding: '6px 12px',
               cursor: currentStep === 0 ? 'default' : 'pointer',
               fontSize: '0.75rem',
@@ -198,15 +203,15 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
           <button
             onClick={handleNext}
             style={{
-              background: 'linear-gradient(135deg, var(--accent-cyan, #06b6d4), #3b82f6)',
+              background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-blue))',
               border: 'none',
               borderRadius: '6px',
-              color: '#0c0f1d',
+              color: 'var(--bg-primary, #0c0f1d)',
               padding: '6px 16px',
               cursor: 'pointer',
               fontSize: '0.75rem',
               fontWeight: 'bold',
-              boxShadow: '0 0 8px rgba(6, 182, 212, 0.3)'
+              boxShadow: '0 0 8px var(--accent-cyan-30)'
             }}
           >
             {currentStep === steps.length - 1 ? '開始！' : '次へ'}

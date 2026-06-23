@@ -65,20 +65,24 @@ async fn test_biome_db_migrations_and_operations() {
     let specimen_id = Uuid::new_v4().to_string();
     let genome_data = "{\"sequence\": [1,2,3]}";
     sqlx::query(
-        "INSERT INTO biome_specimens (id, run_id, specimen_name, genome_data, rarity) 
-         VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO biome_specimens (id, run_id, specimen_name, genome_data, rarity, element_balance, morphology_distribution, discovered_reactions, active_cell_count) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&specimen_id)
     .bind(&run_id)
     .bind("HelixPredator")
     .bind(genome_data)
     .bind("legendary")
+    .bind("{\"C\":100}")
+    .bind("{\"Predator\":1}")
+    .bind("[\"C+N->P\"]")
+    .bind(42)
     .execute(sqlite_pool)
     .await
     .unwrap();
 
-    let (fetched_specimen_name, fetched_rarity): (String, String) =
-        sqlx::query_as("SELECT specimen_name, rarity FROM biome_specimens WHERE id = ?")
+    let (fetched_specimen_name, fetched_rarity, fetched_eb, fetched_md, fetched_dr, fetched_acc): (String, String, String, String, String, i64) =
+        sqlx::query_as("SELECT specimen_name, rarity, element_balance, morphology_distribution, discovered_reactions, active_cell_count FROM biome_specimens WHERE id = ?")
             .bind(&specimen_id)
             .fetch_one(sqlite_pool)
             .await
@@ -86,6 +90,10 @@ async fn test_biome_db_migrations_and_operations() {
 
     assert_eq!(fetched_specimen_name, "HelixPredator");
     assert_eq!(fetched_rarity, "legendary");
+    assert_eq!(fetched_eb, "{\"C\":100}");
+    assert_eq!(fetched_md, "{\"Predator\":1}");
+    assert_eq!(fetched_dr, "[\"C+N->P\"]");
+    assert_eq!(fetched_acc, 42);
 
     // 3. biome_analytics への挿入と取得の検証
     let analytics_id = Uuid::new_v4().to_string();

@@ -20,8 +20,8 @@ export function BiomeControls({
   onSelectElement,
   selectedCrisis,
   onSelectCrisis,
-  onInjectElement,
-  onTriggerCrisis,
+  onInjectElement: _onInjectElement,
+  onTriggerCrisis: _onTriggerCrisis,
   onRollSubstance,
   onRewind,
   paused,
@@ -29,7 +29,16 @@ export function BiomeControls({
   onNewSeed,
   onShowTutorial
 }: BiomeControlsProps) {
-  const elements = ['C', 'N', 'P', 'H'];
+  const elements = [
+    { name: 'C',  label: '炭素' },
+    { name: 'N',  label: '窒素' },
+    { name: 'P',  label: 'リン' },
+    { name: 'H',  label: '水素' },
+    { name: 'O',  label: '酸素' },
+    { name: 'S',  label: '硫黄' },
+    { name: 'Fe', label: '鉄' },
+    { name: 'Si', label: 'ケイ素' },
+  ];
   const crises = ['Meteor', 'IceAge'];
 
   const buttonStyle: React.CSSProperties = {
@@ -104,16 +113,17 @@ export function BiomeControls({
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 'var(--space-xs)', fontWeight: '600' }}>
           元素注入 (クリックして選択し、画面をタッチ)
         </span>
-        <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-xs)' }}>
           {elements.map((el) => (
             <button
-              key={el}
-              style={getElementStyle(el)}
-              onClick={() => onSelectElement(selectedElement === el ? null : el)}
-              aria-label={el}
-              data-testid={`inject-${el.toLowerCase()}`}
+              key={el.name}
+              style={getElementStyle(el.name)}
+              onClick={() => onSelectElement(selectedElement === el.name ? null : el.name)}
+              aria-label={el.name}
+              data-testid={`inject-${el.name.toLowerCase()}`}
+              title={el.label}
             >
-              {el}
+              {el.name}
             </button>
           ))}
         </div>

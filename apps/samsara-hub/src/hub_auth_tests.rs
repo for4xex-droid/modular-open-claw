@@ -77,4 +77,41 @@ mod tests {
             "Sync endpoint should require auth"
         );
     }
+
+    #[tokio::test]
+    async fn test_fetch_and_inject_secrets() {
+        use std::collections::HashMap;
+        use wiremock::matchers::{header, method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+
+        std::env::set_var("KEY_PROXY_URL", mock_server.uri());
+        std::env::set_var("VAULT_SECRET", "test_vault_secret");
+
+        let mut expected_secrets = HashMap::new();
+        expected_secrets.insert(
+            "FEDERATION_SECRET".to_string(),
+            "mock_federation_key_val".to_string(),
+        );
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/secrets"))
+            .and(header("Authorization", "Bearer test_vault_secret"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(expected_secrets))
+            .mount(&mock_server)
+            .await;
+
+        let result = shared::security::fetch_and_inject_secrets().await;
+        assert!(result.is_ok());
+
+        assert_eq!(
+            std::env::var("FEDERATION_SECRET").unwrap_or_default(),
+            "mock_federation_key_val"
+        );
+
+        std::env::remove_var("KEY_PROXY_URL");
+        std::env::remove_var("VAULT_SECRET");
+        std::env::remove_var("FEDERATION_SECRET");
+    }
 }

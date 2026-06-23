@@ -19,7 +19,7 @@ use axum::{
         },
         HeaderValue, StatusCode,
     },
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
     Router,
 };
 use std::time::Duration;
@@ -203,6 +203,17 @@ pub fn build_app(
                     "/quarantine/:id/release",
                     post(routes::audit::release_quarantined_asset),
                 )
+                .route_layer(axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    auth::admin_only_middleware,
+                )),
+        )
+        .nest(
+            "/api/v1/vault",
+            Router::new()
+                .route("/status", get(routes::vault::vault_status))
+                .route("/secrets", put(routes::vault::vault_upsert))
+                .route("/secrets/:key", delete(routes::vault::vault_delete))
                 .route_layer(axum::middleware::from_fn_with_state(
                     state.clone(),
                     auth::admin_only_middleware,

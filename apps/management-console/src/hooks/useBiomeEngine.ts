@@ -63,6 +63,23 @@ function loadState(key: string): Promise<string | null> {
   });
 }
 
+export interface RarityProgress {
+  rarity: number;               // 0=Common 1=Uncommon 2=Rare 3=Epic 4=Legendary
+  active_cells: number;
+  morphology_count: number;     // 共存する形態の種数 (0-5)
+  has_homeostasis: boolean;    // 全元素がバランス
+  diversity_index: number;     // Shannon多様性指数
+  condition_active_500: boolean;
+  condition_morph_3: boolean;
+  condition_morph_4: boolean;
+  condition_active_1000: boolean;
+}
+
+export type BiomeEvent =
+  | { type: 'MorphologyChanged'; from: number; to: number }
+  | { type: 'MassExtinction'; lost_ratio: number }
+  | { type: 'NewReactionDiscovered'; reaction_id: number };
+
 export interface UseBiomeEngineOptions {
   seed: number;
   paused?: boolean;
@@ -307,6 +324,16 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
     return engineRef.current.ticks_since_mutation();
   }, []);
 
+  const getRarityProgress = useCallback((): RarityProgress | null => {
+    if (!engineRef.current) return null;
+    return engineRef.current.get_rarity_progress();
+  }, []);
+
+  const getLastTickEvents = useCallback((): BiomeEvent[] => {
+    if (!engineRef.current) return [];
+    return engineRef.current.get_last_tick_events() || [];
+  }, []);
+
   return {
     loading,
     error,
@@ -325,6 +352,8 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
     setMutationBoost,
     getMutationBoost,
     ticksSinceMutation,
+    getRarityProgress,
+    getLastTickEvents,
   };
 }
 

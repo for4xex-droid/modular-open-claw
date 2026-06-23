@@ -1,8 +1,49 @@
 @import './styles/tokens.css';
 @import './styles/animations.css';
 
+:root {
+  /* ── Biome Element Colors ── */
+  --biome-element-c: #33ff55;
+  --biome-element-n: #4488ff;
+  --biome-element-p: #ff9922;
+  --biome-element-h: #cc44ff;
+  --biome-element-o: #00ddff;
+  --biome-element-s: #ffdd33;
+  --biome-element-fe: #ff5544;
+  --biome-element-si: #aaaaee;
 
+  /* ── Biome Rarity Colors ── */
+  --biome-rarity-legendary: #f59e0b;
+  --biome-rarity-epic: #d946ef;
+  --biome-rarity-rare: #06b6d4;
+  --biome-rarity-uncommon: #10b981;
+  --biome-rarity-common: #94a3b8;
 
+  /* ── Biome Rarity Border & Glow Alpha Colors ── */
+  --biome-rarity-legendary-border: rgba(245, 158, 11, 0.2);
+  --biome-rarity-legendary-glow: rgba(245, 158, 11, 0.13);
+  --biome-rarity-epic-border: rgba(217, 70, 239, 0.2);
+  --biome-rarity-epic-glow: rgba(217, 70, 239, 0.13);
+  --biome-rarity-rare-border: rgba(6, 182, 212, 0.2);
+  --biome-rarity-rare-glow: rgba(6, 182, 212, 0.13);
+  --biome-rarity-uncommon-border: rgba(16, 185, 129, 0.2);
+  --biome-rarity-uncommon-glow: rgba(16, 185, 129, 0.13);
+  --biome-rarity-common-border: rgba(148, 163, 184, 0.2);
+  --biome-rarity-common-glow: rgba(148, 163, 184, 0.13);
+
+  /* ── Biome Gauge Gradients ── */
+  --biome-gauge-boost-start: #06b6d4;
+  --biome-gauge-boost-end: #3b82f6;
+  --biome-gauge-pity-start: #f43f5e;
+  --biome-gauge-pity-end: #f97316;
+
+  /* ── Biome Morphology Colors ── */
+  --biome-morph-basic: #888888;
+  --biome-morph-producer: #33ff55;
+  --biome-morph-consumer: #ff9922;
+  --biome-morph-predator: #ff5544;
+  --biome-morph-decomposer: #cc44ff;
+}
 * {
   box-sizing: border-box;
   margin: 0;

@@ -89,6 +89,14 @@ impl BiomeHistory {
     }
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(tag = "type")]
+pub enum BiomeEvent {
+    MorphologyChanged { from: u8, to: u8 },
+    MassExtinction { lost_ratio: f32 },
+    NewReactionDiscovered { reaction_id: u8 },
+}
+
 #[wasm_bindgen]
 pub struct BiomeEngine {
     grid: BiomeGrid,
@@ -97,6 +105,7 @@ pub struct BiomeEngine {
     prev_tick_cells: Vec<crate::grid::BiomeCell>,
     forced_substance: Option<SubstanceKind>,
     forced_rarity: Option<BiomeRarity>,
+    last_tick_events: Vec<BiomeEvent>,
 }
 
 #[wasm_bindgen]
@@ -112,6 +121,7 @@ impl BiomeEngine {
             prev_tick_cells: initial_cells,
             forced_substance: None,
             forced_rarity: None,
+            last_tick_events: Vec::new(),
         }
     }
 
@@ -123,10 +133,21 @@ impl BiomeEngine {
         let current_cells = self.grid.current_cells().clone();
         self.history
             .push(self.generation, &current_cells, &self.prev_tick_cells);
-        self.prev_tick_cells = current_cells;
+        self.prev_tick_cells = current_cells.clone();
 
+        self.last_tick_events.clear();
         let _deltas = self.grid.tick();
         self.generation += 1;
+
+        // 形態変化検知
+        for (prev, next) in current_cells.iter().zip(self.grid.current_cells().iter()) {
+            if prev.morphology != next.morphology && next.active {
+                self.last_tick_events.push(BiomeEvent::MorphologyChanged {
+                    from: prev.morphology as u8,
+                    to: next.morphology as u8,
+                });
+            }
+        }
     }
 
     pub fn apply_tachyon_rewind(&mut self, generations: u32) -> bool {
@@ -186,6 +207,15 @@ impl BiomeEngine {
 
     pub fn debug_force_rarity(&mut self, rarity: BiomeRarity) {
         self.forced_rarity = Some(rarity);
+    }
+
+    pub fn get_rarity_progress(&self) -> JsValue {
+        let progress = crate::rarity::determine_rarity_with_progress(&self.grid);
+        serde_wasm_bindgen::to_value(&progress).unwrap_or(JsValue::NULL)
+    }
+
+    pub fn get_last_tick_events(&self) -> JsValue {
+        serde_wasm_bindgen::to_value(&self.last_tick_events).unwrap_or(JsValue::NULL)
     }
 
     pub fn get_active_cell_count(&self) -> u32 {
@@ -464,6 +494,32 @@ mod tests {
             "C balance should increase after injection: before={}%, after={}%",
             balance_before[0],
             balance_after_inject[0]
+        );
+    }
+
+    #[test]
+    fn test_engine_get_rarity_progress() {
+        // ネイティブテストでは JsValue 関連メソッドを呼び出すとパニックするため、
+        // 内部で呼ばれている determine_rarity_with_progress の動作を直接検証します。
+        let engine = BiomeEngine::new(42);
+        let progress = crate::rarity::determine_rarity_with_progress(&engine.grid);
+        assert_eq!(progress.rarity, 0); // Common
+    }
+
+    #[test]
+    fn test_engine_last_tick_events() {
+        let mut engine = BiomeEngine::new(42);
+        engine.inject_element(0, 0, 0, 100);
+        engine.tick();
+
+        engine.inject_element(0, 0, 3, 45000); // H
+        engine.inject_element(0, 0, 4, 45000); // O
+        engine.tick();
+
+        // 内部フィールドを直接検証します（JsValueを返す get_last_tick_events は non-wasm ではパニックするため）
+        assert!(
+            !engine.last_tick_events.is_empty(),
+            "Internal events should not be empty"
         );
     }
 }

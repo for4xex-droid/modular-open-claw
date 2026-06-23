@@ -7,4 +7,6 @@
 
 pub(crate) mod llm;
 pub(crate) mod passthrough;
+pub(crate) mod secrets;
+pub(crate) mod vault_admin;
 pub(crate) mod wordpress;

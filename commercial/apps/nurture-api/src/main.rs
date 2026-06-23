@@ -30,8 +30,17 @@ use secrecy::{ExposeSecret, SecretString};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // .env の読み込み
     dotenvy::dotenv().ok();
+    dotenvy::from_path(".env.secret").ok();
+
+    // Fetch and inject secrets from key-proxy if configured (§CISO-1)
+    if let Err(e) = shared::security::fetch_and_inject_secrets().await {
+        tracing::error!(
+            "🚨 Failed to fetch and inject secrets from key-proxy: {:?}",
+            e
+        );
+        return Err(e);
+    }
 
     // ロギングの初期化
     tracing_subscriber::registry()
