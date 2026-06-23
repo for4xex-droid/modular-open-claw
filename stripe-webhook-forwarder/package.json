@@ -1,0 +1,13 @@
+{
+  "name": "stripe-webhook-forwarder",
+  "version": "1.0.0",
+  "description": "Stripe Webhook forwarder for Aiome using Cloudflare Workers",
+  "main": "src/index.js",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

@@ -16,6 +16,10 @@ pub(crate) async fn auth_middleware(
     req: axum::http::Request<axum::body::Body>,
     next: axum::middleware::Next,
 ) -> Result<Response, StatusCode> {
+    if req.uri().path() == "/api/v1/health" {
+        return Ok(next.run(req).await);
+    }
+
     let auth_header = req
         .headers()
         .get(axum::http::header::AUTHORIZATION)

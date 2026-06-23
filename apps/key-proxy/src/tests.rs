@@ -96,9 +96,8 @@ async fn test_health_check() {
     let server = TestServer::new(app).unwrap();
 
     let response = server.get("/api/v1/health").await;
-    // Note: auth_middleware is applied to health too currently
-    // Let's verify it requires auth
-    assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    // Health check endpoint is now bypass-authenticated
+    assert_eq!(response.status_code(), StatusCode::OK);
 }
 
 #[tokio::test]

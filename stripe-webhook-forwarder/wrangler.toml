@@ -1,0 +1,8 @@
+name = "stripe-webhook-forwarder"
+main = "src/index.js"
+compatibility_date = "2026-06-23"
+
+[vars]
+# 転送先の本番サーバーAPIエンドポイントURLを設定します
+# デプロイ後に、本番環境のドメインに合わせて書き換えてください
+FORWARD_URL = "https://api.aiome.dev/api/v1/commerce/webhook"

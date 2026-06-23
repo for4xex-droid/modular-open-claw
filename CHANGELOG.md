@@ -1,6 +1,17 @@
 ## [Unreleased]
 
 ### Fixed
+- **key-proxy ヘルスチェックのデッドロック解消**:
+  - `apps/key-proxy/src/auth.rs` にて、ヘルスチェックエンドポイント `/api/v1/health` へのリクエストを認証チェックの前にバイパスするようガード条件を追加。これによって、`api-server` 起動時に `key-proxy` への疎通確認が `401 Unauthorized` で拒否され起動が停止するデッドロック問題を解消。
+  - `apps/key-proxy/src/tests.rs` のヘルスチェックテストを認証バイパス後の期待値 `200 OK` に更新し、正常動作を保証。
+
+### Added
+- **Stripe Webhook v2 移行用中継 Workers (stripe-forwarder) の追加**:
+  - `stripe-webhook-forwarder/` を追加し、Cloudflare Workers 上で Stripe からの `v2.core.event`（thin event）および `v1` Webhook リクエストを生ボディのままと `stripe-signature` ヘッダーと共に本番 API サーバーの `FORWARD_URL` へ透過転送する中継スクリプト `src/index.js` および `wrangler.toml` を新規作成。
+  - **本番環境用設定テンプレートの整備**:
+    - `.env.production` を作成し、セルID、DBパス、ポート番号、および起動時の Keychain / 環境変数シークレット分離手順をドキュメント化。
+
+### Fixed
 - **key-proxy テストコンパイルエラーの修正**:
   - `apps/key-proxy/src/tests.rs` にて、`--release` モードコンパイル時に `MockAuthManager` が除外される問題に対し、`JwtAuthManager::try_new_generated()` によるテストへ切り替えてコンパイルエラーを解消。
 
