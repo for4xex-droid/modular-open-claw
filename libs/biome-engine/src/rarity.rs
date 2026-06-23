@@ -86,7 +86,7 @@ pub fn determine_rarity_with_progress(grid: &BiomeGrid) -> RarityProgress {
     let total_elements: u64 = element_totals.iter().sum();
     let has_homeostasis = if total_elements > 0 {
         let avg = total_elements / 8;
-        let min_val = *element_totals.iter().min().unwrap();
+        let min_val = *element_totals.iter().min().unwrap_or(&0);
         // 最小の元素が平均の20%以上であること
         min_val >= avg / 5
     } else {

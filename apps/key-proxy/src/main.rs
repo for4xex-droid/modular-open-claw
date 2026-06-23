@@ -113,15 +113,17 @@ async fn main() -> anyhow::Result<()> {
             app_secret_path.display()
         );
     }
-    let gemini_key = shared::security::get_keychain_secret("com.aiome.gemini-api-key")
-        .or_else(|| env::var("GEMINI_API_KEY").ok())
+    let gemini_key = env::var("GEMINI_API_KEY")
+        .ok()
+        .or_else(|| shared::security::get_keychain_secret("com.aiome.gemini-api-key"))
         .unwrap_or_else(|| {
             error!("🚨 [CRITICAL] GEMINI_API_KEY must be set in macOS Keychain or environment");
             std::process::exit(1);
         });
 
-    let vault_secret = shared::security::get_keychain_secret("com.aiome.vault-secret")
-        .or_else(|| env::var("VAULT_SECRET").ok())
+    let vault_secret = env::var("VAULT_SECRET")
+        .ok()
+        .or_else(|| shared::security::get_keychain_secret("com.aiome.vault-secret"))
         .unwrap_or_else(|| {
             error!("🚨 [CRITICAL] VAULT_SECRET must be set in macOS Keychain or environment");
             std::process::exit(1);
@@ -174,28 +176,7 @@ async fn main() -> anyhow::Result<()> {
             .redirect(reqwest::redirect::Policy::none())
             .build()?,
         state: Arc::new(tokio::sync::RwLock::new(quota_state)),
-        auth_manager: {
-            match std::env::var("JWT_PRIVATE_KEY_B64") {
-                Ok(key_b64) => {
-                    info!("🔑 [KeyProxy] Loading JWT private key from environment");
-                    shared::security::scrub_env("JWT_PRIVATE_KEY_B64");
-                    Arc::new(
-                        infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64)
-                            .map_err(|e| anyhow::anyhow!("Invalid JWT_PRIVATE_KEY_B64: {}", e))?,
-                    )
-                }
-                #[cfg(debug_assertions)]
-                Err(_) => {
-                    warn!("⚠️ [KeyProxy] JWT key not set, using MockAuthManager (dev only)");
-                    Arc::new(infrastructure::auth::MockAuthManager::new())
-                }
-                #[cfg(not(debug_assertions))]
-                Err(_) => {
-                    error!("🚨 [FATAL] JWT_PRIVATE_KEY_B64 must be set in production!");
-                    std::process::exit(1);
-                }
-            }
-        },
+        auth_manager: build_auth_manager(std::env::var("JWT_PRIVATE_KEY_B64").ok())?,
         persistence_path,
         caller_quotas: Arc::new(quotas),
         wp_api_url,
@@ -287,4 +268,47 @@ async fn main() -> anyhow::Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+pub(crate) fn build_auth_manager(
+    key_b64_opt: Option<String>,
+) -> anyhow::Result<Arc<dyn infrastructure::auth::AuthManager>> {
+    match key_b64_opt {
+        Some(key_b64) if !key_b64.is_empty() && !key_b64.starts_with('<') => {
+            info!("🔑 [KeyProxy] Loading JWT private key from environment");
+            shared::security::scrub_env("JWT_PRIVATE_KEY_B64");
+            match infrastructure::auth::JwtAuthManager::from_private_key_b64(&key_b64) {
+                Ok(manager) => Ok(Arc::new(manager)),
+                Err(e) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        warn!(
+                            "⚠️ [KeyProxy] Invalid JWT_PRIVATE_KEY_B64: {}. Falling back to MockAuthManager for development.",
+                            e
+                        );
+                        Ok(Arc::new(infrastructure::auth::MockAuthManager::new()))
+                    }
+                    #[cfg(not(debug_assertions))]
+                    {
+                        Err(anyhow::anyhow!("Invalid JWT_PRIVATE_KEY_B64: {}", e))
+                    }
+                }
+            }
+        }
+        _ => {
+            #[cfg(debug_assertions)]
+            {
+                warn!(
+                    "⚠️ [KeyProxy] JWT key not set or placeholder, using MockAuthManager (dev only)"
+                );
+                Ok(Arc::new(infrastructure::auth::MockAuthManager::new()))
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                Err(anyhow::anyhow!(
+                    "JWT_PRIVATE_KEY_B64 must be set in production!"
+                ))
+            }
+        }
+    }
 }

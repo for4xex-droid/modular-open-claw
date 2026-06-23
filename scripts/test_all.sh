@@ -16,7 +16,7 @@ fi
 echo "🚀 Building Key-Proxy (Abyss Vault)..."
 cargo build --bin key-proxy
 echo "🚀 Starting Key-Proxy in background..."
-CELL_ID=test_cell KEY_PROXY_PORT=9999 GEMINI_API_KEY=test_dummy_key VAULT_SECRET=test_master_key_123_test_master_key_123 cargo run --bin key-proxy > /tmp/key_proxy_test.log 2>&1 &
+CELL_ID=test_cell KEY_PROXY_PORT=9999 GEMINI_API_KEY=test_dummy_key VAULT_SECRET=test_master_key_123_test_master_key_123 JWT_PRIVATE_KEY_B64="" cargo run --bin key-proxy > /tmp/key_proxy_test.log 2>&1 &
 PROXY_PID=$!
 
 # 3. Wait for proxy to be ready

@@ -465,3 +465,30 @@ async fn test_vault_delete_invalid_key() {
 
     assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
 }
+
+#[test]
+fn test_build_auth_manager_with_invalid_base64_in_dev_falls_back_to_mock() {
+    let result = crate::build_auth_manager(Some("invalid_base64_invalid_base64".to_string()));
+    #[cfg(debug_assertions)]
+    assert!(result.is_ok());
+    #[cfg(not(debug_assertions))]
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_build_auth_manager_with_placeholder_falls_back_to_mock() {
+    let result = crate::build_auth_manager(Some("<YOUR_KEY_HERE>".to_string()));
+    #[cfg(debug_assertions)]
+    assert!(result.is_ok());
+    #[cfg(not(debug_assertions))]
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_build_auth_manager_none_falls_back_to_mock() {
+    let result = crate::build_auth_manager(None);
+    #[cfg(debug_assertions)]
+    assert!(result.is_ok());
+    #[cfg(not(debug_assertions))]
+    assert!(result.is_err());
+}
