@@ -31,7 +31,10 @@ async fn setup_test_app() -> (TestServer, SqlitePool, tempfile::TempDir) {
         .await
         .unwrap();
 
-    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    sqlx::migrate!("../../migrations/sqlite")
+        .run(&pool)
+        .await
+        .unwrap();
 
     let system_id = Uuid::new_v4();
     let cancel_token = tokio_util::sync::CancellationToken::new();
@@ -49,7 +52,7 @@ async fn setup_test_app() -> (TestServer, SqlitePool, tempfile::TempDir) {
         ));
 
     let state = AppState::init(
-        pool.clone(),
+        nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         job_queue,
         nurture_core::policy::EconomyPolicy::default(),
         ActorId(system_id),

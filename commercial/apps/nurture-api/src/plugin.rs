@@ -202,9 +202,11 @@ impl AgentHook for NurtureAgentHook {
     }
 }
 
+use nurture_bridge::db::DatabasePool;
+
 #[allow(clippy::too_many_arguments)]
 pub async fn create_plugin(
-    pool: sqlx::SqlitePool,
+    pool: DatabasePool,
     system_id: uuid::Uuid,
     _event_sender: tokio::sync::broadcast::Sender<nurture_bridge::watchtower::CoreEvent>,
     job_queue: Arc<dyn JobQueue>,

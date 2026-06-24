@@ -12,6 +12,7 @@
 
 use commerce_protocol::identity::ActorId;
 use commerce_protocol::settlement::SettlementProtocol;
+use nurture_bridge::db::DatabasePool;
 use nurture_bridge::error::AiomeError;
 use nurture_bridge::immune_system::AdaptiveImmuneSystem;
 use nurture_bridge::traits::JobQueue;
@@ -40,7 +41,7 @@ pub struct AppState {
     pub stripe_handler: Option<Arc<nurture_infra::stripe::webhook::StripeWebhookHandler>>,
     pub polar_handler: Option<Arc<nurture_infra::polar::webhook::PolarWebhookHandler>>,
     pub ekyc_store: Arc<dyn nurture_infra::identity::ekyc::EkycStore>,
-    pub pool: sqlx::SqlitePool,
+    pub pool: DatabasePool,
     pub policy: SharedPolicy,
     pub system_actor_id: ActorId,
     pub license_store: Arc<dyn nurture_core::license::LicenseStore>,
@@ -63,7 +64,7 @@ pub type SharedState = Arc<AppState>;
 impl AppState {
     #[allow(clippy::too_many_arguments)]
     pub async fn init(
-        pool: sqlx::SqlitePool,
+        pool: DatabasePool,
         job_queue: Arc<dyn JobQueue>,
         policy: EconomyPolicy,
         system_id: ActorId,
@@ -78,22 +79,24 @@ impl AppState {
         shadow_clone_grpc_host: String,
         shadow_clone_grpc_port: String,
     ) -> Result<SharedState, AiomeError> {
-        // Enable SQLite WAL mode and busy_timeout for concurrency
-        sqlx::query("PRAGMA journal_mode=WAL;")
-            .execute(&pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to set WAL mode: {}", e),
-            })?;
-        sqlx::query("PRAGMA busy_timeout=5000;")
-            .execute(&pool)
-            .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to set busy_timeout: {}", e),
-            })?;
+        if let DatabasePool::Sqlite(sqlite_pool) = &pool {
+            // Enable SQLite WAL mode and busy_timeout for concurrency
+            sqlx::query("PRAGMA journal_mode=WAL;")
+                .execute(sqlite_pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to set WAL mode: {}", e),
+                })?;
+            sqlx::query("PRAGMA busy_timeout=5000;")
+                .execute(sqlite_pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to set busy_timeout: {}", e),
+                })?;
+        }
 
         let shared_policy = Arc::new(tokio::sync::RwLock::new(policy));
-        let ledger = Arc::new(nurture_infra::economy::ledger::SQLiteEconomyLedger::new(
+        let ledger = Arc::new(nurture_infra::economy::ledger::DatabaseEconomyLedger::new(
             pool.clone(),
         ));
         let settlement = Arc::new(
@@ -112,7 +115,7 @@ impl AppState {
         let ekyc_store = Arc::new(nurture_infra::identity::ekyc::SQLiteEkycStore::new(
             pool.clone(),
         ));
-        let db_pool_shared = nurture_bridge::db::DatabasePool::Sqlite(pool.clone());
+        let db_pool_shared = pool.clone();
         let csam_pipeline = Arc::new(
             nurture_infra::csam::default_pipeline(ekyc_store.clone(), db_pool_shared)
                 .with_reporter(ncmec_reporter),

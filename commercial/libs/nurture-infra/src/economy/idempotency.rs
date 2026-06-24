@@ -13,7 +13,10 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Duration, Utc};
 use commerce_protocol::error::NurtureError;
-use sqlx::{Row, SqlitePool};
+use nurture_bridge::db::DatabasePool;
+use nurture_bridge::error::AiomeError;
+use nurture_bridge::{sql_exec, sql_fetch_optional_map};
+use sqlx::Row;
 
 /// 冪等性キーに紐付く保存されたレスポンス
 #[derive(Debug, Clone)]
@@ -43,11 +46,11 @@ pub trait IdempotencyStore: Send + Sync {
 }
 
 pub struct SQLiteIdempotencyStore {
-    pool: SqlitePool,
+    pool: DatabasePool,
 }
 
 impl SQLiteIdempotencyStore {
-    pub fn new(pool: SqlitePool) -> Self {
+    pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 }
@@ -58,23 +61,31 @@ impl IdempotencyStore for SQLiteIdempotencyStore {
         &self,
         key: &str,
     ) -> Result<Option<Option<IdempotencyResponse>>, NurtureError> {
-        let row = sqlx::query(
-            "SELECT response_body, status_code, expires_at FROM nurture_idempotency WHERE key = ?",
+        let row_opt = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: "SELECT response_body, status_code, expires_at FROM nurture_idempotency WHERE key = ?",
+            |row| {
+                let response_body: Option<String> = row.get("response_body");
+                let status_code: Option<i64> = row.get("status_code");
+                let expires_at: DateTime<Utc> = row.get("expires_at");
+                Ok::<_, AiomeError>((response_body, status_code, expires_at))
+            },
+            pg: "SELECT response_body, status_code, expires_at FROM nurture_idempotency WHERE key = $1",
+            |row| {
+                let response_body: Option<String> = row.get("response_body");
+                let status_code: Option<i64> = row.get("status_code");
+                let expires_at: DateTime<Utc> = row.get("expires_at");
+                Ok::<_, AiomeError>((response_body, status_code, expires_at))
+            },
+            key
         )
-        .bind(key)
-        .fetch_optional(&self.pool)
-        .await
         .map_err(|e| NurtureError::Infrastructure(format!("冪等性キー取得失敗: {}", e)))?;
 
-        match row {
-            Some(row) => {
-                let expires_at: DateTime<Utc> = row.get("expires_at");
+        match row_opt {
+            Some((response_body, status_code, expires_at)) => {
                 if Utc::now() > expires_at {
                     return Ok(None);
                 }
-
-                let response_body: Option<String> = row.get("response_body");
-                let status_code: Option<i64> = row.get("status_code");
 
                 match (response_body, status_code) {
                     (Some(body), Some(status)) => Ok(Some(Some(IdempotencyResponse {
@@ -92,28 +103,38 @@ impl IdempotencyStore for SQLiteIdempotencyStore {
         let expires_at = Utc::now() + expires_in;
 
         // 期限切れの既存キーは削除してから予約（再利用可能にする）
-        sqlx::query("DELETE FROM nurture_idempotency WHERE key = ? AND expires_at < ?")
-            .bind(key)
-            .bind(Utc::now())
-            .execute(&self.pool)
-            .await
-            .map_err(|e| NurtureError::Infrastructure(format!("冪等性キー削除失敗: {}", e)))?;
+        sql_exec!(
+            &self.pool,
+            sqlite: "DELETE FROM nurture_idempotency WHERE key = ? AND expires_at < ?",
+            pg: "DELETE FROM nurture_idempotency WHERE key = $1 AND expires_at < $2",
+            key,
+            Utc::now()
+        )
+        .map_err(|e| NurtureError::Infrastructure(format!("冪等性キー削除失敗: {}", e)))?;
 
-        sqlx::query("INSERT INTO nurture_idempotency (key, expires_at) VALUES (?, ?)")
-            .bind(key)
-            .bind(expires_at)
-            .execute(&self.pool)
-            .await
-            .map(|_| ())
-            .map_err(|e| {
-                if e.to_string().contains("UNIQUE") {
-                    NurtureError::IdempotencyConflict {
+        let insert_res = sql_exec!(
+            &self.pool,
+            sqlite: "INSERT INTO nurture_idempotency (key, expires_at) VALUES (?, ?)",
+            pg: "INSERT INTO nurture_idempotency (key, expires_at) VALUES ($1, $2)",
+            key,
+            expires_at
+        );
+        match insert_res {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                let err_str = e.to_string();
+                if err_str.contains("UNIQUE") || err_str.contains("unique") {
+                    Err(NurtureError::IdempotencyConflict {
                         key: key.to_string(),
-                    }
+                    })
                 } else {
-                    NurtureError::Infrastructure(format!("冪等性キー予約失敗: {}", e))
+                    Err(NurtureError::Infrastructure(format!(
+                        "冪等性キー予約失敗: {}",
+                        e
+                    )))
                 }
-            })
+            }
+        }
     }
 
     async fn save_response(
@@ -122,25 +143,27 @@ impl IdempotencyStore for SQLiteIdempotencyStore {
         status: u16,
         body: String,
     ) -> Result<(), NurtureError> {
-        sqlx::query(
-            "UPDATE nurture_idempotency SET response_body = ?, status_code = ? WHERE key = ?",
+        sql_exec!(
+            &self.pool,
+            sqlite: "UPDATE nurture_idempotency SET response_body = ?, status_code = ? WHERE key = ?",
+            pg: "UPDATE nurture_idempotency SET response_body = $1, status_code = $2 WHERE key = $3",
+            body,
+            i64::from(status),
+            key
         )
-        .bind(body)
-        .bind(i64::from(status))
-        .bind(key)
-        .execute(&self.pool)
-        .await
         .map(|_| ())
         .map_err(|e| NurtureError::Infrastructure(format!("冪等性レスポンス保存失敗: {}", e)))
     }
 
     async fn delete_key(&self, key: &str) -> Result<(), NurtureError> {
-        sqlx::query("DELETE FROM nurture_idempotency WHERE key = ?")
-            .bind(key)
-            .execute(&self.pool)
-            .await
-            .map(|_| ())
-            .map_err(|e| NurtureError::Infrastructure(format!("冪等性キー削除失敗: {}", e)))
+        sql_exec!(
+            &self.pool,
+            sqlite: "DELETE FROM nurture_idempotency WHERE key = ?",
+            pg: "DELETE FROM nurture_idempotency WHERE key = $1",
+            key
+        )
+        .map(|_| ())
+        .map_err(|e| NurtureError::Infrastructure(format!("冪等性キー削除失敗: {}", e)))
     }
 }
 
@@ -167,7 +190,7 @@ mod tests {
         .await
         .unwrap();
 
-        let store = SQLiteIdempotencyStore::new(pool.clone());
+        let store = SQLiteIdempotencyStore::new(DatabasePool::Sqlite(pool.clone()));
         let key = "test_key_status_clamp";
 
         // 有効な事前予約を挿入

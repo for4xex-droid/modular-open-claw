@@ -405,18 +405,18 @@ mod tests {
 
     async fn setup_state() -> SharedState {
         let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-        sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+        sqlx::migrate!("../../migrations/sqlite")
+            .run(&pool)
+            .await
+            .unwrap();
         let cancel_token = tokio_util::sync::CancellationToken::new();
-        let store = Arc::new(SqliteTrajectoryStore::new(DatabasePool::Sqlite(
-            pool.clone(),
-        )));
-        let job_queue: Arc<dyn JobQueue> = Arc::new(UniversalJobQueue::from_pool(
-            DatabasePool::Sqlite(pool.clone()),
-            store,
-        ));
+        let db_pool = DatabasePool::Sqlite(pool);
+        let store = Arc::new(SqliteTrajectoryStore::new(db_pool.clone()));
+        let job_queue: Arc<dyn JobQueue> =
+            Arc::new(UniversalJobQueue::from_pool(db_pool.clone(), store));
 
         crate::state::AppState::init(
-            pool,
+            db_pool,
             job_queue,
             nurture_core::policy::EconomyPolicy::default(),
             ActorId(Uuid::new_v4()),

@@ -1,5 +1,40 @@
-
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=aiome
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=aiome
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiome"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  # Caddy Reverse Proxy
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api-server
+      - samsara-hub
+    restart: always
+
   # The Abyss Vault (Key Proxy)
   # Responsible for holding sensitive API keys in memory (locked).
   key-proxy:
@@ -10,9 +45,11 @@ services:
         BIN_NAME: key-proxy
     environment:
       - KEY_PROXY_PORT=9999
+      - BIND_ALL=true
       - VAULT_SECRET=${VAULT_SECRET}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
+      - VAULT_MASTER_PASSWORD=${VAULT_MASTER_PASSWORD}
     cap_add:
       - IPC_LOCK # REQUIRED for mlockall() security
     security_opt:
@@ -22,6 +59,10 @@ services:
       resources:
         limits:
           memory: 256M
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "9999"]
       interval: 30s
@@ -38,12 +79,13 @@ services:
       args:
         BIN_NAME: api-server
     environment:
+      - CELL_ID=${CELL_ID:-cell-0}
       - KEY_PROXY_URL=http://key-proxy:9999
       - VAULT_SECRET=${VAULT_SECRET}
       # Federation v1.5 activated
       - SAMSARA_HUB_REST=http://samsara-hub:3016
       - SAMSARA_HUB_WS=ws://samsara-hub:3016/api/v1/federation/ws
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_HOST=${OLLAMA_HOST:-}
       - RURI_EMBED_URL=http://ruri-embed-server:8100
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       # DEPRECATED: Legacy auth. Retained for backward compatibility during JWT migration.
@@ -61,10 +103,14 @@ services:
       - GEO_ENABLED=${GEO_ENABLED:-true}
       - SHADOW_CLONE_GRPC_HOST=shadow-worker
       - SHADOW_CLONE_GRPC_PORT=50051
+      - AIOME_DB_PATH=postgres://aiome:${POSTGRES_PASSWORD}@postgres:5432/aiome
     depends_on:
-      - key-proxy
-      - ruri-embed-server
-      - shadow-worker
+      postgres:
+        condition: service_healthy
+      key-proxy:
+        condition: service_healthy
+      shadow-worker:
+        condition: service_healthy
     volumes:
       - ./data/api:/app/data
     deploy:
@@ -80,8 +126,6 @@ services:
       timeout: 10s
       retries: 3
     restart: always
-    ports:
-      - "3015:3015"
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -91,14 +135,18 @@ services:
       dockerfile: commercial/docker/nurture.Dockerfile
     environment:
       - PORT=3020
-      - DATABASE_URL=sqlite:///app/data/nurture.db
+      - NURTURE_BIND_ADDR=0.0.0.0
+      - DATABASE_URL=postgres://aiome:${POSTGRES_PASSWORD}@postgres:5432/nurture
       - NURTURE_INTERNAL_SECRET=${NURTURE_INTERNAL_SECRET}
       - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
       - AIOME_API_URL=http://api-server:3015
     depends_on:
-      - key-proxy
+      postgres:
+        condition: service_healthy
+      key-proxy:
+        condition: service_healthy
     volumes:
       - ./data/nurture:/app/data
     deploy:
@@ -123,9 +171,14 @@ services:
         BIN_NAME: samsara-hub
     environment:
       - PORT=3016
-      - DATABASE_URL=sqlite:///app/data/samsara_hub.db
+      - SAMSARA_BIND_ADDR=0.0.0.0
+      - DATABASE_URL=postgres://aiome:${POSTGRES_PASSWORD}@postgres:5432/samsara_hub
       - FEDERATION_SECRET=${FEDERATION_SECRET}
       - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
+      - CELL_ID=${CELL_ID:-cell-0}
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./data/hub:/app/data
     deploy:
@@ -141,8 +194,6 @@ services:
       timeout: 10s
       retries: 3
     restart: always
-    ports:
-      - "0.0.0.0:3016:3016"
 
   ruri-embed-server:
     # NOTE: This image is not publicly available on GHCR.
@@ -226,8 +277,13 @@ services:
     tmpfs:
       - /tmp:size=64M
     healthcheck:
-      test: ["CMD", "grpc_health_probe", "-addr=:50051"]
+      test: ["CMD-SHELL", "echo > /dev/tcp/localhost/50051 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
     restart: always
+
+volumes:
+  pg_data:
+  caddy_data:
+  caddy_config:

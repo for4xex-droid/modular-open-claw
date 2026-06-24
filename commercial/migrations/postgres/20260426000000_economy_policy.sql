@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS nurture_settings (
+    setting_key VARCHAR(100) PRIMARY KEY,
+    payload TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

@@ -19,9 +19,11 @@ use ed25519_dalek::{SigningKey, VerifyingKey};
 use nix::sys::signal::{self, Signal};
 #[cfg(unix)]
 use nix::unistd::Pid;
+use nurture_bridge::db::DatabasePool;
+use nurture_bridge::{sql_exec, sql_fetch_all_map, sql_fetch_optional_map};
 use nurture_core::ledger::{EconomyLedger, EntryType, LedgerEntry};
 use rand::rngs::OsRng;
-use sqlx::{Row, SqlitePool};
+use sqlx::Row;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -62,7 +64,7 @@ pub struct CloneManager {
     vram_arbiter: Arc<VramArbiter>,
     ledger: Arc<dyn EconomyLedger>,
     _job_queue: Arc<dyn JobQueue>,
-    pool: SqlitePool,
+    pool: DatabasePool,
     active_clones: DashMap<Uuid, CloneInstance>,
     max_concurrent: u8,
     system_actor_id: ActorId,
@@ -73,7 +75,7 @@ impl CloneManager {
         vram_arbiter: Arc<VramArbiter>,
         ledger: Arc<dyn EconomyLedger>,
         job_queue: Arc<dyn JobQueue>,
-        pool: SqlitePool,
+        pool: DatabasePool,
         max_concurrent: u8,
         system_actor_id: ActorId,
     ) -> Self {
@@ -229,21 +231,44 @@ impl CloneManager {
         let pid = i64::from(instance.child.id());
 
         // 🚨 V-15: DB 永続化 (SC-1 基礎)
-        let db_res = sqlx::query(
-            "INSERT INTO nurture_clone_instances (id, parent_actor_id, pid, public_key, specialization, status, karma_snapshot_count, started_at, escrow_coins, escrow_tx_id)
-             VALUES (?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?)"
-        )
-        .bind(clone_id.to_string())
-        .bind(&parent_id_str)
-        .bind(pid)
-        .bind(&pub_key_b64)
-        .bind(&spec.specialization)
-        .bind(i64::try_from(spec.karma_snapshot.len()).unwrap_or(0))
-        .bind(Utc::now())
-        .bind(i64::try_from(cost_coins).unwrap_or(0))
-        .bind(escrow_tx_id.to_string())
-        .execute(&self.pool)
-        .await;
+        let db_res = match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                sqlx::query(
+                    "INSERT INTO nurture_clone_instances (id, parent_actor_id, pid, public_key, specialization, status, karma_snapshot_count, started_at, escrow_coins, escrow_tx_id)
+                     VALUES (?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?)"
+                )
+                .bind(clone_id.to_string())
+                .bind(&parent_id_str)
+                .bind(pid)
+                .bind(&pub_key_b64)
+                .bind(&spec.specialization)
+                .bind(i64::try_from(spec.karma_snapshot.len()).unwrap_or(0))
+                .bind(Utc::now())
+                .bind(i64::try_from(cost_coins).unwrap_or(0))
+                .bind(escrow_tx_id.to_string())
+                .execute(p)
+                .await
+                .map(|_| ())
+            }
+            DatabasePool::Postgres(p) => {
+                sqlx::query(
+                    "INSERT INTO nurture_clone_instances (id, parent_actor_id, pid, public_key, specialization, status, karma_snapshot_count, started_at, escrow_coins, escrow_tx_id)
+                     VALUES ($1, $2, $3, $4, $5, 'Active', $6, $7, $8, $9)"
+                )
+                .bind(clone_id.to_string())
+                .bind(&parent_id_str)
+                .bind(pid)
+                .bind(&pub_key_b64)
+                .bind(&spec.specialization)
+                .bind(i64::try_from(spec.karma_snapshot.len()).unwrap_or(0))
+                .bind(Utc::now())
+                .bind(i64::try_from(cost_coins).unwrap_or(0))
+                .bind(escrow_tx_id.to_string())
+                .execute(p)
+                .await
+                .map(|_| ())
+            }
+        };
 
         if let Err(e) = db_res {
             // 🚨 Crisis-3: DB 記録に失敗した場合、既に起動したプロセスを道連れにしないよう kill する
@@ -370,15 +395,32 @@ impl CloneManager {
             }
 
             // 🚨 V-15: DB ステータス更新
-            sqlx::query(
-                "UPDATE nurture_clone_instances SET status = ?, completed_at = ?, coins_consumed = ? WHERE id = ?"
-            )
-            .bind(final_status)
-            .bind(Utc::now())
-            .bind(i64::try_from(coins_consumed).unwrap_or(0))
-            .bind(clone_id.to_string())
-            .execute(&self.pool)
-            .await
+            match &self.pool {
+                DatabasePool::Sqlite(p) => {
+                    sqlx::query(
+                        "UPDATE nurture_clone_instances SET status = ?, completed_at = ?, coins_consumed = ? WHERE id = ?"
+                    )
+                    .bind(final_status)
+                    .bind(Utc::now())
+                    .bind(i64::try_from(coins_consumed).unwrap_or(0))
+                    .bind(clone_id.to_string())
+                    .execute(p)
+                    .await
+                    .map(|_| ())
+                }
+                DatabasePool::Postgres(p) => {
+                    sqlx::query(
+                        "UPDATE nurture_clone_instances SET status = $1, completed_at = $2, coins_consumed = $3 WHERE id = $4"
+                    )
+                    .bind(final_status)
+                    .bind(Utc::now())
+                    .bind(i64::try_from(coins_consumed).unwrap_or(0))
+                    .bind(clone_id.to_string())
+                    .execute(p)
+                    .await
+                    .map(|_| ())
+                }
+            }
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to update clone status in DB: {}", e)
             })?;
@@ -418,16 +460,18 @@ impl CloneManager {
 
     /// 🚨 V-17: 孤児プロセスの回収 (起動時に実行)
     pub async fn recover_orphans(&self) -> Result<(), AiomeError> {
-        let active_rows =
-            sqlx::query("SELECT id, pid FROM nurture_clone_instances WHERE status = 'Active'")
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
+        let active_rows = sql_fetch_all_map!(
+            &self.pool,
+            sqlite: "SELECT id, pid FROM nurture_clone_instances WHERE status = 'Active'",
+            |row| Ok::<(String, i64), AiomeError>((row.get("id"), row.get("pid"))),
+            pg: "SELECT id, pid FROM nurture_clone_instances WHERE status = 'Active'",
+            |row| Ok::<(String, i64), AiomeError>((row.get("id"), row.get("pid")))
+        )
+        .map_err(|e| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?;
 
-        for row in active_rows {
-            let id_str: String = row.get("id");
+        for (id_str, pid) in active_rows {
             let id = match Uuid::parse_str(&id_str) {
                 Ok(u) => u,
                 Err(_) => {
@@ -435,7 +479,6 @@ impl CloneManager {
                     continue;
                 }
             };
-            let pid: i64 = row.get("pid");
 
             // PID が存在するか確認
             let alive = if pid > 0 {
@@ -450,11 +493,13 @@ impl CloneManager {
                     id,
                     pid
                 );
-                if let Err(e) = sqlx::query("UPDATE nurture_clone_instances SET status = 'Orphaned', completed_at = ? WHERE id = ?")
-                    .bind(Utc::now())
-                    .bind(&id_str)
-                    .execute(&self.pool)
-                    .await {
+                if let Err(e) = sql_exec!(
+                    &self.pool,
+                    sqlite: "UPDATE nurture_clone_instances SET status = 'Orphaned', completed_at = ? WHERE id = ?",
+                    pg: "UPDATE nurture_clone_instances SET status = 'Orphaned', completed_at = $1 WHERE id = $2",
+                    Utc::now(),
+                    &id_str
+                ) {
                     tracing::error!("❌ Failed to update orphan status for {}: {:?}", id, e);
                 }
             } else {
@@ -471,11 +516,13 @@ impl CloneManager {
                         tracing::warn!("⚠️ Failed to kill orphan process {}: {:?}", pid, e);
                     }
                 }
-                if let Err(e) = sqlx::query("UPDATE nurture_clone_instances SET status = 'Recovered', completed_at = ? WHERE id = ?")
-                    .bind(Utc::now())
-                    .bind(&id_str)
-                    .execute(&self.pool)
-                    .await {
+                if let Err(e) = sql_exec!(
+                    &self.pool,
+                    sqlite: "UPDATE nurture_clone_instances SET status = 'Recovered', completed_at = ? WHERE id = ?",
+                    pg: "UPDATE nurture_clone_instances SET status = 'Recovered', completed_at = $1 WHERE id = $2",
+                    Utc::now(),
+                    &id_str
+                ) {
                     tracing::error!("❌ Failed to update recovered status for {}: {:?}", id, e);
                 }
             }
@@ -499,16 +546,18 @@ impl CloneManager {
     }
 
     async fn get_escrow_tx_id(&self, clone_id: Uuid) -> Option<Uuid> {
-        sqlx::query("SELECT escrow_tx_id FROM nurture_clone_instances WHERE id = ?")
-            .bind(clone_id.to_string())
-            .fetch_optional(&self.pool)
-            .await
-            .ok()
-            .flatten()
-            .and_then(|row| {
-                let s: String = row.get(0);
-                Uuid::parse_str(&s).ok()
-            })
+        let res = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: "SELECT escrow_tx_id FROM nurture_clone_instances WHERE id = ?",
+            |row| Ok::<String, AiomeError>(row.get(0)),
+            pg: "SELECT escrow_tx_id FROM nurture_clone_instances WHERE id = $1",
+            |row| Ok::<String, AiomeError>(row.get(0)),
+            clone_id.to_string()
+        )
+        .ok()
+        .flatten();
+
+        res.and_then(|s| Uuid::parse_str(&s).ok())
     }
 }
 

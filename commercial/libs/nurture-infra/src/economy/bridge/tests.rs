@@ -10,7 +10,7 @@ use crate::csam::CsamPipeline;
 use crate::drm::license::SQLiteLicenseStore;
 use crate::economy::idempotency::SQLiteIdempotencyStore;
 use crate::economy::interceptor::EconomyInterceptor;
-use crate::economy::ledger::SQLiteEconomyLedger;
+use crate::economy::ledger::DatabaseEconomyLedger;
 use crate::economy::settlement::SQLiteSettlementProvider;
 use crate::marketplace::sqlite::SQLiteMarketplace;
 use crate::mock_job_queue::MockJobQueue;
@@ -21,25 +21,29 @@ use tokio::sync::RwLock;
 
 async fn setup_bridge() -> NurtureCommerceBridge {
     let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    sqlx::migrate!("../../migrations/sqlite")
+        .run(&pool)
+        .await
+        .unwrap();
+    let db_pool = DatabasePool::Sqlite(pool);
 
     let policy = Arc::new(RwLock::new(EconomyPolicy::default()));
 
-    let ledger = Arc::new(SQLiteEconomyLedger::new(pool.clone()));
+    let ledger = Arc::new(DatabaseEconomyLedger::new(db_pool.clone()));
     let settlement = Arc::new(SQLiteSettlementProvider::new(
-        pool.clone(),
+        db_pool.clone(),
         ledger.clone() as Arc<dyn EconomyLedger>,
         policy.clone(),
         commerce_protocol::identity::ActorId(Uuid::nil()),
     ));
-    let marketplace = Arc::new(SQLiteMarketplace::new(pool.clone()));
+    let marketplace = Arc::new(SQLiteMarketplace::new(db_pool.clone()));
     let interceptor = Arc::new(EconomyInterceptor::new(policy.clone()));
     let csam_pipeline = Arc::new(CsamPipeline::new(vec![]));
     let job_queue = Arc::new(MockJobQueue::new("sqlite::memory:").await.unwrap());
-    let idempotency = Arc::new(SQLiteIdempotencyStore::new(pool.clone()));
+    let idempotency = Arc::new(SQLiteIdempotencyStore::new(db_pool.clone()));
     use secrecy::SecretString;
     let license_store = Arc::new(SQLiteLicenseStore::new(
-        pool.clone(),
+        db_pool.clone(),
         &SecretString::from("test-seed".to_string()),
     ));
     let executor = Arc::new(crate::sandbox::executor::PythonExecutor::new(
@@ -52,7 +56,7 @@ async fn setup_bridge() -> NurtureCommerceBridge {
     ));
 
     let uow_manager = Arc::new(crate::economy::uow::SqliteUowManager::new(
-        pool.clone(),
+        db_pool.clone(),
         &"test-seed".to_string().into(),
     ));
 
@@ -67,7 +71,7 @@ async fn setup_bridge() -> NurtureCommerceBridge {
         license_store,
         karma_forge,
         policy,
-        pool,
+        db_pool,
         uow_manager,
     )
 }
@@ -114,7 +118,7 @@ async fn test_validate_activity_overflow() {
     .bind(i64::MAX) // limit
     .bind(i64::MAX - 5) // spent_today close to max
     .bind(1)
-    .execute(&bridge.pool)
+    .execute(bridge.pool.get_sqlite_pool().unwrap())
     .await
     .unwrap();
 
@@ -171,7 +175,7 @@ async fn test_transfer_happy_path() {
     .bind(5000i64)
     .bind(0i64)
     .bind(1)
-    .execute(&bridge.pool)
+    .execute(bridge.pool.get_sqlite_pool().unwrap())
     .await
     .unwrap();
 
@@ -183,7 +187,7 @@ async fn test_transfer_happy_path() {
     .bind(5000i64)
     .bind(0i64)
     .bind(1)
-    .execute(&bridge.pool)
+    .execute(bridge.pool.get_sqlite_pool().unwrap())
     .await
     .unwrap();
 
@@ -219,7 +223,7 @@ async fn test_transfer_insufficient() {
     .bind(5000i64)
     .bind(0i64)
     .bind(1)
-    .execute(&bridge.pool)
+    .execute(bridge.pool.get_sqlite_pool().unwrap())
     .await
     .unwrap();
 
@@ -401,7 +405,7 @@ async fn test_instant_refund_preserves_asset_id() {
     .bind(5000i64)
     .bind(0i64)
     .bind(1)
-    .execute(&bridge.pool)
+    .execute(bridge.pool.get_sqlite_pool().unwrap())
     .await
     .unwrap();
 
@@ -414,7 +418,7 @@ async fn test_instant_refund_preserves_asset_id() {
     .bind(5000i64)
     .bind(0i64)
     .bind(1)
-    .execute(&bridge.pool)
+    .execute(bridge.pool.get_sqlite_pool().unwrap())
     .await
     .unwrap();
 

@@ -22,8 +22,10 @@ CHECKSUM_FILE="$TAR_FILE.sha256"
 # Container runtime (Podman-first, Docker fallback)
 if command -v podman &> /dev/null; then
     COMPOSE_CMD="podman compose"
+    CONTAINER_CMD="podman"
 else
     COMPOSE_CMD="docker compose"
+    CONTAINER_CMD="docker"
 fi
 
 # Check required directories
@@ -36,6 +38,14 @@ mkdir -p "$BACKUP_DIR"
 
 command_backup() {
     echo "📦 Starting Aiome Backup..."
+    
+    # 0. PostgreSQL Backup (if container is running)
+    if $CONTAINER_CMD ps --format '{{.Names}}' | grep -q "postgres"; then
+        echo "  🐘 Creating PostgreSQL dump..."
+        $CONTAINER_CMD exec postgres pg_dumpall -U aiome > "$DATA_DIR/postgres_backup.sql" 2>/dev/null || {
+            echo "  ⚠️  PostgreSQL dump failed (continuing without dump)"
+        }
+    fi
     
     # 1. Create Tarball of the data/api directory
     # Excludes temp files if any (we exclude journal/WAL files to avoid mid-transaction corruption,
@@ -114,8 +124,10 @@ command_restore() {
     fi
     # COMPOSE_CMD is set at the top of this script
 
+    COMPOSE_FILE_PATH="${COMPOSE_FILE:-docker-compose.production.yml}"
+
     echo "🛑 Stopping services ($COMPOSE_CMD)..."
-    $COMPOSE_CMD -f docker-compose.cell.yml stop api-server || true
+    $COMPOSE_CMD -f "$COMPOSE_FILE_PATH" stop || true
     
     echo "🗑️  Clearing current cell data..."
     rm -rf "$DATA_DIR"
@@ -124,8 +136,20 @@ command_restore() {
     echo "📦 Extracting backup..."
     tar -xzf "$RESTORE_FILE" -C "$(dirname "$DATA_DIR")"
     
+    echo "⚡ Starting PostgreSQL container to restore databases..."
+    $COMPOSE_CMD -f "$COMPOSE_FILE_PATH" up -d postgres
+    echo "Waiting for PostgreSQL to be ready..."
+    until $CONTAINER_CMD exec postgres pg_isready -U aiome &>/dev/null; do
+        sleep 1
+    done
+    
+    echo "🔄 Restoring PostgreSQL databases..."
+    if [ -f "$DATA_DIR/postgres_backup.sql" ]; then
+        $CONTAINER_CMD exec -i postgres psql -U aiome -d postgres < "$DATA_DIR/postgres_backup.sql"
+    fi
+    
     echo "✅ Restore Completed! Restart your services using:"
-    echo "$COMPOSE_CMD -f docker-compose.cell.yml up -d api-server"
+    echo "$COMPOSE_CMD -f $COMPOSE_FILE_PATH up -d"
 }
 
 case "${1:-}" in

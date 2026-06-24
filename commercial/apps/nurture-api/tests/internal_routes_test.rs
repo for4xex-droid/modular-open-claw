@@ -21,7 +21,10 @@ async fn setup_test_server() -> (TestServer, tempfile::TempDir) {
         .unwrap();
 
     // NurtureDB スキーマをセットアップ
-    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    sqlx::migrate!("../../migrations/sqlite")
+        .run(&pool)
+        .await
+        .unwrap();
 
     let system_actor = Uuid::new_v4();
     let cancel_token = tokio_util::sync::CancellationToken::new();
@@ -52,7 +55,7 @@ async fn setup_test_server() -> (TestServer, tempfile::TempDir) {
     );
 
     let state = AppState::init(
-        pool,
+        nurture_bridge::db::DatabasePool::Sqlite(pool),
         job_queue,
         nurture_core::policy::EconomyPolicy::default(),
         commerce_protocol::identity::ActorId(system_actor),
@@ -203,7 +206,10 @@ async fn test_forget_actor_purges_pii_and_physical_assets() {
         .unwrap();
 
     // NurtureDB スキーマをセットアップ
-    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    sqlx::migrate!("../../migrations/sqlite")
+        .run(&pool)
+        .await
+        .unwrap();
 
     let actor_id = Uuid::new_v4();
     sqlx::query("INSERT INTO nurture_kyc_status (actor_id, status) VALUES (?, 'Verified')")
@@ -250,7 +256,7 @@ async fn test_forget_actor_purges_pii_and_physical_assets() {
     let mock_storage = std::sync::Arc::new(nurture_infra::storage::MockAssetStorage::new());
 
     let state = AppState::init(
-        pool.clone(),
+        nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         job_queue,
         nurture_core::policy::EconomyPolicy::default(),
         commerce_protocol::identity::ActorId(system_actor),
@@ -422,7 +428,10 @@ async fn test_internal_api_upload_asset() {
         .unwrap();
 
     // Setup required tables
-    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    sqlx::migrate!("../../migrations/sqlite")
+        .run(&pool)
+        .await
+        .unwrap();
 
     let creator_id = Uuid::new_v4();
     sqlx::query("INSERT INTO nurture_kyc_status (actor_id, status) VALUES (?, 'verified')")
@@ -448,7 +457,7 @@ async fn test_internal_api_upload_asset() {
     let mock_storage = std::sync::Arc::new(nurture_infra::storage::MockAssetStorage::new());
 
     let state = AppState::init(
-        pool,
+        nurture_bridge::db::DatabasePool::Sqlite(pool),
         job_queue,
         nurture_core::policy::EconomyPolicy::default(),
         commerce_protocol::identity::ActorId(system_actor),
@@ -523,7 +532,10 @@ async fn test_internal_api_download_asset() {
         .unwrap();
 
     // Setup required tables
-    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    sqlx::migrate!("../../migrations/sqlite")
+        .run(&pool)
+        .await
+        .unwrap();
 
     let system_actor = Uuid::new_v4();
     let cancel_token = tokio_util::sync::CancellationToken::new();
@@ -542,7 +554,7 @@ async fn test_internal_api_download_asset() {
     let mock_storage = std::sync::Arc::new(nurture_infra::storage::MockAssetStorage::new());
 
     let state = AppState::init(
-        pool.clone(),
+        nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         job_queue,
         nurture_core::policy::EconomyPolicy::default(),
         commerce_protocol::identity::ActorId(system_actor),

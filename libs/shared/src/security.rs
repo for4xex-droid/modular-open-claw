@@ -387,6 +387,7 @@ pub async fn fetch_and_inject_secrets() -> Result<()> {
 }
 
 /// macOS Keychain からシークレットを取得する (§CISO-1)
+#[allow(unused_variables)]
 pub fn get_keychain_secret(service: &str) -> Option<String> {
     #[cfg(target_os = "macos")]
     {
@@ -415,6 +416,7 @@ pub fn get_keychain_secret(service: &str) -> Option<String> {
 }
 
 /// macOS Keychain にシークレットを保存する (§CISO-1)
+#[allow(unused_variables)]
 pub fn set_keychain_secret(service: &str, secret: &str) -> Result<()> {
     #[cfg(target_os = "macos")]
     {

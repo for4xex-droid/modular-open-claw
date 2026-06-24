@@ -16,7 +16,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use sqlx::sqlite::SqlitePool;
+use nurture_bridge::db::DatabasePool;
 use std::net::SocketAddr;
 use subtle::ConstantTimeEq;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -52,21 +52,49 @@ async fn main() -> anyhow::Result<()> {
         .or_else(|_| std::env::var("NURTURE_DB_PATH"))
         .unwrap_or_else(|_| "sqlite:nurture.db".to_string());
 
-    let pool = SqlitePool::connect(&db_url).await.context("DB 接続失敗")?;
+    let pool = if db_url.starts_with("postgres:") || db_url.starts_with("postgresql:") {
+        DatabasePool::new_postgres(&db_url)
+            .await
+            .context("PostgreSQL DB 接続失敗")?
+    } else {
+        DatabasePool::new_sqlite(&db_url)
+            .await
+            .context("SQLite DB 接続失敗")?
+    };
 
     // 自動マイグレーション実行 (🔴 B2 解決)
-    sqlx::migrate!("../../migrations")
-        .run(&pool)
-        .await
-        .context("マイグレーション失敗")?;
+    match &pool {
+        DatabasePool::Sqlite(sqlite_pool) => {
+            sqlx::migrate!("../../migrations/sqlite")
+                .run(sqlite_pool)
+                .await
+                .context("SQLite マイグレーション失敗")?;
+        }
+        DatabasePool::Postgres(pg_pool) => {
+            sqlx::migrate!("../../migrations/postgres")
+                .run(pg_pool)
+                .await
+                .context("PostgreSQL マイグレーション失敗")?;
+        }
+    }
 
     // コンポーネントの初期化
-    let policy = match sqlx::query_scalar::<_, String>(
-        "SELECT payload FROM nurture_settings WHERE setting_key = 'economy_policy'",
-    )
-    .fetch_optional(&pool)
-    .await
-    {
+    let policy = match match &pool {
+        DatabasePool::Sqlite(p) => {
+            sqlx::query_scalar::<_, String>(
+                "SELECT payload FROM nurture_settings WHERE setting_key = 'economy_policy'",
+            )
+            .fetch_optional(p)
+            .await
+        }
+        DatabasePool::Postgres(p) => {
+            sqlx::query_scalar::<_, String>(
+                "SELECT payload FROM nurture_settings WHERE setting_key = 'economy_policy'",
+            )
+            .fetch_optional(p)
+            .await
+        }
+    } {
         Ok(Some(payload)) => {
             match serde_json::from_str::<EconomyPolicy>(&payload) {
                 Ok(p) => {
@@ -88,12 +116,27 @@ async fn main() -> anyhow::Result<()> {
             tracing::warn!("⚠️ [Nurture] EconomyPolicy not found in DB. Initializing with default and saving to DB.");
             let default_policy = EconomyPolicy::default();
             if let Ok(payload) = serde_json::to_string(&default_policy) {
-                if let Err(insert_err) = sqlx::query(
-                    "INSERT INTO nurture_settings (setting_key, payload, updated_at) VALUES ('economy_policy', ?, CURRENT_TIMESTAMP) ON CONFLICT(setting_key) DO NOTHING"
-                )
-                .bind(payload)
-                .execute(&pool)
-                .await {
+                let insert_res = match &pool {
+                    DatabasePool::Sqlite(p) => {
+                        sqlx::query(
+                            "INSERT INTO nurture_settings (setting_key, payload, updated_at) VALUES ('economy_policy', ?, CURRENT_TIMESTAMP) ON CONFLICT(setting_key) DO NOTHING"
+                        )
+                        .bind(payload)
+                        .execute(p)
+                        .await
+                        .map(|_| ())
+                    }
+                    DatabasePool::Postgres(p) => {
+                        sqlx::query(
+                            "INSERT INTO nurture_settings (setting_key, payload, updated_at) VALUES ('economy_policy', $1, CURRENT_TIMESTAMP) ON CONFLICT(setting_key) DO NOTHING"
+                        )
+                        .bind(payload)
+                        .execute(p)
+                        .await
+                        .map(|_| ())
+                    }
+                };
+                if let Err(insert_err) = insert_res {
                     tracing::warn!("⚠️ Failed to insert default economy policy: {}", insert_err);
                 }
             }
@@ -115,12 +158,7 @@ async fn main() -> anyhow::Result<()> {
             .await?,
     ) as std::sync::Arc<dyn nurture_bridge::trajectory::TrajectoryStore>;
     let job_queue: std::sync::Arc<dyn nurture_bridge::traits::JobQueue> = std::sync::Arc::new(
-        nurture_bridge::job_queue::UniversalJobQueue::new(
-            nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
-            None,
-            store,
-        )
-        .await?,
+        nurture_bridge::job_queue::UniversalJobQueue::new(pool.clone(), None, store).await?,
     );
 
     let nurture_secret = std::env::var("NURTURE_INTERNAL_SECRET").unwrap_or_else(|_| {

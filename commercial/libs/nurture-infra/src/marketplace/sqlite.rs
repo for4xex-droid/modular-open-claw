@@ -8,60 +8,105 @@
 use commerce_protocol::commodity::{CommodityKind, ItemDescriptor, PriceTag};
 use commerce_protocol::error::NurtureError;
 use commerce_protocol::identity::ActorId;
-use sqlx::{Row, SqlitePool};
+use nurture_bridge::db::DatabasePool;
+use nurture_bridge::error::AiomeError;
+use nurture_bridge::{sql_exec, sql_fetch_all_map, sql_fetch_optional_map};
+use sqlx::Row;
 use uuid::Uuid;
 
 pub struct SQLiteMarketplace {
-    pool: SqlitePool,
+    pool: DatabasePool,
 }
 
 impl SQLiteMarketplace {
-    pub fn new(pool: SqlitePool) -> Self {
+    pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 
     pub async fn get_item(&self, id: &Uuid) -> Result<ItemDescriptor, NurtureError> {
-        let row = sqlx::query(
-            "SELECT id, kind, name, description, price_coins, creator_id, created_at, metadata, 
-             sale_mode, drm_enabled, subscription_interval_days, subscription_price_coins, content_hash 
-             FROM nurture_items WHERE id = ?",
-        )
-        .bind(id.to_string())
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| NurtureError::Infrastructure(format!("DBエラー: {}", e)))?;
+        struct RowData {
+            kind_str: String,
+            name: String,
+            description: String,
+            price_coins: i64,
+            creator_id_str: String,
+            created_at: chrono::DateTime<chrono::Utc>,
+            metadata_str: String,
+            sale_mode: String,
+            drm_enabled: i32,
+            subscription_interval_days: Option<i32>,
+            subscription_price_coins: Option<i64>,
+            content_hash: Option<String>,
+        }
 
-        match row {
+        let res: Result<Option<RowData>, AiomeError> = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: "SELECT id, kind, name, description, price_coins, creator_id, created_at, metadata, \
+                     sale_mode, drm_enabled, subscription_interval_days, subscription_price_coins, content_hash \
+                     FROM nurture_items WHERE id = ?",
+            |row| {
+                Ok::<RowData, AiomeError>(RowData {
+                    kind_str: row.get("kind"),
+                    name: row.get("name"),
+                    description: row.get("description"),
+                    price_coins: row.get("price_coins"),
+                    creator_id_str: row.get("creator_id"),
+                    created_at: row.get("created_at"),
+                    metadata_str: row.get("metadata"),
+                    sale_mode: row.get("sale_mode"),
+                    drm_enabled: row.get("drm_enabled"),
+                    subscription_interval_days: row.try_get("subscription_interval_days").ok(),
+                    subscription_price_coins: row.try_get("subscription_price_coins").ok(),
+                    content_hash: row.try_get("content_hash").ok(),
+                })
+            },
+            pg: "SELECT id, kind, name, description, price_coins, creator_id, created_at, metadata, \
+                 sale_mode, drm_enabled, subscription_interval_days, subscription_price_coins, content_hash \
+                 FROM nurture_items WHERE id = $1",
+            |row| {
+                Ok::<RowData, AiomeError>(RowData {
+                    kind_str: row.get("kind"),
+                    name: row.get("name"),
+                    description: row.get("description"),
+                    price_coins: row.get("price_coins"),
+                    creator_id_str: row.get("creator_id"),
+                    created_at: row.get("created_at"),
+                    metadata_str: row.get("metadata"),
+                    sale_mode: row.get("sale_mode"),
+                    drm_enabled: row.get("drm_enabled"),
+                    subscription_interval_days: row.try_get("subscription_interval_days").ok(),
+                    subscription_price_coins: row.try_get("subscription_price_coins").ok(),
+                    content_hash: row.try_get("content_hash").ok(),
+                })
+            },
+            id.to_string()
+        );
+
+        let row_opt = res.map_err(|e| NurtureError::Infrastructure(format!("DBエラー: {}", e)))?;
+
+        match row_opt {
             Some(row) => {
-                let kind_str: String = row.get("kind");
-                let creator_id_str: String = row.get("creator_id");
-                let metadata_str: String = row.get("metadata");
-
-                let kind: CommodityKind = serde_json::from_str(&format!("\"{}\"", kind_str))
+                let kind: CommodityKind = serde_json::from_str(&format!("\"{}\"", row.kind_str))
                     .map_err(|e| {
                         NurtureError::Infrastructure(format!("商品種別パースエラー: {}", e))
                     })?;
 
-                let creator_id = Uuid::parse_str(&creator_id_str).map_err(|e| {
+                let creator_id = Uuid::parse_str(&row.creator_id_str).map_err(|e| {
                     NurtureError::Infrastructure(format!("クリエイターIDパースエラー: {}", e))
                 })?;
 
-                let metadata = serde_json::from_str(&metadata_str).map_err(|e| {
+                let metadata = serde_json::from_str(&row.metadata_str).map_err(|e| {
                     NurtureError::Infrastructure(format!("メタデータパースエラー: {}", e))
                 })?;
 
-                let sale_mode_str: String = row.get("sale_mode");
-                let sale_mode = if sale_mode_str == "Subscription" {
+                let sale_mode = if row.sale_mode == "Subscription" {
                     commerce_protocol::offer::SaleMode::Subscription {
                         interval_days: row
-                            .try_get::<i32, _>("subscription_interval_days")
+                            .subscription_interval_days
                             .unwrap_or(30)
                             .try_into()
                             .unwrap_or(30u32),
-                        price_coins: row
-                            .try_get::<i64, _>("subscription_price_coins")
-                            .unwrap_or(0)
-                            .max(0) as u64,
+                        price_coins: row.subscription_price_coins.unwrap_or(0).max(0) as u64,
                     }
                 } else {
                     commerce_protocol::offer::SaleMode::Instant
@@ -70,20 +115,20 @@ impl SQLiteMarketplace {
                 Ok(ItemDescriptor {
                     id: *id,
                     kind,
-                    name: row.get("name"),
-                    description: row.get("description"),
+                    name: row.name,
+                    description: row.description,
                     price: PriceTag::Fixed({
-                        let v: i64 = row.get("price_coins");
+                        let v: i64 = row.price_coins;
                         u64::try_from(v).map_err(|_| {
                             NurtureError::Infrastructure(format!("price_coins が負の値です: {}", v))
                         })?
                     }),
                     creator_id: ActorId(creator_id),
                     sale_mode,
-                    drm_enabled: row.get::<i32, _>("drm_enabled") != 0,
-                    created_at: row.get("created_at"),
+                    drm_enabled: row.drm_enabled != 0,
+                    created_at: row.created_at,
                     metadata,
-                    content_hash: row.try_get("content_hash").ok(),
+                    content_hash: row.content_hash,
                 })
             }
             None => Err(NurtureError::ItemNotFound(*id)),
@@ -99,57 +144,101 @@ impl SQLiteMarketplace {
         let escaped_query = query.replace('%', "\\%").replace('_', "\\_");
         let pattern = format!("%{}%", escaped_query);
 
-        // MarketSearchRequest.limit を反映 (🔴 D6 解決)
-        let sql =
-            "SELECT id, kind, name, description, price_coins, creator_id, created_at, metadata,
-             sale_mode, drm_enabled, subscription_interval_days, subscription_price_coins, content_hash 
-             FROM nurture_items 
-             WHERE name LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\' 
-             ORDER BY created_at DESC LIMIT ?";
+        struct RowData {
+            id_str: String,
+            kind_str: String,
+            name: String,
+            description: String,
+            price_coins: i64,
+            creator_id_str: String,
+            created_at: chrono::DateTime<chrono::Utc>,
+            metadata_str: String,
+            sale_mode: String,
+            drm_enabled: i32,
+            subscription_interval_days: Option<i32>,
+            subscription_price_coins: Option<i64>,
+            content_hash: Option<String>,
+        }
 
-        let rows = sqlx::query(sql)
-            .bind(&pattern)
-            .bind(&pattern)
-            .bind(i64::from(limit.min(100))) // DOS 防止 + パラメータバインド
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| NurtureError::Infrastructure(format!("DBエラー: {}", e)))?;
+        let res: Result<Vec<RowData>, AiomeError> = sql_fetch_all_map!(
+            &self.pool,
+            sqlite: "SELECT id, kind, name, description, price_coins, creator_id, created_at, metadata, \
+                     sale_mode, drm_enabled, subscription_interval_days, subscription_price_coins, content_hash \
+                     FROM nurture_items \
+                     WHERE name LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\' \
+                     ORDER BY created_at DESC LIMIT ?",
+            |row| {
+                Ok::<RowData, AiomeError>(RowData {
+                    id_str: row.get("id"),
+                    kind_str: row.get("kind"),
+                    name: row.get("name"),
+                    description: row.get("description"),
+                    price_coins: row.get("price_coins"),
+                    creator_id_str: row.get("creator_id"),
+                    created_at: row.get("created_at"),
+                    metadata_str: row.get("metadata"),
+                    sale_mode: row.get("sale_mode"),
+                    drm_enabled: row.get("drm_enabled"),
+                    subscription_interval_days: row.try_get("subscription_interval_days").ok(),
+                    subscription_price_coins: row.try_get("subscription_price_coins").ok(),
+                    content_hash: row.try_get("content_hash").ok(),
+                })
+            },
+            pg: "SELECT id, kind, name, description, price_coins, creator_id, created_at, metadata, \
+                 sale_mode, drm_enabled, subscription_interval_days, subscription_price_coins, content_hash \
+                 FROM nurture_items \
+                 WHERE name LIKE $1 ESCAPE '\\' OR description LIKE $2 ESCAPE '\\' \
+                 ORDER BY created_at DESC LIMIT $3",
+            |row| {
+                Ok::<RowData, AiomeError>(RowData {
+                    id_str: row.get("id"),
+                    kind_str: row.get("kind"),
+                    name: row.get("name"),
+                    description: row.get("description"),
+                    price_coins: row.get("price_coins"),
+                    creator_id_str: row.get("creator_id"),
+                    created_at: row.get("created_at"),
+                    metadata_str: row.get("metadata"),
+                    sale_mode: row.get("sale_mode"),
+                    drm_enabled: row.get("drm_enabled"),
+                    subscription_interval_days: row.try_get("subscription_interval_days").ok(),
+                    subscription_price_coins: row.try_get("subscription_price_coins").ok(),
+                    content_hash: row.try_get("content_hash").ok(),
+                })
+            },
+            &pattern,
+            &pattern,
+            i64::from(limit.min(100))
+        );
+
+        let rows = res.map_err(|e| NurtureError::Infrastructure(format!("DBエラー: {}", e)))?;
 
         let mut items = Vec::new();
         for row in rows {
-            let id_str: String = row.get("id");
-            let kind_str: String = row.get("kind");
-            let creator_id_str: String = row.get("creator_id");
-            let metadata_str: String = row.get("metadata");
-
-            let id = Uuid::parse_str(&id_str).map_err(|e| {
+            let id = Uuid::parse_str(&row.id_str).map_err(|e| {
                 NurtureError::Infrastructure(format!("アイテムIDパースエラー: {}", e))
             })?;
 
-            let kind: CommodityKind =
-                serde_json::from_str(&format!("\"{}\"", kind_str)).map_err(|e| {
+            let kind: CommodityKind = serde_json::from_str(&format!("\"{}\"", row.kind_str))
+                .map_err(|e| {
                     NurtureError::Infrastructure(format!("商品種別パースエラー: {}", e))
                 })?;
-            let creator_id = Uuid::parse_str(&creator_id_str).map_err(|e| {
+            let creator_id = Uuid::parse_str(&row.creator_id_str).map_err(|e| {
                 NurtureError::Infrastructure(format!("クリエイターIDパースエラー: {}", e))
             })?;
 
-            let metadata = serde_json::from_str(&metadata_str).map_err(|e| {
+            let metadata = serde_json::from_str(&row.metadata_str).map_err(|e| {
                 NurtureError::Infrastructure(format!("メタデータパースエラー: {}", e))
             })?;
 
-            let sale_mode_str: String = row.get("sale_mode");
-            let sale_mode = if sale_mode_str == "Subscription" {
+            let sale_mode = if row.sale_mode == "Subscription" {
                 commerce_protocol::offer::SaleMode::Subscription {
                     interval_days: row
-                        .try_get::<i32, _>("subscription_interval_days")
+                        .subscription_interval_days
                         .unwrap_or(30)
                         .try_into()
                         .unwrap_or(30u32),
-                    price_coins: row
-                        .try_get::<i64, _>("subscription_price_coins")
-                        .unwrap_or(0)
-                        .max(0) as u64,
+                    price_coins: row.subscription_price_coins.unwrap_or(0).max(0) as u64,
                 }
             } else {
                 commerce_protocol::offer::SaleMode::Instant
@@ -158,20 +247,20 @@ impl SQLiteMarketplace {
             items.push(ItemDescriptor {
                 id,
                 kind,
-                name: row.get("name"),
-                description: row.get("description"),
+                name: row.name,
+                description: row.description,
                 price: PriceTag::Fixed({
-                    let v: i64 = row.get("price_coins");
+                    let v: i64 = row.price_coins;
                     u64::try_from(v).map_err(|_| {
                         NurtureError::Infrastructure(format!("price_coins が負の値です: {}", v))
                     })?
                 }),
                 creator_id: ActorId(creator_id),
                 sale_mode,
-                drm_enabled: row.get::<i32, _>("drm_enabled") != 0,
-                created_at: row.get("created_at"),
+                drm_enabled: row.drm_enabled != 0,
+                created_at: row.created_at,
                 metadata,
-                content_hash: row.try_get("content_hash").ok(),
+                content_hash: row.content_hash,
             });
         }
         Ok(items)
@@ -234,27 +323,24 @@ impl SQLiteMarketplace {
         let metadata_str =
             serde_json::to_string(&item.metadata).unwrap_or_else(|_| "{}".to_string());
 
-        sqlx::query(
-            "INSERT INTO nurture_items (
-                id, kind, name, description, price_coins, creator_id, created_at, metadata, 
-                sale_mode, drm_enabled, subscription_interval_days, subscription_price_coins, content_hash
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        sql_exec!(
+            &self.pool,
+            sqlite: "INSERT INTO nurture_items (id, kind, name, description, price_coins, creator_id, created_at, metadata, sale_mode, drm_enabled, subscription_interval_days, subscription_price_coins, content_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            pg: "INSERT INTO nurture_items (id, kind, name, description, price_coins, creator_id, created_at, metadata, sale_mode, drm_enabled, subscription_interval_days, subscription_price_coins, content_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
+            item.id.to_string(),
+            kind_str,
+            &item.name,
+            &item.description,
+            price_coins,
+            item.creator_id.0.to_string(),
+            item.created_at,
+            &metadata_str,
+            sale_mode,
+            i32::from(item.drm_enabled),
+            sub_interval,
+            sub_price,
+            &item.content_hash
         )
-        .bind(item.id.to_string())
-        .bind(kind_str)
-        .bind(&item.name)
-        .bind(&item.description)
-        .bind(price_coins)
-        .bind(item.creator_id.0.to_string())
-        .bind(item.created_at)
-        .bind(metadata_str)
-        .bind(sale_mode)
-        .bind(i32::from(item.drm_enabled))
-        .bind(sub_interval)
-        .bind(sub_price)
-        .bind(&item.content_hash)
-        .execute(&self.pool)
-        .await
         .map_err(|e| {
             NurtureError::Infrastructure(format!("アイテムの作成に失敗しました: {}", e))
         })?;
@@ -268,13 +354,13 @@ mod tests {
     use super::*;
     use chrono::Utc;
 
-    async fn setup_db() -> SqlitePool {
-        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-        sqlx::migrate!("../../migrations")
+    async fn setup_db() -> DatabasePool {
+        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+        sqlx::migrate!("../../migrations/sqlite")
             .run(&pool)
             .await
             .expect("マイグレーションの実行に失敗しました");
-        pool
+        DatabasePool::Sqlite(pool)
     }
 
     #[tokio::test]
@@ -299,7 +385,7 @@ mod tests {
         .bind("{}")
         .bind("Instant")
         .bind(0i32)
-        .execute(&pool).await.unwrap();
+        .execute(pool.get_sqlite_pool().unwrap()).await.unwrap();
 
         // 取得テスト
         let item = mp.get_item(&item_id).await.unwrap();
@@ -315,7 +401,7 @@ mod tests {
     #[tokio::test]
     async fn test_negative_price_clamping() {
         // [Reflexion Sprint A v1] 回帰テスト: 負の price_coins を安全にキャストできるか
-        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+        let sqlite_pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
         sqlx::query(
             "CREATE TABLE nurture_items (
                 id TEXT PRIMARY KEY,
@@ -332,10 +418,11 @@ mod tests {
                 subscription_price_coins BIGINT
             )",
         )
-        .execute(&pool)
+        .execute(&sqlite_pool)
         .await
         .unwrap();
 
+        let pool = DatabasePool::Sqlite(sqlite_pool);
         let mp = SQLiteMarketplace::new(pool.clone());
         let item_id = Uuid::new_v4();
 
@@ -347,7 +434,7 @@ mod tests {
         .bind(item_id.to_string())
         .bind(Uuid::new_v4().to_string())
         .bind(Utc::now())
-        .execute(&pool).await.unwrap();
+        .execute(pool.get_sqlite_pool().unwrap()).await.unwrap();
 
         let result = mp.get_item(&item_id).await;
         // 負の価格は fail-closed でエラーとして拒否される

@@ -33,7 +33,10 @@ async fn setup_test_engine() -> (
         .await
         .unwrap();
 
-    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    sqlx::migrate!("../../migrations/sqlite")
+        .run(&pool)
+        .await
+        .unwrap();
 
     let system_id = Uuid::new_v4();
     let cancel_token = tokio_util::sync::CancellationToken::new();
@@ -52,7 +55,7 @@ async fn setup_test_engine() -> (
         ));
 
     let state = AppState::init(
-        pool.clone(),
+        nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         job_queue,
         nurture_core::policy::EconomyPolicy::default(), // daily limit defaults to 10000
         ActorId(system_id),
@@ -71,7 +74,7 @@ async fn setup_test_engine() -> (
     .unwrap();
 
     let uow_manager = Arc::new(nurture_infra::economy::uow::SqliteUowManager::new(
-        pool.clone(),
+        nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         &"test_drm_master_key".to_string().into(),
     ));
 
@@ -86,7 +89,7 @@ async fn setup_test_engine() -> (
         state.license_store.clone(),
         state.karma_forge.clone(),
         state.policy.clone(),
-        pool.clone(),
+        nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         uow_manager,
     ));
 

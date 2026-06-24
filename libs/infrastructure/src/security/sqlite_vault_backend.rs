@@ -154,8 +154,10 @@ pub fn get_global_master_key() -> Result<MlockedVec, AiomeError> {
 
 /// Master Key 導出 (§CISO-1)
 fn get_master_key() -> Result<MlockedVec, AiomeError> {
-    let password = shared::security::get_keychain_secret("com.aiome.vault-master-password")
-        .or_else(|| std::env::var("VAULT_MASTER_PASSWORD").ok())
+    // macOS keychainへの非対話型アクセスによるブロックを避けるため、環境変数の確認を優先する
+    let password = std::env::var("VAULT_MASTER_PASSWORD")
+        .ok()
+        .or_else(|| shared::security::get_keychain_secret("com.aiome.vault-master-password"))
         .ok_or_else(|| AiomeError::SecurityViolation {
             reason: "VAULT_MASTER_PASSWORD must be set in macOS Keychain or environment".into(),
         })?;

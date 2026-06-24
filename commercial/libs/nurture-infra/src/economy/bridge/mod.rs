@@ -13,9 +13,10 @@ use base64::engine::general_purpose::STANDARD;
 use base64::Engine as _;
 use chrono::Utc;
 use commerce_protocol::identity::ActorId;
+use nurture_bridge::db::{DatabasePool, DatabaseTransaction};
+use nurture_bridge::{sql_exec, sql_tx_exec, sql_tx_fetch_optional};
 use nurture_core::ledger::EconomyLedger;
 use nurture_core::license::{AssetLicense, LicenseStore};
-use sqlx::SqlitePool;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -39,7 +40,7 @@ pub struct NurtureCommerceBridge {
     license_store: Arc<dyn LicenseStore>,
     karma_forge: Arc<crate::economy::karma_forge::KarmaForge>,
     policy: SharedPolicy,
-    pool: SqlitePool,
+    pool: DatabasePool,
     uow_manager: Arc<dyn nurture_core::uow::UowManager>,
 }
 
@@ -56,7 +57,7 @@ impl NurtureCommerceBridge {
         license_store: Arc<dyn LicenseStore>,
         karma_forge: Arc<crate::economy::karma_forge::KarmaForge>,
         policy: SharedPolicy,
-        pool: SqlitePool,
+        pool: DatabasePool,
         uow_manager: Arc<dyn nurture_core::uow::UowManager>,
     ) -> Self {
         Self {
@@ -78,7 +79,7 @@ impl NurtureCommerceBridge {
     /// トランザクション内でLedgerに返金エントリを挿入する共通ヘルパー。
     /// Merkle監査ハッシュチェーンの連続性を保証する。
     async fn insert_ledger_refund_entry(
-        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        tx: &mut DatabaseTransaction<'_>,
         credit_account_str: &str,
         amount: i64,
         now: chrono::DateTime<Utc>,
@@ -103,14 +104,18 @@ impl NurtureCommerceBridge {
             reason: format!("Refund amount {} exceeds u64 range", amount),
         })?;
 
-        let prev_hash: String =
-            sqlx::query_scalar("SELECT audit_hash FROM nurture_ledger ORDER BY rowid DESC LIMIT 1")
-                .fetch_optional(&mut **tx)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?
-                .unwrap_or_else(|| "sha256:initial".to_string());
+        let prev_hash_opt: Option<String> = sql_tx_fetch_optional!(
+            tx,
+            (String,),
+            sqlite: "SELECT audit_hash FROM nurture_ledger ORDER BY rowid DESC LIMIT 1",
+            pg: "SELECT audit_hash FROM nurture_ledger ORDER BY rowid DESC LIMIT 1"
+        )
+        .map_err(|e: AiomeError| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?
+        .map(|r| r.0);
+
+        let prev_hash = prev_hash_opt.unwrap_or_else(|| "sha256:initial".to_string());
 
         let entry_id = Uuid::new_v4();
         let tx_id = Uuid::new_v4();
@@ -132,23 +137,24 @@ impl NurtureCommerceBridge {
             0,
         );
 
-        sqlx::query(
-            "INSERT INTO nurture_ledger (id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at, audit_hash)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        sql_tx_exec!(
+            tx,
+            sqlite: "INSERT INTO nurture_ledger (id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at, audit_hash)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            pg: "INSERT INTO nurture_ledger (id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at, audit_hash)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+            entry_id.to_string(),
+            tx_id.to_string(),
+            Option::<String>::None,
+            debit_str,
+            credit_account_str,
+            amount,
+            0,
+            &entry_type_str,
+            now,
+            new_hash
         )
-        .bind(entry_id.to_string())
-        .bind(tx_id.to_string())
-        .bind(Option::<String>::None)
-        .bind(debit_str)
-        .bind(credit_account_str)
-        .bind(amount)
-        .bind(0)
-        .bind(&entry_type_str)
-        .bind(now)
-        .bind(new_hash)
-        .execute(&mut **tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
+        .map_err(|e: AiomeError| AiomeError::Infrastructure {
             reason: format!("Ledger refund entry insertion failed: {}", e),
         })?;
 
@@ -161,12 +167,12 @@ impl NurtureCommerceBridge {
     /// 挿入する必要がある場合に使用する。
     ///
     /// # 引数
-    /// - `tx`: 既存の SQLite トランザクション
+    /// - `tx`: 既存の DatabaseTransaction トランザクション
     /// - `credit_account_str`: 返金先の actor_id (文字列)
     /// - `amount`: 返金額 (i64, 正値でなければエラー)
     /// - `now`: タイムスタンプ
     pub async fn insert_ledger_refund_entry_pub(
-        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        tx: &mut DatabaseTransaction<'_>,
         credit_account_str: &str,
         amount: i64,
         now: chrono::DateTime<Utc>,
@@ -176,7 +182,7 @@ impl NurtureCommerceBridge {
 
     /// トランザクション内でLedgerに購入エントリを挿入する共通ヘルパー (escrow_release用)。
     async fn insert_ledger_purchase_entry(
-        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        tx: &mut DatabaseTransaction<'_>,
         debit_account_str: &str,
         credit_account_str: &str,
         amount: i64,
@@ -209,14 +215,18 @@ impl NurtureCommerceBridge {
             reason: format!("Purchase amount {} exceeds u64 range", amount),
         })?;
 
-        let prev_hash: String =
-            sqlx::query_scalar("SELECT audit_hash FROM nurture_ledger ORDER BY rowid DESC LIMIT 1")
-                .fetch_optional(&mut **tx)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?
-                .unwrap_or_else(|| "sha256:initial".to_string());
+        let prev_hash_opt: Option<String> = sql_tx_fetch_optional!(
+            tx,
+            (String,),
+            sqlite: "SELECT audit_hash FROM nurture_ledger ORDER BY rowid DESC LIMIT 1",
+            pg: "SELECT audit_hash FROM nurture_ledger ORDER BY rowid DESC LIMIT 1"
+        )
+        .map_err(|e: AiomeError| AiomeError::Infrastructure {
+            reason: e.to_string(),
+        })?
+        .map(|r| r.0);
+
+        let prev_hash = prev_hash_opt.unwrap_or_else(|| "sha256:initial".to_string());
 
         let entry_id = Uuid::new_v4();
         let tx_id = Uuid::new_v4();
@@ -236,23 +246,24 @@ impl NurtureCommerceBridge {
             0,
         );
 
-        sqlx::query(
-            "INSERT INTO nurture_ledger (id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at, audit_hash)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        sql_tx_exec!(
+            tx,
+            sqlite: "INSERT INTO nurture_ledger (id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at, audit_hash)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            pg: "INSERT INTO nurture_ledger (id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at, audit_hash)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+            entry_id.to_string(),
+            tx_id.to_string(),
+            Option::<String>::None,
+            debit_account_str,
+            credit_account_str,
+            amount,
+            0,
+            &entry_type_str,
+            now,
+            new_hash
         )
-        .bind(entry_id.to_string())
-        .bind(tx_id.to_string())
-        .bind(Option::<String>::None)
-        .bind(debit_account_str)
-        .bind(credit_account_str)
-        .bind(amount)
-        .bind(0)
-        .bind(&entry_type_str)
-        .bind(now)
-        .bind(new_hash)
-        .execute(&mut **tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
+        .map_err(|e: AiomeError| AiomeError::Infrastructure {
             reason: format!("Ledger purchase entry insertion failed: {}", e),
         })?;
 
@@ -274,15 +285,17 @@ impl NurtureCommerceBridge {
                 reason: format!("Failed to serialize new policy: {}", e),
             })?;
 
-        sqlx::query(
-            "INSERT INTO nurture_settings (setting_key, payload, updated_at)
-             VALUES ('economy_policy', ?, CURRENT_TIMESTAMP)
-             ON CONFLICT(setting_key) DO UPDATE SET payload = excluded.payload, updated_at = CURRENT_TIMESTAMP"
+        sql_exec!(
+            &self.pool,
+            sqlite: "INSERT INTO nurture_settings (setting_key, payload, updated_at)
+                     VALUES ('economy_policy', ?, CURRENT_TIMESTAMP)
+                     ON CONFLICT(setting_key) DO UPDATE SET payload = excluded.payload, updated_at = CURRENT_TIMESTAMP",
+            pg: "INSERT INTO nurture_settings (setting_key, payload, updated_at)
+                 VALUES ('economy_policy', $1, CURRENT_TIMESTAMP)
+                 ON CONFLICT(setting_key) DO UPDATE SET payload = excluded.payload, updated_at = CURRENT_TIMESTAMP",
+            payload
         )
-        .bind(payload)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
+        .map_err(|e: AiomeError| AiomeError::Infrastructure {
             reason: format!("Failed to persist new policy to DB: {}", e),
         })?;
 
@@ -295,16 +308,27 @@ impl NurtureCommerceBridge {
 
     /// 🚨 F-1: 有効期限切れ (TTL) となった pending 状態のエスクローを自動検知し、安全に refund する
     ///
-    /// 各エスクローは個別トランザクションで処理され、1件の失敗が他の refund をブロックしない
-    /// (障害分離パターン)。
+    /// 各エスクロー is processed in a separate transaction (fault isolation).
     pub async fn process_expired_escrows(&self) -> Result<usize, AiomeError> {
         // 1. 期限切れエスクローの一覧を取得（読み取りのみ、ロックなし）
-        let expired: Vec<(String, String, i64)> = sqlx::query_as(
-            "SELECT escrow_id, agent_id, amount FROM nurture_escrows WHERE status = 'pending' AND expires_at < ?"
-        )
-        .bind(Utc::now())
-        .fetch_all(&self.pool)
-        .await
+        let expired: Vec<(String, String, i64)> = match &self.pool {
+            DatabasePool::Sqlite(p) => {
+                sqlx::query_as(
+                    "SELECT escrow_id, agent_id, amount FROM nurture_escrows WHERE status = 'pending' AND expires_at < ?"
+                )
+                .bind(Utc::now())
+                .fetch_all(p)
+                .await
+            }
+            DatabasePool::Postgres(p) => {
+                sqlx::query_as(
+                    "SELECT escrow_id, agent_id, amount FROM nurture_escrows WHERE status = 'pending' AND expires_at < $1"
+                )
+                .bind(Utc::now())
+                .fetch_all(p)
+                .await
+            }
+        }
         .map_err(|e| AiomeError::Infrastructure {
             reason: format!("Failed to sweep expired escrows: {}", e),
         })?;
@@ -364,13 +388,14 @@ impl NurtureCommerceBridge {
             })?;
 
         // 再度 pending であることを確認（TOCTOU 防止: 別プロセスが先に release/refund した場合を排除）
-        let still_pending: Option<(String,)> = sqlx::query_as(
-            "SELECT escrow_id FROM nurture_escrows WHERE escrow_id = ? AND status = 'pending'",
+        let still_pending: Option<(String,)> = sql_tx_fetch_optional!(
+            &mut tx,
+            (String,),
+            sqlite: "SELECT escrow_id FROM nurture_escrows WHERE escrow_id = ? AND status = 'pending'",
+            pg: "SELECT escrow_id FROM nurture_escrows WHERE escrow_id = $1 AND status = 'pending'",
+            escrow_id
         )
-        .bind(escrow_id)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
+        .map_err(|e: AiomeError| AiomeError::Infrastructure {
             reason: format!("Escrow re-check failed for {}: {}", escrow_id, e),
         })?;
 
@@ -385,25 +410,25 @@ impl NurtureCommerceBridge {
 
         // 返金
         let now = Utc::now();
-        let refund_rows = sqlx::query(
-            "UPDATE nurture_wallets SET balance = balance + ?, spent_today = MAX(0, spent_today - ?) WHERE actor_id = ?"
+        let rows_affected = sql_tx_exec!(
+            &mut tx,
+            sqlite: "UPDATE nurture_wallets SET balance = balance + ?, spent_today = MAX(0, spent_today - ?) WHERE actor_id = ?",
+            pg: "UPDATE nurture_wallets SET balance = balance + $1, spent_today = GREATEST(0, spent_today - $2) WHERE actor_id = $3",
+            amount,
+            amount,
+            agent_id_str
         )
-        .bind(amount)
-        .bind(amount)
-        .bind(agent_id_str)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
+        .map_err(|e: AiomeError| AiomeError::Infrastructure {
             reason: format!("Escrow refund credit failed for {}: {}", escrow_id, e),
         })?;
 
-        if refund_rows.rows_affected() == 0 {
+        if rows_affected == 0 {
             tracing::warn!(
                 "⚠️ Wallet not found for expired escrow: {} (agent: {})",
                 escrow_id,
                 agent_id_str
             );
-            // ロールバック（Drop では暗黙的に行われるが明示）
+            // ロールバック
             if let Err(rollback_err) = tx.rollback().await {
                 tracing::warn!(
                     "⚠️ Failed to rollback transaction for escrow {}: {}",
@@ -419,14 +444,14 @@ impl NurtureCommerceBridge {
             });
         }
 
-        sqlx::query(
-            "UPDATE nurture_escrows SET status = 'refunded', resolved_at = ? WHERE escrow_id = ?",
+        sql_tx_exec!(
+            &mut tx,
+            sqlite: "UPDATE nurture_escrows SET status = 'refunded', resolved_at = ? WHERE escrow_id = ?",
+            pg: "UPDATE nurture_escrows SET status = 'refunded', resolved_at = $1 WHERE escrow_id = $2",
+            now,
+            escrow_id
         )
-        .bind(now)
-        .bind(escrow_id)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
+        .map_err(|e: AiomeError| AiomeError::Infrastructure {
             reason: format!("Escrow status update failed for {}: {}", escrow_id, e),
         })?;
 

@@ -1,3 +1,27 @@
+## PostgreSQL マイグレーションデータ型不整合の修正とテストによる型検証の強化 (2026-06-25)
+
+- **変更内容**:
+    - `commercial/migrations/postgres/` 配下の 13 個のマイグレーションファイル [MODIFY]: `DATETIME` および `TIMESTAMP` 型を PostgreSQL 互換の `TIMESTAMPTZ` に変更。
+    - `commercial/apps/nurture-api/tests/db_config_test.rs` [MODIFY]: 本物の PostgreSQL インスタンス（ポート5433）に接続して、自動マイグレーションの実行、および `SQLiteEconomyLedger::get_balance`（本番コード）による `TIMESTAMPTZ` 型からのデータデコードが正常に処理されることを保証する Positive/Negative テストを追加。
+    - `scratch/fix_postgres_timestamps.py` [NEW]: PostgreSQL 側の SQL ファイル群から `TIMESTAMP` を `TIMESTAMPTZ` へ一括かつ安全に置換するための Python スクリプト。
+    - `CHANGELOG.md` [MODIFY]: 変更履歴の更新。
+- **波及効果**:
+    - Rust の `DateTime<Utc>` 型が PostgreSQL の `TIMESTAMP` (timezone なし) からデコードできない型不整合エラー（`ColumnDecode` エラー）が完全に解消されました。
+    - 本物の PostgreSQL に接続して動作保証を行うテストが自動テストスイートへ組み込まれ、移行後の経済処理・台帳記帳の堅牢性が PostgreSQL 実環境でも担保されました。
+
+## key-proxy ヘルスチェックのデッドロック解消と Stripe v2 Webhook 移行の完了 (2026-06-24)
+
+- **変更内容**:
+    - `apps/key-proxy/src/auth.rs` [MODIFY]: `/api/v1/health` へのリクエストを認証チェックの前にバイパス（認証除外）するガードを実装。これによって、`api-server` 起動時に `key-proxy` への接続疎通確認が `401 Unauthorized` となり起動が停止するデッドロック問題を解消。
+    - `apps/key-proxy/src/tests.rs` [MODIFY]: ヘルスチェック要求の期待ステータスを `200 OK` に更新。
+    - `stripe-webhook-forwarder/src/index.js` [NEW]: Cloudflare Workers 用の中継スクリプト。Stripe Webhook (v2) からの thin event および v1 リクエストを生ボディのままと `stripe-signature` ヘッダーと共に本番 API サーバーの `FORWARD_URL` へ透過転送する中継サーバー。
+    - `stripe-webhook-forwarder/wrangler.toml` [NEW]: `stripe-webhook-forwarder` のデプロイ構成定義ファイル。
+    - `.env.production` [NEW]: 本番環境用設定テンプレート。セルID、DBパス、ポート番号、および起動時の Keychain / 環境変数シークレット分離手順を明示。
+    - `CHANGELOG.md` [MODIFY]: 変更履歴の更新。
+- **波及効果**:
+    - `api-server` と `key-proxy` の起動順序デッドロックが完全に解消され、起動疎通が安定化しました。
+    - Cloudflare Workers 中継サーバー経由で Stripe Webhook (v2) thin event を受信可能となり、自動解決されたフルデータが本番環境で正常に経済処理（ライセンス付与）へと反映されます。
+
 ## Stripe Webhook v2 thin event および複数署名検証への対応 (2026-06-23)
 
 - **変更内容**:

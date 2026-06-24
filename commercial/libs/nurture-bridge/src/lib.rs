@@ -23,7 +23,10 @@ pub mod db {
     pub use shared::db::{DatabasePool, DatabaseTransaction};
 }
 
-pub use shared::sql_exec;
+pub use shared::{
+    sql_exec, sql_fetch_all, sql_fetch_all_map, sql_fetch_one, sql_fetch_optional,
+    sql_fetch_optional_map, sql_tx_exec, sql_tx_fetch_all, sql_tx_fetch_one, sql_tx_fetch_optional,
+};
 
 pub mod security {
     pub use infrastructure::security::SafeCommandBuilder;

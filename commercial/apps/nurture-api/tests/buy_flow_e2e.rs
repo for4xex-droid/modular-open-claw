@@ -32,7 +32,10 @@ async fn test_full_buy_flow_e2e() {
         .unwrap();
 
     // Run migrations
-    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    sqlx::migrate!("../../migrations/sqlite")
+        .run(&pool)
+        .await
+        .unwrap();
 
     // Initial data: Buyer with 1000 coins, Item priced at 100
     let buyer_id = Uuid::new_v4();
@@ -84,7 +87,7 @@ async fn test_full_buy_flow_e2e() {
 
     // Setup state and app
     let state = AppState::init(
-        pool.clone(),
+        nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         job_queue,
         nurture_core::policy::EconomyPolicy::default(),
         ActorId(system_id),
@@ -190,7 +193,10 @@ async fn test_idempotent_buy_flow() {
         .await
         .unwrap();
 
-    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    sqlx::migrate!("../../migrations/sqlite")
+        .run(&pool)
+        .await
+        .unwrap();
 
     let buyer_id = Uuid::new_v4();
     let seller_id = Uuid::new_v4();
@@ -240,7 +246,7 @@ async fn test_idempotent_buy_flow() {
         ));
 
     let state = AppState::init(
-        pool.clone(),
+        nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         job_queue,
         nurture_core::policy::EconomyPolicy::default(),
         ActorId(system_id),
@@ -311,7 +317,10 @@ async fn test_buy_flow_with_escrow() {
         .unwrap();
 
     // Run migrations
-    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    sqlx::migrate!("../../migrations/sqlite")
+        .run(&pool)
+        .await
+        .unwrap();
 
     let buyer_id = Uuid::new_v4();
     let seller_id = Uuid::new_v4();
@@ -370,7 +379,7 @@ async fn test_buy_flow_with_escrow() {
         ));
 
     let state = AppState::init(
-        pool.clone(),
+        nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         job_queue,
         nurture_core::policy::EconomyPolicy::default(),
         ActorId(system_id),

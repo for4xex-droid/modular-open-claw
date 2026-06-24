@@ -25,7 +25,10 @@ async fn test_mcp_server_tools_list_and_call() {
         .unwrap();
 
     // Run migrations
-    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    sqlx::migrate!("../../migrations/sqlite")
+        .run(&pool)
+        .await
+        .unwrap();
 
     let buyer_id = Uuid::new_v4();
     let system_id = Uuid::new_v4();
@@ -46,7 +49,7 @@ async fn test_mcp_server_tools_list_and_call() {
 
     // Setup state and app
     let state = AppState::init(
-        pool.clone(),
+        nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         job_queue,
         nurture_core::policy::EconomyPolicy::default(),
         ActorId(system_id),

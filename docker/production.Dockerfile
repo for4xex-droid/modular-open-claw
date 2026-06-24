@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y \
     git \
     protobuf-compiler \
     curl \
+    cmake \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -64,7 +66,6 @@ RUN apt-get update && apt-get install -y \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases release main" > /etc/apt/sources.list.d/gvisor.list \
     && apt-get update && apt-get install -y runsc \
     && setcap cap_sys_ptrace+ep /usr/bin/runsc \
-    && FFF_MCP_INSTALL_DIR=/usr/local/bin curl -L https://dmtrkovalenko.dev/install-fff-mcp.sh | bash \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

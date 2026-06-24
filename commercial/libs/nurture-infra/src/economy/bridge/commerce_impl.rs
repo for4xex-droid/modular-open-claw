@@ -12,10 +12,10 @@ use base64::engine::general_purpose::STANDARD;
 use chrono::Utc;
 use commerce_protocol::identity::ActorId;
 use commerce_protocol::transaction::Transaction;
-use sqlx::Row;
 use uuid::Uuid;
 
 use super::NurtureCommerceBridge;
+use nurture_bridge::{sql_fetch_all, sql_tx_exec, sql_tx_fetch_optional};
 
 #[async_trait]
 impl CommerceEngine for NurtureCommerceBridge {
@@ -60,17 +60,13 @@ impl CommerceEngine for NurtureCommerceBridge {
         &self,
         agent_id: Uuid,
     ) -> Result<Vec<aiome_core_contracts::commerce::EscrowRecord>, AiomeError> {
-        let rows: Vec<(String, String, i64, String, String)> = sqlx::query_as(
-            "SELECT escrow_id, agent_id, amount, status, created_at \
-              FROM nurture_escrows WHERE agent_id = ? \
-              ORDER BY created_at DESC LIMIT 200",
-        )
-        .bind(agent_id.to_string())
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Failed to list escrows: {}", e),
-        })?;
+        let rows = sql_fetch_all!(
+            &self.pool,
+            (String, String, i64, String, String),
+            sqlite: "SELECT escrow_id, agent_id, amount, status, created_at FROM nurture_escrows WHERE agent_id = ? ORDER BY created_at DESC LIMIT 200",
+            pg: "SELECT escrow_id, agent_id, amount, status, created_at FROM nurture_escrows WHERE agent_id = $1 ORDER BY created_at DESC LIMIT 200",
+            agent_id.to_string()
+        )?;
 
         let records = rows
             .into_iter()
@@ -149,20 +145,17 @@ impl CommerceEngine for NurtureCommerceBridge {
                 reason: format!("DB transaction begin failed: {}", e),
             })?;
 
-        let rows = sqlx::query(
-            "UPDATE nurture_wallets SET balance = balance - ?, spent_today = spent_today + ?, version = version + 1 WHERE actor_id = ? AND balance >= ?"
-        )
-        .bind(safe_amount)
-        .bind(safe_amount)
-        .bind(agent_id.to_string())
-        .bind(safe_amount)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Escrow balance deduction failed: {}", e),
-        })?;
+        let rows_affected = sql_tx_exec!(
+            &mut tx,
+            sqlite: "UPDATE nurture_wallets SET balance = balance - ?, spent_today = spent_today + ?, version = version + 1 WHERE actor_id = ? AND balance >= ?",
+            pg: "UPDATE nurture_wallets SET balance = balance - $1, spent_today = spent_today + $2, version = version + 1 WHERE actor_id = $3 AND balance >= $4",
+            safe_amount,
+            safe_amount,
+            agent_id.to_string(),
+            safe_amount
+        )?;
 
-        if rows.rows_affected() == 0 {
+        if rows_affected == 0 {
             if let Err(rb_err) = tx.rollback().await {
                 tracing::error!("Failed to rollback escrow tx: {}", rb_err);
             }
@@ -177,18 +170,16 @@ impl CommerceEngine for NurtureCommerceBridge {
         // 🚨 F-1: エスクローの自動有効期限 (TTL) を設定（デフォルト24時間）
         let expires_at = now + chrono::Duration::hours(24);
 
-        sqlx::query(
-            "INSERT INTO nurture_escrows (escrow_id, agent_id, amount, status, created_at, expires_at) VALUES (?, ?, ?, 'pending', ?, ?)"
-        )
-        .bind(&escrow_id)
-        .bind(agent_id.to_string())
-        .bind(safe_amount)
-        .bind(now)
-        .bind(expires_at)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| {
-            // tx は Drop で自動 rollback されるが意図を明示
+        sql_tx_exec!(
+            &mut tx,
+            sqlite: "INSERT INTO nurture_escrows (escrow_id, agent_id, amount, status, created_at, expires_at) VALUES (?, ?, ?, 'pending', ?, ?)",
+            pg: "INSERT INTO nurture_escrows (escrow_id, agent_id, amount, status, created_at, expires_at) VALUES ($1, $2, $3, 'pending', $4, $5)",
+            &escrow_id,
+            agent_id.to_string(),
+            safe_amount,
+            now,
+            expires_at
+        ).map_err(|e| {
             AiomeError::Infrastructure {
                 reason: format!("Escrow record creation failed: {}", e),
             }
@@ -223,38 +214,29 @@ impl CommerceEngine for NurtureCommerceBridge {
         let now = Utc::now();
 
         // 1 & 3: CWE-367 TOCTOU Mitigation - Atomically update status and return agent_id/amount
-        let row = sqlx::query(
-            "UPDATE nurture_escrows SET status = 'released', recipient_id = ?, resolved_at = ? 
-             WHERE escrow_id = ? AND status = 'pending' 
-             RETURNING agent_id, amount",
-        )
-        .bind(recipient_id.to_string())
-        .bind(now)
-        .bind(escrow_id)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Escrow status update failed: {}", e),
-        })?;
+        let row_opt: Option<(String, i64)> = sql_tx_fetch_optional!(
+            &mut tx,
+            (String, i64),
+            sqlite: "UPDATE nurture_escrows SET status = 'released', recipient_id = ?, resolved_at = ? WHERE escrow_id = ? AND status = 'pending' RETURNING agent_id, amount",
+            pg: "UPDATE nurture_escrows SET status = 'released', recipient_id = $1, resolved_at = $2 WHERE escrow_id = $3 AND status = 'pending' RETURNING agent_id, amount",
+            recipient_id.to_string(),
+            now,
+            escrow_id
+        )?;
 
-        let row = row.ok_or_else(|| AiomeError::Infrastructure {
+        let (agent_id_str, amount) = row_opt.ok_or_else(|| AiomeError::Infrastructure {
             reason: format!("Escrow not found or already resolved: {}", escrow_id),
         })?;
 
-        let agent_id_str: String = row.get("agent_id");
-        let amount: i64 = row.get("amount");
-
         // 2. recipient に送金 (初回は daily_limit のデフォルト値も設定)
-        sqlx::query(
-            "INSERT INTO nurture_wallets (actor_id, balance, daily_limit, version) VALUES (?, ?, 10000, 1)
-             ON CONFLICT(actor_id) DO UPDATE SET balance = balance + ?"
-        )
-        .bind(recipient_id.to_string())
-        .bind(amount)
-        .bind(amount)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
+        sql_tx_exec!(
+            &mut tx,
+            sqlite: "INSERT INTO nurture_wallets (actor_id, balance, daily_limit, version) VALUES (?, ?, 10000, 1) ON CONFLICT(actor_id) DO UPDATE SET balance = balance + ?",
+            pg: "INSERT INTO nurture_wallets (actor_id, balance, daily_limit, version) VALUES ($1, $2, 10000, 1) ON CONFLICT(actor_id) DO UPDATE SET balance = balance + $3",
+            recipient_id.to_string(),
+            amount,
+            amount
+        ).map_err(|e| AiomeError::Infrastructure {
             reason: format!("Escrow release credit failed: {}", e),
         })?;
 
@@ -293,40 +275,32 @@ impl CommerceEngine for NurtureCommerceBridge {
         let now = Utc::now();
 
         // 1 & 3: CWE-367 TOCTOU Mitigation - Atomically update status and return agent_id/amount
-        let row = sqlx::query(
-            "UPDATE nurture_escrows SET status = 'refunded', resolved_at = ? 
-             WHERE escrow_id = ? AND status = 'pending' 
-             RETURNING agent_id, amount",
-        )
-        .bind(now)
-        .bind(escrow_id)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
-            reason: format!("Escrow status update failed: {}", e),
-        })?;
+        let row_opt: Option<(String, i64)> = sql_tx_fetch_optional!(
+            &mut tx,
+            (String, i64),
+            sqlite: "UPDATE nurture_escrows SET status = 'refunded', resolved_at = ? WHERE escrow_id = ? AND status = 'pending' RETURNING agent_id, amount",
+            pg: "UPDATE nurture_escrows SET status = 'refunded', resolved_at = $1 WHERE escrow_id = $2 AND status = 'pending' RETURNING agent_id, amount",
+            now,
+            escrow_id
+        )?;
 
-        let row = row.ok_or_else(|| AiomeError::Infrastructure {
+        let (agent_id_str, amount) = row_opt.ok_or_else(|| AiomeError::Infrastructure {
             reason: format!("Escrow not found or already resolved: {}", escrow_id),
         })?;
 
-        let agent_id_str: String = row.get("agent_id");
-        let amount: i64 = row.get("amount");
-
         // 2. 元の agent に返金
-        let refund_rows = sqlx::query(
-            "UPDATE nurture_wallets SET balance = balance + ?, spent_today = MAX(0, spent_today - ?) WHERE actor_id = ?"
-        )
-        .bind(amount)
-        .bind(amount)
-        .bind(&agent_id_str)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| AiomeError::Infrastructure {
+        let rows_affected = sql_tx_exec!(
+            &mut tx,
+            sqlite: "UPDATE nurture_wallets SET balance = balance + ?, spent_today = MAX(0, spent_today - ?) WHERE actor_id = ?",
+            pg: "UPDATE nurture_wallets SET balance = balance + $1, spent_today = GREATEST(0, spent_today - $2) WHERE actor_id = $3",
+            amount,
+            amount,
+            &agent_id_str
+        ).map_err(|e| AiomeError::Infrastructure {
             reason: format!("Escrow refund credit failed: {}", e),
         })?;
 
-        if refund_rows.rows_affected() == 0 {
+        if rows_affected == 0 {
             if let Err(rb_err) = tx.rollback().await {
                 tracing::error!("Failed to rollback escrow refund tx: {}", rb_err);
             }

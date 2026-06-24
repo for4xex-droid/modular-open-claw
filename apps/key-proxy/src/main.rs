@@ -58,11 +58,20 @@ async fn main() -> anyhow::Result<()> {
     // 7. Security: Anti-Debugger (petersen's trick / ptrace)
     #[cfg(target_os = "macos")]
     {
-        use nix::sys::ptrace;
-        if ptrace::traceme().is_err() {
-            error!("🚨 [KeyProxy] Debugger detected! Panic for safety.");
-            eprintln!("SECURITY VIOLATION: Debugger attached.");
-            std::process::exit(1);
+        let is_dev = std::env::var("AIOME_DEV_MODE")
+            .map(|v| v == "1")
+            .unwrap_or(false);
+        if !is_dev {
+            use nix::sys::ptrace;
+            if ptrace::traceme().is_err() {
+                error!("🚨 [KeyProxy] Debugger detected! Panic for safety.");
+                eprintln!("SECURITY VIOLATION: Debugger attached.");
+                std::process::exit(1);
+            }
+        } else {
+            info!(
+                "🛠️ [KeyProxy] AIOME_DEV_MODE is enabled. Skipping ptrace::traceme() anti-debugging guard."
+            );
         }
     }
 

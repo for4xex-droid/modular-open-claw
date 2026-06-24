@@ -1,19 +1,19 @@
 use async_trait::async_trait;
 use commerce_protocol::error::NurtureError;
+use nurture_bridge::db::{DatabasePool, DatabaseTransaction};
 use nurture_core::ledger::LedgerEntry;
 use nurture_core::license::AssetLicense;
 use nurture_core::uow::{CommerceUow, UowManager};
 use secrecy::Secret;
-use sqlx::SqlitePool;
 use uuid::Uuid;
 
 pub struct SqliteUowManager {
-    pool: SqlitePool,
+    pool: DatabasePool,
     master_key: Secret<[u8; 32]>,
 }
 
 impl SqliteUowManager {
-    pub fn new(pool: SqlitePool, master_key_seed: &secrecy::SecretString) -> Self {
+    pub fn new(pool: DatabasePool, master_key_seed: &secrecy::SecretString) -> Self {
         use secrecy::ExposeSecret;
         use sha2::{Digest, Sha256};
         let master_key: [u8; 32] =
@@ -28,9 +28,20 @@ impl SqliteUowManager {
 #[async_trait]
 impl UowManager for SqliteUowManager {
     async fn begin_uow(&self) -> Result<Box<dyn CommerceUow>, NurtureError> {
-        let tx = self.pool.begin().await.map_err(|e| {
-            NurtureError::Infrastructure(format!("Transaction begin failed: {}", e))
-        })?;
+        let tx = match &self.pool {
+            DatabasePool::Sqlite(pool) => {
+                let tx = pool.begin().await.map_err(|e| {
+                    NurtureError::Infrastructure(format!("Transaction begin failed: {}", e))
+                })?;
+                DatabaseTransaction::Sqlite(tx)
+            }
+            DatabasePool::Postgres(pool) => {
+                let tx = pool.begin().await.map_err(|e| {
+                    NurtureError::Infrastructure(format!("Transaction begin failed: {}", e))
+                })?;
+                DatabaseTransaction::Postgres(tx)
+            }
+        };
         Ok(Box::new(SqliteCommerceUow {
             tx: Some(tx),
             master_key: self.master_key.clone(),
@@ -39,7 +50,7 @@ impl UowManager for SqliteUowManager {
 }
 
 pub struct SqliteCommerceUow {
-    tx: Option<sqlx::Transaction<'static, sqlx::Sqlite>>,
+    tx: Option<DatabaseTransaction<'static>>,
     master_key: Secret<[u8; 32]>,
 }
 
@@ -68,7 +79,7 @@ impl CommerceUow for SqliteCommerceUow {
             NurtureError::Infrastructure("Transaction already committed or rolled back".to_string())
         })?;
 
-        crate::economy::ledger::SQLiteEconomyLedger::record_batch_internal(tx, entries).await
+        crate::economy::ledger::DatabaseEconomyLedger::record_batch_internal(tx, entries).await
     }
 
     async fn commit(mut self: Box<Self>) -> Result<(), NurtureError> {

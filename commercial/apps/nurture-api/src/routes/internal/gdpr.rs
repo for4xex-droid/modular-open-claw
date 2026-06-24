@@ -8,6 +8,7 @@
 use crate::state::SharedState;
 use axum::{extract::Path, http::StatusCode, response::IntoResponse, Extension};
 use chrono::Utc;
+use nurture_bridge::{sql_tx_exec, sql_tx_fetch_all};
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -35,11 +36,12 @@ pub async fn forget_actor(
     };
 
     // 1. KYC ステータスのパージ
-    if let Err(e) = sqlx::query("DELETE FROM nurture_kyc_status WHERE actor_id = ?")
-        .bind(&actor_id_str)
-        .execute(&mut *tx)
-        .await
-    {
+    if let Err(e) = sql_tx_exec!(
+        &mut tx,
+        sqlite: "DELETE FROM nurture_kyc_status WHERE actor_id = ?",
+        pg: "DELETE FROM nurture_kyc_status WHERE actor_id = $1",
+        &actor_id_str
+    ) {
         error!(
             "❌ [Internal/Forget] Failed to scrub KYC for actor {}: {}",
             actor_id, e
@@ -48,11 +50,12 @@ pub async fn forget_actor(
     }
 
     // 2. DRM ライセンスのパージ（暗号化された復号キーを含む PII）
-    if let Err(e) = sqlx::query("DELETE FROM nurture_licenses WHERE owner_id = ?")
-        .bind(&actor_id_str)
-        .execute(&mut *tx)
-        .await
-    {
+    if let Err(e) = sql_tx_exec!(
+        &mut tx,
+        sqlite: "DELETE FROM nurture_licenses WHERE owner_id = ?",
+        pg: "DELETE FROM nurture_licenses WHERE owner_id = $1",
+        &actor_id_str
+    ) {
         error!(
             "❌ [Internal/Forget] Failed to scrub licenses for actor {}: {}",
             actor_id, e
@@ -67,13 +70,13 @@ pub async fn forget_actor(
     // 3. エスクロー処理:
     //    - pending 状態のエスクローは wallet に返金してから削除
     //    - released/refunded 状態のエスクローはそのまま削除
-    let pending_escrows: Vec<(String, i64)> = match sqlx::query_as(
-        "SELECT escrow_id, amount FROM nurture_escrows WHERE agent_id = ? AND status = 'pending'",
-    )
-    .bind(&actor_id_str)
-    .fetch_all(&mut *tx)
-    .await
-    {
+    let pending_escrows: Vec<(String, i64)> = match sql_tx_fetch_all!(
+        &mut tx,
+        (String, i64),
+        sqlite: "SELECT escrow_id, amount FROM nurture_escrows WHERE agent_id = ? AND status = 'pending'",
+        pg: "SELECT escrow_id, amount FROM nurture_escrows WHERE agent_id = $1 AND status = 'pending'",
+        &actor_id_str
+    ) {
         Ok(rows) => rows,
         Err(e) => {
             error!(
@@ -86,13 +89,13 @@ pub async fn forget_actor(
 
     // pending エスクローの返金（wallet が存在しない場合は無視 — どうせ wallet も削除される）
     for (escrow_id, amount) in &pending_escrows {
-        if let Err(e) =
-            sqlx::query("UPDATE nurture_wallets SET balance = balance + ? WHERE actor_id = ?")
-                .bind(amount)
-                .bind(&actor_id_str)
-                .execute(&mut *tx)
-                .await
-        {
+        if let Err(e) = sql_tx_exec!(
+            &mut tx,
+            sqlite: "UPDATE nurture_wallets SET balance = balance + ? WHERE actor_id = ?",
+            pg: "UPDATE nurture_wallets SET balance = balance + $1 WHERE actor_id = $2",
+            amount,
+            &actor_id_str
+        ) {
             error!(
                 "⚠️ [Internal/Forget] Failed to refund escrow {} (non-fatal, wallet will be deleted): {}",
                 escrow_id, e
@@ -124,11 +127,12 @@ pub async fn forget_actor(
     }
 
     // 全エスクロー削除（pending/released/refunded すべて）
-    if let Err(e) = sqlx::query("DELETE FROM nurture_escrows WHERE agent_id = ?")
-        .bind(&actor_id_str)
-        .execute(&mut *tx)
-        .await
-    {
+    if let Err(e) = sql_tx_exec!(
+        &mut tx,
+        sqlite: "DELETE FROM nurture_escrows WHERE agent_id = ?",
+        pg: "DELETE FROM nurture_escrows WHERE agent_id = $1",
+        &actor_id_str
+    ) {
         error!(
             "❌ [Internal/Forget] Failed to scrub escrows for actor {}: {}",
             actor_id, e
@@ -137,11 +141,12 @@ pub async fn forget_actor(
     }
 
     // 4. ウォレットのパージ（残高・支出履歴を含む経済 PII）
-    if let Err(e) = sqlx::query("DELETE FROM nurture_wallets WHERE actor_id = ?")
-        .bind(&actor_id_str)
-        .execute(&mut *tx)
-        .await
-    {
+    if let Err(e) = sql_tx_exec!(
+        &mut tx,
+        sqlite: "DELETE FROM nurture_wallets WHERE actor_id = ?",
+        pg: "DELETE FROM nurture_wallets WHERE actor_id = $1",
+        &actor_id_str
+    ) {
         error!(
             "❌ [Internal/Forget] Failed to scrub wallet for actor {}: {}",
             actor_id, e
@@ -150,11 +155,12 @@ pub async fn forget_actor(
     }
 
     // 5. サブスクリプションと出金申請のパージ
-    if let Err(e) = sqlx::query("DELETE FROM nurture_subscriptions WHERE actor_id = ?")
-        .bind(&actor_id_str)
-        .execute(&mut *tx)
-        .await
-    {
+    if let Err(e) = sql_tx_exec!(
+        &mut tx,
+        sqlite: "DELETE FROM nurture_subscriptions WHERE actor_id = ?",
+        pg: "DELETE FROM nurture_subscriptions WHERE actor_id = $1",
+        &actor_id_str
+    ) {
         error!(
             "❌ [Internal/Forget] Failed to scrub subscriptions for actor {}: {}",
             actor_id, e
@@ -166,11 +172,12 @@ pub async fn forget_actor(
             .into_response();
     }
 
-    if let Err(e) = sqlx::query("DELETE FROM nurture_payout_requests WHERE actor_id = ?")
-        .bind(&actor_id_str)
-        .execute(&mut *tx)
-        .await
-    {
+    if let Err(e) = sql_tx_exec!(
+        &mut tx,
+        sqlite: "DELETE FROM nurture_payout_requests WHERE actor_id = ?",
+        pg: "DELETE FROM nurture_payout_requests WHERE actor_id = $1",
+        &actor_id_str
+    ) {
         error!(
             "❌ [Internal/Forget] Failed to scrub payout requests for actor {}: {}",
             actor_id, e
@@ -185,13 +192,21 @@ pub async fn forget_actor(
     // 6. Customer PII の難読化 (emailはNULL化、stripe_customer_idは難読化)
     // レコード自体は購入履歴等の参照完全性のために残すが、PIIは消す
     // stripe_customer_id は NOT NULL 制約があるため、ダミー値（'purged_' + actor_id等）に置き換える
-    if let Err(e) = sqlx::query("UPDATE nurture_customers SET email = NULL, stripe_customer_id = 'purged_' || actor_id WHERE actor_id = ?")
-        .bind(&actor_id_str)
-        .execute(&mut *tx)
-        .await
-    {
-        error!("❌ [Internal/Forget] Failed to scrub customer PII for actor {}: {}", actor_id, e);
-        return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to scrub customer PII").into_response();
+    if let Err(e) = sql_tx_exec!(
+        &mut tx,
+        sqlite: "UPDATE nurture_customers SET email = NULL, stripe_customer_id = 'purged_' || actor_id WHERE actor_id = ?",
+        pg: "UPDATE nurture_customers SET email = NULL, stripe_customer_id = 'purged_' || actor_id WHERE actor_id = $1",
+        &actor_id_str
+    ) {
+        error!(
+            "❌ [Internal/Forget] Failed to scrub customer PII for actor {}: {}",
+            actor_id, e
+        );
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to scrub customer PII",
+        )
+            .into_response();
     }
 
     // 5. DB トランザクションのコミット

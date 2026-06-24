@@ -16,15 +16,15 @@ use commerce_protocol::error::NurtureError;
 use commerce_protocol::identity::ActorId;
 use commerce_protocol::settlement::{SettlementProtocol, SettlementReceipt};
 use commerce_protocol::transaction::{Authorized, Transaction};
+use nurture_bridge::db::DatabasePool;
+use nurture_bridge::sql_exec;
 use nurture_core::ledger::{EconomyLedger, EntryType, LedgerEntry};
 use nurture_core::policy::SharedPolicy;
-use sqlx::SqlitePool;
+use std::sync::Arc;
 use uuid::Uuid;
 
-use std::sync::Arc;
-
 pub struct SQLiteSettlementProvider {
-    pool: SqlitePool,
+    pool: DatabasePool,
     ledger: Arc<dyn EconomyLedger>,
     policy: SharedPolicy,
     system_actor_id: ActorId,
@@ -32,7 +32,7 @@ pub struct SQLiteSettlementProvider {
 
 impl SQLiteSettlementProvider {
     pub fn new(
-        pool: SqlitePool,
+        pool: DatabasePool,
         ledger: Arc<dyn EconomyLedger>,
         policy: SharedPolicy,
         system_actor_id: ActorId,
@@ -52,16 +52,16 @@ impl SQLiteSettlementProvider {
         status: &str,
         payload: Option<String>,
     ) -> Result<(), NurtureError> {
-        sqlx::query(
-            "INSERT INTO nurture_saga_logs (id, transaction_id, operation, status, payload) VALUES (?, ?, ?, ?, ?)"
+        sql_exec!(
+            &self.pool,
+            sqlite: "INSERT INTO nurture_saga_logs (id, transaction_id, operation, status, payload) VALUES (?, ?, ?, ?, ?)",
+            pg: "INSERT INTO nurture_saga_logs (id, transaction_id, operation, status, payload) VALUES ($1, $2, $3, $4, $5)",
+            Uuid::new_v4().to_string(),
+            tx_id.to_string(),
+            op,
+            status,
+            payload
         )
-        .bind(Uuid::new_v4().to_string())
-        .bind(tx_id.to_string())
-        .bind(op)
-        .bind(status)
-        .bind(payload)
-        .execute(&self.pool)
-        .await
         .map(|_| ())
         .map_err(|e| NurtureError::Infrastructure(format!("Saga ログ記録失敗: {}", e)))
     }
@@ -153,7 +153,7 @@ impl SettlementProtocol for SQLiteSettlementProvider {
         };
 
         // 台帳への一括記録
-        let result = self
+        let result: Result<(), NurtureError> = self
             .ledger
             .record_batch(&[creator_entry, fee_entry, burn_entry])
             .await;
@@ -183,7 +183,7 @@ impl SettlementProtocol for SQLiteSettlementProvider {
             .await?;
 
         // transaction_id でエントリを取得して逆仕訳を行う
-        let history = self
+        let history: Vec<LedgerEntry> = self
             .ledger
             .get_entries_by_transaction(&receipt.transaction_id)
             .await?;
@@ -250,7 +250,7 @@ impl SettlementProtocol for SQLiteSettlementProvider {
 
     async fn verify(&self, receipt: &SettlementReceipt) -> Result<bool, NurtureError> {
         // transaction_id でエントリを取得して検証
-        let history = self
+        let history: Vec<LedgerEntry> = self
             .ledger
             .get_entries_by_transaction(&receipt.transaction_id)
             .await?;
@@ -327,7 +327,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_settle_and_rollback() {
-        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
         // Saga ログ用テーブルを作成
         sqlx::query("CREATE TABLE nurture_saga_logs (id TEXT PRIMARY KEY, transaction_id TEXT NOT NULL, operation TEXT NOT NULL, status TEXT NOT NULL, payload TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
             .execute(&pool)
@@ -339,7 +339,12 @@ mod tests {
         });
         let policy = Arc::new(tokio::sync::RwLock::new(EconomyPolicy::default()));
         let system_id = ActorId(Uuid::new_v4());
-        let provider = SQLiteSettlementProvider::new(pool, ledger.clone(), policy, system_id);
+        let provider = SQLiteSettlementProvider::new(
+            DatabasePool::Sqlite(pool),
+            ledger.clone(),
+            policy,
+            system_id,
+        );
 
         let buyer = ActorId(Uuid::new_v4());
         let seller = ActorId(Uuid::new_v4());
@@ -392,7 +397,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_settle_agency_fee_for_subscription() {
-        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
         sqlx::query("CREATE TABLE nurture_saga_logs (id TEXT PRIMARY KEY, transaction_id TEXT NOT NULL, operation TEXT NOT NULL, status TEXT NOT NULL, payload TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
             .execute(&pool)
             .await
@@ -411,7 +416,12 @@ mod tests {
         let policy = Arc::new(tokio::sync::RwLock::new(raw_policy));
 
         let system_id = ActorId(Uuid::new_v4());
-        let provider = SQLiteSettlementProvider::new(pool, ledger.clone(), policy, system_id);
+        let provider = SQLiteSettlementProvider::new(
+            DatabasePool::Sqlite(pool),
+            ledger.clone(),
+            policy,
+            system_id,
+        );
 
         let buyer = ActorId(Uuid::new_v4());
         let seller = ActorId(Uuid::new_v4());
@@ -449,7 +459,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_settle_underflow_fails() {
-        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
         sqlx::query("CREATE TABLE nurture_saga_logs (id TEXT PRIMARY KEY, transaction_id TEXT NOT NULL, operation TEXT NOT NULL, status TEXT NOT NULL, payload TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
             .execute(&pool)
             .await
@@ -471,7 +481,12 @@ mod tests {
         let policy = Arc::new(tokio::sync::RwLock::new(raw_policy));
 
         let system_id = ActorId(Uuid::new_v4());
-        let provider = SQLiteSettlementProvider::new(pool, ledger.clone(), policy, system_id);
+        let provider = SQLiteSettlementProvider::new(
+            DatabasePool::Sqlite(pool),
+            ledger.clone(),
+            policy,
+            system_id,
+        );
 
         let buyer = ActorId(Uuid::new_v4());
         let seller = ActorId(Uuid::new_v4());

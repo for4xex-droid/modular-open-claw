@@ -13,6 +13,7 @@
 use crate::state::SharedState;
 use chrono::Utc;
 use commerce_protocol::commodity::{CommodityKind, ItemDescriptor, PriceTag};
+use nurture_bridge::db::DatabasePool;
 use sqlx::Row;
 
 /// 種の名前のバリデーション (Guardrail Layer 0)
@@ -198,21 +199,45 @@ pub async fn handle_upload(
             ));
         }
 
-        let sub_row = sqlx::query(
-            "SELECT plan_id FROM nurture_subscriptions WHERE actor_id = ? AND status = 'active'",
-        )
-        .bind(payload.creator_id.to_string())
-        .fetch_optional(&state.pool)
-        .await
-        .map_err(|e| NurtureError::Infrastructure(format!("サブスクリプション確認失敗: {}", e)))?;
-
-        let plan_id = match sub_row {
-            Some(row) => {
-                let pid: String = row.try_get("plan_id").map_err(|e| {
-                    NurtureError::Infrastructure(format!("plan_id 取得失敗: {}", e))
-                })?;
-                pid
+        let plan_id = match &state.pool {
+            DatabasePool::Sqlite(p) => {
+                let row_opt = sqlx::query(
+                    "SELECT plan_id FROM nurture_subscriptions WHERE actor_id = ? AND status = 'active'",
+                )
+                .bind(payload.creator_id.to_string())
+                .fetch_optional(p)
+                .await
+                .map_err(|e| NurtureError::Infrastructure(format!("サブスクリプション確認失敗: {}", e)))?;
+                if let Some(row) = row_opt {
+                    let pid: String = row.try_get("plan_id").map_err(|e| {
+                        NurtureError::Infrastructure(format!("plan_id 取得失敗: {}", e))
+                    })?;
+                    Ok(Some(pid))
+                } else {
+                    Ok(None)
+                }
             }
+            DatabasePool::Postgres(p) => {
+                let row_opt = sqlx::query(
+                    "SELECT plan_id FROM nurture_subscriptions WHERE actor_id = $1 AND status = 'active'",
+                )
+                .bind(payload.creator_id.to_string())
+                .fetch_optional(p)
+                .await
+                .map_err(|e| NurtureError::Infrastructure(format!("サブスクリプション確認失敗: {}", e)))?;
+                if let Some(row) = row_opt {
+                    let pid: String = row.try_get("plan_id").map_err(|e| {
+                        NurtureError::Infrastructure(format!("plan_id 取得失敗: {}", e))
+                    })?;
+                    Ok(Some(pid))
+                } else {
+                    Ok(None)
+                }
+            }
+        }?;
+
+        let plan_id = match plan_id {
+            Some(pid) => pid,
             None => {
                 return Err(NurtureError::PolicyViolation(
                     "Pro membership is required to upload Biome assets".to_string(),
@@ -230,17 +255,34 @@ pub async fn handle_upload(
             }
         };
 
-        let count_row = sqlx::query(
-            "SELECT COUNT(*) as cnt FROM nurture_items WHERE creator_id = ? AND (kind = 'GeneticBlueprint' OR kind = 'BiomeEnvironment')"
-        )
-        .bind(payload.creator_id.to_string())
-        .fetch_one(&state.pool)
-        .await
-        .map_err(|e| NurtureError::Infrastructure(format!("アップロード数カウント失敗: {}", e)))?;
-
-        let count: i64 = count_row
-            .try_get("cnt")
-            .map_err(|e| NurtureError::Infrastructure(format!("cnt 取得失敗: {}", e)))?;
+        let count = match &state.pool {
+            DatabasePool::Sqlite(p) => {
+                let row = sqlx::query(
+                    "SELECT COUNT(*) as cnt FROM nurture_items WHERE creator_id = ? AND (kind = 'GeneticBlueprint' OR kind = 'BiomeEnvironment')"
+                )
+                .bind(payload.creator_id.to_string())
+                .fetch_one(p)
+                .await
+                .map_err(|e| NurtureError::Infrastructure(format!("アップロード数カウント失敗: {}", e)))?;
+                let count: i64 = row
+                    .try_get("cnt")
+                    .map_err(|e| NurtureError::Infrastructure(format!("cnt 取得失敗: {}", e)))?;
+                Ok(count)
+            }
+            DatabasePool::Postgres(p) => {
+                let row = sqlx::query(
+                    "SELECT COUNT(*) as cnt FROM nurture_items WHERE creator_id = $1 AND (kind = 'GeneticBlueprint' OR kind = 'BiomeEnvironment')"
+                )
+                .bind(payload.creator_id.to_string())
+                .fetch_one(p)
+                .await
+                .map_err(|e| NurtureError::Infrastructure(format!("アップロード数カウント失敗: {}", e)))?;
+                let count: i64 = row
+                    .try_get("cnt")
+                    .map_err(|e| NurtureError::Infrastructure(format!("cnt 取得失敗: {}", e)))?;
+                Ok(count)
+            }
+        }?;
 
         if count >= max_limit {
             return Err(NurtureError::PolicyViolation(format!(
@@ -377,18 +419,18 @@ mod tests {
 
     async fn setup_state() -> SharedState {
         let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-        sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+        sqlx::migrate!("../../migrations/sqlite")
+            .run(&pool)
+            .await
+            .unwrap();
         let cancel_token = tokio_util::sync::CancellationToken::new();
-        let store = Arc::new(SqliteTrajectoryStore::new(DatabasePool::Sqlite(
-            pool.clone(),
-        )));
-        let job_queue: Arc<dyn JobQueue> = Arc::new(UniversalJobQueue::from_pool(
-            DatabasePool::Sqlite(pool.clone()),
-            store,
-        ));
+        let db_pool = DatabasePool::Sqlite(pool);
+        let store = Arc::new(SqliteTrajectoryStore::new(db_pool.clone()));
+        let job_queue: Arc<dyn JobQueue> =
+            Arc::new(UniversalJobQueue::from_pool(db_pool.clone(), store));
 
         crate::state::AppState::init(
-            pool,
+            db_pool,
             job_queue,
             nurture_core::policy::EconomyPolicy::default(),
             ActorId(Uuid::new_v4()),
@@ -413,7 +455,7 @@ mod tests {
         let creator_id = Uuid::new_v4();
         sqlx::query("INSERT INTO nurture_kyc_status (actor_id, status) VALUES (?, 'verified')")
             .bind(creator_id.to_string())
-            .execute(&state.pool)
+            .execute(state.pool.get_sqlite_pool().unwrap())
             .await
             .unwrap();
 
@@ -447,7 +489,7 @@ mod tests {
         let creator_id = Uuid::new_v4();
         sqlx::query("INSERT INTO nurture_kyc_status (actor_id, status) VALUES (?, 'verified')")
             .bind(creator_id.to_string())
-            .execute(&state.pool)
+            .execute(state.pool.get_sqlite_pool().unwrap())
             .await
             .unwrap();
 
@@ -484,7 +526,7 @@ mod tests {
         let creator_id = Uuid::new_v4();
         sqlx::query("INSERT INTO nurture_kyc_status (actor_id, status) VALUES (?, 'verified')")
             .bind(creator_id.to_string())
-            .execute(&state.pool)
+            .execute(state.pool.get_sqlite_pool().unwrap())
             .await
             .unwrap();
 
@@ -534,7 +576,7 @@ mod tests {
         let creator_id = Uuid::new_v4();
         sqlx::query("INSERT INTO nurture_kyc_status (actor_id, status) VALUES (?, 'verified')")
             .bind(creator_id.to_string())
-            .execute(&state.pool)
+            .execute(state.pool.get_sqlite_pool().unwrap())
             .await
             .unwrap();
 
@@ -567,7 +609,7 @@ mod tests {
         let creator_id = Uuid::new_v4();
         sqlx::query("INSERT INTO nurture_kyc_status (actor_id, status) VALUES (?, 'verified')")
             .bind(creator_id.to_string())
-            .execute(&state.pool)
+            .execute(state.pool.get_sqlite_pool().unwrap())
             .await
             .unwrap();
 
@@ -577,7 +619,7 @@ mod tests {
             .bind(creator_id.to_string())
             .bind("sub_123")
             .bind(Utc::now() + chrono::Duration::days(30))
-            .execute(&state.pool)
+            .execute(state.pool.get_sqlite_pool().unwrap())
             .await
             .unwrap();
 
@@ -626,7 +668,7 @@ mod tests {
         let creator_id = Uuid::new_v4();
         sqlx::query("INSERT INTO nurture_kyc_status (actor_id, status) VALUES (?, 'verified')")
             .bind(creator_id.to_string())
-            .execute(&state.pool)
+            .execute(state.pool.get_sqlite_pool().unwrap())
             .await
             .unwrap();
 
@@ -636,7 +678,7 @@ mod tests {
             .bind(creator_id.to_string())
             .bind("sub_123")
             .bind(Utc::now() + chrono::Duration::days(30))
-            .execute(&state.pool)
+            .execute(state.pool.get_sqlite_pool().unwrap())
             .await
             .unwrap();
 

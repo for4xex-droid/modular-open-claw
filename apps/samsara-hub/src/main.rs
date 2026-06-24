@@ -227,7 +227,8 @@ async fn main() -> anyhow::Result<()> {
 
     let app = build_app(state.clone());
 
-    let addr = format!("127.0.0.1:{}", port);
+    let bind_addr = std::env::var("SAMSARA_BIND_ADDR").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let addr = format!("{}:{}", bind_addr, port);
     info!("🏔️ Samsara Hub (The Validator) listening on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;

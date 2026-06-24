@@ -257,5 +257,8 @@ The Voice DRM and future encrypted assets rely on a strict key hierarchy:
 ### 6.6 Semantic Endpoint Bridging (Phase 4)
 For SEO integrations like WordPress, Aiome avoids direct API token injection into the main server. Instead, `key-proxy` exposes a bespoke `/api/v1/wp/publish` endpoint that handles authentication with upstream servers and acts as a semantic boundary, ensuring payloads (e.g. `status` fields) conform to strict whitelists before execution, neutralizing parameter manipulation attacks entirely.
 
+- **Keychain Access Hardening (v1.0 Beta / Beta 2)**:
+  - macOS Keychain への非対話型アクセスフリーズを回避するため、`VAULT_MASTER_PASSWORD` のロード時は環境変数の確認を macOS Keychain よりも優先するよう順序を変更。
+
 ---
-*最終更新: 2026-06-23 (Stripe Webhook v2 integration, multiple secrets and SSRF double defense)*
+*最終更新: 2026-06-25 (Keychain access order hardening & Stripe v2 Webhook)*

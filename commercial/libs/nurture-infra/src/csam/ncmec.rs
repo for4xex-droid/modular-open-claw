@@ -7,7 +7,8 @@
 
 use async_trait::async_trait;
 use commerce_protocol::error::NurtureError;
-use sqlx::SqlitePool;
+use nurture_bridge::db::DatabasePool;
+use nurture_bridge::sql_exec;
 use uuid::Uuid;
 
 #[async_trait]
@@ -21,11 +22,11 @@ pub trait NcmecReporter: Send + Sync {
 }
 
 pub struct SQLiteNcmecReporter {
-    pool: SqlitePool,
+    pool: DatabasePool,
 }
 
 impl SQLiteNcmecReporter {
-    pub fn new(pool: SqlitePool) -> Self {
+    pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 }
@@ -42,16 +43,15 @@ impl NcmecReporter for SQLiteNcmecReporter {
         // 実稼働環境では、このレコードが NCMEC CyberTipline に送信されるバッチに回される
         let metadata_str = serde_json::to_string(metadata).unwrap_or_else(|_| "{}".to_string());
 
-        sqlx::query(
-            "INSERT INTO nurture_ncmec_reports (id, item_id, reason, evidence_metadata, reported_at, status)
-             VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, 'queued')"
+        sql_exec!(
+            &self.pool,
+            sqlite: "INSERT INTO nurture_ncmec_reports (id, item_id, reason, evidence_metadata, reported_at, status) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, 'queued')",
+            pg: "INSERT INTO nurture_ncmec_reports (id, item_id, reason, evidence_metadata, reported_at, status) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, 'queued')",
+            Uuid::new_v4().to_string(),
+            item_id.to_string(),
+            reason,
+            metadata_str
         )
-        .bind(Uuid::new_v4().to_string())
-        .bind(item_id.to_string())
-        .bind(reason)
-        .bind(metadata_str)
-        .execute(&self.pool)
-        .await
         .map_err(|e| NurtureError::Infrastructure(format!("NCMECキュー保存失敗: {}", e)))?;
 
         tracing::error!(

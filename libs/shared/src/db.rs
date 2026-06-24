@@ -163,6 +163,23 @@ impl DatabasePool {
     pub async fn backup(&self, destination_path: &str) -> Result<(), AiomeError> {
         match self {
             Self::Sqlite(p) => {
+                // Strict validation for destination path to prevent path traversal and SQL/Command injection
+                if destination_path.contains("..")
+                    || destination_path.contains(';')
+                    || destination_path.contains("--")
+                    || destination_path.contains('\'')
+                    || destination_path
+                        .chars()
+                        .any(|c| matches!(c, '|' | '&' | '$' | '<' | '>' | '`'))
+                {
+                    return Err(AiomeError::Infrastructure {
+                        reason: format!(
+                            "Forbidden characters or traversal in backup path: {}",
+                            destination_path
+                        ),
+                    });
+                }
+
                 let escaped_path = destination_path.replace('\'', "''");
                 let sql = format!("VACUUM INTO '{}'", escaped_path);
                 sqlx::query(&sql)
@@ -836,6 +853,41 @@ mod tests {
         // Try backing up to an invalid directory — should return Err, not panic
         let res = pool.backup(invalid_backup_path).await;
         assert!(res.is_err(), "Backup to nonexistent dir must fail");
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_sqlite_backup_path_traversal_and_injection_denied() {
+        let tmp = tempfile::TempDir::new().expect("failed to create temp dir");
+        let db_path = tmp.path().join("source_traversal.db");
+        let pool = DatabasePool::new_sqlite(db_path.to_str().unwrap())
+            .await
+            .unwrap();
+
+        // 1. Directory traversal attempt
+        let traversal_path = "/tmp/../etc/passwd";
+        let res = pool.backup(traversal_path).await;
+        assert!(
+            res.is_err(),
+            "Backup path with directory traversal must be denied"
+        );
+
+        // 2. SQL injection attempt in path
+        let injection_path = "backup.db'; DROP TABLE backup_test; --";
+        let res = pool.backup(injection_path).await;
+        assert!(
+            res.is_err(),
+            "Backup path with potential SQL injection must be denied"
+        );
+
+        // 3. Command injection attempt or shell characters
+        let cmd_path = "backup.db; rm -rf /";
+        let res = pool.backup(cmd_path).await;
+        assert!(
+            res.is_err(),
+            "Backup path with shell execution characters must be denied"
+        );
 
         pool.close().await;
     }

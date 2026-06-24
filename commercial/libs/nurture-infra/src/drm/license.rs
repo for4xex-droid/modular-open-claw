@@ -13,21 +13,24 @@ use chacha20poly1305::{
 };
 use commerce_protocol::error::NurtureError;
 use commerce_protocol::identity::ActorId;
+use nurture_bridge::db::{DatabasePool, DatabaseTransaction};
+use nurture_bridge::error::AiomeError;
+use nurture_bridge::{sql_exec, sql_fetch_optional_map, sql_tx_exec};
 use nurture_core::license::{AssetLicense, LicenseStore};
 use rand::RngCore;
 use sha2::{Digest, Sha256};
-use sqlx::{Row, SqlitePool};
+use sqlx::Row;
 use uuid::Uuid;
 
 use secrecy::{ExposeSecret, Secret};
 
 pub struct SQLiteLicenseStore {
-    pool: SqlitePool,
+    pool: DatabasePool,
     master_key: Secret<[u8; 32]>,
 }
 
 impl SQLiteLicenseStore {
-    pub fn new(pool: SqlitePool, master_key_seed: &secrecy::SecretString) -> Self {
+    pub fn new(pool: DatabasePool, master_key_seed: &secrecy::SecretString) -> Self {
         let master_key: [u8; 32] =
             Sha256::digest(master_key_seed.expose_secret().as_bytes()).into();
         Self {
@@ -88,22 +91,20 @@ impl LicenseStore for SQLiteLicenseStore {
     async fn issue_license(&self, license: &AssetLicense) -> Result<(), NurtureError> {
         let encrypted_key = self.encrypt_key(&license.decryption_key)?;
 
-        sqlx::query(
-            "INSERT INTO nurture_licenses (id, transaction_id, asset_id, owner_id, decryption_key, issued_at, expires_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
+        sql_exec!(
+            &self.pool,
+            sqlite: "INSERT INTO nurture_licenses (id, transaction_id, asset_id, owner_id, decryption_key, issued_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            pg: "INSERT INTO nurture_licenses (id, transaction_id, asset_id, owner_id, decryption_key, issued_at, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            license.id.to_string(),
+            license.transaction_id.to_string(),
+            license.asset_id.to_string(),
+            license.owner_id.0.to_string(),
+            encrypted_key,
+            license.issued_at,
+            license.expires_at
         )
-        .bind(license.id.to_string())
-        .bind(license.transaction_id.to_string())
-        .bind(license.asset_id.to_string())
-        .bind(license.owner_id.0.to_string())
-        .bind(encrypted_key)
-        .bind(license.issued_at)
-        .bind(license.expires_at)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| NurtureError::Infrastructure(format!("ライセンス発行失敗: {}", e)))?;
-
-        Ok(())
+        .map(|_| ())
+        .map_err(|e| NurtureError::Infrastructure(format!("ライセンス発行失敗: {}", e)))
     }
 
     async fn get_license(
@@ -111,43 +112,78 @@ impl LicenseStore for SQLiteLicenseStore {
         owner: &ActorId,
         asset_id: &Uuid,
     ) -> Result<Option<AssetLicense>, NurtureError> {
-        let row = sqlx::query(
-            "SELECT id, transaction_id, asset_id, owner_id, decryption_key, issued_at, expires_at, revoked_at
-             FROM nurture_licenses
-             WHERE owner_id = ? AND asset_id = ? AND revoked_at IS NULL
-             AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
-             ORDER BY issued_at DESC LIMIT 1"
-        )
-        .bind(owner.0.to_string())
-        .bind(asset_id.to_string())
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| NurtureError::Infrastructure(format!("ライセンス取得失敗: {}", e)))?;
+        struct RowData {
+            id: String,
+            tx_id: String,
+            asset_id_str: String,
+            owner_id_str: String,
+            encrypted_key: String,
+            issued_at: chrono::DateTime<chrono::Utc>,
+            expires_at: Option<chrono::DateTime<chrono::Utc>>,
+            revoked_at: Option<chrono::DateTime<chrono::Utc>>,
+        }
 
-        match row {
-            Some(row) => {
-                let id: String = row.get("id");
-                let tx_id: String = row.get("transaction_id");
-                let asset_id_str: String = row.get("asset_id");
-                let owner_id_str: String = row.get("owner_id");
-
-                let encrypted_key: String = row.get("decryption_key");
-                let plaintext_key = self.decrypt_key(&encrypted_key)?;
-
-                Ok(Some(AssetLicense {
-                    id: Uuid::parse_str(&id)
-                        .map_err(|_| NurtureError::Infrastructure("ID parse error".into()))?,
-                    transaction_id: Uuid::parse_str(&tx_id)
-                        .map_err(|_| NurtureError::Infrastructure("TX ID parse error".into()))?,
-                    asset_id: Uuid::parse_str(&asset_id_str)
-                        .map_err(|_| NurtureError::Infrastructure("Asset ID parse error".into()))?,
-                    owner_id: ActorId(Uuid::parse_str(&owner_id_str).map_err(|_| {
-                        NurtureError::Infrastructure("Owner ID parse error".into())
-                    })?),
-                    decryption_key: plaintext_key,
+        let res: Result<Option<RowData>, AiomeError> = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: "SELECT id, transaction_id, asset_id, owner_id, decryption_key, issued_at, expires_at, revoked_at \
+                     FROM nurture_licenses \
+                     WHERE owner_id = ? AND asset_id = ? AND revoked_at IS NULL \
+                     AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) \
+                     ORDER BY issued_at DESC LIMIT 1",
+            |row| {
+                Ok::<RowData, AiomeError>(RowData {
+                    id: row.get("id"),
+                    tx_id: row.get("transaction_id"),
+                    asset_id_str: row.get("asset_id"),
+                    owner_id_str: row.get("owner_id"),
+                    encrypted_key: row.get("decryption_key"),
                     issued_at: row.get("issued_at"),
                     expires_at: row.get("expires_at"),
                     revoked_at: row.get("revoked_at"),
+                })
+            },
+            pg: "SELECT id, transaction_id, asset_id, owner_id, decryption_key, issued_at, expires_at, revoked_at \
+                 FROM nurture_licenses \
+                 WHERE owner_id = $1 AND asset_id = $2 AND revoked_at IS NULL \
+                 AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) \
+                 ORDER BY issued_at DESC LIMIT 1",
+            |row| {
+                Ok::<RowData, AiomeError>(RowData {
+                    id: row.get("id"),
+                    tx_id: row.get("transaction_id"),
+                    asset_id_str: row.get("asset_id"),
+                    owner_id_str: row.get("owner_id"),
+                    encrypted_key: row.get("decryption_key"),
+                    issued_at: row.get("issued_at"),
+                    expires_at: row.get("expires_at"),
+                    revoked_at: row.get("revoked_at"),
+                })
+            },
+            owner.0.to_string(),
+            asset_id.to_string()
+        );
+
+        let row_opt =
+            res.map_err(|e| NurtureError::Infrastructure(format!("ライセンス取得失敗: {}", e)))?;
+
+        match row_opt {
+            Some(row) => {
+                let plaintext_key = self.decrypt_key(&row.encrypted_key)?;
+
+                Ok(Some(AssetLicense {
+                    id: Uuid::parse_str(&row.id)
+                        .map_err(|_| NurtureError::Infrastructure("ID parse error".into()))?,
+                    transaction_id: Uuid::parse_str(&row.tx_id)
+                        .map_err(|_| NurtureError::Infrastructure("TX ID parse error".into()))?,
+                    asset_id: Uuid::parse_str(&row.asset_id_str)
+                        .map_err(|_| NurtureError::Infrastructure("Asset ID parse error".into()))?,
+                    owner_id: ActorId(Uuid::parse_str(&row.owner_id_str).map_err(|_| {
+                        NurtureError::Infrastructure("Owner ID parse error".into())
+                    })?),
+                    decryption_key: plaintext_key,
+                    issued_at: row.issued_at,
+                    expires_at: row.expires_at,
+                    revoked_at: row.revoked_at,
                 }))
             }
             None => Ok(None),
@@ -155,12 +191,14 @@ impl LicenseStore for SQLiteLicenseStore {
     }
 
     async fn revoke_license(&self, license_id: &Uuid) -> Result<(), NurtureError> {
-        sqlx::query("UPDATE nurture_licenses SET revoked_at = CURRENT_TIMESTAMP WHERE id = ?")
-            .bind(license_id.to_string())
-            .execute(&self.pool)
-            .await
-            .map(|_| ())
-            .map_err(|e| NurtureError::Infrastructure(format!("ライセンス取消失敗: {}", e)))
+        sql_exec!(
+            &self.pool,
+            sqlite: "UPDATE nurture_licenses SET revoked_at = CURRENT_TIMESTAMP WHERE id = ?",
+            pg: "UPDATE nurture_licenses SET revoked_at = CURRENT_TIMESTAMP WHERE id = $1",
+            license_id.to_string()
+        )
+        .map(|_| ())
+        .map_err(|e| NurtureError::Infrastructure(format!("ライセンス取消失敗: {}", e)))
     }
 
     async fn transfer_license(
@@ -182,37 +220,40 @@ impl LicenseStore for SQLiteLicenseStore {
         Ok(())
     }
     async fn purge_expired_licenses(&self) -> Result<u64, NurtureError> {
-        let result = sqlx::query(
-            "DELETE FROM nurture_licenses 
-             WHERE (expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP)
-             OR revoked_at IS NOT NULL",
+        sql_exec!(
+            &self.pool,
+            sqlite: "DELETE FROM nurture_licenses WHERE (expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP) OR revoked_at IS NOT NULL",
+            pg: "DELETE FROM nurture_licenses WHERE (expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP) OR revoked_at IS NOT NULL"
         )
-        .execute(&self.pool)
-        .await
         .map_err(|e| {
             NurtureError::Infrastructure(format!("期限切れライセンスのパージ失敗: {}", e))
-        })?;
-
-        Ok(result.rows_affected())
+        })
     }
 }
 
 impl SQLiteLicenseStore {
     /// 内部利用・トランザクション(UoW)用の移転ロジック
     pub(crate) async fn transfer_license_internal(
-        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        tx: &mut DatabaseTransaction<'_>,
         master_key: &Secret<[u8; 32]>,
         old_license_id: &Uuid,
         new_license: &AssetLicense,
     ) -> Result<(), NurtureError> {
-        // 1. 古いライセンスを revoke (UPDATE)
-        let result = sqlx::query("UPDATE nurture_licenses SET revoked_at = CURRENT_TIMESTAMP WHERE id = ? AND revoked_at IS NULL")
-            .bind(old_license_id.to_string())
-            .execute(&mut **tx)
-            .await
-            .map_err(|e| NurtureError::Infrastructure(format!("ライセンス取消クエリ実行失敗: {}", e)))?;
+        let query_revoke = "UPDATE nurture_licenses SET revoked_at = CURRENT_TIMESTAMP WHERE id = ? AND revoked_at IS NULL";
+        let query_revoke_pg = "UPDATE nurture_licenses SET revoked_at = CURRENT_TIMESTAMP WHERE id = $1 AND revoked_at IS NULL";
 
-        if result.rows_affected() == 0 {
+        // 1. 古いライセンスを revoke (UPDATE)
+        let rows_affected = sql_tx_exec!(
+            tx,
+            sqlite: query_revoke,
+            pg: query_revoke_pg,
+            old_license_id.to_string()
+        )
+        .map_err(|e| {
+            NurtureError::Infrastructure(format!("ライセンス取消クエリ実行失敗: {}", e))
+        })?;
+
+        if rows_affected == 0 {
             return Err(NurtureError::Infrastructure(format!(
                 "ライセンス無効化に失敗しました。対象のライセンスが存在しないか、既に無効化されています: {}",
                 old_license_id
@@ -246,19 +287,23 @@ impl SQLiteLicenseStore {
         let b64_cipher = BASE64.encode(&ciphertext);
         let encrypted_key = format!("{}:{}", b64_nonce, b64_cipher);
 
-        sqlx::query(
-            "INSERT INTO nurture_licenses (id, transaction_id, asset_id, owner_id, decryption_key, issued_at, expires_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
+        let query_insert = "INSERT INTO nurture_licenses (id, transaction_id, asset_id, owner_id, decryption_key, issued_at, expires_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)";
+        let query_insert_pg = "INSERT INTO nurture_licenses (id, transaction_id, asset_id, owner_id, decryption_key, issued_at, expires_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)";
+
+        sql_tx_exec!(
+            tx,
+            sqlite: query_insert,
+            pg: query_insert_pg,
+            new_license.id.to_string(),
+            new_license.transaction_id.to_string(),
+            new_license.asset_id.to_string(),
+            new_license.owner_id.0.to_string(),
+            encrypted_key,
+            new_license.issued_at,
+            new_license.expires_at
         )
-        .bind(new_license.id.to_string())
-        .bind(new_license.transaction_id.to_string())
-        .bind(new_license.asset_id.to_string())
-        .bind(new_license.owner_id.0.to_string())
-        .bind(encrypted_key)
-        .bind(new_license.issued_at)
-        .bind(new_license.expires_at)
-        .execute(&mut **tx)
-        .await
         .map_err(|e| NurtureError::Infrastructure(format!("ライセンス発行失敗: {}", e)))?;
 
         Ok(())
@@ -273,7 +318,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_license_key_encryption() {
-        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+        let sqlite_pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
         // Setup schema
         sqlx::query(
             "CREATE TABLE nurture_licenses (
@@ -287,13 +332,14 @@ mod tests {
                 revoked_at TIMESTAMP
             )",
         )
-        .execute(&pool)
+        .execute(&sqlite_pool)
         .await
         .unwrap();
 
+        let pool = DatabasePool::Sqlite(sqlite_pool.clone());
         let master_key_seed =
             secrecy::SecretString::from("test_super_secret_seed_phrase".to_string());
-        let store = SQLiteLicenseStore::new(pool.clone(), &master_key_seed);
+        let store = SQLiteLicenseStore::new(pool, &master_key_seed);
 
         let license = AssetLicense {
             id: Uuid::new_v4(),
@@ -312,7 +358,7 @@ mod tests {
         // Assert - Check DB to ensure it's NOT plaintext
         let row = sqlx::query("SELECT decryption_key FROM nurture_licenses WHERE id = ?")
             .bind(license.id.to_string())
-            .fetch_one(&pool)
+            .fetch_one(&sqlite_pool)
             .await
             .unwrap();
         let db_key: String = row.get("decryption_key");

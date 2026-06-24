@@ -23,7 +23,10 @@ async fn test_db_initialized_in_wal_mode() {
         .connect_with(options)
         .await
         .unwrap();
-    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    sqlx::migrate!("../../migrations/sqlite")
+        .run(&pool)
+        .await
+        .unwrap();
 
     let store = Arc::new(
         nurture_bridge::job_queue::trajectory_store::SqliteTrajectoryStore::new(
@@ -45,7 +48,7 @@ async fn test_db_initialized_in_wal_mode() {
 
     // Act
     let state = AppState::init(
-        pool.clone(),
+        nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         job_queue,
         policy,
         system_id,
@@ -65,7 +68,7 @@ async fn test_db_initialized_in_wal_mode() {
 
     // Assert
     let journal_mode: String = sqlx::query_scalar("PRAGMA journal_mode")
-        .fetch_one(&state.pool)
+        .fetch_one(state.pool.get_sqlite_pool().unwrap())
         .await
         .expect("Failed to query journal_mode");
 
@@ -76,9 +79,115 @@ async fn test_db_initialized_in_wal_mode() {
     );
 
     let busy_timeout: i64 = sqlx::query_scalar("PRAGMA busy_timeout")
-        .fetch_one(&state.pool)
+        .fetch_one(state.pool.get_sqlite_pool().unwrap())
         .await
         .expect("Failed to query busy_timeout");
 
     assert_eq!(busy_timeout, 5000, "Database busy_timeout should be 5000ms");
+}
+
+#[tokio::test]
+async fn test_postgres_pool_migration_and_basic_ops() {
+    use nurture_bridge::db::DatabasePool;
+
+    let pg_url = std::env::var("TEST_PG_URL").unwrap_or_else(|_| {
+        "postgres://aiome_test_user:aiome_test_password@localhost:5433/aiome_test_db".to_string()
+    });
+
+    let pool = match DatabasePool::new_postgres(&pg_url).await {
+        Ok(p) => p,
+        Err(e) => {
+            println!("Skipping Postgres test: connection failed: {:?}", e);
+            return;
+        }
+    };
+
+    if let DatabasePool::Postgres(pg_pool) = &pool {
+        sqlx::migrate!("../../migrations/postgres")
+            .run(pg_pool)
+            .await
+            .expect("PostgreSQL migration failed");
+    }
+
+    let actor_id = Uuid::new_v4().to_string();
+
+    // Clean up if somehow remaining
+    let _ = nurture_bridge::sql_exec!(
+        &pool,
+        sqlite: "DELETE FROM nurture_wallets WHERE actor_id = ?",
+        pg: "DELETE FROM nurture_wallets WHERE actor_id = $1",
+        &actor_id
+    );
+
+    // Act: Insert (Positive Test)
+    let insert_res = nurture_bridge::sql_exec!(
+        &pool,
+        sqlite: "INSERT INTO nurture_wallets (actor_id, balance, version, last_reset) VALUES (?, 100, 1, CURRENT_TIMESTAMP)",
+        pg: "INSERT INTO nurture_wallets (actor_id, balance, version, last_reset) VALUES ($1, 100, 1, CURRENT_TIMESTAMP)",
+        &actor_id
+    );
+    assert!(
+        insert_res.is_ok(),
+        "PostgreSQL insert failed: {:?}",
+        insert_res.err()
+    );
+
+    // Act: Fetch via EconomyLedger (Positive Test)
+    use nurture_core::ledger::EconomyLedger;
+    use nurture_infra::economy::ledger::DatabaseEconomyLedger;
+
+    let ledger = DatabaseEconomyLedger::new(pool.clone());
+    let actor = commerce_protocol::identity::ActorId(Uuid::parse_str(&actor_id).unwrap());
+
+    let wallet_res = ledger.get_balance(&actor).await;
+    assert!(
+        wallet_res.is_ok(),
+        "Failed to get balance via ledger: {:?}",
+        wallet_res.err()
+    );
+    let wallet = wallet_res.unwrap();
+    assert_eq!(wallet.coin.balance, 100);
+}
+
+#[tokio::test]
+async fn test_postgres_negative_violation() {
+    use nurture_bridge::db::DatabasePool;
+
+    let pg_url = std::env::var("TEST_PG_URL").unwrap_or_else(|_| {
+        "postgres://aiome_test_user:aiome_test_password@localhost:5433/aiome_test_db".to_string()
+    });
+
+    let pool = match DatabasePool::new_postgres(&pg_url).await {
+        Ok(p) => p,
+        Err(_) => return, // Skip
+    };
+
+    if let DatabasePool::Postgres(pg_pool) = &pool {
+        let _ = sqlx::migrate!("../../migrations/postgres")
+            .run(pg_pool)
+            .await;
+    }
+
+    let actor_id = Uuid::new_v4().to_string();
+
+    // First insert should succeed
+    let insert1 = nurture_bridge::sql_exec!(
+        &pool,
+        sqlite: "INSERT INTO nurture_wallets (actor_id, balance, version, last_reset) VALUES (?, 100, 1, CURRENT_TIMESTAMP)",
+        pg: "INSERT INTO nurture_wallets (actor_id, balance, version, last_reset) VALUES ($1, 100, 1, CURRENT_TIMESTAMP)",
+        &actor_id
+    );
+    assert!(insert1.is_ok());
+
+    // Second insert with duplicate actor_id (Negative Test: Unique constraint violation)
+    let insert2 = nurture_bridge::sql_exec!(
+        &pool,
+        sqlite: "INSERT INTO nurture_wallets (actor_id, balance, version, last_reset) VALUES (?, 200, 1, CURRENT_TIMESTAMP)",
+        pg: "INSERT INTO nurture_wallets (actor_id, balance, version, last_reset) VALUES ($1, 200, 1, CURRENT_TIMESTAMP)",
+        &actor_id
+    );
+    assert!(
+        insert2.is_err(),
+        "Duplicate insert should fail under unique constraint"
+    );
 }

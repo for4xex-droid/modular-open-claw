@@ -16,15 +16,6 @@
 
 # 本番公開用ドメイン（環境変数 DOMAIN_NAME から読み込み。デフォルトは localhost）
 {$DOMAIN_NAME:localhost} {
-    # 3015 ポートへのリバースプロキシ転送
-    reverse_proxy api-server:3015 {
-        # ホストヘッダーと中継プロキシ情報を安全にフォワード (SSRF & Webhook 整合性のため)
-        header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-    }
-
     # セキュリティヘッダーの付与 (Aegis security guard)
     header {
         # HSTS (Strict-Transport-Security): 強制 HTTPS (2年間有効)
@@ -45,5 +36,23 @@
         # Content-Security-Policy (CSP) - 自己サーバーと安全なアセットのみ許可
         # (注: フロントエンド連携のため 'unsafe-inline' を一時的に許容)
         Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' wss: https:;"
+    }
+
+    # samsara-hub Federation (サブパス)
+    handle /api/v1/federation/* {
+        reverse_proxy samsara-hub:3016
+    }
+    handle /api/v1/health {
+        reverse_proxy samsara-hub:3016
+    }
+
+    # デフォルト: api-server (メイン — Webhook 含む全 API ルート)
+    handle {
+        reverse_proxy api-server:3015 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
     }
 }

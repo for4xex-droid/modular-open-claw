@@ -1,6 +1,39 @@
 ## [Unreleased]
 
+### Added
+- **`DatabasePool::backup` のセキュリティ強化 (TDD による実装)**:
+  - SQLite の `backup` メソッドにおいて、パスにディレクトリトラバーサル文字（`..`）や SQL / コマンドインジェクションの特殊文字が含まれる場合に、早期に `AiomeError` として拒否する厳格なバリデーションを追加。
+  - テスト `test_sqlite_backup_path_traversal_and_injection_denied` を追加し、不正な文字の拒否を検証（TDDのRED/GREENを完了）。
+
+### Changed
+- **`SQLiteEconomyLedger` の改名と dual-dialect 保守性の向上**:
+  - 構造体名を `DatabaseEconomyLedger` にリファクタリング。PostgreSQL移行に伴い、SQLite 依存のように見える命名のねじれを解消。
+  - `nurture-infra`、`nurture-api`、各テストコード内での参照を `DatabaseEconomyLedger` に一括更新。
+  - 段階的な移行や後方互換性のために、型エイリアス `pub type SQLiteEconomyLedger = DatabaseEconomyLedger;` を設置。
+
 ### Fixed
+- **未使用インポートの警告クリーンアップ**:
+  - `commerce_impl.rs` および `gdpr.rs` にあった未使用の警告（`sql_exec`, `DatabaseTransaction`, `sqlx::Row`, `AiomeError`）を解消し、コンパイル警告のないクリーンなビルド状態を維持。
+- **`nurture-api` と `nurture-infra` の PostgreSQL 互換および DatabasePool 移行**:
+  - `DatabasePool`（SQLite/PostgreSQL デュアルバリアント）を使用した Postgres 互換構造への移行と SQLite でのインメモリ互換性の両立。
+  - `DATABASE_URL` に基づいた SQLite/PostgreSQL 接続アームの自動判別と自動マイグレーション処理のインテグレーション。
+  - テストコード（`wallet_api_test.rs`, `mcp_server_test.rs`, `commerce_engine_test.rs`, `buy_flow_e2e.rs`, `db_config_test.rs`, `internal_routes_test.rs`, `upload.rs`, `settlement.rs`, `ledger.rs`）における `DatabasePool` の適用およびマイグレーションパスの `../../migrations/sqlite` への修正。
+
+### Fixed
+- **PostgreSQL マイグレーションのデータ型不整合およびテストでの型検証不足の修正**:
+  - `commercial/migrations/postgres/` 配下の 13 個のマイグレーションファイルにおいて、`DATETIME` および `TIMESTAMP` 型を `TIMESTAMPTZ` に修正。これにより、Rust 側の `DateTime<Utc>` 型へのデコード時に発生していた `ColumnDecode` エラー（タイムゾーン情報の不整合）を解消。
+  - `commercial/apps/nurture-api/tests/db_config_test.rs` に本物の PostgreSQL インスタンス（ポート5433）に接続してマイグレーションおよび本番の `SQLiteEconomyLedger::get_balance` を実行する Positive/Negative テスト（一意性制約エラー検知検証を含む）を追加。
+- **DatabaseTransaction のマクロ呼び出し時における SQLite デリファレンスエラーの解消**:
+  - `sql_tx_exec!` や `sql_tx_fetch_optional!` 内でのトランザクション変数 `$tx` を `&mut tx` のように参照で渡すことで、`SqliteConnection cannot be dereferenced` エラーを解消。
+- **query_as の FromRow 制限に伴う型不整合の修正**:
+  - `sqlx::query_as` の仕様に合わせ、`String` 単体へのマッピングから `(String,)` タプル型へのマッピングに変更。
+- **本番デプロイにおけるコンテナ間通信およびバインドアドレス不整合の修正**:
+  - `apps/samsara-hub/src/main.rs` にて、`SAMSARA_BIND_ADDR` 環境変数を追加し、`127.0.0.1` へのハードコードを外部制御可能に改修。
+  - `docker-compose.production.yml` にて、`key-proxy` に `BIND_ALL=true`、`nurture-api` に `NURTURE_BIND_ADDR=0.0.0.0`、`samsara-hub` に `SAMSARA_BIND_ADDR=0.0.0.0` をそれぞれ注入。
+  - `shadow-worker` の `healthcheck.test` を、ランタイムイメージに含まれない `grpc_health_probe` から bash の `/dev/tcp` による TCP 疎通確認へ変更。
+- **key-proxy および api-server の macOS ローカル環境での起動タイムアウト/フリーズの修正**:
+  - `apps/key-proxy/src/main.rs` にて、開発モード (`AIOME_DEV_MODE=1`) 時には `ptrace::traceme()` によるアンチデバッグシグナルトラップ処理をスキップするように条件分岐を追加。これにより、デバッガを介さない `cargo run` 時にプロセスが `TX` (Stopped) 状態で固まる問題を解消。
+  - `libs/infrastructure/src/security/sqlite_vault_backend.rs` にて、`VAULT_MASTER_PASSWORD` のロード時に macOS Keychain からの取得を優先していた順序を入れ替え、環境変数を最優先で確認するように変更。これにより、非対話型バックグラウンド環境で `security` コマンドが Keychain プロンプト待ちで無限にブロックする問題を解消。
 - **key-proxy ヘルスチェックのデッドロック解消**:
   - `apps/key-proxy/src/auth.rs` にて、ヘルスチェックエンドポイント `/api/v1/health` へのリクエストを認証チェックの前にバイパスするようガード条件を追加。これによって、`api-server` 起動時に `key-proxy` への疎通確認が `401 Unauthorized` で拒否され起動が停止するデッドロック問題を解消。
   - `apps/key-proxy/src/tests.rs` のヘルスチェックテストを認証バイパス後の期待値 `200 OK` に更新し、正常動作を保証。

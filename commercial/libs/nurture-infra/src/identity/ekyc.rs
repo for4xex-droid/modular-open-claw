@@ -8,7 +8,10 @@
 use async_trait::async_trait;
 use commerce_protocol::error::NurtureError;
 use commerce_protocol::identity::ActorId;
-use sqlx::SqlitePool;
+use nurture_bridge::db::DatabasePool;
+use nurture_bridge::error::AiomeError;
+use nurture_bridge::{sql_exec, sql_fetch_optional_map};
+use sqlx::Row;
 
 #[async_trait]
 pub trait EkycStore: Send + Sync {
@@ -17,11 +20,11 @@ pub trait EkycStore: Send + Sync {
 }
 
 pub struct SQLiteEkycStore {
-    pool: SqlitePool,
+    pool: DatabasePool,
 }
 
 impl SQLiteEkycStore {
-    pub fn new(pool: SqlitePool) -> Self {
+    pub fn new(pool: DatabasePool) -> Self {
         Self { pool }
     }
 }
@@ -29,38 +32,33 @@ impl SQLiteEkycStore {
 #[async_trait]
 impl EkycStore for SQLiteEkycStore {
     async fn is_verified(&self, actor_id: &ActorId) -> Result<bool, NurtureError> {
-        let row = sqlx::query("SELECT status FROM nurture_kyc_status WHERE actor_id = ?")
-            .bind(actor_id.0.to_string())
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| {
-                NurtureError::Infrastructure(format!("Database error in KYC check: {}", e))
-            })?;
+        let status = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: "SELECT status FROM nurture_kyc_status WHERE actor_id = ?",
+            |row| Ok::<String, AiomeError>(row.get("status")),
+            pg: "SELECT status FROM nurture_kyc_status WHERE actor_id = $1",
+            |row| Ok::<String, AiomeError>(row.get("status")),
+            actor_id.0.to_string()
+        )
+        .map_err(|e| NurtureError::Infrastructure(format!("Database error in KYC check: {}", e)))?;
 
-        if let Some(r) = row {
-            use sqlx::Row;
-            let status: String = r.try_get("status").unwrap_or_else(|e| {
-                tracing::warn!("KYC status column extraction failed (schema issue?): {}", e);
-                "pending".to_string()
-            });
-            Ok(status == "verified")
-        } else {
-            Ok(false)
-        }
+        Ok(status.is_some_and(|s| s == "verified"))
     }
 
     async fn set_verified(&self, actor_id: &ActorId, session_id: &str) -> Result<(), NurtureError> {
-        sqlx::query(
-            "INSERT INTO nurture_kyc_status (actor_id, status, verified_at, stripe_session_id) 
-             VALUES (?, 'verified', CURRENT_TIMESTAMP, ?) 
-             ON CONFLICT(actor_id) DO UPDATE SET status = 'verified', stripe_session_id = excluded.stripe_session_id, verified_at = CURRENT_TIMESTAMP"
+        sql_exec!(
+            &self.pool,
+            sqlite: "INSERT INTO nurture_kyc_status (actor_id, status, verified_at, stripe_session_id) 
+                     VALUES (?, 'verified', CURRENT_TIMESTAMP, ?) 
+                     ON CONFLICT(actor_id) DO UPDATE SET status = 'verified', stripe_session_id = excluded.stripe_session_id, verified_at = CURRENT_TIMESTAMP",
+            pg: "INSERT INTO nurture_kyc_status (actor_id, status, verified_at, stripe_session_id) 
+                     VALUES ($1, 'verified', CURRENT_TIMESTAMP, $2) 
+                     ON CONFLICT(actor_id) DO UPDATE SET status = 'verified', stripe_session_id = excluded.stripe_session_id, verified_at = CURRENT_TIMESTAMP",
+            actor_id.0.to_string(),
+            session_id
         )
-        .bind(actor_id.0.to_string())
-        .bind(session_id)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| NurtureError::Infrastructure(format!("Database error saving KYC status: {}", e)))?;
-        Ok(())
+        .map(|_| ())
+        .map_err(|e| NurtureError::Infrastructure(format!("Database error saving KYC status: {}", e)))
     }
 }
 
