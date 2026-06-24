@@ -139,3 +139,12 @@ test_logic
 # Tauri Sidecar Binaries (strictly kept local)
 /apps/management-console/src-tauri/binaries/
 
+# Temporary scratch directory
+/scratch/
+
+# Local postgres data
+/docker/postgres/
+
+# Tauri dev workspace
+/apps/management-console/src-tauri/workspace/
+
