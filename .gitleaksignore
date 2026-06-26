@@ -29,3 +29,6 @@ dcc3c0272f6306f1002db0183834378c65ed48cc:libs/infrastructure/src/grpc/a2a_grpc_c
 61dafdee4f7b7d1e491d95c1812dd7cb717cda46:.codeql-db/db-rust/default/cache/cached-strings/pools/0/pageDump/page-000000002:generic-api-key:1
 61dafdee4f7b7d1e491d95c1812dd7cb717cda46:.codeql-db/db-rust/default/cache/cached-strings/pools/0/pageDump/page-000000003:generic-api-key:9
 61dafdee4f7b7d1e491d95c1812dd7cb717cda46:.codeql-db/db-rust/default/pools/0/pageDump/page-000000003:generic-api-key:66
+
+# Stripe Webhook Secret False Positive in docs history
+8f5c66305edc7724223dbb0b9f4b32c16f823f82:docs/operations/api_key_rotation.md:generic-api-key:119

@@ -39,6 +39,12 @@ jest.mock('biome-engine', () => {
   };
 });
 
+// Mock Worker is now defined globally in setupTests.ts
+const getLastWorkerInstance = () => (global as any).lastWorkerInstance;
+
+
+
+
 // static メソッドをモックするために追加定義
 const wasm = require('biome-engine');
 wasm.BiomeEngine.deserialize = jest.fn().mockImplementation((json: string) => {
@@ -146,7 +152,7 @@ describe('useBiomeEngine Hook', () => {
       result.current.tick();
     });
 
-    expect(result.current.generation).toBe(1);
+    await waitFor(() => expect(result.current.generation).toBe(1));
   });
 
   it('因果逆行 (rewind) を実行した際に世代数が戻ること', async () => {
@@ -160,7 +166,7 @@ describe('useBiomeEngine Hook', () => {
         result.current.tick();
       }
     });
-    expect(result.current.generation).toBe(5);
+    await waitFor(() => expect(result.current.generation).toBe(5));
 
     // 3世代戻す
     act(() => {
@@ -168,7 +174,7 @@ describe('useBiomeEngine Hook', () => {
       expect(success).toBe(true);
     });
 
-    expect(result.current.generation).toBe(2);
+    await waitFor(() => expect(result.current.generation).toBe(2));
   });
 
   it('ウィンドウ非表示時に 1fps tick の setInterval が開始され、表示時にクリアされること', async () => {
@@ -198,7 +204,7 @@ describe('useBiomeEngine Hook', () => {
     });
 
     // generation が増加していることを確認
-    expect(result.current.generation).toBeGreaterThan(0);
+    await waitFor(() => expect(result.current.generation).toBeGreaterThan(0));
 
     // visible に戻す
     act(() => {
@@ -218,48 +224,41 @@ describe('useBiomeEngine Hook', () => {
   });
 
   it('無効な seed 値 (NaN, Infinity など) が渡された場合に 0 にフォールバックすること', async () => {
-    const wasm = require('biome-engine');
-    
     // NaN の場合
     const { result: resultNaN } = renderHook(() => useBiomeEngine({ seed: NaN }));
     await waitFor(() => expect(resultNaN.current.loading).toBe(false));
-    expect(wasm.BiomeEngine).toHaveBeenCalledWith(BigInt(0));
+    expect(getLastWorkerInstance()?.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'init', seed: 0 })
+    );
 
     // Infinity の場合
     const { result: resultInf } = renderHook(() => useBiomeEngine({ seed: Infinity }));
     await waitFor(() => expect(resultInf.current.loading).toBe(false));
-    expect(wasm.BiomeEngine).toHaveBeenCalledWith(BigInt(0));
+    expect(getLastWorkerInstance()?.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'init', seed: 0 })
+    );
   });
 
-  it('アンマウントまたは seed 変更時に前の WASM インスタンスが free されること', async () => {
-    const wasm = require('biome-engine');
-    
+  it('アンマウントまたは seed 変更時に前の Worker インスタンスが terminate されること', async () => {
     // 最初フックのロード
     const { result, rerender, unmount } = renderHook(({ seed }) => useBiomeEngine({ seed }), {
       initialProps: { seed: 42 }
     });
     
     await waitFor(() => expect(result.current.loading).toBe(false));
-    
-    // mockImplementation で返されるインスタンスを取得するための参照
-    const instances = (wasm.BiomeEngine as jest.Mock).mock.results;
-    expect(instances.length).toBe(1);
-    const firstInstance = instances[0].value;
+    const firstWorker = getLastWorkerInstance();
     
     // seed を変更する
     rerender({ seed: 100 });
     await waitFor(() => expect(result.current.loading).toBe(false));
     
-    // 最初のインスタンスが free されていることを期待
-    expect(firstInstance.free).toHaveBeenCalled();
-    
-    // 2番目のインスタンス
-    expect(instances.length).toBe(2);
-    const secondInstance = instances[1].value;
+    // 最初の Worker が terminate されていることを期待
+    expect(firstWorker?.terminate).toHaveBeenCalled();
+    const secondWorker = getLastWorkerInstance();
     
     // アンマウント
     unmount();
-    expect(secondInstance.free).toHaveBeenCalled();
+    expect(secondWorker?.terminate).toHaveBeenCalled();
   });
 
   it('seed が変化しない場合、返される API 関数の参照が安定していること', async () => {
@@ -283,13 +282,15 @@ describe('useBiomeEngine Hook', () => {
     expect(result.current.applyCrisis).toBe(initialApplyCrisis);
   });
 
-  it('IndexedDB に保存された状態がある場合、初期化時に deserialize で状態を復元すること', async () => {
+  it('IndexedDB に保存された状態がある場合、初期化時に savedState が Worker に渡され復元されること', async () => {
     mockDbStore['seed_42'] = '{"generation":150,"seed":42}';
     
     const { result } = renderHook(() => useBiomeEngine({ seed: 42 }));
     await waitFor(() => expect(result.current.loading).toBe(false));
     
-    expect(wasm.BiomeEngine.deserialize).toHaveBeenCalledWith('{"generation":150,"seed":42}');
+    expect(getLastWorkerInstance()?.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'init', seed: 42, savedState: '{"generation":150,"seed":42}' })
+    );
     expect(result.current.generation).toBe(150);
   });
 
@@ -304,9 +305,41 @@ describe('useBiomeEngine Hook', () => {
     
     // 非同期保存を待つ
     await waitFor(() => {
-      expect(mockDbStore['seed_42']).toBe('{"generation":0,"seed":42}');
+      expect(mockDbStore['seed_42']).toBe('{"generation":1,"seed":42}');
     });
   });
+
+  it('初期化時に Web Worker が作成され、init メッセージが送信されること', async () => {
+    const { result } = renderHook(() => useBiomeEngine({ seed: 42 }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(getLastWorkerInstance()).not.toBeNull();
+    expect(getLastWorkerInstance()?.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'init', seed: 42 })
+    );
+  });
+
+  it('WASMの初期化エラー（異常系）が発生した場合に、error 状態がセットされ loading が false になること', async () => {
+    const { result } = renderHook(() => useBiomeEngine({ seed: -999 }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBe('Simulated WASM initialization failure');
+  });
+
+  it('エラー発生後に seed が変更された場合、error 状態がクリアされて loading が true になること', async () => {
+    const { result, rerender } = renderHook(({ seed }) => useBiomeEngine({ seed }), {
+      initialProps: { seed: -999 }
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.error).toBe('Simulated WASM initialization failure');
+
+    act(() => {
+      rerender({ seed: 42 });
+    });
+    expect(result.current.loading).toBe(true);
+    expect(result.current.error).toBeNull();
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+  });
 });
+
 
 

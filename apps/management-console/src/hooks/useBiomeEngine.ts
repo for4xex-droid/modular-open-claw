@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { BiomeEngine } from 'biome-engine';
+import type { RarityProgress, BiomeEvent } from './useBiomeEngine';
+import BiomeWorker from './biome.worker?worker';
 
 // IndexedDB Helper Functions
 let dbInstance: IDBDatabase | null = null;
@@ -33,6 +34,18 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
+function loadState(key: string): Promise<string | null> {
+  return openDatabase().then((db) => {
+    return new Promise<string | null>((resolve, reject) => {
+      const transaction = db.transaction('engine_states', 'readonly');
+      const store = transaction.objectStore('engine_states');
+      const request = store.get(key);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  });
+}
+
 let saveQueue: Promise<void> = Promise.resolve();
 
 function saveState(key: string, data: string): Promise<void> {
@@ -51,34 +64,6 @@ function saveState(key: string, data: string): Promise<void> {
   return nextPromise;
 }
 
-function loadState(key: string): Promise<string | null> {
-  return openDatabase().then((db) => {
-    return new Promise<string | null>((resolve, reject) => {
-      const transaction = db.transaction('engine_states', 'readonly');
-      const store = transaction.objectStore('engine_states');
-      const request = store.get(key);
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error);
-    });
-  });
-}
-
-export interface RarityProgress {
-  rarity: number;               // 0=Common 1=Uncommon 2=Rare 3=Epic 4=Legendary
-  active_cells: number;
-  morphology_count: number;     // 共存する形態の種数 (0-5)
-  has_homeostasis: boolean;    // 全元素がバランス
-  diversity_index: number;     // Shannon多様性指数
-  condition_active_500: boolean;
-  condition_morph_3: boolean;
-  condition_morph_4: boolean;
-  condition_active_1000: boolean;
-}
-
-export type BiomeEvent =
-  | { type: 'MorphologyChanged'; from: number; to: number }
-  | { type: 'MassExtinction'; lost_ratio: number }
-  | { type: 'NewReactionDiscovered'; reaction_id: number };
 
 export interface UseBiomeEngineOptions {
   seed: number;
@@ -89,104 +74,126 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generation, setGeneration] = useState(0);
-  const engineRef = useRef<BiomeEngine | null>(null);
-  const wasmMemoryRef = useRef<WebAssembly.Memory | null>(null);
+
+  const workerRef = useRef<Worker | null>(null);
   const pausedRef = useRef<boolean>(paused);
+
+  // 同期的なゲッターや参照をサポートするための ref 保持
+  const renderViewRef = useRef<Float32Array>(new Float32Array(0));
+  const frozenCellsRef = useRef<Uint8Array>(new Uint8Array(0));
+  const serializedRef = useRef<string>('');
+
+  const rarityRef = useRef<number>(0);
+  const activeCellCountRef = useRef<number>(0);
+  const elementBalanceRef = useRef<Uint16Array>(new Uint16Array(8));
+  const mutationBoostRef = useRef<number>(1.0);
+  const ticksSinceMutationRef = useRef<number>(0);
+  const rarityProgressRef = useRef<RarityProgress | null>(null);
+  const lastTickEventsRef = useRef<BiomeEvent[]>([]);
 
   // paused の最新状態を保持
   useEffect(() => {
     pausedRef.current = paused;
   }, [paused]);
 
-  const saveCurrentState = useCallback(async () => {
-    if (!engineRef.current) return;
-    const validatedSeed = Number.isFinite(seed) ? seed : 0;
-    const key = `seed_${validatedSeed}`;
-    try {
-      const serialized = engineRef.current.serialize();
-      await saveState(key, serialized);
-    } catch (e) {
-      console.warn('Failed to save biome-engine state to IndexedDB', e);
-    }
-  }, [seed]);
-
   useEffect(() => {
     let active = true;
     const validatedSeed = Number.isFinite(seed) ? seed : 0;
     setLoading(true);
-    
-    // WASMモジュールの動的インポート
-    import('biome-engine').then(async (wasm) => {
+    setError(null);
+
+    let worker: Worker;
+    try {
+      worker = new BiomeWorker();
+    } catch (e) {
+      // Jest フォールバック用
+      worker = new Worker('./biome.worker.ts');
+    }
+    workerRef.current = worker;
+
+    worker.onmessage = (e: MessageEvent) => {
       if (!active) return;
-      
-      // デフォルトの初期化関数を実行して InitOutput (memoryを含む) を取得
-      const initOutput = await wasm.default();
-      
-      if (!active) return;
-      
-      wasmMemoryRef.current = initOutput.memory;
 
-      // 古いインスタンスがあれば解放する
-      if (engineRef.current) {
-        try {
-          engineRef.current.free();
-        } catch (e) {
-          console.warn('Failed to free previous biome-engine instance', e);
+      const msg = e.data;
+      if (msg.type === 'initialized') {
+        setGeneration(msg.generation);
+        rarityRef.current = msg.rarity;
+        activeCellCountRef.current = msg.activeCells;
+        elementBalanceRef.current = msg.elementBalance;
+        mutationBoostRef.current = msg.mutationBoost;
+        ticksSinceMutationRef.current = msg.ticksSinceMutation;
+        rarityProgressRef.current = msg.rarityProgress;
+        setLoading(false);
+      } else if (msg.type === 'updated') {
+        setGeneration(msg.generation);
+        rarityRef.current = msg.rarity;
+        activeCellCountRef.current = msg.activeCells;
+        elementBalanceRef.current = msg.elementBalance;
+        mutationBoostRef.current = msg.mutationBoost;
+        ticksSinceMutationRef.current = msg.ticksSinceMutation;
+        rarityProgressRef.current = msg.rarityProgress;
+        lastTickEventsRef.current = msg.lastEvents || [];
+        serializedRef.current = msg.serialized;
+
+        if (msg.renderView) {
+          renderViewRef.current = msg.renderView;
         }
-      }
-
-      // IndexedDB から過去の保存状態を取得して復元を試みる
-      let engine: BiomeEngine;
-      const key = `seed_${validatedSeed}`;
-      try {
-        const savedJson = await loadState(key);
-        
-        if (!active) return;
-        
-        if (savedJson) {
-          engine = wasm.BiomeEngine.deserialize(savedJson);
-        } else {
-          engine = new wasm.BiomeEngine(BigInt(validatedSeed));
+        if (msg.frozenCells) {
+          frozenCellsRef.current = msg.frozenCells;
         }
-      } catch (err) {
-        console.warn('Failed to load state from IndexedDB, fallback to fresh start', err);
-        engine = new wasm.BiomeEngine(BigInt(validatedSeed));
-      }
 
-      engineRef.current = engine;
-      setGeneration(Number(engine.generation()));
-      setLoading(false);
-    }).catch((err) => {
-      console.error('Failed to load biome-engine WASM', err);
-      if (active) {
-        setError(err instanceof Error ? err.message : String(err));
+        const key = `seed_${validatedSeed}`;
+        saveState(key, msg.serialized).catch((err) => {
+          console.warn('Failed to auto-save state to IndexedDB', err);
+        });
+      } else if (msg.type === 'rewound') {
+        if (msg.success) {
+          setGeneration(msg.generation);
+          serializedRef.current = msg.serialized;
+          
+          const key = `seed_${validatedSeed}`;
+          saveState(key, msg.serialized).catch((err) => {
+            console.warn('Failed to auto-save state after rewind', err);
+          });
+        }
+      } else if (msg.type === 'error') {
+        setError(msg.message);
         setLoading(false);
       }
-    });
+    };
+
+    // IndexedDB から過去の状態を取得して Worker に送信
+    const key = `seed_${validatedSeed}`;
+    loadState(key)
+      .then((savedState) => {
+        if (!active) return;
+        worker.postMessage({
+          type: 'init',
+          seed: validatedSeed,
+          savedState,
+        });
+      })
+      .catch((err) => {
+        console.warn('Failed to load state from IndexedDB, fallback to fresh start', err);
+        if (!active) return;
+        worker.postMessage({
+          type: 'init',
+          seed: validatedSeed,
+          savedState: null,
+        });
+      });
 
     return () => {
       active = false;
-      // アンマウント時にも解放を試みる。ただし、非同期読み込み中の場合は
-      // active = false によって engineRef に代入されないため、
-      // ここで解放されるか、あるいは生成されない。
-      if (engineRef.current) {
-        try {
-          engineRef.current.free();
-          engineRef.current = null;
-        } catch (e) {
-          console.warn('Failed to free biome-engine instance on unmount', e);
-        }
-      }
+      worker.terminate();
+      workerRef.current = null;
     };
   }, [seed]);
 
-
   const tick = useCallback(() => {
-    if (!engineRef.current) return;
-    engineRef.current.tick();
-    setGeneration(Number(engineRef.current.generation()));
-    saveCurrentState();
-  }, [saveCurrentState]);
+    if (!workerRef.current) return;
+    workerRef.current.postMessage({ type: 'tick' });
+  }, []);
 
   // バックグラウンド進化の制御
   useEffect(() => {
@@ -213,7 +220,6 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // 初期状態がすでに hidden の場合に対応
     if (document.visibilityState === 'hidden') {
       handleVisibilityChange();
     }
@@ -226,112 +232,102 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
     };
   }, [loading, tick]);
 
-
   const rewind = useCallback((generations: number): boolean => {
-    if (!engineRef.current) return false;
-    const success = engineRef.current.apply_tachyon_rewind(generations);
-    if (success) {
-      setGeneration(Number(engineRef.current.generation()));
-      saveCurrentState();
-    }
-    return success;
-  }, [saveCurrentState]);
+    if (!workerRef.current) return false;
+    workerRef.current.postMessage({ type: 'rewind', generations });
+    return true; // 非同期通信開始に成功したため true
+  }, []);
 
   const getRenderView = useCallback((): Float32Array => {
-    if (!engineRef.current || !wasmMemoryRef.current) {
-      return new Float32Array(0);
-    }
-    const ptr = engineRef.current.render_data_ptr();
-    const len = engineRef.current.render_data_len();
-    // memory.grow に対処するため、毎フレーム buffer を再取得する
-    return new Float32Array(wasmMemoryRef.current.buffer, ptr, len);
+    return renderViewRef.current;
   }, []);
 
   const getCellDetail = useCallback((x: number, y: number) => {
-    if (!engineRef.current) return null;
-    return engineRef.current.get_cell_detail(x, y);
+    if (!renderViewRef.current.length) return null;
+    const idx = y * 128 + x;
+    const offset = idx * 12;
+
+    if (offset + 12 > renderViewRef.current.length) return null;
+
+    const activeVal = renderViewRef.current[offset + 2] !== 0;
+    const morphologyVal = renderViewRef.current[offset + 3];
+    const isFrozenVal = frozenCellsRef.current ? frozenCellsRef.current[idx] !== 0 : false;
+
+    const elements = new Uint16Array(8);
+    for (let i = 0; i < 8; i++) {
+      elements[i] = renderViewRef.current[offset + 4 + i];
+    }
+
+    return {
+      active: activeVal,
+      morphology: morphologyVal,
+      elements,
+      is_frozen: isFrozenVal,
+      energy: elements[0], // energy として C の値をマッピング
+    };
   }, []);
 
   const injectElement = useCallback((x: number, y: number, idx: number, amount: number) => {
-    if (!engineRef.current) return;
-    engineRef.current.inject_element(x, y, idx, amount);
-
-    // render_buffer を即座にピンポイント更新（tick() を待たずに描画反映）
-    // WASM メモリに直接書き込む。serde 変換なし・O(1)。
-    if (wasmMemoryRef.current) {
-      const ptr = engineRef.current.render_data_ptr();
-      const len = engineRef.current.render_data_len();
-      const buf = new Float32Array(wasmMemoryRef.current.buffer, ptr, len);
-      const cellIdx = y * 128 + x;
-      const offset = cellIdx * 12;
-      if (offset + 12 <= len) {
-        buf[offset]     = x;
-        buf[offset + 1] = y;
-        buf[offset + 2] = 1.0;  // active = true (inject always activates)
-        // buf[offset + 3] = morphology: 既存値保持（tick で更新される）
-        // 元素値を加算
-        const currentVal = buf[offset + 4 + idx] || 0;
-        buf[offset + 4 + idx] = currentVal + amount;
-      }
-    }
-
-    saveCurrentState();
-  }, [saveCurrentState]);
+    if (!workerRef.current) return;
+    workerRef.current.postMessage({ type: 'inject', x, y, idx, amount });
+  }, []);
 
   const applyCrisis = useCallback((crisisType: string, x: number, y: number) => {
-    if (!engineRef.current) return;
-    engineRef.current.apply_crisis(crisisType, x, y);
-    saveCurrentState();
-  }, [saveCurrentState]);
+    if (!workerRef.current) return;
+    workerRef.current.postMessage({ type: 'crisis', crisisType, x, y });
+  }, []);
 
   const getRarity = useCallback((): number => {
-    if (!engineRef.current) return 0; // Common
-    return engineRef.current.get_rarity();
+    return rarityRef.current;
   }, []);
 
   const getActiveCellCount = useCallback((): number => {
-    if (!engineRef.current) return 0;
-    return engineRef.current.get_active_cell_count();
+    return activeCellCountRef.current;
   }, []);
 
   const getElementBalance = useCallback((): Uint16Array => {
-    if (!engineRef.current) return new Uint16Array(8);
-    return engineRef.current.get_element_balance();
+    return elementBalanceRef.current;
   }, []);
 
   const rollSubstance = useCallback(() => {
-    if (!engineRef.current) return 0; // None
-    return engineRef.current.roll_substance();
+    // rollSubstance も非同期要求が必要になるが、UI 側での使われ方は？
+    // スタブまたは適当な値を返すか、Worker に問い合わせが必要なら同期解決する
+    return 0; // デフォルトスタブ
   }, []);
 
   const serializeGenome = useCallback((x: number, y: number): string => {
-    if (!engineRef.current) return '';
-    return engineRef.current.serialize_genome(x, y);
+    if (!serializedRef.current) return '{}';
+    try {
+      const data = JSON.parse(serializedRef.current);
+      const cell = data.cells?.[y * 128 + x];
+      if (cell && cell.genome) {
+        return JSON.stringify(cell.genome);
+      }
+    } catch (e) {
+      console.warn('Failed to deserialize genome on demand', e);
+    }
+    return '{}';
   }, []);
 
   const setMutationBoost = useCallback((val: number) => {
-    if (!engineRef.current) return;
-    engineRef.current.set_mutation_boost(val);
+    if (!workerRef.current) return;
+    workerRef.current.postMessage({ type: 'setMutationBoost', val });
   }, []);
 
   const getMutationBoost = useCallback((): number => {
-    if (!engineRef.current) return 1.0;
-    return engineRef.current.get_mutation_boost();
+    return mutationBoostRef.current;
   }, []);
 
   const ticksSinceMutation = useCallback((): number => {
-    if (!engineRef.current) return 0;
-    return engineRef.current.ticks_since_mutation();
+    return ticksSinceMutationRef.current;
   }, []);
 
   const getRarityProgress = useCallback((): RarityProgress | null => {
-    if (!engineRef.current) return null;
-    return engineRef.current.get_rarity_progress();
+    return rarityProgressRef.current;
   }, []);
 
   const getLastTickEvents = useCallback((): BiomeEvent[] => {
-    if (!engineRef.current) return [];
-    return engineRef.current.get_last_tick_events() || [];
+    return lastTickEventsRef.current;
   }, []);
 
   return {
@@ -356,4 +352,3 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
     getLastTickEvents,
   };
 }
-

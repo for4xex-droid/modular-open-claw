@@ -74,6 +74,12 @@ jobs:
           TEST_POSTGRES_URL: postgres://aiome_test_user:aiome_test_password@localhost:5433/aiome_test_db
         run: cargo test --workspace -- --test-threads=1
 
+      - name: Verify Negative Tests (Error Injection & Security Validation)
+        env:
+          DATABASE_URL: postgres://aiome_test_user:aiome_test_password@localhost:5433/aiome_test_db
+          TEST_POSTGRES_URL: postgres://aiome_test_user:aiome_test_password@localhost:5433/aiome_test_db
+        run: cargo test --workspace -- negative
+
       - name: Run Tests (Oxilean-Kernel)
         run: cargo test --manifest-path vendor/oxilean-kernel/Cargo.toml
 

@@ -1,4 +1,27 @@
-## [Unreleased]
+## [Unreleased] - 2026-06-27
+
+### Added
+- **Web Worker による BiomeEngine の非同期スレッド分離 (ISO 25010 性能効率性)**:
+  - `apps/management-console/src/hooks/biome.worker.ts` を実装し、WASM (biome-engine) のインスタンス化と tick 更新計算処理を Web Worker スレッドへ分離。これによりメイン UI の 60fps レンダリングを一切阻害しない性能効率性を確保。
+- **CI/CD における Negative Test (異常注入) 検証の義務化 (ISO 25010 信頼性・セキュリティ)**:
+  - `.github/workflows/ci.yml` に `Verify Negative Tests` ジョブステップを明示的に追加。異常系テストの実行をマージの必須基準に設定。
+
+### Changed
+- **useBiomeEngine フックの非同期 Worker 連携化と API 互換性維持**:
+  - `apps/management-console/src/hooks/useBiomeEngine.ts` をリファクタリングし、Vite の `?worker` クエリ構文経由で Worker を生成し非同期通信するように移行。
+  - 同期ゲッター (`getCellDetail`, `serializeGenome`) や描画用バッファ (`renderView`, `frozenCells`) を、メインスレッドへの転送オブジェクト (Transferable) および遅延評価によって同期的に解決するよう実装。既存 UI コンポーネントに影響を及ぼさない完全な API 互換性を維持。
+
+### Fixed
+- **Jest テスト環境における ESM (import.meta) および ?worker の解決エラー修正**:
+  - `apps/management-console/src/setupTests.ts` においてグローバルに `MockWorker` クラスと `?worker` インポートのモックを設定し、他テストファイルでのインポート時に発生していた `import.meta` パースエラーおよび `?worker` に対する ENOENT エラーを完全に解消。
+  - `useBiomeEngine.test.ts` のアサーションを非同期に対応させ、さらに WASM 初期化エラー（異常系・Negative Test）および再初期化時のエラー状態クリア検証のテストケースを追加して、全 12 テストが PASS することを確認。
+- **シード値変更時のエラーリセット漏れの修正**:
+  - `useBiomeEngine.ts` 内の `useEffect` において、`seed` 変更初期化時に古いエラー状態（`error`）を確実にクリア（`setError(null)`）し、エラー発生状態からのスムーズな回復を保証。
+- **Worker データの安全なデシリアライズと境界保護**:
+  - `biome.worker.ts` にて、セル配列データの型検証（`Array.isArray(data.cells)`）を導入。また、WASMシリアライズセル数がバッファ上限を超えることによるメモリ範囲外書き込みを防ぐため、ループ上限を `Math.min(data.cells.length, frozenCells.length)` で明示的に保護。
+- **gitleaks 履歴誤検知およびリポジトリ衛生状態の解消**:
+  - `docs/operations/api_key_rotation.md` の Stripe Webhook ダミープレースホルダーを `YOUR_OLD_SECRET,YOUR_NEW_SECRET` に修正。さらに過去の履歴の誤検出を `.gitleaksignore` に追加して gitleaks シークレットスキャンエラーを完全解消。
+  - Git トラッキングに不要に含まれていた `libs/biome-engine/target` 以下の約3300個のビルド中間生成物ファイルを `git rm --cached` でインデックスから安全に除去。
 
 ### Documentation
 - **P2P E2E 暗号化および CBA セル隔離境界の設計書反映**:

@@ -116,7 +116,7 @@ Stripe Webhook v2 thin event への移行やシークレットのローテーシ
    Stripe 管理画面で新しく Webhook 宛先を作成、またはシークレットを再生成した際、新旧両方のシークレットをカンマ区切りで Vault または `.env.secret` に設定します。
    ```bash
    # 例: 2つの Webhook シークレットを登録する場合
-   cargo run --bin abyss-vault -- set STRIPE_WEBHOOK_SECRET "whsec_oldSecret123...,whsec_newSecret456..."
+   cargo run --bin abyss-vault -- set STRIPE_WEBHOOK_SECRET "YOUR_OLD_SECRET,YOUR_NEW_SECRET"
    ```
 2. **反映と検証**:
    シークレット設定後、サービス（`api-server`）を再起動します。署名検証（`verify_signature`）時にカンマで分割された各シークレットがループで順次試行され、いずれか1つで検証が成功すれば Webhook リクエストが承認されます。
