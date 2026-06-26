@@ -5,7 +5,6 @@
  * Licensed under the Business Source License 1.1.
  */
 
-import React from 'react';
 import { useTranslation } from '../i18n';
 import { CheckCircle, XCircle } from 'lucide-react';
 

@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-06-23
+> **最終更新**: 2026-06-26
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -200,7 +200,7 @@ graph TB
 | **L0: Safety** | TLA+ 形式検証、BastionGuard、Constitutional Validator | `shared`, `aiome-contracts` |
 | **L1: Soul** | 記憶、感情、人格、自己修復、自律サポートシステムチェーン（TDD実装） | `soul`, `aiome-core-contracts`, `infrastructure` |
 | **L2: Capabilities** | LLM推論、TTS、LoRA、3Dアバター、MCP、サポート応答・分類器 | `core`, `avatar-engine`, `infrastructure` |
-| **L3: Social** | Federation (v1.0稼働)、CRDT同期、ギルド、Buzz Protocol、Discordサポートリアクション連携 | `samsara-hub`, `infrastructure` |
+| **L3: Social** | Federation (v1.0稼働)、CRDT同期、ギルド、Buzz Protocol、Discordサポートリアクション連携、P2P E2E暗号化 (ChaCha20-Poly1305 / X25519) | `samsara-hub`, `infrastructure`, `shared` |
 
 ### Project NURTURE — 3層構造
 

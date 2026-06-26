@@ -140,8 +140,10 @@ pub async fn commune_relay_handler(
     _headers: HeaderMap,
     Json(mut msg): Json<aiome_core::commune::CommuneMessage>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    // 🛡️ [GlassWorm Shield] Sanitize text fields
-    msg.content = shared::guardrails::strip_invisible_unicode(&msg.content).into_owned();
+    // 🛡️ [GlassWorm Shield] Sanitize text fields (Only if plaintext)
+    if msg.encryption == "none" {
+        msg.content = shared::guardrails::strip_invisible_unicode(&msg.content).into_owned();
+    }
 
     // 1.5 Topic Existence / Status Check
     let topic_check_query = format!(
@@ -168,10 +170,10 @@ pub async fn commune_relay_handler(
         );
     }
 
-    // 2. Verification (Signature)
+    // 2. Verification (Signature) - E2E Signature payload (ADR-043)
     let payload = format!(
         "{}:{}:{}:{}",
-        msg.sender_pubkey, msg.topic_id, msg.lamport_clock, msg.content
+        msg.sender_pubkey, msg.topic_id, msg.content, msg.lamport_clock
     );
     let valid = crate::auth::verify_ed25519_signature(&msg.sender_pubkey, &msg.signature, &payload);
 
@@ -182,10 +184,11 @@ pub async fn commune_relay_handler(
         );
     }
 
-    // 3. CSAM Binary Filter (Plan D: Protocol-Level Enforcement)
-    if msg.content.contains("data:image/")
-        || msg.content.contains("data:video/")
-        || msg.content.contains(";base64,")
+    // 3. CSAM Binary Filter (Plan D: Protocol-Level Enforcement) - skip if encrypted
+    if msg.encryption == "none"
+        && (msg.content.contains("data:image/")
+            || msg.content.contains("data:video/")
+            || msg.content.contains(";base64,"))
     {
         warn!(
             "🚨 [CSAM Filter] Blocked Commune relay containing binary/base64 data from {}",

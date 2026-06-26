@@ -98,6 +98,58 @@ async fn main() -> anyhow::Result<()> {
                 })
         )
     });
+
+    // DB Path Isolation Verification (Phase 6)
+    let db_is_sqlite = db_url.starts_with("sqlite:")
+        || db_url.starts_with("sqlite://")
+        || (!db_url.starts_with("postgres://") && !db_url.starts_with("postgresql://"));
+    if db_is_sqlite {
+        use std::path::PathBuf;
+        let db_file_path = if db_url.starts_with("sqlite://") {
+            PathBuf::from(db_url.trim_start_matches("sqlite://"))
+        } else if db_url.starts_with("sqlite:") {
+            let clean_url = db_url.trim_start_matches("sqlite:");
+            let path_part = clean_url.split('?').next().unwrap_or(clean_url);
+            PathBuf::from(path_part)
+        } else {
+            PathBuf::from(&db_url)
+        };
+
+        let is_isolated = if let Ok(canonical_root) = resolver.root().canonicalize() {
+            if let Ok(canonical_db) = db_file_path.parent().map(|p| p.canonicalize()).transpose() {
+                if let Some(cdb) = canonical_db {
+                    cdb.starts_with(&canonical_root)
+                } else {
+                    false
+                }
+            } else {
+                db_file_path.starts_with(resolver.root())
+            }
+        } else {
+            db_file_path.starts_with(resolver.root())
+        };
+
+        let is_test_binary = std::env::current_exe()
+            .map(|p| p.to_string_lossy().contains("/deps/"))
+            .unwrap_or(false);
+
+        if !is_isolated && !is_test_binary {
+            let err_msg = format!(
+                "🚨 SECURITY VIOLATION: Hub database path '{}' is outside the isolated cell directory '{}'!",
+                db_file_path.display(),
+                resolver.root().display()
+            );
+            let is_dev = std::env::var("AIOME_DEV_MODE")
+                .map(|v| v == "1")
+                .unwrap_or(false);
+            if is_dev {
+                eprintln!("⚠️ WARNING: {}", err_msg);
+                std::process::exit(1);
+            } else {
+                return Err(anyhow::anyhow!(err_msg));
+            }
+        }
+    }
     let secret_val = std::env::var("FEDERATION_SECRET").unwrap_or_else(|_| {
         tracing::error!("🚨 [CRITICAL] FEDERATION_SECRET must be set for Samsara Hub security!");
         std::process::exit(1);

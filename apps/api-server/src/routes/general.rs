@@ -101,26 +101,49 @@ pub async fn get_health_status(
     }
 
     // G-1: LLM サーキットブレーカーの状態を取得して追加
-    status.llm_circuit_breaker = Some(serde_json::to_value(cb_status).unwrap_or_default());
+    status.llm_circuit_breaker = Some(shared::health::CircuitBreakerStatus {
+        name: cb_status.name,
+        state: match cb_status.state {
+            infrastructure::circuit_breaker::CircuitState::Closed => {
+                shared::health::CircuitState::Closed
+            }
+            infrastructure::circuit_breaker::CircuitState::Open => {
+                shared::health::CircuitState::Open
+            }
+            infrastructure::circuit_breaker::CircuitState::HalfOpen => {
+                shared::health::CircuitState::HalfOpen
+            }
+        },
+        failure_count: cb_status.failure_count as u64,
+        last_failure_at: cb_status.last_failure_at.map(|t| {
+            let datetime: chrono::DateTime<chrono::Utc> = t.into();
+            datetime.to_rfc3339()
+        }),
+        reset_timeout_seconds: cb_status.reset_timeout_seconds,
+    });
 
     // 🔍 Sprint 4: LoRA 学習エンジンの健全性チェック
     let lora_ok = lora_check.unwrap_or(false);
-    status.lora_engine = Some(serde_json::json!({
-        "mlx_available": lora_ok,
-        "status": if lora_ok { "ready" } else { "unavailable" }
-    }));
+    status.lora_engine = Some(shared::health::LoraStatus {
+        mlx_available: lora_ok,
+        status: if lora_ok {
+            "ready".to_string()
+        } else {
+            "unavailable".to_string()
+        },
+    });
 
     // 🛡️ Phase S-5: サポートインシデント週間統計のロード
     let support_repo = infrastructure::support::incident::SupportIncidentRepository::new(
         state.job_queue.pool.clone(),
     );
     if let Ok(stats) = support_repo.compute_weekly_stats().await {
-        status.support_incidents = Some(serde_json::json!({
-            "total_incidents_7d": stats.total_incidents_7d,
-            "distinct_users": stats.distinct_users,
-            "unresolved": stats.unresolved,
-            "top_severity": stats.top_severity.unwrap_or_else(|| "None".to_string()),
-        }));
+        status.support_incidents = Some(shared::health::IncidentStats {
+            total_incidents_7d: stats.total_incidents_7d,
+            distinct_users: stats.distinct_users,
+            unresolved: stats.unresolved,
+            top_severity: stats.top_severity.unwrap_or_else(|| "None".to_string()),
+        });
     }
 
     Ok(Json(status))

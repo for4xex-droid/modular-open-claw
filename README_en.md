@@ -105,9 +105,10 @@ This is not merely an experiment. It is the result of agents proactively designi
 All of the following capabilities are built directly into the OS, not left as plugins:
 
 - 🛡️ **Trust Layer**: Formal O(1) boundary verification and a SHA-256 protected audit chain. Includes a "Governed Execution" layer that mandates user intervention for high-risk tool calls, and introduces a new Formal Verification/Theorem Proving layer powered by OxiLean.
-- 🦠 **Cell-Based Architecture (CBA)**: A robust multi-tenant foundation providing physical path isolation and secret separation via `CELL_ID`. Equipped with multi-layered defenses against path traversal and shell injection vulnerabilities.
+- 🦠 **Cell-Based Architecture (CBA)**: Enforces physical process-level cell isolation, strict `CELL_ID` validation, and SQLite database path limits during preflight. Halts immediately if unauthorized path access is detected, ensuring robust protection against path traversal, shell injection, and cross-cell data contamination.
 - 🕸️ **GEO Intelligence**: Generative Engine Optimization (GEO) audit engine. Built with an asymmetric Graceful Degradation design to autonomously maintain SEO and publishing pipelines even during infrastructure outages.
 - 🔐 **Zero-Trust Hardening**: Rust 2024 Edition compliant centralized secret purging via `scrub_env`, fortified by comprehensive SSRF defense mechanisms that strictly block IPv4-mapped IPv6 and Link-local addresses.
+- 🔒 **P2P Federation E2E Encryption**: Integrates an end-to-end encryption protocol using X25519 Diffie-Hellman key sharing (with 0-RTT/1-RTT Montgomery key conversion from Ed25519 identity keys), HKDF-SHA256 key derivation, and ChaCha20-Poly1305 (AEAD) encryption to secure P2P traffic against eavesdropping or message tampering at Samsara Hub.
 - ⚖️ **Governed Execution Layer**: Atomic security gating for multi-step plans and a semantic elicitation workflow for human-in-the-loop safety.
 - 🧠 **Soul Engine**: The middleware governing the agent's personality, memory, and emotional evolution.
 - 📚 **Cortex Knowledge Base**: An autonomous Wiki compiler that evolves beyond simple RAG. Featuring Progressive Disclosure and Query File-Back, the LLM extracts concepts from multiple documents, self-reconstructs its knowledge as an interconnected web, and compounds knowledge through self-querying.

@@ -1,6 +1,29 @@
 ## [Unreleased]
 
+### Documentation
+- **P2P E2E 暗号化および CBA セル隔離境界の設計書反映**:
+  - `docs/decisions/043-p2p-e2e-encryption.md` のステータスを `Accepted` に更新し、確定仕様を追記。
+  - `SECURITY_DESIGN.md` および `AIOME_NURTURE_SYNERGY.md` に P2P E2E暗号化およびセル隔離ガードの説明を追記。
+  - `README.md` および `README_en.md` に CBA 隔離境界の強化と P2P メッセージ E2E 暗号化機能の主要特徴を追記。
+
 ### Added
+- **P2P E2E 暗号化と Ed25519→X25519 Montgomery 変換 (TDDによる実装 - ADR-043)**:
+  - `libs/shared/src/crypto.rs` を実装し、Ed25519のシードおよび公開鍵から X25519 秘密鍵/公開鍵を Montgomery 変換で導出し、ChaCha20Poly1305による 0-RTT P2P E2E暗号化を実装。
+- **セルベースアーキテクチャ (CBA) の隔離境界強化**:
+  - `libs/shared/src/app_data.rs` での `CELL_ID` 検証の最優先化。
+  - `apps/api-server/src/bootstrap/preflight.rs` および `apps/samsara-hub/src/main.rs` で、SQLiteデータベースの格納パスがセル隔離領域外を指している場合（本番はエラー終了、開発は警告終了）の隔離ガードを実装。
+
+### Changed
+- **HUD (管理コンソール) 健康状態の型安全移行 (U-004)**:
+  - `libs/shared/src/health.rs` に `CircuitBreakerStatus`, `LoraStatus`, `IncidentStats` を定義。
+  - `apps/api-server/src/routes/general.rs` で動的に組み立てていた JSON Value からこれらの構造体へのバインドに移行し、utoipa (OpenAPI) に型安全なスキーマをエクスポート。
+  - `apps/management-console/src/components/StatusPage.tsx` にて従来の `unknown` キャストを削除し、再生成された TypeScript 型（`generated.ts` 内の `ResourceStatus`）から直接バインドするように移行。
+
+### Fixed
+- **Commune P2P 署名検証ミスマッチバグの修正**:
+  - 送信側と Hub 側で署名ペイロード順序が異なっていた（送信側は `content` なし、Hub 側は `content` が末尾）問題を、`sender_pubkey:topic_id:content:clock`（`content` は E2E 暗号文）の順に統一して修正。
+- **管理コンソールの型エラー修正**:
+  - `VaultKeyStatus.tsx` および `VaultSecretsManager.tsx` に存在していた未使用の React インポートや不正な bool 型の定義エラーを解消し、コンパイルが正常に通るように修正。
 - **`DatabasePool::backup` のセキュリティ強化 (TDD による実装)**:
   - SQLite の `backup` メソッドにおいて、パスにディレクトリトラバーサル文字（`..`）や SQL / コマンドインジェクションの特殊文字が含まれる場合に、早期に `AiomeError` として拒否する厳格なバリデーションを追加。
   - テスト `test_sqlite_backup_path_traversal_and_injection_denied` を追加し、不正な文字の拒否を検証（TDDのRED/GREENを完了）。

@@ -28,14 +28,6 @@ impl AppDataResolver {
     /// `CELL_ID` 環境変数が設定されている場合、ルートパスの末尾にセル名前空間を追加します。
     /// パストラバーサル防止のため、`CELL_ID` は英数字・ハイフン・アンダースコアのみ許可されます。
     pub fn new() -> Result<Self, String> {
-        if let Ok(data_dir) = std::env::var("AIOME_DATA_DIR") {
-            if !data_dir.is_empty() {
-                return Ok(Self {
-                    root: PathBuf::from(data_dir),
-                });
-            }
-        }
-
         let cell_id = match std::env::var("CELL_ID") {
             Ok(val) => val,
             Err(_) => {
@@ -51,6 +43,20 @@ impl AppDataResolver {
         };
         if !Self::is_safe_cell_id(&cell_id) {
             return Err(format!("🚨 FATAL: CELL_ID '{}' contains invalid characters. Only [a-zA-Z0-9_-] (max 64 chars) are allowed.", cell_id));
+        }
+
+        if let Ok(data_dir) = std::env::var("AIOME_DATA_DIR") {
+            if !data_dir.is_empty() {
+                if data_dir.contains("..") {
+                    return Err(format!(
+                        "🚨 FATAL: AIOME_DATA_DIR '{}' contains path traversal sequences.",
+                        data_dir
+                    ));
+                }
+                return Ok(Self {
+                    root: PathBuf::from(data_dir),
+                });
+            }
         }
 
         let is_dev = std::env::var("AIOME_DEV_MODE")

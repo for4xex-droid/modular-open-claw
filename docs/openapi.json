@@ -4104,6 +4104,54 @@
           }
         }
       },
+      "CircuitBreakerStatus": {
+        "type": "object",
+        "description": "Circuit Breaker の状態レポート用 DTO",
+        "required": [
+          "name",
+          "state",
+          "failure_count",
+          "reset_timeout_seconds"
+        ],
+        "properties": {
+          "failure_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "連続失敗数",
+            "minimum": 0
+          },
+          "last_failure_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "最後の失敗時刻（ISO8601等）"
+          },
+          "name": {
+            "type": "string",
+            "description": "サーキットブレーカーの名前"
+          },
+          "reset_timeout_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "description": "リセットタイムアウト（秒）",
+            "minimum": 0
+          },
+          "state": {
+            "$ref": "#/components/schemas/CircuitState",
+            "description": "現在の状態"
+          }
+        }
+      },
+      "CircuitState": {
+        "type": "string",
+        "description": "Circuit Breaker の状態",
+        "enum": [
+          "Closed",
+          "Open",
+          "HalfOpen"
+        ]
+      },
       "ConstraintViolation": {
         "type": "object",
         "description": "⛓️ 制約違反の証拠",
@@ -4874,6 +4922,37 @@
           }
         }
       },
+      "IncidentStats": {
+        "type": "object",
+        "description": "サポートインシデント週間統計",
+        "required": [
+          "total_incidents_7d",
+          "distinct_users",
+          "unresolved",
+          "top_severity"
+        ],
+        "properties": {
+          "distinct_users": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ユニークユーザー数"
+          },
+          "top_severity": {
+            "type": "string",
+            "description": "最も深刻度の高いステータス"
+          },
+          "total_incidents_7d": {
+            "type": "integer",
+            "format": "int64",
+            "description": "直近7日間の総インシデント数"
+          },
+          "unresolved": {
+            "type": "integer",
+            "format": "int64",
+            "description": "未解決のインシデント数"
+          }
+        }
+      },
       "IngestResp": {
         "type": "object",
         "required": [
@@ -5174,6 +5253,24 @@
           "status": {
             "$ref": "#/components/schemas/PurchaseStatus",
             "description": "ステータス"
+          }
+        }
+      },
+      "LoraStatus": {
+        "type": "object",
+        "description": "LoRA 学習エンジンのステータス",
+        "required": [
+          "mlx_available",
+          "status"
+        ],
+        "properties": {
+          "mlx_available": {
+            "type": "boolean",
+            "description": "MLX が利用可能かどうか"
+          },
+          "status": {
+            "type": "string",
+            "description": "エンジンの状態（\"ready\", \"unavailable\" など）"
           }
         }
       },
@@ -5675,10 +5772,26 @@
             "description": "AIのレベル"
           },
           "llm_circuit_breaker": {
-            "description": "LLM サーキットブレーカーの状態 (G-1)"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CircuitBreakerStatus",
+                "description": "LLM サーキットブレーカーの状態 (G-1)"
+              }
+            ]
           },
           "lora_engine": {
-            "description": "LoRA 学習エンジンの状態 (Sprint 4)"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LoraStatus",
+                "description": "LoRA 学習エンジンの状態 (Sprint 4)"
+              }
+            ]
           },
           "memory_usage_mb": {
             "type": "integer",
@@ -5701,7 +5814,15 @@
             "description": "共鳴度（対話品質スコア）"
           },
           "support_incidents": {
-            "description": "サポートインシデントの週間統計情報 (S-5)"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/IncidentStats",
+                "description": "サポートインシデントの週間統計情報 (S-5)"
+              }
+            ]
           },
           "total_disk_gb": {
             "type": "integer",

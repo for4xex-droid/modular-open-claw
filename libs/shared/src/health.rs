@@ -38,6 +38,54 @@ impl<T> fmt::Display for Secret<T> {
     }
 }
 
+/// Circuit Breaker の状態
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
+pub enum CircuitState {
+    /// 正常稼働中
+    Closed,
+    /// 遮断中
+    Open,
+    /// 復旧テスト中
+    HalfOpen,
+}
+
+/// Circuit Breaker の状態レポート用 DTO
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct CircuitBreakerStatus {
+    /// サーキットブレーカーの名前
+    pub name: String,
+    /// 現在の状態
+    pub state: CircuitState,
+    /// 連続失敗数
+    pub failure_count: u64,
+    /// 最後の失敗時刻（ISO8601等）
+    pub last_failure_at: Option<String>,
+    /// リセットタイムアウト（秒）
+    pub reset_timeout_seconds: u64,
+}
+
+/// LoRA 学習エンジンのステータス
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct LoraStatus {
+    /// MLX が利用可能かどうか
+    pub mlx_available: bool,
+    /// エンジンの状態（"ready", "unavailable" など）
+    pub status: String,
+}
+
+/// サポートインシデント週間統計
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct IncidentStats {
+    /// 直近7日間の総インシデント数
+    pub total_incidents_7d: i64,
+    /// ユニークユーザー数
+    pub distinct_users: i64,
+    /// 未解決のインシデント数
+    pub unresolved: i64,
+    /// 最も深刻度の高いステータス
+    pub top_severity: String,
+}
+
 /// リソースの使用状況
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ResourceStatus {
@@ -68,13 +116,13 @@ pub struct ResourceStatus {
     pub fatigue: i32,
     /// LLM サーキットブレーカーの状態 (G-1)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub llm_circuit_breaker: Option<serde_json::Value>,
+    pub llm_circuit_breaker: Option<CircuitBreakerStatus>,
     /// LoRA 学習エンジンの状態 (Sprint 4)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub lora_engine: Option<serde_json::Value>,
+    pub lora_engine: Option<LoraStatus>,
     /// サポートインシデントの週間統計情報 (S-5)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub support_incidents: Option<serde_json::Value>,
+    pub support_incidents: Option<IncidentStats>,
 }
 
 /// システムの状態を監視する

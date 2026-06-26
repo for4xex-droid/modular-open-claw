@@ -322,13 +322,29 @@ pub async fn send_message(
         return Err(AppError::bad_request(e.to_string()));
     }
 
+    use base64::Engine;
+    let recipient_pub_bytes = base64::prelude::BASE64_STANDARD
+        .decode(&req.recipient_pubkey)
+        .map_err(|e| AppError::bad_request(format!("Invalid recipient_pubkey Base64: {}", e)))?;
+    let recipient_pub_array: [u8; 32] = recipient_pub_bytes.try_into().map_err(|_| {
+        AppError::bad_request("recipient_pubkey must be exactly 32 bytes".to_string())
+    })?;
+
+    // E2E Encrypt content (ADR-043)
+    let encrypted_content = shared::crypto::encrypt_message(&req.content, &recipient_pub_array)
+        .map_err(|e| AppError::internal(format!("Encryption failed: {}", e)))?;
+
     let clock = state
         .job_queue
         .tick_local_clock()
         .await
         .map_err(|e| AppError::internal(e.to_string()))?;
 
-    let payload_to_sign = format!("{}:{}:{}", state.system_agent_id, req.topic_id, clock);
+    let sender_pubkey = state.system_agent_id.to_string();
+    let payload_to_sign = format!(
+        "{}:{}:{}:{}",
+        sender_pubkey, req.topic_id, encrypted_content, clock
+    );
     let signature = state
         .job_queue
         .sign_swarm_payload(&payload_to_sign)
@@ -337,16 +353,14 @@ pub async fn send_message(
 
     let payload = aiome_core::commune::CommuneMessage {
         topic_id: req.topic_id.clone(),
-        sender_pubkey: state.system_agent_id.to_string(),
+        sender_pubkey,
         recipient_pubkey: req.recipient_pubkey.clone(),
-        content: req.content,
+        content: encrypted_content,
         karma_root_cid: "cid_local_relay".to_string(),
         signature,
         lamport_clock: clock,
         timestamp: chrono::Utc::now().to_rfc3339(),
-        // TODO(SEC): See ADR-043 (docs/decisions/043-p2p-e2e-encryption.md)
-        // Currently plaintext — vulnerable to man-in-the-middle sniffing on the relay.
-        encryption: "none".to_string(),
+        encryption: "chacha20-poly1305".to_string(),
         payload_type: None,
     };
 

@@ -23,6 +23,9 @@ rand = "0.8"
 sysinfo.workspace = true
 tracing = { workspace = true }
 dirs = "5.0"
+curve25519-dalek = { version = "4.1", features = ["serde"] }
+chacha20poly1305.workspace = true
+x25519-dalek = { workspace = true, features = ["static_secrets"] }
 
 [target.'cfg(unix)'.dependencies]
 nix = { workspace = true }

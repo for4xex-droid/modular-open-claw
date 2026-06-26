@@ -14,38 +14,9 @@ import {
 import { authenticatedFetch } from "../lib/auth";
 import { API_BASE } from "../config";
 
-// TODO: U-004 — generated.ts の ResourceStatus は support_incidents / llm_circuit_breaker /
-// lora_engine を `unknown` 型で出力するため、サブオブジェクトの型安全性が不十分。
-// 将来的に Rust 側で各サブオブジェクトを独立した utoipa::ToSchema 構造体に昇格させ、
-// generated types への完全移行を行うこと。
-interface IncidentStats {
-  total_incidents_7d: number;
-  distinct_users: number;
-  unresolved: number;
-  top_severity: string;
-}
+import { components } from "../types/generated";
 
-interface CircuitBreakerStatus {
-  name: string;
-  state: string;
-}
-
-interface LoraStatus {
-  mlx_available: boolean;
-  status: string;
-}
-
-interface SystemHealth {
-  memory_usage_mb: number;
-  total_memory_mb: number;
-  cpu_usage_percent: number;
-  vram_usage_mb: number | null;
-  disk_free_gb: number;
-  total_disk_gb: number;
-  llm_circuit_breaker: CircuitBreakerStatus | null;
-  lora_engine: LoraStatus | null;
-  support_incidents: IncidentStats | null;
-}
+type SystemHealth = components["schemas"]["ResourceStatus"];
 
 export default function StatusPage() {
   const [health, setHealth] = useState<SystemHealth | null>(null);

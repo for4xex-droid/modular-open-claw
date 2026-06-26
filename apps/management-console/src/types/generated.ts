@@ -1797,6 +1797,30 @@ export interface components {
             content: string;
             role: string;
         };
+        /** @description Circuit Breaker の状態レポート用 DTO */
+        CircuitBreakerStatus: {
+            /**
+             * Format: int64
+             * @description 連続失敗数
+             */
+            failure_count: number;
+            /** @description 最後の失敗時刻（ISO8601等） */
+            last_failure_at?: string | null;
+            /** @description サーキットブレーカーの名前 */
+            name: string;
+            /**
+             * Format: int64
+             * @description リセットタイムアウト（秒）
+             */
+            reset_timeout_seconds: number;
+            /** @description 現在の状態 */
+            state: components["schemas"]["CircuitState"];
+        };
+        /**
+         * @description Circuit Breaker の状態
+         * @enum {string}
+         */
+        CircuitState: "Closed" | "Open" | "HalfOpen";
         /** @description ⛓️ 制約違反の証拠 */
         ConstraintViolation: {
             actual: string;
@@ -2015,6 +2039,26 @@ export interface components {
         ImportRequest: {
             url: string;
         };
+        /** @description サポートインシデント週間統計 */
+        IncidentStats: {
+            /**
+             * Format: int64
+             * @description ユニークユーザー数
+             */
+            distinct_users: number;
+            /** @description 最も深刻度の高いステータス */
+            top_severity: string;
+            /**
+             * Format: int64
+             * @description 直近7日間の総インシデント数
+             */
+            total_incidents_7d: number;
+            /**
+             * Format: int64
+             * @description 未解決のインシデント数
+             */
+            unresolved: number;
+        };
         IngestResp: {
             id: string;
             title: string;
@@ -2118,6 +2162,13 @@ export interface components {
             purchased_at: string;
             /** @description ステータス */
             status: components["schemas"]["PurchaseStatus"];
+        };
+        /** @description LoRA 学習エンジンのステータス */
+        LoraStatus: {
+            /** @description MLX が利用可能かどうか */
+            mlx_available: boolean;
+            /** @description エンジンの状態（"ready", "unavailable" など） */
+            status: string;
         };
         McpServerConfig: {
             args: string[];
@@ -2288,10 +2339,8 @@ export interface components {
              * @description AIのレベル
              */
             level: number;
-            /** @description LLM サーキットブレーカーの状態 (G-1) */
-            llm_circuit_breaker?: unknown;
-            /** @description LoRA 学習エンジンの状態 (Sprint 4) */
-            lora_engine?: unknown;
+            llm_circuit_breaker?: null | components["schemas"]["CircuitBreakerStatus"];
+            lora_engine?: null | components["schemas"]["LoraStatus"];
             /**
              * Format: int64
              * @description 現在のメモリ使用量（MB）
@@ -2307,8 +2356,7 @@ export interface components {
              * @description 共鳴度（対話品質スコア）
              */
             resonance: number;
-            /** @description サポートインシデントの週間統計情報 (S-5) */
-            support_incidents?: unknown;
+            support_incidents?: null | components["schemas"]["IncidentStats"];
             /**
              * Format: int64
              * @description ディスク総容量（GB）

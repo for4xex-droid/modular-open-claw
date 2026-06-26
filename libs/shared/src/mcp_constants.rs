@@ -22,6 +22,8 @@ pub const ALLOWED_MCP_PREFIXES: &[&str] = &[
     "@appsyogi/",
     "@secops/",
     // [Good First Issue]: TODO - Add official support for more MCP server namespaces here (e.g., @google/, @atlassian/).
+    "@google/",
+    "@atlassian/",
     // Phase 1: MCP Ecosystem Expansion
     "@brightdata/",
     "@upstash/",
@@ -156,5 +158,9 @@ mod tests {
         assert!(validate_mcp_package("npx", &["-y".into(), "@openai/mcp-server".into()]).is_ok());
         assert!(validate_mcp_package("npx", &["-y".into(), "@github/mcp-server".into()]).is_ok());
         assert!(validate_mcp_package("npx", &["-y".into(), "@notion/mcp-server".into()]).is_ok());
+        assert!(validate_mcp_package("npx", &["-y".into(), "@google/mcp-server".into()]).is_ok());
+        assert!(
+            validate_mcp_package("npx", &["-y".into(), "@atlassian/mcp-server".into()]).is_ok()
+        );
     }
 }

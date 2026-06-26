@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from '../i18n';
 import { authenticatedFetch } from '../lib/auth';
 import { API_BASE } from '../config';
@@ -23,7 +23,7 @@ import {
 export interface SecretItem {
   key: string;
   category: 'ai' | 'commerce' | 'bridge' | 'infrastructure' | string;
-  is_set: bool;
+  is_set: boolean;
 }
 
 export function VaultSecretsManager() {

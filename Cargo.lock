@@ -3843,6 +3843,7 @@ dependencies = [
  "digest 0.10.7",
  "fiat-crypto",
  "rustc_version 0.4.1",
+ "serde",
  "subtle",
  "zeroize",
 ]
@@ -11690,8 +11691,10 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "bastion-core",
+ "chacha20poly1305",
  "chrono",
  "config",
+ "curve25519-dalek",
  "dirs 5.0.1",
  "ed25519-dalek",
  "hkdf",
@@ -11719,6 +11722,7 @@ dependencies = [
  "utoipa",
  "uuid",
  "visual-hash",
+ "x25519-dalek",
 ]
 
 [[package]]

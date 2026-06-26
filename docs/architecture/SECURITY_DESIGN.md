@@ -131,6 +131,8 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 107 | **Mock Sidecar Contamination** | **Mock sidecar binaries bundled into production builds** | 🔴 High | **Physical sidecar binary validation (desktop_sidecar_manager.py) & CI 2-Stage Verification** |
 | 108 | **Output-based Sanitization Bypass** | **Evading regex filters using encoded CRLF or recursive path traversal (....//)** | 🔴 High | **Multi-Context Sanitization (SqlQuery esc, FilePath loop, OnceLock HttpHeader) (Reflexion Phase 11)** |
 | 109 | **Stripe v2 SSRF Bypass** | **Malicious related_object.url injecting traversal/local host path** | 🔴 High | **SSRF Double Defense: Prefix check (/v1/ or /v2/) + Traversal blocking (contains("..")) + Domain lock (https://api.stripe.com) (v2 Webhook)** |
+| 110 | **Federation Message Eavesdropping** | **Samsara Hub or intermediary node eavesdropping on P2P messages** | 🔴 High | **P2P E2E Encryption (ChaCha20-Poly1305 / X25519) (ADR-043)** |
+| 111 | **Cross-Cell Contamination** | **Bypassing cell boundaries via custom SQLite database paths** | 🔴 High | **AppDataResolver Cell Isolation Guard (Preflight shutdown) (Phase 6)** |
 
 ## 3. Defense Architecture
 
@@ -156,6 +158,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Dynamic Spec Export Isolation (Phase 4)**: The `FsSpecProvider` enforces strict path traversal validation (`canonicalize` + `starts_with`), Explicit symlink rejection to prevent sandbox escapes, and O(1) regex-based secret redaction (`SECRET_PATTERN`) before generating `.specify` templates, ensuring internal specifications can be exported safely without leaking the host filesystem or hardcoded credentials.
 - **Multi-Context Output Sanitization (Reflexion Phase 11)**: Implements `sanitize_for_context` in `libs/shared/src/guardrails.rs` to sanitize outputs according to specific contexts (`HttpHeader`, `HtmlAttribute`, `SqlQuery`, `ShellCommand`, `FilePath`). SqlQuery escaping mitigates SQL Injection (stripping double quotes, backslashes, NULL, and comment blocks while recommending Prepared Statements); FilePath sanitization loops recursively to prevent traversals via nested bypasses (e.g. `....//`); HttpHeader sanitization utilizes a static `OnceLock` for `CRLF_ENCODED_REGEX` to prevent runtime panic vectors and completely strip carriage returns/line feeds.
 - **Physical Sidecar Binary Verification (Reflexion Phase 11)**: Integrates `scripts/desktop_sidecar_manager.py` to physically validate Tauri sidecar binaries during build and CI stages. Enforces size requirements (minimum 100KB) and checks magic bytes (Mach-O, ELF, PE) to prevent mock sidecar scripts or shells from being bundled into release builds.
+- **Cell Isolation Guard (CBA Phase 6)**: Enforces strict cell directory isolation at startup. `AppDataResolver` validates the structure and characters of `CELL_ID` before any configuration resolves. If the target SQLite database path is modified (via `AIOME_DB_PATH` or `DATABASE_URL` in Hub) to point outside the cell's resolver root directory, the preflight boot sequence halts immediately with a fatal exit code, preventing cross-cell data contamination.
 
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Unified Precedence (ToolCallRouter) (Phase B)**: Centralizes all task parsing, hook insertion, and actual execution within a single un-bypassable trait (`ToolCallRouter`). Ensures that both Guardrails and Intent Verification check inputs before any actual parsing/execution happens, preventing split-brain bypasses and redundant LLM tool evaluation code across asynchronous stream agents and MCP Server components.
@@ -172,6 +175,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Port-Level SSRF Shield (Phase 53)**: `SecurityPolicy::validate_url` explicitly blocks access to `127.0.0.1` and `localhost` UNLESS the destination port matches allowed internal services (8188 for ComfyUI, 11434 for Ollama). This prevents agents from attacking local administration interfaces or data stores (e.g., Redis, DB) via SSRF.
 - **Cross-Service OXP Trust (Nurture Phase 4)**: `StripeCommerceEngine` acts as an HTTP proxy that bridges all economic mutations (transfers, points, refunds) to the centralized `nurture-api` ledger. Every proxy request is cryptographically signed using an `OxiLeanProofCertificate`, ensuring that Nurture API only honors requests from verified Aiome core nodes with sufficient `oxp_score`.
 - **Stripe Webhook v2 SSRF Defense (v2 Webhook)**: For v2 thin event resolution, the system enforces a strict double defense: 1) Path validation requiring `/v1/` or `/v2/` prefix, 2) Directory traversal rejection for `..` sequences, 3) Forced binding to the official `https://api.stripe.com` host, preventing local or intranet port scanning attacks via arbitrary Stripe webhook payload redirects.
+- **P2P Federation E2E Encryption (ADR-043)**: Automatically encrypts all node-to-node messages dispatched via Biome protocol using `ChaCha20-Poly1305` AEAD. Session keys are derived via Diffie-Hellman (X25519) and HKDF-SHA256. Public keys are converted from Ed25519 identity keys via Montgomery conversion to secure 0-RTT key establishment. The signature payload is strictly ordered as `{sender_pubkey}:{topic_id}:{content}:{clock}` (where `content` is the Base64 ciphertext) to solve signature mismatches at Samsara Hub.
 
 ### Layer 3: Audit Log & Hash Chains
 - Every tool invocation and systemic decision is logged for post-hoc analysis.
@@ -261,4 +265,4 @@ For SEO integrations like WordPress, Aiome avoids direct API token injection int
   - macOS Keychain への非対話型アクセスフリーズを回避するため、`VAULT_MASTER_PASSWORD` のロード時は環境変数の確認を macOS Keychain よりも優先するよう順序を変更。
 
 ---
-*最終更新: 2026-06-25 (Keychain access order hardening & Stripe v2 Webhook)*
+*最終更新: 2026-06-26 (CBA isolation guard & P2P Federation E2E Encryption)*
