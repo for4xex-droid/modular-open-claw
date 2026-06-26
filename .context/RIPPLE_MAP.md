@@ -4192,3 +4192,16 @@ graph TD
 - **波及効果**:
     - 非技術者から管理者まで等しく GUI / CLI 経由でシークレットをセキュアに操作可能になった。
     - 二重格納（Settings DB と AbyssVault DB）されているキーについて、両者の設定ステータスを可視化（並行表示）したことで、移行プロセスにおける不整合や設定漏れをその場で確認・解消できるようにした。
+
+## Phase: PDF Extraction Process Isolation (pdftotext Migration)
+- **変更内容**:
+    - `libs/infrastructure/Cargo.toml` [MODIFY]: 脆弱な `pdf-extract` 依存定義を削除。
+    - `libs/infrastructure/src/security/config.rs` [MODIFY]: `allowed_binaries` リストに `"pdftotext"` を追加。
+    - `libs/infrastructure/src/cortex_ingester.rs` [MODIFY]: `ingest_pdf` メソッドを `pdf-extract` ライブラリ依存から `SafeCommandBuilder` + `SandboxProfile::Strict` による `pdftotext` の隔離プロセス実行モデルへと移行。
+    - `libs/infrastructure/src/cortex_ingester_tests.rs` [MODIFY]: `test_ingest_pdf` のアサーションをプロセス起動または抽出失敗メッセージの両方に対応するよう調整。
+    - `.github/workflows/ci.yml` [MODIFY]: テスト環境への `poppler-utils` パッケージ追加、および Docker Build Check ジョブにおける `production.Dockerfile` ビルド検証と Trivy 脆弱性スキャンステップを追加。
+    - `docker/production.Dockerfile` [MODIFY]: ランタイムステージに `poppler-utils` パッケージを追加。
+- **波及効果**:
+    - アプリ内での PDF 解析ライブラリによるスタックオーバーフロー脆弱性（RUSTSEC-2026-0187）が根本解決され、不正な PDF をインジェストされた場合にメインサーバがクラッシュする DoS リスクが解消。
+    - `pdftotext` は非特権かつネットワーク・書き込み禁止の Strict サンドボックス内で実行されるため、コマンド自体の未知の脆弱性を狙ったエクスプロイトに対しても二重隔離が適用される。
+    - 子プロセス起動のため、GPLコピーレフトライセンスのソースコードへのリンク影響を完全に回避。

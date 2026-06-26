@@ -305,10 +305,98 @@ impl CortexIngester {
     }
 
     pub async fn ingest_pdf(&self, data: &[u8], title: &str) -> Result<CortexDocument, AiomeError> {
-        let raw_text =
-            pdf_extract::extract_text_from_mem(data).map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to extract text from PDF: {}", e),
+        let manifest = crate::security::PermissionManifest {
+            allow_shell_execution: true,
+            allow_filesystem_write: false,
+            allow_network: false,
+            ..Default::default()
+        };
+
+        let mut cmd = crate::security::SafeCommandBuilder::new("pdftotext")
+            .arg("-")
+            .arg("-")
+            .profile(aiome_core::security::SandboxProfile::Strict)
+            .build(manifest)?;
+
+        cmd.stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+
+        let mut child = cmd.spawn().map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to spawn pdftotext: {}", e),
+        })?;
+
+        if let Some(mut stdin) = child.stdin.take() {
+            use tokio::io::AsyncWriteExt;
+            stdin
+                .write_all(data)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: format!("Failed to write to pdftotext stdin: {}", e),
+                })?;
+            let _ = stdin.shutdown().await;
+        }
+
+        let mut stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| AiomeError::Infrastructure {
+                reason: "Failed to extract text from PDF: failed to open stdout".to_string(),
             })?;
+        let mut stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| AiomeError::Infrastructure {
+                reason: "Failed to extract text from PDF: failed to open stderr".to_string(),
+            })?;
+
+        let mut stdout_data = Vec::new();
+        let mut stderr_data = Vec::new();
+
+        let read_and_wait = async {
+            use tokio::io::AsyncReadExt;
+            let mut stdout_limit = stdout.take(10_485_760); // Max 10MB text
+            let mut stderr_limit = stderr.take(65_536); // Max 64KB errors
+            let (res_stdout, res_stderr, res_status) = tokio::join!(
+                stdout_limit.read_to_end(&mut stdout_data),
+                stderr_limit.read_to_end(&mut stderr_data),
+                child.wait()
+            );
+            let status = res_status?;
+            res_stdout?;
+            res_stderr?;
+            Ok::<std::process::ExitStatus, std::io::Error>(status)
+        };
+
+        let status = match tokio::time::timeout(std::time::Duration::from_secs(30), read_and_wait)
+            .await
+        {
+            Ok(res) => res.map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to extract text from PDF: {}", e),
+            })?,
+            Err(_) => {
+                let _ = child.kill().await;
+                let _ = child.wait().await; // Reap child to prevent zombie processes (PID leak)
+                return Err(AiomeError::Infrastructure {
+                    reason: "Failed to extract text from PDF: pdftotext extraction timed out (30s limit exceeded)".to_string(),
+                });
+            }
+        };
+
+        if !status.success() {
+            let stderr_preview = String::from_utf8_lossy(&stderr_data);
+            let stderr_safe = shared::strings::truncate_bytes_safely(&stderr_preview, 512);
+            return Err(AiomeError::Infrastructure {
+                reason: format!("Failed to extract text from PDF: pdftotext failed with exit status {} - stderr: {}", status, stderr_safe),
+            });
+        }
+
+        let raw_text = String::from_utf8(stdout_data).map_err(|e| AiomeError::Infrastructure {
+            reason: format!(
+                "Failed to extract text from PDF: invalid UTF-8 output: {}",
+                e
+            ),
+        })?;
 
         // 🛡️ [GlassWorm Shield] Strip invisible unicode before processing
         let text = shared::guardrails::strip_invisible_unicode(&raw_text).into_owned();

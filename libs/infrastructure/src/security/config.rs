@@ -62,6 +62,7 @@ impl Default for SecurityConfig {
                 "npx".to_string(),
                 "uvx".to_string(),
                 "obscura".to_string(),
+                "pdftotext".to_string(),
             ],
             workspace_root: shared::app_data::AppDataResolver::new()
                 .map(|r| r.root().to_path_buf())

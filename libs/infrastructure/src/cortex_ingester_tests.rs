@@ -115,7 +115,7 @@ async fn test_ingest_pdf() {
 
     match res.unwrap_err() {
         AiomeError::Infrastructure { reason } => {
-            assert!(reason.contains("Failed to extract"));
+            assert!(reason.contains("Failed to extract") || reason.contains("pdftotext"));
         }
         _ => panic!("Expected Infrastructure error"),
     }

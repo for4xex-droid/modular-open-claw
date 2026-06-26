@@ -1,10 +1,18 @@
 ## [Unreleased] - 2026-06-27
 
 ### Added
+- **pdftotext によるプロセス隔離型 PDF テキスト抽出 (RUSTSEC-2026-0187 脆弱性対策)**:
+  - `libs/infrastructure/src/cortex_ingester.rs` の `ingest_pdf` にて、`SafeCommandBuilder` と `SandboxProfile::Strict` を使用し、非特権サンドボックス下で `pdftotext` を隔離実行する方式へ移行。
+  - CI環境 (`ci.yml`) および本番Dockerイメージ (`docker/production.Dockerfile`) のランタイムステージに `poppler-utils` 依存パッケージを追加。
+  - GitHub Actions の Docker Build Check ジョブに `production.Dockerfile` のビルド確認と Trivy 脆弱性スキャンステップを追加。
 - **Web Worker による BiomeEngine の非同期スレッド分離 (ISO 25010 性能効率性)**:
   - `apps/management-console/src/hooks/biome.worker.ts` を実装し、WASM (biome-engine) のインスタンス化と tick 更新計算処理を Web Worker スレッドへ分離。これによりメイン UI の 60fps レンダリングを一切阻害しない性能効率性を確保。
 - **CI/CD における Negative Test (異常注入) 検証の義務化 (ISO 25010 信頼性・セキュリティ)**:
   - `.github/workflows/ci.yml` に `Verify Negative Tests` ジョブステップを明示的に追加。異常系テストの実行をマージの必須基準に設定。
+
+### Removed
+- **脆弱性のあった `pdf-extract` (および間接依存 `lopdf`) クレート依存の排除**:
+  - `libs/infrastructure/Cargo.toml` から `pdf-extract` を削除し、スタックオーバーフローによる DoS 脆弱性 (`RUSTSEC-2026-0187`) を根本的に解決。
 
 ### Changed
 - **useBiomeEngine フックの非同期 Worker 連携化と API 互換性維持**:

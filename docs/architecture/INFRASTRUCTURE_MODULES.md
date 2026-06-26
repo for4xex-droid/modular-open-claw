@@ -28,7 +28,7 @@
 | ~~`concept_manager`~~ | AIが獲得した概念（Concepts）をベクターDBで管理。（`llm/utils.rs` への機能委譲によりSunset完了） | **Sunset済** |
 | `constraint_checker` | AgentRx における行動制約の検証エンジン。**Phase 55** で出力サイズ制限とエコー攻撃検知を追加。 | **Phase 55 完了** |
 | `context_engine` | 会話履歴や環境情報をLLMに提供。**Phase 2B** で感情履歴（Karma/somatic_valence）から動的 Mood を計算し、LLMプロンプトへ注入（Somatic Context & Emotional RAG）機能を追加。 | **Phase 2B 強化** |
-| `cortex_ingester`| LLMを用いたURL, テキスト, PDFからのドメイン特化型Markdownナレッジ抽出エンジン。 | **Phase A 完了** |
+| `cortex_ingester`| LLMを用いたURL, テキスト, PDFからのドメイン特化型Markdownナレッジ抽出エンジン。PDFテキスト抽出は `pdftotext` 隔離プロセス実行モデルによって安全に処理される。 | **Phase A 完了** |
 | `cortex_compiler`| 未加工のドキュメント群から概念（Concepts）を抽出し、一貫したWiki記事を自律的にコンパイルするエンジン。Graphify抽出戦略に基づきリンクの `confidence` タグ (1.0/0.7/0.4) を算出する機能を搭載。 | **Phase B & CT 完了** |
 | `cortex_query`   | 抽出済みのドキュメントやコンパイル済みWikiの双方に対して、セマンティックな意味検索を提供するエンジン。FTS5 高速化に加え、Typed Linksの最小 `confidence` に基づく `evidence_quality` (extracted/inferred/ambiguous) 導出機能を統合済。 | **Phase D & CT 完了** |
 | `dataset_extractor` | SoulStoreから記憶（`experiences`）を抽出し、MLX LoRA学習用JSONLデータセットに動的に蒸留・フォーマット変換を行うETL基盤。スレッドセーフかつコンテキスト維持（破滅的忘却防止）を担う。 | **Phase 1A-2 完了** |
