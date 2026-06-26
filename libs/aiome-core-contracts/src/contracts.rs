@@ -534,6 +534,8 @@ pub enum HubMessage {
     },
     /// Commune プロトコルメッセージの転送
     CommuneRelay(crate::commune::CommuneMessage),
+    /// Zero-Metadata Commune プロトコルメッセージの転送
+    ZeroMetadataCommuneRelay(crate::commune::ZeroMetadataCommuneEnvelope),
 }
 
 /// System Setting entry for Management Console

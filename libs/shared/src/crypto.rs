@@ -131,6 +131,22 @@ pub fn derive_commune_key(hub_secret: &str) -> Result<[u8; 32], String> {
     Ok(okm)
 }
 
+/// Zero-Metadata Commune Envelope の暗号化ラッパー (RED状態)
+pub fn encrypt_commune_envelope(
+    _message: &aiome_core_contracts::commune::CommuneMessage,
+    _recipient_pub_ed_bytes: &[u8; 32],
+) -> Result<aiome_core_contracts::commune::ZeroMetadataCommuneEnvelope, String> {
+    Err("Not implemented yet".to_string())
+}
+
+/// Zero-Metadata Commune Envelope の復号ラッパー (RED状態)
+pub fn decrypt_commune_envelope(
+    _envelope: &aiome_core_contracts::commune::ZeroMetadataCommuneEnvelope,
+    _recipient_seed: &[u8; 32],
+) -> Result<aiome_core_contracts::commune::CommuneMessage, String> {
+    Err("Not implemented yet".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -245,5 +261,41 @@ mod tests {
             decrypt_result.is_err(),
             "Expected authentication tag validation failure"
         );
+    }
+
+    #[test]
+    fn test_zero_metadata_envelope_encryption_roundtrip() {
+        use aiome_core_contracts::commune::CommuneMessage;
+
+        let mut rng = thread_rng();
+
+        // 受信側の Ed25519 鍵ペア
+        let mut recipient_seed = [0u8; 32];
+        rng.fill_bytes(&mut recipient_seed);
+        let recipient_signing = SigningKey::from_bytes(&recipient_seed);
+        let recipient_pub_bytes = recipient_signing.verifying_key().to_bytes();
+
+        // ダミーの CommuneMessage 構築
+        let original_msg = CommuneMessage {
+            sender_pubkey: "sender_pubkey_example".to_string(),
+            recipient_pubkey: "recipient_pubkey_example".to_string(),
+            topic_id: "test_topic_123".to_string(),
+            content: "Hello, Zero-Metadata World! 🔒".to_string(),
+            karma_root_cid: "QmXxx".to_string(),
+            signature: "sig_example".to_string(),
+            lamport_clock: 42,
+            timestamp: "2026-06-27T00:00:00Z".to_string(),
+            encryption: "none".to_string(),
+            payload_type: None,
+        };
+
+        // 暗号化 (RED: エラーになるはず)
+        let envelope = encrypt_commune_envelope(&original_msg, &recipient_pub_bytes).unwrap();
+        assert!(!envelope.channel_local_id.is_empty());
+
+        // 復号
+        let decrypted_msg = decrypt_commune_envelope(&envelope, &recipient_seed).unwrap();
+        assert_eq!(decrypted_msg.topic_id, original_msg.topic_id);
+        assert_eq!(decrypted_msg.content, original_msg.content);
     }
 }

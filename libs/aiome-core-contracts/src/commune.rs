@@ -127,3 +127,12 @@ impl CommuneMessage {
         Ok(())
     }
 }
+
+/// Zero-Metadata Commune プロトコルにおける伝送用封筒 (Envelope)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ZeroMetadataCommuneEnvelope {
+    /// 送信方向ごとに一意に割り振られた、使い捨てのチャネルID (128-bit 乱数)
+    pub channel_local_id: String,
+    /// 暗号化・Base64 化されたペイロード
+    pub encrypted_payload: String,
+}
