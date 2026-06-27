@@ -45,6 +45,9 @@ mod tests {
             active_connections: std::sync::atomic::AtomicUsize::new(0),
             agent_registry: agent_registry.clone(),
             config: shared::config::AiomeConfig::default(),
+            metadata_free_channels: std::sync::Arc::new(tokio::sync::RwLock::new(
+                std::collections::HashMap::new(),
+            )),
         });
 
         let app = crate::build_app(state);

@@ -9,6 +9,7 @@ pub mod dream;
 pub mod heartbeat;
 pub mod watchtower;
 
+pub mod commune_ws;
 pub mod oxilean_poller;
 
 use crate::AppState;
@@ -151,6 +152,32 @@ pub async fn spawn_all(state: AppState) {
     }
     supervisor.spawn_supervised(
         OxiLeanTask {
+            state: state.clone(),
+        },
+        cancel_token.clone(),
+    );
+
+    // 5. Commune Metadata-Free WS Client Task
+    struct CommuneWsClientTask {
+        state: AppState,
+    }
+    impl infrastructure::supervisor::SupervisedTask for CommuneWsClientTask {
+        fn name(&self) -> &'static str {
+            "CommuneWsClient"
+        }
+        fn run(
+            &self,
+            ct: tokio_util::sync::CancellationToken,
+        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+            let state = self.state.clone();
+            Box::pin(async move {
+                let client = commune_ws::CommuneWsClient::new(state);
+                client.run_supervised(ct).await;
+            })
+        }
+    }
+    supervisor.spawn_supervised(
+        CommuneWsClientTask {
             state: state.clone(),
         },
         cancel_token.clone(),

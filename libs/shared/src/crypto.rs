@@ -54,15 +54,15 @@ pub fn encrypt_message(content: &str, recipient_pub_ed_bytes: &[u8; 32]) -> Resu
 
     // 4. HKDF-SHA256 によるセッション対称鍵の導出
     let hk = Hkdf::<Sha256>::new(None, shared_secret.as_bytes());
-    let mut session_key = [0u8; 32];
-    hk.expand(b"Commune-P2P-E2E-Encryption", &mut session_key)
+    let mut session_key = zeroize::Zeroizing::new([0u8; 32]);
+    hk.expand(b"Commune-P2P-E2E-Encryption", &mut *session_key)
         .map_err(|e| e.to_string())?;
 
     // 5. ChaCha20Poly1305 による暗号化
-    let cipher = ChaCha20Poly1305::new(Key::from_slice(&session_key));
-    let mut nonce_bytes = [0u8; 12];
-    rng.fill_bytes(&mut nonce_bytes);
-    let nonce = Nonce::from_slice(&nonce_bytes);
+    let cipher = ChaCha20Poly1305::new(Key::from_slice(&*session_key));
+    let mut nonce_bytes = zeroize::Zeroizing::new([0u8; 12]);
+    rng.fill_bytes(&mut *nonce_bytes);
+    let nonce = Nonce::from_slice(&*nonce_bytes);
 
     let ciphertext = cipher
         .encrypt(nonce, content.as_bytes())
@@ -71,7 +71,7 @@ pub fn encrypt_message(content: &str, recipient_pub_ed_bytes: &[u8; 32]) -> Resu
     // 6. パケット構築: EphemeralPublicKey || Nonce || Ciphertext
     let mut packet = Vec::with_capacity(32 + 12 + ciphertext.len());
     packet.extend_from_slice(ephemeral_public.as_bytes());
-    packet.extend_from_slice(&nonce_bytes);
+    packet.extend_from_slice(&*nonce_bytes);
     packet.extend_from_slice(&ciphertext);
 
     Ok(BASE64_STANDARD.encode(packet))
@@ -107,12 +107,12 @@ pub fn decrypt_message(content_b64: &str, recipient_seed: &[u8; 32]) -> Result<S
 
     // 5. HKDF-SHA256 によるセッション対称鍵の導出
     let hk = Hkdf::<Sha256>::new(None, shared_secret.as_bytes());
-    let mut session_key = [0u8; 32];
-    hk.expand(b"Commune-P2P-E2E-Encryption", &mut session_key)
+    let mut session_key = zeroize::Zeroizing::new([0u8; 32]);
+    hk.expand(b"Commune-P2P-E2E-Encryption", &mut *session_key)
         .map_err(|e| e.to_string())?;
 
     // 6. ChaCha20Poly1305 による復号
-    let cipher = ChaCha20Poly1305::new(Key::from_slice(&session_key));
+    let cipher = ChaCha20Poly1305::new(Key::from_slice(&*session_key));
     let nonce = Nonce::from_slice(nonce_bytes);
 
     let plaintext = cipher
@@ -123,28 +123,47 @@ pub fn decrypt_message(content_b64: &str, recipient_seed: &[u8; 32]) -> Result<S
 }
 
 /// Commune プロトコルで使用する共有鍵を導出する (HKDF RFC 5869)
-pub fn derive_commune_key(hub_secret: &str) -> Result<[u8; 32], String> {
+pub fn derive_commune_key(hub_secret: &str) -> Result<zeroize::Zeroizing<[u8; 32]>, String> {
     let hk = Hkdf::<Sha256>::new(None, hub_secret.as_bytes());
-    let mut okm = [0u8; 32];
-    hk.expand(b"aiome-commune-p2p-v1", &mut okm)
+    let mut okm = zeroize::Zeroizing::new([0u8; 32]);
+    hk.expand(b"aiome-commune-p2p-v1", &mut *okm)
         .map_err(|_| "HKDF expand failed for 32-byte key".to_string())?;
     Ok(okm)
 }
 
-/// Zero-Metadata Commune Envelope の暗号化ラッパー (RED状態)
+/// Zero-Metadata Commune Envelope の暗号化ラッパー
 pub fn encrypt_commune_envelope(
-    _message: &aiome_core_contracts::commune::CommuneMessage,
-    _recipient_pub_ed_bytes: &[u8; 32],
+    message: &aiome_core_contracts::commune::CommuneMessage,
+    recipient_pub_ed_bytes: &[u8; 32],
+    channel_local_id: String,
 ) -> Result<aiome_core_contracts::commune::ZeroMetadataCommuneEnvelope, String> {
-    Err("Not implemented yet".to_string())
+    // 1. CommuneMessage を JSON シリアライズ
+    let message_json = serde_json::to_string(message)
+        .map_err(|e| format!("Failed to serialize CommuneMessage: {}", e))?;
+
+    // 2. encrypt_message を呼び出して暗号化・Base64 化
+    let encrypted_payload = encrypt_message(&message_json, recipient_pub_ed_bytes)?;
+
+    Ok(aiome_core_contracts::commune::ZeroMetadataCommuneEnvelope {
+        channel_local_id,
+        encrypted_payload,
+    })
 }
 
-/// Zero-Metadata Commune Envelope の復号ラッパー (RED状態)
+/// Zero-Metadata Commune Envelope の復号ラッパー
 pub fn decrypt_commune_envelope(
-    _envelope: &aiome_core_contracts::commune::ZeroMetadataCommuneEnvelope,
-    _recipient_seed: &[u8; 32],
+    envelope: &aiome_core_contracts::commune::ZeroMetadataCommuneEnvelope,
+    recipient_seed: &[u8; 32],
 ) -> Result<aiome_core_contracts::commune::CommuneMessage, String> {
-    Err("Not implemented yet".to_string())
+    // 1. decrypt_message を呼び出して復号し平文の JSON 文字列を取得
+    let plaintext_json = decrypt_message(&envelope.encrypted_payload, recipient_seed)?;
+
+    // 2. JSON から CommuneMessage へデシリアライズ
+    let message =
+        serde_json::from_str::<aiome_core_contracts::commune::CommuneMessage>(&plaintext_json)
+            .map_err(|e| format!("Failed to deserialize CommuneMessage: {}", e))?;
+
+    Ok(message)
 }
 
 #[cfg(test)]
@@ -155,9 +174,9 @@ mod tests {
     #[test]
     fn test_derive_commune_key_consistency() {
         let secret = "test-secret-123";
-        let key1 = derive_commune_key(secret).unwrap();
+        let key1: zeroize::Zeroizing<[u8; 32]> = derive_commune_key(secret).unwrap();
         let key2 = derive_commune_key(secret).unwrap();
-        assert_eq!(key1, key2);
+        assert_eq!(*key1, *key2);
         assert_eq!(key1.len(), 32);
     }
 
@@ -165,7 +184,7 @@ mod tests {
     fn test_derive_commune_key_uniqueness() {
         let key1 = derive_commune_key("secret-a").unwrap();
         let key2 = derive_commune_key("secret-b").unwrap();
-        assert_ne!(key1, key2);
+        assert_ne!(*key1, *key2);
     }
 
     #[test]
@@ -289,9 +308,12 @@ mod tests {
             payload_type: None,
         };
 
-        // 暗号化 (RED: エラーになるはず)
-        let envelope = encrypt_commune_envelope(&original_msg, &recipient_pub_bytes).unwrap();
-        assert!(!envelope.channel_local_id.is_empty());
+        // 暗号化
+        let test_channel_id = "test_channel_123_xyz".to_string();
+        let envelope =
+            encrypt_commune_envelope(&original_msg, &recipient_pub_bytes, test_channel_id.clone())
+                .unwrap();
+        assert_eq!(envelope.channel_local_id, test_channel_id);
 
         // 復号
         let decrypted_msg = decrypt_commune_envelope(&envelope, &recipient_seed).unwrap();

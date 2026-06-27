@@ -12,7 +12,7 @@ use aiome_core_contracts::contracts::{
     ArenaMatch, ArtifactCategory, ArtifactEdge, ArtifactMeta, FederatedMetrics, ImmuneRule,
     JobMetrics, KarmaEntry, KarmaMetrics, OracleVerdict, SamsaraEvent, SystemEvent,
 };
-use aiome_core_contracts::security::PermissionManifest;
+use aiome_core_contracts::security::{PermissionManifest, SandboxProfile};
 pub use aiome_core_contracts::traits::SettingsOps;
 use aiome_core_contracts::traits::{
     AgentEvolver, AuditStore, ChatStore, CommuneRegistry, Expression, FederationRegistry,
@@ -189,6 +189,55 @@ impl UniversalJobQueue {
             security_validator: Arc::new(aiome_core::security::ConstitutionalValidator::new()),
             event_bus: tokio::sync::broadcast::channel(100).0,
         }
+    }
+
+    /// ジョブの要求権限とカテゴリに応じて、動的に適切なサンドボックスプロファイルを選択する（Execution Ladder）
+    pub fn select_ladder_sandbox(
+        &self,
+        category: &str,
+        manifest: &PermissionManifest,
+    ) -> SandboxProfile {
+        // Strict: ネットワークもファイル書き込みも不要な最も厳格な隔離
+        if !manifest.allow_network
+            && !manifest.allow_filesystem_write
+            && !manifest.allow_shell_execution
+        {
+            return SandboxProfile::Strict;
+        }
+
+        // Ladder 1: 超軽量 JS / WASM Isolate (WasmRun)
+        // シェル実行が不要で、かつシンプルなロジック処理
+        if !manifest.allow_shell_execution
+            && (category == "wasm" || category == "logic" || category == "skill")
+        {
+            return SandboxProfile::WasmRun;
+        }
+
+        // Ladder 2: Browser Run (BrowserAgent Profile)
+        // ネットワーク接続が必要で、ブラウザ関連のカテゴリ、ただしファイル書き込みやシェル実行は不可
+        if manifest.allow_network
+            && !manifest.allow_filesystem_write
+            && !manifest.allow_shell_execution
+            && (category == "browser" || category == "scrape" || category == "web")
+        {
+            return SandboxProfile::BrowserAgent;
+        }
+
+        // Ladder 3: Container Sandbox (PythonForge, ForgeBuild, McpServer 等へのエスカレーション)
+        if manifest.allow_shell_execution {
+            if category == "build" || category == "compile" {
+                return SandboxProfile::ForgeBuild;
+            } else if category == "python" {
+                return SandboxProfile::PythonForge;
+            }
+        }
+
+        if category == "mcp" {
+            return SandboxProfile::McpServer;
+        }
+
+        // フォールバック
+        SandboxProfile::Default
     }
 
     pub async fn set_embedding_provider(&self, provider: Arc<dyn EmbeddingProvider>) {

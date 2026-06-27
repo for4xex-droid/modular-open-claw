@@ -298,6 +298,17 @@ pub fn build_app(
             ),
         )
         .route(
+            "/api/commune/send/metadata-free",
+            axum::routing::post(routes::commune::send_message_metadata_free).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(2, std::time::Duration::from_secs(1)), // 2 messages per sec (p2p)
+            ),
+        )
+        .route(
             "/api/commune/autonomous/start",
             axum::routing::post(routes::commune::autonomous_start).route_layer(
                 tower::ServiceBuilder::new()

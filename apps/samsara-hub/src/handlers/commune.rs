@@ -327,3 +327,88 @@ pub async fn handle_commune_ws(mut socket: WebSocket, state: Arc<HubState>, node
         }
     }
 }
+
+pub async fn commune_relay_metadata_free_handler(
+    State(state): State<Arc<HubState>>,
+    headers: HeaderMap,
+    Json(envelope): Json<aiome_core::commune::ZeroMetadataCommuneEnvelope>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    // Auth Check
+    let auth_header = headers
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
+
+    let mut authenticated = false;
+    if auth_header.starts_with("Bearer ") {
+        let token = auth_header.trim_start_matches("Bearer ");
+        if let Ok(claims) = state.auth_manager.validate_token(token).await {
+            if claims.agent_id != uuid::Uuid::nil() {
+                authenticated = true;
+            }
+        }
+    }
+
+    if !authenticated && verify_bearer(auth_header, &state.secret) {
+        authenticated = true;
+    }
+
+    if !authenticated {
+        warn!("🔒 Unauthorized metadata-free relay request");
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"error": "Unauthorized"})),
+        );
+    }
+
+    let channel_local_id = envelope.channel_local_id.clone();
+    let mut channel_closed = false;
+    let mut channel_exists = false;
+
+    {
+        let channels = state.metadata_free_channels.read().await;
+        if let Some(tx) = channels.get(&channel_local_id) {
+            channel_exists = true;
+            if tx.is_closed() {
+                channel_closed = true;
+            } else if tx.send(envelope).is_ok() {
+                info!(
+                    "🔒 Relayed metadata-free message to channel: {}",
+                    channel_local_id
+                );
+                return (
+                    StatusCode::ACCEPTED,
+                    Json(serde_json::json!({"status": "accepted"})),
+                );
+            } else {
+                channel_closed = true;
+            }
+        }
+    }
+
+    if channel_closed {
+        let mut channels = state.metadata_free_channels.write().await;
+        channels.remove(&channel_local_id);
+        warn!(
+            "🔒 Metadata-free channel was closed. Purged: {}",
+            channel_local_id
+        );
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Channel was closed and purged"})),
+        );
+    }
+
+    if !channel_exists {
+        warn!("🔒 Metadata-free channel not found: {}", channel_local_id);
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Channel not found"})),
+        );
+    }
+
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(serde_json::json!({"error": "Failed to relay message"})),
+    )
+}

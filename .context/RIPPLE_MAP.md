@@ -1,3 +1,30 @@
+## Zero-Metadata Commune Protocol v2 および 実行ラダー・Code Mode の TDD 実装 (2026-06-27)
+
+- **変更内容**:
+    - `libs/shared/src/crypto.rs` [MODIFY]: `encrypt_commune_envelope` を修正し、ランダム生成だった `channel_local_id` を外部から受け取るようシグネチャを変更。
+    - `apps/samsara-hub/src/handlers/commune.rs` [MODIFY]: `commune_relay_metadata_free_handler` を実装し、Hub の DB 永続化をバイパスしてメモリ内ユニキャストルーティングで即時リレーを行うロジックを追加。
+    - `apps/samsara-hub/src/main.rs` [MODIFY]: `HubMaintenance` 定期ループに、切断された WebSocket 接続（`is_closed()` が true）を検出して自動削除するゾンビチャネルパージ機構を実装。
+    - `apps/api-server/src/internal_services/commune_ws.rs` [NEW]: api-server 側の WebSocket 受信サブシステム。Hub と hood との WS 接続確立、指数バックオフを伴う自動再接続、復号したメッセージの CSAM/Toxicity サニタイズ (`P2pSanitizer`) 処理、およびローカル DB 保存を統括。
+    - `apps/api-server/src/routes/commune.rs` [MODIFY]: `send/metadata-free` エンドポイントを実装。`base64::Engine` トレイトのインポートを追加し、型エラーを解消。
+    - `apps/api-server/src/router.rs` [MODIFY]: `send/metadata-free` エンドポイントを API サーバーのルートに登録。
+    - `apps/api-server/src/api_integration_tests/commune.rs` [MODIFY]: 送信時のサイズ・空文字・バイナリ等のバリデーションを検証するテストを追加。
+    - `libs/infrastructure/src/job_queue/mod.rs` [MODIFY]: 要求権限（`PermissionManifest`）およびカテゴリ（logic, wasm, browser, python 等）に基づいて適切な隔離サンドボックスプロファイル（Strict, WasmRun, BrowserAgent, PythonForge 等）を動的に選択する `select_ladder_sandbox` (Execution Ladder) を実装。
+    - `libs/infrastructure/src/job_queue/swarm.rs` [MODIFY]: `test_select_ladder_sandbox` テストを追加。`MockTrajectoryStore` の不整合と `PermissionManifest` 等のインポートエラーを解消。
+    - `libs/infrastructure/src/skills/mod.rs` [MODIFY]: `code_mode.d.ts` に準拠した JavaScript コードを一括ロード・安全に実行する JS エンジンブリッジ `run_code_mode_js` メソッドを実装。
+        - 🛡️ セキュリティロック: 権限（`allow_shell_execution`）がない場合はシェル実行 (`aiome.exec`) を即座に遮断するロックを実装。
+        - 構文解析: Rust `regex` でサポートされていない後方参照（backreferences）を排除した正規表現パーサを構築。
+        - **Reflexion 堅牢化**: `is_sensitive_path` パス検査ヘルパー関数を抽出して DRY 違反を解消。WASM `host_write` 実行時の `allowed_root` 正規化（`canonicalize`）失敗時に確実にエラーを返すよう厳格化。JS 警告ログ切り詰めにおいて `shared::strings::truncate_chars_safely` を使用しマルチバイト文字での UTF-8 バイト境界パニックを完全に排除。
+    - `libs/infrastructure/src/skills/tests.rs` [MODIFY]: `test_code_mode_js_success`, `test_code_mode_js_security_violation_exec`, `test_code_mode_js_exec_success` テストを追加し、Code Mode の実行とセキュリティロックを検証。また、`is_sensitive_path` を直接検証する 8 件のユニットテストを `sensitive_path_tests` モジュールとして追加。
+    - `CHANGELOG.md` [MODIFY]: 変更履歴の更新。
+- **波及効果**:
+    - 使い捨ての一方向チャネルID (`ChannelLocalId`) を用いた中継、署名の完全排除、メモリ内ユニキャストルーティングにより、通信グラフを漏洩させずタイミング攻撃から防御する Zero-Metadata P2P 経路が確立されました。
+    - `CommuneWsClient` により Hub との WebSocket 接続が自動維持され、CSAM / 有害ワード検知 of サニタイズ境界が api-server 受信時に強制適用されるため、法的およびセキュリティリスクが極小化されました。
+    - Execution Ladder の導入により、ジョブ of 要求権限とカテゴリに応じたきめ細かなサンドボックス割り当てが可能となり、システムの最小特権の原則が強化されました。
+    - Code Mode の一括実行ブリッジが追加され、Wasm プラグイン（Extism）に依存しない JavaScript プレーンコード実行が BastionGuard による完全なセキュリティ境界の保護下で安全に行えるようになりました。
+    - 機密パス判定ロジックの抽出（`is_sensitive_path`）により、将来のパターン追加が1箇所に集約され保守性が向上しました。
+    - 文字列スライスにおける UTF-8 境界パニックの防止と、正規化に失敗したパスをフォールバックさせず拒否する挙動が確立され、JS Isolate 内のランタイム安全性が著しく向上しました。
+
+
 ## ISO 25010 品質指針の導入と Web Worker による Biome シミュレーション非同期分離の TDD 実装 (2026-06-27)
 
 - **変更内容**:

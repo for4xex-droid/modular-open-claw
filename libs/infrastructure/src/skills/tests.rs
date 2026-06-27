@@ -256,4 +256,180 @@ mod tests {
             );
         }
     }
+
+    #[tokio::test]
+    async fn test_code_mode_js_success() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let skills_dir = temp_dir.path().join("skills");
+        std::fs::create_dir(&skills_dir).unwrap();
+        let manager = WasmSkillManager::new(&skills_dir, &temp_dir.path().to_path_buf())
+            .expect("Failed to create manager");
+
+        let js_code = r#"
+            aiome.log("hello code mode");
+            aiome.writeFile("test_js.txt", "content from js");
+            const val = await aiome.readFile("test_js.txt");
+            aiome.log(val);
+        "#;
+
+        let manifest = crate::security::PermissionManifest {
+            allow_filesystem_write: true,
+            ..Default::default()
+        };
+
+        let result = manager.run_code_mode_js(js_code, &manifest).await.unwrap();
+        assert_eq!(result, "content from js");
+
+        // ファイルが実際に書き込まれたか検証
+        let written = std::fs::read_to_string(temp_dir.path().join("test_js.txt")).unwrap();
+        assert_eq!(written, "content from js");
+    }
+
+    #[tokio::test]
+    async fn test_code_mode_js_security_violation_exec() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let skills_dir = temp_dir.path().join("skills");
+        std::fs::create_dir(&skills_dir).unwrap();
+        let manager = WasmSkillManager::new(&skills_dir, &temp_dir.path().to_path_buf())
+            .expect("Failed to create manager");
+
+        let js_code = r#"
+            aiome.exec("echo dangerous");
+        "#;
+
+        let manifest = crate::security::PermissionManifest {
+            allow_shell_execution: false, // 遮断されるべき
+            ..Default::default()
+        };
+
+        let result = manager.run_code_mode_js(js_code, &manifest).await;
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Shell execution is not permitted"));
+    }
+
+    #[tokio::test]
+    async fn test_code_mode_js_exec_success() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let skills_dir = temp_dir.path().join("skills");
+        std::fs::create_dir(&skills_dir).unwrap();
+        let manager = WasmSkillManager::new(&skills_dir, &temp_dir.path().to_path_buf())
+            .expect("Failed to create manager");
+
+        let js_code = r#"
+            const out = await aiome.exec("echo hello_js");
+            aiome.log(out);
+        "#;
+
+        let manifest = crate::security::PermissionManifest {
+            allow_shell_execution: true,
+            ..Default::default()
+        };
+
+        let result = manager.run_code_mode_js(js_code, &manifest).await.unwrap();
+        assert!(result.trim().contains("hello_js"));
+    }
+
+    #[tokio::test]
+    async fn test_code_mode_js_path_traversal_rejection() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let skills_dir = temp_dir.path().join("skills");
+        std::fs::create_dir(&skills_dir).unwrap();
+
+        let allowed_root = temp_dir.path().join("allowed_root");
+        std::fs::create_dir(&allowed_root).unwrap();
+
+        let manager =
+            WasmSkillManager::new(&skills_dir, &allowed_root).expect("Failed to create manager");
+
+        // 1. writeFile traversal
+        let js_code_write = r#"
+            aiome.writeFile("../traversal.txt", "should fail");
+        "#;
+        let manifest = crate::security::PermissionManifest {
+            allow_filesystem_write: true,
+            ..Default::default()
+        };
+        let result_write = manager.run_code_mode_js(js_code_write, &manifest).await;
+        assert!(result_write.is_err());
+        assert!(result_write
+            .unwrap_err()
+            .to_string()
+            .contains("Path traversal blocked"));
+
+        // 2. readFile traversal
+        let js_code_read = r#"
+            aiome.readFile("../traversal.txt");
+        "#;
+        let result_read = manager.run_code_mode_js(js_code_read, &manifest).await;
+        assert!(result_read.is_err());
+        assert!(result_read
+            .unwrap_err()
+            .to_string()
+            .contains("Path traversal blocked"));
+    }
+
+    // ── is_sensitive_path ユニットテスト ──────────────────────────
+
+    mod sensitive_path_tests {
+        use crate::skills::is_sensitive_path;
+        use std::path::Path;
+
+        #[test]
+        fn blocks_dotenv_files() {
+            assert!(is_sensitive_path(Path::new("/project/.env")));
+            assert!(is_sensitive_path(Path::new("/project/.env.production")));
+            assert!(is_sensitive_path(Path::new("/project/.env.local")));
+        }
+
+        #[test]
+        fn blocks_git_directory() {
+            assert!(is_sensitive_path(Path::new("/project/.git/config")));
+            assert!(is_sensitive_path(Path::new("/project/.git")));
+        }
+
+        #[test]
+        fn blocks_ssh_directory() {
+            assert!(is_sensitive_path(Path::new("/home/user/.ssh/id_rsa")));
+            assert!(is_sensitive_path(Path::new("/project/.ssh")));
+        }
+
+        #[test]
+        fn blocks_key_and_pem_extensions() {
+            assert!(is_sensitive_path(Path::new("/project/certs/server.pem")));
+            assert!(is_sensitive_path(Path::new("/project/ssl/private.key")));
+            assert!(is_sensitive_path(Path::new("/project/TLS.PEM")));
+            assert!(is_sensitive_path(Path::new("/project/Secret.KEY")));
+        }
+
+        #[test]
+        fn blocks_security_json_and_cargo_toml() {
+            assert!(is_sensitive_path(Path::new("/project/security.json")));
+            assert!(is_sensitive_path(Path::new("/project/Cargo.toml")));
+        }
+
+        #[test]
+        fn blocks_ssh_key_files() {
+            assert!(is_sensitive_path(Path::new("/home/user/id_rsa")));
+            assert!(is_sensitive_path(Path::new("/home/user/id_ed25519")));
+        }
+
+        #[test]
+        fn allows_normal_paths() {
+            assert!(!is_sensitive_path(Path::new("/project/src/main.rs")));
+            assert!(!is_sensitive_path(Path::new("/project/data/output.json")));
+            assert!(!is_sensitive_path(Path::new("/project/README.md")));
+            assert!(!is_sensitive_path(Path::new("/project/skills/hello.wasm")));
+        }
+
+        #[test]
+        fn allows_similar_but_safe_names() {
+            // "environment.rs" は ".env" で starts_with しない
+            assert!(!is_sensitive_path(Path::new("/project/src/environment.rs")));
+            // "keyboard.rs" は ".key" で ends_with しない
+            assert!(!is_sensitive_path(Path::new("/project/src/keyboard.rs")));
+        }
+    }
 }

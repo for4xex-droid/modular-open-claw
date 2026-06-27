@@ -17,6 +17,17 @@ pub struct HubState {
     pub active_connections: std::sync::atomic::AtomicUsize,
     pub agent_registry: crate::mdns_listener::AgentRegistry,
     pub config: shared::config::AiomeConfig,
+    /// メタデータフリー（極秘）通信用の一時ユニキャストルーティングマップ
+    pub metadata_free_channels: Arc<
+        tokio::sync::RwLock<
+            std::collections::HashMap<
+                String,
+                tokio::sync::mpsc::UnboundedSender<
+                    aiome_core::commune::ZeroMetadataCommuneEnvelope,
+                >,
+            >,
+        >,
+    >,
 }
 
 impl HubState {
@@ -36,6 +47,9 @@ impl HubState {
             active_connections: std::sync::atomic::AtomicUsize::new(0),
             agent_registry,
             config,
+            metadata_free_channels: Arc::new(tokio::sync::RwLock::new(
+                std::collections::HashMap::new(),
+            )),
         }
     }
 }

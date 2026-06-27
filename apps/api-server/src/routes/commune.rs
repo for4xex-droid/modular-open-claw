@@ -15,6 +15,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use base64::Engine;
 use secrecy::ExposeSecret;
 
 /// Samsara Hub への S2S 認証ヘッダーを生成する。
@@ -370,6 +371,129 @@ pub async fn send_message(
         .post(&url)
         .header("Authorization", hub_auth_header(&state))
         .json(&payload)
+        .send()
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?;
+
+    hub_response_to_axum(res).await
+}
+
+#[derive(serde::Deserialize, utoipa::ToSchema)]
+pub struct SendCommuneMetadataFreeRequest {
+    pub recipient_pubkey: String,
+    pub channel_local_id: String,
+    pub topic_id: String,
+    pub content: String,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/commune/send/metadata-free",
+    request_body = SendCommuneMetadataFreeRequest,
+    responses(
+        (status = 200, description = "Message sent in metadata-free mode", body = serde_json::Value)
+    ),
+    security(("api_key" = []))
+)]
+pub async fn send_message_metadata_free(
+    State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
+    Json(req): Json<SendCommuneMetadataFreeRequest>,
+) -> Result<Response, AppError> {
+    if req.content.trim().is_empty() {
+        return Err(AppError::bad_request(
+            "Empty content is not allowed in P2P messages".to_string(),
+        ));
+    }
+
+    const MAX_CONTENT_BYTES: usize = 8000;
+    if req.content.len() > MAX_CONTENT_BYTES {
+        return Err(AppError::bad_request(format!(
+            "Content exceeds maximum size ({} > {} bytes)",
+            req.content.len(),
+            MAX_CONTENT_BYTES
+        )));
+    }
+
+    let lower_content = req.content.to_lowercase();
+    if lower_content.contains("data:image/")
+        || lower_content.contains("data:video/")
+        || lower_content.contains(";base64,")
+    {
+        return Err(AppError::bad_request(
+            "Binary data embedding is prohibited in P2P messages".to_string(),
+        ));
+    }
+
+    let banned_words_setting = match state
+        .job_queue
+        .get_setting_value("csam_toxicity_forbidden_words")
+        .await
+    {
+        Ok(Some(v)) => v,
+        Ok(None) => String::new(),
+        Err(e) => {
+            tracing::warn!(
+                "⚠️ Failed to fetch CSAM forbidden words: {}. Proceeding with empty blocklist.",
+                e
+            );
+            String::new()
+        }
+    };
+    let banned_words: Vec<String> = banned_words_setting
+        .split(',')
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    if let Err(e) =
+        infrastructure::job_queue::federation::P2pSanitizer::sanitize(&req.content, &banned_words)
+    {
+        return Err(AppError::bad_request(e.to_string()));
+    }
+
+    let recipient_pub_bytes = base64::prelude::BASE64_STANDARD
+        .decode(&req.recipient_pubkey)
+        .map_err(|e| AppError::bad_request(format!("Invalid recipient_pubkey Base64: {}", e)))?;
+    let recipient_pub_array: [u8; 32] = recipient_pub_bytes.try_into().map_err(|_| {
+        AppError::bad_request("recipient_pubkey must be exactly 32 bytes".to_string())
+    })?;
+
+    let clock = state
+        .job_queue
+        .tick_local_clock()
+        .await
+        .map_err(|e| AppError::internal(e.to_string()))?;
+
+    let inner_msg = aiome_core::commune::CommuneMessage {
+        topic_id: req.topic_id.clone(),
+        sender_pubkey: state.system_agent_id.to_string(),
+        recipient_pubkey: req.recipient_pubkey.clone(),
+        content: req.content.clone(),
+        karma_root_cid: "cid_local_relay_metadata_free".to_string(),
+        signature: "".to_string(),
+        lamport_clock: clock,
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        encryption: "none".to_string(),
+        payload_type: None,
+    };
+
+    let envelope = shared::crypto::encrypt_commune_envelope(
+        &inner_msg,
+        &recipient_pub_array,
+        req.channel_local_id.clone(),
+    )
+    .map_err(|e| AppError::internal(format!("Envelope encryption failed: {}", e)))?;
+
+    let url = format!(
+        "{}/api/v1/commune/relay/metadata-free",
+        state.config.samsara_hub_url
+    );
+    let res = state
+        .http_client
+        .post(&url)
+        .header("Authorization", hub_auth_header(&state))
+        .json(&envelope)
         .send()
         .await
         .map_err(|e| AppError::internal(e.to_string()))?;

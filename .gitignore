@@ -148,3 +148,6 @@ test_logic
 # Tauri dev workspace
 /apps/management-console/src-tauri/workspace/
 
+# Biome Engine build artifacts
+/libs/biome-engine/target/
+

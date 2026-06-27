@@ -830,4 +830,74 @@ mod tests {
         assert!(rep_res2.is_ok());
         assert_eq!(rep_res2.unwrap(), 0.85);
     }
+
+    #[tokio::test]
+    async fn test_select_ladder_sandbox() {
+        use crate::security::{PermissionManifest, SandboxProfile};
+
+        let sql_pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        let db_pool = crate::db::DatabasePool::Sqlite(sql_pool);
+        let ts = std::sync::Arc::new(
+            crate::job_queue::trajectory_store::SqliteTrajectoryStore::new(db_pool.clone()),
+        );
+        let queue = UniversalJobQueue::from_pool(db_pool, ts);
+
+        // 1. Strict
+        let manifest_strict = PermissionManifest::default();
+        let profile = queue.select_ladder_sandbox("logic", &manifest_strict);
+        assert_eq!(profile, SandboxProfile::Strict);
+
+        // 2. WasmRun (No shell, logic category)
+        let manifest_wasm = PermissionManifest {
+            allow_network: true,
+            allow_filesystem_write: false,
+            allow_shell_execution: false,
+            allowed_domains: vec![],
+        };
+        let profile = queue.select_ladder_sandbox("logic", &manifest_wasm);
+        assert_eq!(profile, SandboxProfile::WasmRun);
+
+        // 3. BrowserAgent (Network allowed, browser category)
+        let manifest_browser = PermissionManifest {
+            allow_network: true,
+            allow_filesystem_write: false,
+            allow_shell_execution: false,
+            allowed_domains: vec![],
+        };
+        let profile = queue.select_ladder_sandbox("browser", &manifest_browser);
+        assert_eq!(profile, SandboxProfile::BrowserAgent);
+
+        // 4. Container Sandboxes
+        let manifest_shell = PermissionManifest {
+            allow_network: true,
+            allow_filesystem_write: true,
+            allow_shell_execution: true,
+            allowed_domains: vec![],
+        };
+        let profile = queue.select_ladder_sandbox("python", &manifest_shell);
+        assert_eq!(profile, SandboxProfile::PythonForge);
+
+        // 5. McpServer
+        let manifest_mcp = PermissionManifest {
+            allow_network: true,
+            allow_filesystem_write: true,
+            allow_shell_execution: true,
+            allowed_domains: vec![],
+        };
+        let profile = queue.select_ladder_sandbox("mcp", &manifest_mcp);
+        assert_eq!(profile, SandboxProfile::McpServer);
+
+        // 6. Default Fallback
+        let manifest_default = PermissionManifest {
+            allow_network: true,
+            allow_filesystem_write: true,
+            allow_shell_execution: true,
+            allowed_domains: vec![],
+        };
+        let profile = queue.select_ladder_sandbox("unknown_category", &manifest_default);
+        assert_eq!(profile, SandboxProfile::Default);
+    }
 }

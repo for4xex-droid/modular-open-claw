@@ -213,6 +213,9 @@ async fn main() -> anyhow::Result<()> {
             );
             shared::config::AiomeConfig::default()
         }),
+        metadata_free_channels: Arc::new(
+            tokio::sync::RwLock::new(std::collections::HashMap::new()),
+        ),
     });
 
     // Spawn the Approval Worker to process quarantine
@@ -255,6 +258,27 @@ async fn main() -> anyhow::Result<()> {
                     tokio::select! {
                         _ = interval.tick() => {
                             info!("♻️ [HubMaintenance] Running Maintenance...");
+
+                            // Purge closed metadata-free channels
+                            {
+                                let mut closed_ids = Vec::new();
+                                {
+                                    let channels = state_bg.metadata_free_channels.read().await;
+                                    for (cid, tx) in channels.iter() {
+                                        if tx.is_closed() {
+                                            closed_ids.push(cid.clone());
+                                        }
+                                    }
+                                }
+                                if !closed_ids.is_empty() {
+                                    let mut channels = state_bg.metadata_free_channels.write().await;
+                                    for cid in closed_ids {
+                                        channels.remove(&cid);
+                                        info!("♻️ [HubMaintenance] Purged zombie channel: {}", cid);
+                                    }
+                                }
+                            }
+
                             if let Some(sq) = state_bg.pool.get_sqlite_pool() {
                                  let has_error = match sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)").execute(sq).await {
                                      Err(e) => {
@@ -367,7 +391,8 @@ pub fn build_app(state: Arc<HubState>) -> Router {
         ]);
 
     use crate::handlers::commune::{
-        commune_relay_handler, commune_ws_handler, create_topic_handler, list_topics_handler,
+        commune_relay_handler, commune_relay_metadata_free_handler, commune_ws_handler,
+        create_topic_handler, list_topics_handler,
     };
     use crate::handlers::middleware::auth_middleware;
     use crate::handlers::system::{health_handler, list_agents_handler};
@@ -382,6 +407,10 @@ pub fn build_app(state: Arc<HubState>) -> Router {
             get(list_topics_handler).post(create_topic_handler),
         )
         .route("/api/v1/commune/relay", post(commune_relay_handler))
+        .route(
+            "/api/v1/commune/relay/metadata-free",
+            post(commune_relay_metadata_free_handler),
+        )
         .route("/api/v1/commune/ws", get(commune_ws_handler))
         .route("/api/v1/relay/timeline/sync", post(timeline_sync_handler))
         .layer(axum::middleware::from_fn_with_state(

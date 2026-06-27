@@ -160,3 +160,80 @@ async fn test_commune_genome_sharing_roundtrip() {
         "{\"genes\": [1.0, 2.0, 3.0]}"
     );
 }
+
+#[serial]
+#[tokio::test]
+async fn test_commune_send_metadata_free_content_length() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let content = "a".repeat(8001);
+    let payload = serde_json::json!({
+        "recipient_pubkey": "dummy",
+        "channel_local_id": "dummy_channel",
+        "topic_id": "dummy_topic",
+        "content": content
+    });
+
+    let resp = server
+        .post("/api/commune/send/metadata-free")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
+    let json = resp.json::<serde_json::Value>();
+    assert!(json["error"].as_str().unwrap().contains("8000 bytes"));
+}
+
+#[serial]
+#[tokio::test]
+async fn test_commune_send_metadata_free_binary_data() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let content = "Hello data:image/png;base64,iVBORw0KGgo=";
+    let payload = serde_json::json!({
+        "recipient_pubkey": "dummy",
+        "channel_local_id": "dummy_channel",
+        "topic_id": "dummy_topic",
+        "content": content
+    });
+
+    let resp = server
+        .post("/api/commune/send/metadata-free")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
+    let json = resp.json::<serde_json::Value>();
+    assert!(json["error"]
+        .as_str()
+        .unwrap()
+        .contains("Binary data embedding"));
+}
+
+#[serial]
+#[tokio::test]
+async fn test_commune_send_metadata_free_empty_content() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = test_bearer();
+
+    let payload = serde_json::json!({
+        "recipient_pubkey": "dummy",
+        "channel_local_id": "dummy_channel",
+        "topic_id": "dummy_topic",
+        "content": "   "
+    });
+
+    let resp = server
+        .post("/api/commune/send/metadata-free")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
+    let json = resp.json::<serde_json::Value>();
+    assert!(json["error"].as_str().unwrap().contains("Empty content"));
+}

@@ -11596,6 +11596,7 @@ dependencies = [
  "uuid",
  "visual-hash",
  "x25519-dalek",
+ "zeroize",
 ]
 
 [[package]]

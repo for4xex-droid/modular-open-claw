@@ -1,6 +1,27 @@
 ## [Unreleased] - 2026-06-27
 
 ### Added
+- **暗号鍵の Zeroize 堅牢化 (P0)**:
+  - `libs/shared/src/crypto.rs` の `derive_commune_key` 戻り値型を `Zeroizing<[u8; 32]>` に変更し、機密情報のメモリ残存リスクを排除。
+  - 呼び出し元の `libs/core/src/commune/autonomous.rs` 内でデリファレンス `&*key` を適用してビルド互換性を維持。
+- **JS Isolate / WASM セキュリティおよびリソースの最適化 (P0-1, P1-1/P1-2, P1-3, P2-2)**:
+  - WASM `host_write` 部分で `allowed_root` を `canonicalize` してからパス走査制限の判定を行うように修正（シンボリックリンクバイパスの防止）。失敗時はフォールバックせず厳格にエラーを返すよう強化。
+  - `run_code_mode_js` の `aiome.fetch` において、接続毎にクライアントを生成せず、30秒タイムアウト設定を施した `reqwest::Client` を一括初期化して再利用するように最適化。
+  - `is_sensitive_path` ヘルパー関数を抽出し、`writeFile` と `readFile` 双方の機密ファイルアクセス判定ロジックを共通化（DRY原則の適用）。
+  - 無効なJS行スキップ警告ログで、`shared::strings::truncate_chars_safely` を使用して安全に文字単位（100文字）で切り詰めを行うよう修正し、マルチバイト文字中間でのスライスによる UTF-8 パニックを排除。
+  - `is_sensitive_path` に対する正常系・異常系・類似名誤検知回避など 8 件のユニットテストを `libs/infrastructure/src/skills/tests.rs` に追加。
+
+
+- **Zero-Metadata Commune Protocol v2 (P1〜P5パッチ)**:
+  - 使い捨てチャネルID (`ChannelLocalId`) を用いた中継、署名の完全排除による中継メタデータゼロ化、ユニキャストルーティングによるタイミング攻撃防御、および DB 永続化をバイパスするメモリ内即時リレーを Samsara Hub に実装。
+  - api-server 側に WebSocket 接続・維持、自動再接続（指数バックオフ付き）、サニタイズ処理を担う `CommuneWsClient` サブシステムを新規追加。
+  - `/api/commune/send/metadata-free` エンドポイントおよび送信時バリデーションテストを実装。
+  - チャネル切断時に自動パージするメモリリーク対策を Samsara Hub の `HubMaintenance` に実装。
+- **実行ラダー (Execution Ladder) & Code Mode (P5対応)**:
+  - 要求権限とカテゴリ（logic, wasm, browser, python 等）に応じて、動的に適切な隔離サンドボックスプロファイルを選択する `select_ladder_sandbox` を UniversalJobQueue に実装。
+  - `code_mode.d.ts` の型定義に準拠し、`aiome.log`, `aiome.exec`, `aiome.fetch`, `aiome.writeFile`, `aiome.readFile` API をサポートする JavaScript 一括実行ブリッジを `WasmSkillManager` に実装。
+  - 🛡️ セキュリティロック: 権限（`allow_shell_execution`）を持たない場合に `aiome.exec` の呼び出しを完全に遮断するロックを実装。
+  - Rust regex クレート互換のセキュアな JS 構文解析・変数展開・評価ロジックを構築。
 - **pdftotext によるプロセス隔離型 PDF テキスト抽出 (RUSTSEC-2026-0187 脆弱性対策)**:
   - `libs/infrastructure/src/cortex_ingester.rs` の `ingest_pdf` にて、`SafeCommandBuilder` と `SandboxProfile::Strict` を使用し、非特権サンドボックス下で `pdftotext` を隔離実行する方式へ移行。
   - CI環境 (`ci.yml`) および本番Dockerイメージ (`docker/production.Dockerfile`) のランタイムステージに `poppler-utils` 依存パッケージを追加。
