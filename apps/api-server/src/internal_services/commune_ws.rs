@@ -228,7 +228,7 @@ impl CommuneWsClient {
             );
 
             let seed = self.get_node_seed().await?;
-            let decrypted_msg = shared::crypto::decrypt_commune_envelope(&envelope, &*seed)
+            let decrypted_msg = shared::crypto::decrypt_commune_envelope(&envelope, &seed)
                 .map_err(|e| format!("Failed to decrypt envelope: {}", e))?;
 
             let banned_words_setting = match self

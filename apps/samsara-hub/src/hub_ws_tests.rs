@@ -210,13 +210,9 @@ async fn test_metadata_free_unicast_relay() {
 
     // Verify Client B received nothing (no text messages should arrive, though Ping is fine)
     let msg_b_res = tokio::time::timeout(std::time::Duration::from_millis(500), async {
-        loop {
-            if let Some(Ok(msg)) = ws_stream_b.next().await {
-                if msg.is_text() {
-                    return msg;
-                }
-            } else {
-                break;
+        while let Some(Ok(msg)) = ws_stream_b.next().await {
+            if msg.is_text() {
+                return msg;
             }
         }
         std::future::pending::<tokio_tungstenite::tungstenite::Message>().await

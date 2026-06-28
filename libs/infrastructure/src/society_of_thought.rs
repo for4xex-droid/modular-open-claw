@@ -290,29 +290,27 @@ impl SoTEngine {
                 if round == 1 {
                     best_content = current_content.clone();
                     best_score = avg_score;
+                } else if avg_score > best_score {
+                    info!(
+                        "🔥 [SoT] Challenger proposal improved score from {} to {}. Accepting.",
+                        best_score, avg_score
+                    );
+                    best_content = current_content.clone();
+                    best_score = avg_score;
+                    rejection_count = 0;
                 } else {
-                    if avg_score > best_score {
-                        info!(
-                            "🔥 [SoT] Challenger proposal improved score from {} to {}. Accepting.",
-                            best_score, avg_score
-                        );
-                        best_content = current_content.clone();
-                        best_score = avg_score;
-                        rejection_count = 0;
-                    } else {
-                        rejection_count += 1;
-                        info!("❌ [SoT] Challenger proposal rejected (score: {} <= best: {}). Rejection count: {}/{}", avg_score, best_score, rejection_count, config.challenger_max_rejections);
-                        if rejection_count >= config.challenger_max_rejections {
-                            warn!("⏹️ [SoT] Challenger max rejections reached. Early terminating.");
-                            current_content = best_content.clone(); // 最良提案を復元
-                            final_outcome = SoTOutcome::ChallengerRejected {
-                                reason: format!(
-                                    "Challenger failed to improve score after {} rejections",
-                                    rejection_count
-                                ),
-                            };
-                            break;
-                        }
+                    rejection_count += 1;
+                    info!("❌ [SoT] Challenger proposal rejected (score: {} <= best: {}). Rejection count: {}/{}", avg_score, best_score, rejection_count, config.challenger_max_rejections);
+                    if rejection_count >= config.challenger_max_rejections {
+                        warn!("⏹️ [SoT] Challenger max rejections reached. Early terminating.");
+                        current_content = best_content.clone(); // 最良提案を復元
+                        final_outcome = SoTOutcome::ChallengerRejected {
+                            reason: format!(
+                                "Challenger failed to improve score after {} rejections",
+                                rejection_count
+                            ),
+                        };
+                        break;
                     }
                 }
             }
