@@ -1,10 +1,10 @@
 # 🔍 Aiome 技術的負債監査レポート
 
-**監査日**: 2026-06-29 (v8.3 — エラー抑制調査・テスト unwrap の妥当性・非同期ライフサイクル監視の検証)
-**前回監査日**: 2026-06-29 (v8.2 — 12次元長期負債・フロントエンド型安全性・WebGLカラーブリッジ負債の監査)
+**監査日**: 2026-06-29 (v8.4 — 指摘事項のテーブル化・Open Questions の追加)
+**前回監査日**: 2026-06-29 (v8.3)
 **対象コードベース**: **152k LOC** (Rust ~128k + TypeScript ~24k)
 **監査ツール**: `cargo audit`, `enforce_unwrap_deny.py`, `deep-scan.sh`, Git hotspot analysis, grep-based deep scan
-**分析コミット**: `e88704a3`
+**分析コミット**: `0ed3a26c`
 
 ---
 
@@ -32,7 +32,7 @@
 
 ---
 
-## 3. Quick Wins（解消・新規追加）
+## 3. Quick Wins（1時間以内で修正可能）
 
 | # | 修正内容 | ファイル | 効果 | Status |
 |---|---|---|---|---|
@@ -44,29 +44,16 @@
 
 ## 4. Findings Table（12次元別）
 
-### Dimension 3: Type & Contract Debt（型・契約の負債）
-- **フロントエンド `as any` による型定義の緩さ**:
-  - [workflowConverter.ts:139](file:///Users/motista/Desktop/antigravity/aiome/apps/management-console/src/lib/workflowConverter.ts#L139): `const details = (nodeType as any)[typeName]` (動的プロパティアクセスの any キャスト)
-  - [WorkflowBuilder.tsx:101](file:///Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/WorkflowBuilder.tsx#L101): `const eventData = data as any`
-  - [WorkflowBuilder.tsx:234](file:///Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/WorkflowBuilder.tsx#L234): `const nodeType = node.data?.node_type as any`
-- **JobQueue トレイトの定義と UniversalJobQueue 実装の API 乖離 (CC-1)**:
-  - [traits.rs:300-370](file:///Users/motista/Desktop/antigravity/aiome/libs/aiome-core-contracts/src/traits.rs): `JobQueue` 定義に対し、実装側でのみ公開された pub fn が多数あり、抽象インターフェースとしての契約が機能していません。
-
-### Dimension 7: Error handling & observability
-- **[NEW] ログ無しのエラー握り潰し (.ok() の使用)**:
-  - [dispatcher.rs:134](file:///Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/task_orchestrator/dispatcher.rs#L134): `serde_json::to_string(&details_map).ok()`
-  - **対策**: `warn!` や `debug!` ログを追加するか、コンテキスト付きのエラーハンドリングを追加する必要があります。
-
-### Dimension 11: Tauri IPC 型安全性 (Aiome固有)
-- **Tauri グローバルアクセス時の any 使用**:
-  - [api_resolver.ts:25](file:///Users/motista/Desktop/antigravity/aiome/apps/management-console/src/lib/api_resolver.ts#L25): `window && (window as any).__TAURI_INTERNALS__`
-  - **対策**: グローバル window オブジェクトの拡張インターフェースを `global.d.ts` で定義する必要があります。
-
-### Dimension 12: tokens.css 遵守度 / U-002 違反 (Aiome固有)
-- **WebGL / Canvas コンテキストでの HEX カラーコードのハードコード**:
-  - [BiomeCellGrid.tsx:35-44](file:///Users/motista/Desktop/antigravity/aiome/apps/management-console/src/lib/biome/BiomeCellGrid.tsx#L35): 元素表示用カラーの `new THREE.Color('#4fc3f7')` などのハードコード（8箇所）。
-  - [BiomeGame.tsx:248-255](file:///Users/motista/Desktop/antigravity/aiome/apps/management-console/src/lib/biome/BiomeGame.tsx#L248): 元素カラーマッピング用 HEX リテラルの直書き。
-  - [BiomeHUD.tsx:98](file:///Users/motista/Desktop/antigravity/aiome/apps/management-console/src/lib/biome/BiomeHUD.tsx#L98): ネオングロー表示用のインライン HEX指定 `color: 'var(--accent-cyan, #06b6d4)'`。
+| 次元 | 指摘内容 | 対象ファイルと行数 | 深刻度 | 見積もり工数 |
+|---|---|---|---|---|
+| **Dimension 3: Type & Contract Debt** | 動的プロパティアクセスに対する `as any` キャストの使用。 | [workflowConverter.ts:139](file:///Users/motista/Desktop/antigravity/aiome/apps/management-console/src/lib/workflowConverter.ts#L139) | 🟡 Medium | 1h |
+| **Dimension 3: Type & Contract Debt** | イベントデータおよびノードタイプ判定時の `as any` キャストの使用。 | [WorkflowBuilder.tsx:101, 234](file:///Users/motista/Desktop/antigravity/aiome/apps/management-console/src/components/WorkflowBuilder.tsx#L101) | 🟡 Medium | 1.5h |
+| **Dimension 3: Type & Contract Debt** | `JobQueue` トレイト定義と実装 `UniversalJobQueue` の API 乖離。 | [traits.rs:300-370](file:///Users/motista/Desktop/antigravity/aiome/libs/aiome-core-contracts/src/traits.rs) | 🟡 Medium | 3h |
+| **Dimension 7: Error handling** | `serde_json::to_string` 失敗時のログなきエラー握り潰し。 | [dispatcher.rs:134](file:///Users/motista/Desktop/antigravity/aiome/libs/infrastructure/src/task_orchestrator/dispatcher.rs#L134) | 🟡 Medium | 0.5h |
+| **Dimension 11: Tauri IPC 型安全性** | `window` グローバル拡張オブジェクトアクセス時の `as any` キャスト。 | [api_resolver.ts:25](file:///Users/motista/Desktop/antigravity/aiome/apps/management-console/src/lib/api_resolver.ts#L25) | 🟡 Medium | 0.5h |
+| **Dimension 12: tokens.css 遵守度** | 元素表示用カラー（8元素）の WebGL THREE.Color 内での HEX ハードコード。 | [BiomeCellGrid.tsx:35-44](file:///Users/motista/Desktop/antigravity/aiome/apps/management-console/src/lib/biome/BiomeCellGrid.tsx#L35) | 🔴 High | 3h |
+| **Dimension 12: tokens.css 遵守度** | 元素カラーマッピング用 HEX リテラルの直書き。 | [BiomeGame.tsx:248-255](file:///Users/motista/Desktop/antigravity/aiome/apps/management-console/src/lib/biome/BiomeGame.tsx#L248) | 🔴 High | 2h |
+| **Dimension 12: tokens.css 遵守度** | HUDネオングロー表示用のインライン HEX フォールバック指定。 | [BiomeHUD.tsx:98](file:///Users/motista/Desktop/antigravity/aiome/apps/management-console/src/lib/biome/BiomeHUD.tsx#L98) | 🟡 Medium | 0.5h |
 
 ---
 
@@ -83,18 +70,27 @@
 
 ---
 
-## 6. メトリクス推移
+## 6. Open Questions
 
-| 指標 | v7.0 | v7.2 | v8.0 | v8.1 | v8.2 | v8.3 (2026-06-29) | トレンド |
-|---|---|---|---|---|---|---|---|
-| 総 LOC | 152k | 152k | 152k | 152k | 152k | **152k** | → |
-| Rust テスト数 | 4,459 | 4,459 | 4,524 | 4,524 | 4,524 | **4,524** | → |
-| U-002 違反 (TSX/WebGL) | 0 | 0 | 0 | 0 | 12 | **12** | 維持 |
-| `as any` 本番使用 (TS) | 1 | 1 | 1 | 1 | 5 | **5** | 維持 |
-| CC-6 違反 (Auth) | 0 | 0 | 6 | 0 | 0 | **0** | 完全解消維持 ✅ |
-| ログなしエラー抑制 (.ok()) | 0 | 0 | 1 | 1 | 1 | **1** | 可視化 ⚠️ |
-| God Module (1k+ 行) | 3 | 3 | 3 | 3 | 3 | **3** | 維持 |
+1. **JobQueue トレイトの API 乖離について**:
+   `UniversalJobQueue` にのみ定義されている多数のパブリック補助メソッドについて、トレイトの境界定義（`traits.rs`）側にすべて引き上げるべきか、あるいは単に `UniversalJobQueue` 内部でのカプセル化（`pub` を削る、または `crate` プライベート化）を進めるべきでしょうか？
+2. **WebGL / Canvas テーマカラーの同期方法について**:
+   `BiomeCellGrid` や `BiomeGame` 内の Three.js / Canvas 描画カラーについて、CSS 変数を JS 上で読み取って `THREE.Color` を動的に生成する memoized bridge クラス（`docs/architecture/theme_protocols.md` に記載の設計）を新規作成して統合する方針で進めてよいでしょうか？
 
 ---
 
-*Generated by `/tech-debt-audit` workflow — 2026-06-29 v8.3 (エラー抑制調査・テスト unwrap の妥当性・非同期ライフサイクル監視の検証完了)*
+## 7. メトリクス推移
+
+| 指標 | v7.0 | v7.2 | v8.0 | v8.1 | v8.2 | v8.3 | v8.4 (2026-06-29) | トレンド |
+|---|---|---|---|---|---|---|---|---|
+| 総 LOC | 152k | 152k | 152k | 152k | 152k | 152k | **152k** | → |
+| Rust テスト数 | 4,459 | 4,459 | 4,524 | 4,524 | 4,524 | 4,524 | **4,524** | → |
+| U-002 違反 (TSX/WebGL) | 0 | 0 | 0 | 0 | 12 | 12 | **12** | 維持 |
+| `as any` 本番使用 (TS) | 1 | 1 | 1 | 1 | 5 | 5 | **5** | 維持 |
+| CC-6 違反 (Auth) | 0 | 0 | 6 | 0 | 0 | 0 | **0** | 完全解消維持 ✅ |
+| ログなしエラー抑制 (.ok()) | 0 | 0 | 1 | 1 | 1 | 1 | **1** | 維持 |
+| God Module (1k+ 行) | 3 | 3 | 3 | 3 | 3 | 3 | **3** | 維持 |
+
+---
+
+*Generated by `/tech-debt-audit` workflow — 2026-06-29 v8.4 (指摘事項のテーブル化・Open Questions の追加完了)*
