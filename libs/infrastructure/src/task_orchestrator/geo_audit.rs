@@ -2,7 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Apache License, Version 2.0.
+ * Licensed under the Business Source License 1.1.
  */
 use crate::task_orchestrator::{TaskConductor, TaskEvent};
 use aiome_core::error::AiomeError;
@@ -101,6 +101,8 @@ impl TaskConductor for GeoAuditConductor {
                             score,
                             passed: geo_passed,
                             conductor: self.conductor_name().to_string(),
+                            review_decision: None,
+                            feedback: None,
                         })
                         .await
                         .is_err()

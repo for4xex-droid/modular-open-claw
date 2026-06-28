@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 use super::schema::{NodeType, WorkflowDefinition};
 use aiome_core_contracts::traits::ConstitutionalValidator;
 use std::collections::{HashMap, HashSet, VecDeque};

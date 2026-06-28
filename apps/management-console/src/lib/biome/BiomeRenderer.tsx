@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 // @legacy - This is the legacy WebGL2 custom renderer. It has been replaced by the React Three Fiber (R3F) BiomeCanvas.tsx. Keep this file for reference and backward compatibility of legacy tests.
 import { useEffect, useRef } from 'react';
 import { compileShader, createProgram, setupQuad } from './utils/webgl-helpers';

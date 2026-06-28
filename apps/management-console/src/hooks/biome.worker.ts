@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 import type { BiomeEngine } from 'biome-engine';
 
 let engine: BiomeEngine | null = null;

@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 import { useState } from 'react';
 import { Node, Edge } from '@xyflow/react';
 import { toWorkflowDefinition, WorkflowDefinition } from '../lib/workflowConverter';

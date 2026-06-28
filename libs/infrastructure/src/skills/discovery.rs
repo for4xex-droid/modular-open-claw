@@ -17,12 +17,27 @@ use std::sync::Arc;
 pub struct DefaultToolDiscoveryEngine {
     skill_manager: Arc<WasmSkillManager>,
     llm: Arc<dyn LlmProvider>,
+    mcp_source: Option<Arc<dyn aiome_core_contracts::traits::McpToolSource>>,
 }
 
 impl DefaultToolDiscoveryEngine {
     /// 新しいインスタンスを生成する
     pub fn new(skill_manager: Arc<WasmSkillManager>, llm: Arc<dyn LlmProvider>) -> Self {
-        Self { skill_manager, llm }
+        Self {
+            skill_manager,
+            llm,
+            mcp_source: None,
+        }
+    }
+
+    /// MCPツールを動的発見するための `McpToolSource` を注入します。
+    /// 注入されたソースから取得したツールは、`discover_tools` 実行時に Wasm スキルとマージされます。
+    pub fn with_mcp_source(
+        mut self,
+        mcp_source: Arc<dyn aiome_core_contracts::traits::McpToolSource>,
+    ) -> Self {
+        self.mcp_source = Some(mcp_source);
+        self
     }
 }
 
@@ -40,6 +55,17 @@ impl ToolDiscoveryEngine for DefaultToolDiscoveryEngine {
                 "inputs": meta.inputs,
                 "outputs": meta.outputs,
             }));
+        }
+
+        if let Some(mcp_source) = &self.mcp_source {
+            match mcp_source.discover_mcp_tools().await {
+                Ok(mut mcp_tools) => {
+                    tools.append(&mut mcp_tools);
+                }
+                Err(e) => {
+                    tracing::warn!("⚠️ [ToolDiscovery] Failed to discover MCP tools: {:?}", e);
+                }
+            }
         }
 
         Ok(tools)
@@ -177,6 +203,103 @@ mod tests {
             suggestions.contains(&"fs_reader".to_string()),
             "Should suggest fs_reader for semantic instruction, but got {:?}",
             suggestions
+        );
+    }
+
+    struct MockMcpToolSource;
+    #[async_trait]
+    impl aiome_core_contracts::traits::McpToolSource for MockMcpToolSource {
+        async fn discover_mcp_tools(&self) -> Result<Vec<serde_json::Value>, AiomeError> {
+            Ok(vec![json!({
+                "name": "gws_drive_list",
+                "description": "List Google Drive files",
+                "capabilities": ["read"],
+                "inputs": [],
+                "outputs": [],
+            })])
+        }
+    }
+
+    #[tokio::test]
+    async fn test_discover_tools_includes_mcp() {
+        let temp = tempdir().unwrap();
+        let skills_dir = temp.path().join("skills");
+        std::fs::create_dir(&skills_dir).unwrap();
+
+        let manager =
+            Arc::new(WasmSkillManager::new(skills_dir, temp.path().to_path_buf()).unwrap());
+        let mock_llm = Arc::new(MockLlm {
+            response: "".to_string(),
+        });
+
+        let mcp_source = Arc::new(MockMcpToolSource);
+        let engine = DefaultToolDiscoveryEngine::new(manager, mock_llm).with_mcp_source(mcp_source);
+
+        let tools = engine.discover_tools().await.unwrap();
+
+        let has_mcp = tools
+            .iter()
+            .any(|t| t["name"].as_str() == Some("gws_drive_list"));
+        assert!(
+            has_mcp,
+            "Tools should include MCP tools from MockMcpToolSource"
+        );
+    }
+
+    struct MockMcpToolSourceError;
+    #[async_trait]
+    impl aiome_core_contracts::traits::McpToolSource for MockMcpToolSourceError {
+        async fn discover_mcp_tools(&self) -> Result<Vec<serde_json::Value>, AiomeError> {
+            Err(AiomeError::Infrastructure {
+                reason: "Mock network error".into(),
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn test_discover_tools_handles_mcp_error_gracefully() {
+        let temp = tempdir().unwrap();
+        let skills_dir = temp.path().join("skills");
+        std::fs::create_dir(&skills_dir).unwrap();
+
+        // 1. Wasm スキル登録
+        let meta = json!({
+            "name": "fs_reader",
+            "description": "Read content from local files",
+            "capabilities": ["read"],
+            "inputs": ["path"],
+            "outputs": ["content"],
+            "permissions": { "allow_filesystem_write": false, "allow_network": false, "allow_shell_execution": false, "allowed_domains": [] }
+        });
+        std::fs::write(skills_dir.join("fs_reader.meta.json"), meta.to_string()).unwrap();
+        std::fs::write(skills_dir.join("fs_reader.wasm"), b"wasm").unwrap();
+
+        let manager =
+            Arc::new(WasmSkillManager::new(skills_dir, temp.path().to_path_buf()).unwrap());
+        let mock_llm = Arc::new(MockLlm {
+            response: "".to_string(),
+        });
+
+        let mcp_source = Arc::new(MockMcpToolSourceError);
+        let engine = DefaultToolDiscoveryEngine::new(manager, mock_llm).with_mcp_source(mcp_source);
+
+        // 2. discover_tools の実行 (MCPエラーでもWasmスキルは取得できること)
+        let tools = engine.discover_tools().await.unwrap();
+
+        let has_wasm = tools
+            .iter()
+            .any(|t| t["name"].as_str() == Some("fs_reader"));
+        assert!(
+            has_wasm,
+            "Tools should still contain Wasm tools even if MCP fails"
+        );
+
+        let has_mcp = tools
+            .iter()
+            .any(|t| t["name"].as_str() == Some("gws_drive_list"));
+        assert!(
+            !has_mcp,
+            "Tools should not contain MCP tools when source returns error"
         );
     }
 }

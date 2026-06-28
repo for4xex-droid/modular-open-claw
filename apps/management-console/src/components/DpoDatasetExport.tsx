@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 import { useState, useCallback } from 'react';
 import { Download, Loader2 } from 'lucide-react';
 import { authenticatedFetch } from '../lib/auth';

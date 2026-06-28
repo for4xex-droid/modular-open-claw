@@ -458,6 +458,43 @@ impl McpProcessManager {
     }
 }
 
+#[async_trait::async_trait]
+impl aiome_core_contracts::traits::McpToolSource for McpProcessManager {
+    async fn discover_mcp_tools(
+        &self,
+    ) -> Result<Vec<serde_json::Value>, aiome_core_contracts::error::AiomeError> {
+        let clients = {
+            let clients = self.clients.lock().await;
+            clients.values().cloned().collect::<Vec<_>>()
+        };
+
+        let mut all_tools = Vec::new();
+        for client in clients {
+            match client.list_tools().await {
+                Ok(tools) => {
+                    for tool in tools {
+                        all_tools.push(serde_json::json!({
+                            "name": tool.name,
+                            "description": tool.description.clone().unwrap_or_default(),
+                            "capabilities": vec!["mcp"],
+                            "inputs": tool.input_schema,
+                            "outputs": serde_json::Value::Null,
+                        }));
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "⚠️ [MCP] Failed to list tools for client during discovery: {:?}",
+                        e
+                    );
+                }
+            }
+        }
+
+        Ok(all_tools)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

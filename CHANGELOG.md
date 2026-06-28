@@ -1,6 +1,29 @@
-## [Unreleased] - 2026-06-27
+## [Unreleased]
 
 ### Added
+- **License Compliance (ライセンス準拠監査と修正) [/license-check]**:
+  - `libs/biome-engine/Cargo.toml` [MODIFY], `templates/minimal-skill/Cargo.toml` [MODIFY]: パッケージ情報の `license = "Apache-2.0"` フィールドの欠落を補完。
+  - `libs/biome-engine/`, `libs/infrastructure/`, `libs/soul/`, `libs/aiome-core-contracts/` 内の合計 17 個の `.rs` ファイルに対して、標準の BSL 1.1 著作権ヘッダーが欠落していた問題を `scripts/migrate_license_headers.py` にて一括補完・修正。
+  - `scripts/license_check.py` による全 11 種類のコンプライアンス検証テストをすべて正常パス（ALL TESTS PASSED）へ移行。
+- **Autodata Boltzmann Selection (確率的ツール選択) [TDD]**:
+  - `libs/infrastructure/src/skills/skill_arena.rs` [MODIFY]: スキルの過去の成功率（`success_count` と `failure_count`）から動的にスコアを算出して Boltzmann 分布を構築し、確率的にサンプリングを行う `select_skill_boltzmann` メソッドを実装。
+  - 最低探索確率 `exploration_floor = 0.05` (5%) を導入し、どれほど成功率が低くても常に一定の確率で選択されるガード条項を実装。
+  - 試行回数が極端に少ないスキル（`MIN_RUNS = 3` 未満）に対してはデフォルト値 `0.5` を与え、初期値の偏りによる暴走を防ぐガード処理を追加。
+  - `WeightedIndex` サンプリングの万が一の失敗時に `SliceRandom::choose` でランダム選択するフォールバック処理を実装。
+  - テストの追加: 成功率の差が正しく選択頻度の偏りに反映されることを検証する `test_boltzmann_favors_high_success_rate`、最低探索確率を担保する `test_boltzmann_exploration_floor`、試行回数の少ない初期スキルへのガードが働くことを検証する `test_boltzmann_min_runs_guard` テストを追加。
+- **Discovery-Driven Tool Registration (MCPツールの動的発見・統合) [TDD]**:
+  - `libs/aiome-core-contracts/src/traits.rs` [MODIFY]: MCPツールの動的取得用抽象インターフェース `McpToolSource` trait を新規追加。
+  - `libs/infrastructure/src/skills/discovery.rs` [MODIFY]: `DefaultToolDiscoveryEngine` に `McpToolSource` をオプションで保持・注入（`with_mcp_source`）できるようにし、発見されたツールに MCP サーバー提供のツールが動的にマージされるように拡張。
+  - `apps/api-server/src/mcp/client.rs` [MODIFY]: `McpProcessManager` に `McpToolSource` を実装。接続中の全 MCP サーバーからツール一覧 (`tools/list`) を非同期取得して統合スキーマ形式へバインドするよう実装。
+  - `apps/api-server/src/bootstrap/core_services.rs` [MODIFY]: ブートストラップでの `DefaultToolDiscoveryEngine` 生成時に、`McpProcessManager` を `McpToolSource` として注入するよう DI 接続を構築。
+  - テストの追加: モック `MockMcpToolSource` を使用して `DefaultToolDiscoveryEngine` での MCP ツール動的発見を検証するテスト `test_discover_tools_includes_mcp` を `discovery.rs` に追加。
+- **Closed-Loop Intelligence (自律最適化 & 品質ゲート) の統合 (Autodata / ComPilot / OpenClaw 論文ベース) [TDD]**:
+  - `libs/aiome-core-contracts/src/contracts.rs` [MODIFY]: 構造化フィードバック用モデル `FeedbackCategory`, `IterationRecord`, `OptimizationBudget` 構造体を追加。また `ReviewDecision` へ `HumanReview` バリアントを、`SoTOutcome` へ `ChallengerRejected` バリアントを非破壊的に追加し、後方互換を確保。
+  - `libs/infrastructure/src/society_of_thought.rs` [MODIFY]: Challenger-Verifier パターンおよび一次フィードバック分類ヘルパー `classify_feedback` を SoT Engine に実装。予算制限付きで最大再試行回数 (`max_rejections`) まで自律ループを実行するClosed-Loop最適化を実装。
+  - `libs/infrastructure/src/oracle.rs` [MODIFY]: 平均スコアに基づく品質ゲート境界値 (0.85/0.60) マッピングおよび ReviewDecision 決定オーバーライドロジックを実装。
+  - `libs/infrastructure/src/skills/skill_arena.rs` [MODIFY]: レピュテーション履歴としての `optimization_history` と `best_scores` カラムを追加し、SQLite データベース初期化時に自動マイグレーション (`ALTER TABLE`) するように拡張。また非破壊的な `record_outcome_with_feedback` を新設。
+  - `libs/infrastructure/src/task_orchestrator/dispatch_loop.rs` [MODIFY]: ReviewDecision に基づく3値判定分岐（Accept/HumanReview/Reject）に拡張。`HumanReview` 判定時にジョブステータスを `JobStatus::AwaitingInput` に遷移させ、`TaskEvent::AwaitingInput` イベントをトリガーするリアルタイム品質ゲート分岐を実装。
+  - テストの追加: 品質ゲート境界値のテスト `test_quality_gate_review_decision_mapping`、SoT 自律リトライループテスト `test_challenger_max_rejections`、SkillArena のフォールバック永続化テスト `test_record_outcome_with_feedback_fallback`、Dispatcher の HumanReview ステータス遷移テスト `test_dispatch_loop_human_review_transition` などの TDD 検証用テストを追加。
 - **暗号鍵の Zeroize 堅牢化 (P0)**:
   - `libs/shared/src/crypto.rs` の `derive_commune_key` 戻り値型を `Zeroizing<[u8; 32]>` に変更し、機密情報のメモリ残存リスクを排除。
   - 呼び出し元の `libs/core/src/commune/autonomous.rs` 内でデリファレンス `&*key` を適用してビルド互換性を維持。

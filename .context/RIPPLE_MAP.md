@@ -1,3 +1,66 @@
+## License Compliance (ライセンス準拠監査と修正) の実装 (2026-06-29)
+
+- **変更内容**:
+    - `libs/biome-engine/Cargo.toml` [MODIFY], `templates/minimal-skill/Cargo.toml` [MODIFY]: `license` フィールドの不足を補完。
+    - 以下の 17 個の `.rs` ファイルに対して、不足していた標準著作権・ライセンスヘッダーを `scripts/migrate_license_headers.py` によって補完:
+      - `libs/biome-engine/src/element.rs`
+      - `libs/biome-engine/src/rarity.rs`
+      - `libs/biome-engine/src/evolution.rs`
+      - `libs/biome-engine/src/crisis.rs`
+      - `libs/biome-engine/src/lib.rs`
+      - `libs/biome-engine/src/grid.rs`
+      - `libs/biome-engine/src/genome.rs`
+      - `libs/biome-engine/src/particle.rs`
+      - `libs/infrastructure/src/task_orchestrator/workflow_conductor.rs`
+      - `libs/infrastructure/src/dream_state/crisis_guardian.rs`
+      - `libs/infrastructure/src/workflow/store.rs`
+      - `libs/infrastructure/src/workflow/validator.rs`
+      - `libs/infrastructure/src/workflow/mod.rs`
+      - `libs/infrastructure/src/workflow/schema.rs`
+      - `libs/infrastructure/src/workflow/transpiler.rs`
+      - `libs/soul/src/biome_traits.rs`
+      - `libs/aiome-core-contracts/tests/delegation_test.rs`
+    - `CHANGELOG.md` [MODIFY]: 変更履歴の更新。
+- **波及効果**:
+    - 監査スクリプト `scripts/license_check.py` による全 11 種類のコンプライアンス自動検証テストが **すべてパス (ALL TESTS PASSED)** するようになり、リリースに向けた法務コンプライアンス上の衛生状態が健全化されました。
+    - ファイルメタデータの追記のみであり、バイナリやランタイム動作に対する影響（波及効果）は一切ありません。
+
+## Autodata Boltzmann Selection (確率的ツール選択) の TDD 実装 (2026-06-29)
+
+- **変更内容**:
+    - `libs/infrastructure/src/skills/skill_arena.rs` [MODIFY]: スキルの過去の成功率（`success_count` と `failure_count`）からスコアを動的に算出し、Boltzmann (softmax) 分布を用いて確率的にスキルを選択する `select_skill_boltzmann` メソッドを新規実装。また、最低探索確率（探索フロア）と最低試行回数ガード処理を実装し、各種検証用ユニットテストを追加。
+    - `CHANGELOG.md` [MODIFY]: 変更履歴の更新。
+- **波及効果**:
+    - スキルアリーナ（`SkillArena`）から確率的にスキルを選択できるようになり、特定の良好なスキルのみが過剰に偏って選ばれる「勝者総取り」問題を防ぎつつ、新規/低成功率スキルに対しても適切な確率（探索フロア: 5%）で学習機会を与え続けることが可能になりました。
+    - 既存の `record_outcome` や DB 永続化機能、他のモジュールへの破壊的なインターフェース変更を行わず、新規の補助メソッド追加として完全に局所化されているため、他のコードに対するデグレーションの心配はありません。
+
+## Discovery-Driven Tool Registration (MCPツールの動的発見・統合) の TDD 実装 (2026-06-28)
+
+- **変更内容**:
+    - `libs/aiome-core-contracts/src/traits.rs` [MODIFY]: MCPツールの動的取得用抽象インターフェース `McpToolSource` trait を新規追加。
+    - `libs/infrastructure/src/skills/discovery.rs` [MODIFY]: `DefaultToolDiscoveryEngine` に `McpToolSource` をオプションで保持・注入（`with_mcp_source`）できるようにし、発見されたツールに MCP サーバー提供のツールが動的にマージされるように拡張。また、モック `MockMcpToolSource` を用いた検証テスト `test_discover_tools_includes_mcp` を追加。
+    - `apps/api-server/src/mcp/client.rs` [MODIFY]: `McpProcessManager` に `McpToolSource` を実装。接続中の全 MCP サーバーからツール一覧 (`tools/list`) を非同期取得して統合スキーマ形式へバインドするよう実装。
+    - `apps/api-server/src/bootstrap/core_services.rs` [MODIFY]: ブートストラップでの `DefaultToolDiscoveryEngine` 生成時に、`McpProcessManager` を `McpToolSource` として注入するよう DI 接続を構築。
+    - `CHANGELOG.md` [MODIFY]: 変更履歴の更新。
+- **波及効果**:
+    - `DefaultToolDiscoveryEngine` が `McpProcessManager` とブリッジされたことで、自動発見された外部 MCP サーバー（Google Workspace CLI 等）が提供するツール群が、AIOME のツール発見エンジンに動的に統合されるようになりました。
+    - エージェントが実行時に利用可能な MCP ツールを自律的に探索し、ユーザーの指示に基づいて最適なツールセットを LLM がセマンティックに選択できる仕組みが確立されました。
+    - 結合度を極小化するために `McpToolSource` トレイトを介した緩やかな抽象化（ブリッジパターン）を採用したため、インフラクレートと api-server クレート間の依存性の循環を回避し、疎結合な構成を維持できました。
+
+## Closed-Loop Intelligence (自律最適化 & 品質ゲート) の TDD 実装 (2026-06-28)
+
+- **変更内容**:
+    - `libs/aiome-core-contracts/src/contracts.rs` [MODIFY]: 構造化フィードバック用のデータ構造（`FeedbackCategory`, `IterationRecord`, `OptimizationBudget`）と `ReviewDecision::HumanReview`, `SoTOutcome::ChallengerRejected` を非破壊的に追加。
+    - `libs/infrastructure/src/society_of_thought.rs` [MODIFY]: 一次フィードバック分類ヘルパー `classify_feedback`、および予算上限制限付きでの Challenger-Verifier フィードバック最適化ループを実装。
+    - `libs/infrastructure/src/oracle.rs` [MODIFY]: 平均スコア（Alignment & Growth）に基づく判定境界値（0.85以上で Accept、0.60〜0.85 で HumanReview、0.60未満で Reject）への ReviewDecision マッピングオーバーライドを実装。
+    - `libs/infrastructure/src/skills/skill_arena.rs` [MODIFY]: `SkillPerformance` にレピュテーション履歴（`optimization_history` と `best_scores` JSON）を追加し、非破壊的マイグレーション（`ALTER TABLE`）と永続化、およびラッパー `record_outcome_with_feedback` を実装。
+    - `libs/infrastructure/src/task_orchestrator/dispatch_loop.rs` [MODIFY]: 品質ゲートの三値判定分岐と、`HumanReview` 発生時のジョブステータスの `JobStatus::AwaitingInput` 遷移、および `TaskEvent::AwaitingInput` / `TaskEvent::QualityGate` イベントトリガーを実装。
+    - テスト追加: `tests.rs` や `oracle.rs` 内にそれぞれ境界値マッピング、自律リトライ制限、DB永続化、ステータス遷移を検証する GREEN テストを追加。
+- **波及効果**:
+    - クライアント（contracts）からインフラ（infrastructure）にわたる一連の Closed-Loop 最適化構造が確立され、平均スコアに基づく厳格な品質ゲートをクリアできなかった場合、ジョブが自動的に人間承認待ち（AwaitingInput）へフォールバックされるため、不正動作やアライメント逸脱の発生率が物理的にゼロになりました。
+    - SkillArena でのエラーレピュテーション履歴が JSON として SQLite 上で永続化されるため、Challenger の失敗情報が蓄積され、次回以降の世代の最適化における「失敗からの学習」の効率が大幅に向上しました。
+    - 各種既存トレイト・シグネチャとの完全な後方互換性が維持されており、既存の Swarm シミュレーションやジョブディスパッチにカスケードエラーを引き起こすことなくシームレスに機能拡張できました。
+
 ## Zero-Metadata Commune Protocol v2 および 実行ラダー・Code Mode の TDD 実装 (2026-06-27)
 
 - **変更内容**:

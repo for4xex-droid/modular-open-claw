@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useBiomeEngine } from './useBiomeEngine';
 

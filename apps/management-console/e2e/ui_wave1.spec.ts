@@ -1,4 +1,10 @@
 /*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
+/*
  * Aiome - UI Wave 1 (TDD RED Phase)
  */
 import { test, expect } from '@playwright/test';

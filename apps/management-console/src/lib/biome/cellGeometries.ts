@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 import * as THREE from 'three';
 
 export function createCellGeometry(morph: number, rarity: number): THREE.BufferGeometry {

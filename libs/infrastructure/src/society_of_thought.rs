@@ -8,7 +8,8 @@
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
 use aiome_core_contracts::contracts::{
-    CoordinationProtocol, SoTConfig, SoTEvent, SoTOutcome, SoTTrigger,
+    CoordinationProtocol, FeedbackCategory, IterationRecord, OptimizationBudget, SoTConfig,
+    SoTEvent, SoTOutcome, SoTTrigger,
 };
 use std::pin::Pin;
 use std::sync::Arc;
@@ -51,6 +52,52 @@ pub struct CriterionScore {
 const ABSTAIN_MARKER: &str = "[ABSTAIN]";
 
 impl SoTEngine {
+    /// ルールベースの構造化フィードバック一次分類 (ComPilot 由来)
+    pub fn classify_feedback(&self, raw_content: &str) -> FeedbackCategory {
+        let content_lower = raw_content.to_lowercase();
+
+        if content_lower.contains("syntaxerror")
+            || content_lower.contains("invalid json")
+            || content_lower.contains("json parse")
+        {
+            FeedbackCategory::Invalid {
+                reason: raw_content.to_string(),
+            }
+        } else if content_lower.contains("security")
+            || content_lower.contains("illegal")
+            || (content_lower.contains("policy") && content_lower.contains("violat"))
+            || content_lower.contains("violation")
+        {
+            FeedbackCategory::Illegal {
+                constraint: raw_content.to_string(),
+            }
+        } else if content_lower.contains("timeout")
+            || content_lower.contains("connection failed")
+            || content_lower.contains("network error")
+            || (content_lower.contains("resource")
+                && (content_lower.contains("fail")
+                    || content_lower.contains("error")
+                    || content_lower.contains("unavail")))
+        {
+            FeedbackCategory::ResourceFailure {
+                resource: "External".to_string(),
+                error: raw_content.to_string(),
+            }
+        } else if content_lower.contains("nullpointerexception")
+            || content_lower.contains("division by zero")
+            || content_lower.contains("panic")
+            || content_lower.contains("crash")
+        {
+            FeedbackCategory::RuntimeError {
+                error: raw_content.to_string(),
+            }
+        } else {
+            let mut metrics = std::collections::HashMap::new();
+            metrics.insert("score".to_string(), 1.0);
+            FeedbackCategory::Success { metrics }
+        }
+    }
+
     pub fn new(
         fast_provider: Arc<dyn LlmProvider>,
         primary_provider: Arc<dyn LlmProvider>,
@@ -89,6 +136,7 @@ impl SoTEngine {
     }
 
     /// 熟議セッションを実行する
+    #[allow(unused_assignments)]
     pub async fn run_session(
         &self,
         task: &str,
@@ -142,11 +190,15 @@ impl SoTEngine {
 
         let num_thinkers = config.num_thinkers.clamp(1, 8);
         let mut current_content = String::new();
+        let mut best_content = String::new();
+        let mut best_score = 0.0;
+        let mut rejection_count = 0;
         let mut round = 1;
         let mut last_scores = Vec::new();
         let mut final_outcome = SoTOutcome::MaxRoundsReached;
         let mut score_history: Vec<f64> = Vec::new();
         let mut current_temp = 0.5; // (P-10) 初期 Temperature
+        let mut iteration_history: Vec<IterationRecord> = Vec::new();
 
         while round <= config.max_rounds {
             info!("🔄 [SoT] Round {}/{}", round, config.max_rounds);
@@ -188,6 +240,22 @@ impl SoTEngine {
                 }
             }
 
+            // 構造化フィードバックを一次分類して履歴に蓄積 (ComPilot)
+            let feedback = self.classify_feedback(&current_content);
+            iteration_history.push(IterationRecord {
+                round: round as u32,
+                proposal_summary: if current_content.chars().count() > 100 {
+                    format!(
+                        "{}...",
+                        current_content.chars().take(100).collect::<String>()
+                    )
+                } else {
+                    current_content.clone()
+                },
+                feedback: feedback.clone(),
+                timestamp: chrono::Utc::now(),
+            });
+
             // ──────────────────────────────────────────────────────
             //  Critic スコアリング (P-2, P-11) — プロトコル共通
             //  論文の知見: Critic は「ロール」ではなく「構造化された品質ゲート」
@@ -216,6 +284,38 @@ impl SoTEngine {
                 0.0
             };
             score_history.push(avg_score);
+
+            // Challenger-Verifier パターン
+            if config.challenger_mode {
+                if round == 1 {
+                    best_content = current_content.clone();
+                    best_score = avg_score;
+                } else {
+                    if avg_score > best_score {
+                        info!(
+                            "🔥 [SoT] Challenger proposal improved score from {} to {}. Accepting.",
+                            best_score, avg_score
+                        );
+                        best_content = current_content.clone();
+                        best_score = avg_score;
+                        rejection_count = 0;
+                    } else {
+                        rejection_count += 1;
+                        info!("❌ [SoT] Challenger proposal rejected (score: {} <= best: {}). Rejection count: {}/{}", avg_score, best_score, rejection_count, config.challenger_max_rejections);
+                        if rejection_count >= config.challenger_max_rejections {
+                            warn!("⏹️ [SoT] Challenger max rejections reached. Early terminating.");
+                            current_content = best_content.clone(); // 最良提案を復元
+                            final_outcome = SoTOutcome::ChallengerRejected {
+                                reason: format!(
+                                    "Challenger failed to improve score after {} rejections",
+                                    rejection_count
+                                ),
+                            };
+                            break;
+                        }
+                    }
+                }
+            }
 
             let all_passed = scores.iter().all(|(name, score)| {
                 config
@@ -568,8 +668,23 @@ impl SoTEngine {
                     reason: "Malformed mock SoT content".to_string(),
                 })?
                 + 6;
+            let json_part = &content[json_start..];
+            if let Ok(resp) = serde_json::from_str::<CriticScoreResponse>(json_part) {
+                return Ok(criteria
+                    .iter()
+                    .map(|c| {
+                        let score = resp
+                            .criteria
+                            .iter()
+                            .find(|cr| cr.name == c.name)
+                            .map(|cr| cr.score)
+                            .unwrap_or(5.0);
+                        (c.name.clone(), score)
+                    })
+                    .collect());
+            }
             let map: std::collections::HashMap<String, f64> =
-                serde_json::from_str(&content[json_start..]).unwrap_or_default();
+                serde_json::from_str(json_part).unwrap_or_default();
             return Ok(criteria
                 .iter()
                 .map(|c| {
@@ -1102,5 +1217,116 @@ mod tests {
             .await;
         let (_, outcome, _) = result.unwrap();
         assert_eq!(outcome, SoTOutcome::SpectralDivergence);
+    }
+
+    /// Challenger-Verifier: Challenger 提案が連続して却下され続けた場合、
+    /// 設定された最大却下回数（challenger_max_rejections）に達した時点で
+    /// 探索を早期打ち切りし、最良の成果物で終了することを検証する。
+    #[tokio::test]
+    async fn test_challenger_max_rejections() {
+        let mock = Arc::new(DynamicMockLlm::new(vec![
+            "Thinker Base Proposal".to_string(),
+            "JSON: {\"criteria\": [{\"name\": \"Quality\", \"score\": 8.0, \"feedback\": \"Good\"}], \"overall_reasoning\": \"Base\"}".to_string(), // Base Critic
+            "Challenger Alternative".to_string(),
+            "JSON: {\"criteria\": [{\"name\": \"Quality\", \"score\": 7.0, \"feedback\": \"Worse\"}], \"overall_reasoning\": \"Challenger 1\"}".to_string(), // Challenger Critic (却下)
+            "Challenger Alternative 2".to_string(),
+            "JSON: {\"criteria\": [{\"name\": \"Quality\", \"score\": 6.0, \"feedback\": \"Worse\"}], \"overall_reasoning\": \"Challenger 2\"}".to_string(), // Challenger Critic (却下)
+        ]));
+        let engine = SoTEngine::new(mock.clone(), mock.clone());
+        let config = SoTConfig {
+            enabled: true,
+            max_rounds: 3,
+            num_thinkers: 1,
+            challenger_mode: true,
+            challenger_max_rejections: 2, // 2回却下で早期終了
+            scoring_criteria: vec![aiome_core_contracts::contracts::ScoringCriterion {
+                name: "Quality".to_string(),
+                min_score: 9.0,
+                weight: 1.0,
+            }],
+            ..Default::default()
+        };
+
+        let result = engine
+            .run_session("test", SoTTrigger::Manual, config, 1.0)
+            .await;
+        let (_, outcome, _) = result.unwrap();
+        assert!(matches!(outcome, SoTOutcome::ChallengerRejected { .. }));
+    }
+
+    /// 構造化フィードバック分類: ルールベースの一次分類ヘルパーが
+    /// JSONのエラーキーワードに基づいて正しく FeedbackCategory を分類できることを検証する。
+    #[tokio::test]
+    async fn test_feedback_classification() {
+        let engine = SoTEngine::new(
+            Arc::new(DynamicMockLlm::new(vec![])),
+            Arc::new(DynamicMockLlm::new(vec![])),
+        );
+
+        // 1. フォーマット違反 (Invalid)
+        let f1 =
+            engine.classify_feedback("SyntaxError: Unexpected token or invalid JSON structure");
+        assert!(matches!(
+            f1,
+            aiome_core_contracts::contracts::FeedbackCategory::Invalid { .. }
+        ));
+
+        // 2. 制約違反 (Illegal)
+        let f2 =
+            engine.classify_feedback("Violated security policy or illegal dependency: db_access");
+        assert!(matches!(
+            f2,
+            aiome_core_contracts::contracts::FeedbackCategory::Illegal { .. }
+        ));
+
+        // 3. リソース障害 (ResourceFailure)
+        let f3 =
+            engine.classify_feedback("Timeout or connection failed: postgresql connection dropped");
+        assert!(matches!(
+            f3,
+            aiome_core_contracts::contracts::FeedbackCategory::ResourceFailure { .. }
+        ));
+
+        // 4. 一般的なランタイムエラー (RuntimeError)
+        let f4 = engine.classify_feedback("NullPointerException or division by zero runtime crash");
+        assert!(matches!(
+            f4,
+            aiome_core_contracts::contracts::FeedbackCategory::RuntimeError { .. }
+        ));
+
+        // 5. 成功 (Success)
+        let f5 =
+            engine.classify_feedback("Optimization completed successfully. Alignment looks great.");
+        assert!(matches!(
+            f5,
+            aiome_core_contracts::contracts::FeedbackCategory::Success { .. }
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_session_with_multibyte_content_does_not_panic() {
+        // 日本語1文字3バイト。50文字で150バイト。100バイト目は文字の途中になります。
+        // これによって従来のバイトスライス [..100] がパニックを引き起こすことを検証します。
+        let jp_content = "あ".repeat(50);
+        let mock = Arc::new(DynamicMockLlm::new(vec![
+            jp_content,
+            "JSON: {\"criteria\": [], \"overall_reasoning\": \"OK\"}".to_string(), // Critic
+        ]));
+        let engine = SoTEngine::new(mock.clone(), mock.clone());
+        let config = SoTConfig {
+            enabled: true,
+            max_rounds: 1,
+            num_thinkers: 1,
+            challenger_mode: false,
+            ..Default::default()
+        };
+
+        let result = engine
+            .run_session("test_multibyte", SoTTrigger::Manual, config, 1.0)
+            .await;
+        assert!(
+            result.is_ok(),
+            "Session should run successfully without UTF-8 boundary panic"
+        );
     }
 }

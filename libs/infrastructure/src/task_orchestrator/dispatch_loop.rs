@@ -314,40 +314,80 @@ impl TaskDispatcher {
                                                         oracle.evaluate_multi_judge(0, &j_id, &c_name, 0, 0, &out_clone)
                                                     ).await {
                                                         Ok(Ok(verdict)) => {
-                                                            if verdict.should_evolve {
-                                                                info!("✅ Job {} passed Oracle review.", j_id);
-
-                                                                // Feed back the alignment score to the trajectory as a reward signal
-                                                                if let Err(e) = q.update_trajectory_reward(&j_id, verdict.alignment_score).await {
-                                                                    warn!("Failed to update trajectory reward for job {}: {}", j_id, e);
+                                                            let decision = verdict.review_decision.unwrap_or(
+                                                                if verdict.should_evolve {
+                                                                    aiome_core_contracts::contracts::ReviewDecision::Accept
+                                                                } else {
+                                                                    aiome_core_contracts::contracts::ReviewDecision::Reject
                                                                 }
+                                                            );
 
-                                                                // Phase G-4: Extract high-reward triplets and store as KarmaDirectives
-                                                                if let Some(validator) = validator_clone.clone() {
-                                                                    if let Ok(steps) = q.fetch_trajectory_steps(&j_id).await {
-                                                                        let adapter = crate::trajectory_adapter::TrajectoryToTripletAdapter::new(validator);
-                                                                        if let Err(e) = adapter.extract_and_store_triplets(
-                                                                            steps,
-                                                                            &j_id,
-                                                                            &c_name,
-                                                                            "", // Extracting soul_hash here is difficult, use empty for now
-                                                                            0.8, // Configurable threshold for "good" trajectory
-                                                                            q.clone()
-                                                                        ).await {
-                                                                            warn!("Failed to extract and store trajectory triplets: {}", e);
+                                                            // 品質ゲート判定結果を登録するためにイベントを送信
+                                                            let score_val = ((verdict.alignment_score + verdict.growth_score) / 2.0 * 100.0) as u32;
+                                                            let passed_val = decision == aiome_core_contracts::contracts::ReviewDecision::Accept;
+                                                            if let Err(e) = p_tx.send(TaskEvent::QualityGate {
+                                                                job_id: j_id.clone(),
+                                                                score: score_val,
+                                                                passed: passed_val,
+                                                                conductor: c_name.clone(),
+                                                                review_decision: Some(decision),
+                                                                feedback: verdict.feedback.clone(),
+                                                            }).await {
+                                                                tracing::warn!("Failed to send QualityGate event for {}: {}", j_id, e);
+                                                            }
+
+                                                            match decision {
+                                                                aiome_core_contracts::contracts::ReviewDecision::Accept => {
+                                                                    info!("✅ Job {} passed Oracle review (Accept).", j_id);
+
+                                                                    // Feed back the alignment score to the trajectory as a reward signal
+                                                                    if let Err(e) = q.update_trajectory_reward(&j_id, verdict.alignment_score).await {
+                                                                        warn!("Failed to update trajectory reward for job {}: {}", j_id, e);
+                                                                    }
+
+                                                                    // Phase G-4: Extract high-reward triplets and store as KarmaDirectives
+                                                                    if let Some(validator) = validator_clone.clone() {
+                                                                        if let Ok(steps) = q.fetch_trajectory_steps(&j_id).await {
+                                                                            let adapter = crate::trajectory_adapter::TrajectoryToTripletAdapter::new(validator);
+                                                                            if let Err(e) = adapter.extract_and_store_triplets(
+                                                                                steps,
+                                                                                &j_id,
+                                                                                &c_name,
+                                                                                "", // Extracting soul_hash here is difficult, use empty for now
+                                                                                0.8, // Configurable threshold for "good" trajectory
+                                                                                q.clone()
+                                                                            ).await {
+                                                                                warn!("Failed to extract and store trajectory triplets: {}", e);
+                                                                            }
                                                                         }
                                                                     }
-                                                                }
 
-                                                                do_completion(q, p_tx, j_id, out_clone, r_hash, k_dirs, c_name, gig_engine_clone, validator_clone.clone(), hooks_clone.clone()).await;
-                                                            } else {
-                                                                let reason = verdict.reasoning.clone();
-                                                                warn!("❌ Job {} failed Oracle review: {}", j_id, reason);
-                                                                if let Err(db_err) = q.fail_job(&j_id, &reason).await {
-                                                                    error!("Failed to mark job {} as failed in DB: {}", j_id, db_err);
+                                                                    do_completion(q, p_tx, j_id, out_clone, r_hash, k_dirs, c_name, gig_engine_clone, validator_clone.clone(), hooks_clone.clone()).await;
                                                                 }
-                                                                if let Err(e) = p_tx.send(TaskEvent::Failed { job_id: j_id.clone(), error: reason }).await {
-                                                                    tracing::warn!("Failed to send failed event for {}: {}", j_id, e);
+                                                                aiome_core_contracts::contracts::ReviewDecision::HumanReview => {
+                                                                    let reason = format!("Pending human review: {}", verdict.reasoning);
+                                                                    warn!("✋ Job {} requires Human Review: {}", j_id, reason);
+
+                                                                    // AwaitingInput への遷移 (OpenClaw)
+                                                                    if let Err(db_err) = q.update_job_status(&j_id, JobStatus::AwaitingInput).await {
+                                                                        error!("Failed to update job {} status to AwaitingInput: {}", j_id, db_err);
+                                                                    }
+                                                                    if let Err(e) = p_tx.send(TaskEvent::AwaitingInput {
+                                                                        job_id: j_id.clone(),
+                                                                        reason: reason.clone(),
+                                                                    }).await {
+                                                                        tracing::warn!("Failed to send awaiting input event for {}: {}", j_id, e);
+                                                                    }
+                                                                }
+                                                                aiome_core_contracts::contracts::ReviewDecision::Reject | aiome_core_contracts::contracts::ReviewDecision::Revise => {
+                                                                    let reason = verdict.reasoning.clone();
+                                                                    warn!("❌ Job {} failed Oracle review (Reject): {}", j_id, reason);
+                                                                    if let Err(db_err) = q.fail_job(&j_id, &reason).await {
+                                                                        error!("Failed to mark job {} as failed in DB: {}", j_id, db_err);
+                                                                    }
+                                                                    if let Err(e) = p_tx.send(TaskEvent::Failed { job_id: j_id.clone(), error: reason }).await {
+                                                                        tracing::warn!("Failed to send failed event for {}: {}", j_id, e);
+                                                                    }
                                                                 }
                                                             }
                                                         }

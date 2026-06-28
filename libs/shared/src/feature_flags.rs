@@ -2,7 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Apache License, Version 2.0.
+ * Licensed under the Business Source License 1.1.
  */
 
 /// フェデレーション v1.5 の機能を有効化するフラグ名

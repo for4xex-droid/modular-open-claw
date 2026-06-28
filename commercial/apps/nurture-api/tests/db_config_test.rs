@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 use commerce_protocol::identity::ActorId;
 use nurture_api::state::{AppState, EconomyPolicy};
 use nurture_bridge::traits::JobQueue;

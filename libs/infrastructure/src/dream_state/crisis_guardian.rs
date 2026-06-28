@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 use crate::dream_state::DreamState;
 use aiome_core::error::AiomeError;
 use std::sync::atomic::{AtomicU32, Ordering};

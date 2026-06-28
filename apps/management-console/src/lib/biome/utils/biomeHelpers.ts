@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 export const ELEMENT_COLORS: Record<string, string> = {
   C: 'var(--biome-element-c)',
   N: 'var(--biome-element-n)',

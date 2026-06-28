@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { FluidHeroBackground } from './FluidHeroBackground';

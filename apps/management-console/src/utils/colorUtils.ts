@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 /**
  * CSS カラー文字列 (#hex / rgb() / rgba()) を [0-1] の RGB タプルに変換。
  * WebGL uniform への色渡しに使用。

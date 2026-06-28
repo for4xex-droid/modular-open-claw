@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 use crate::state::SharedState;
 use async_trait::async_trait;
 use nurture_bridge::commerce::CommerceEngine;

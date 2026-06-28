@@ -55,7 +55,7 @@
 | `tts` | `TtsProvider` トレイトに基づく音声合成エンジン。SSEストリーミング出力とリップシンク（Viseme）対応の多重化イベント配信をサポート。 | **Phase 14 完了** |
 | `native_backend` | ネイティブRust実装によるSLM（SuperLocalMemory）機能群。意味検索（recall）、重要度計算、矛盾検知を提供。 | **実装完了** |
 | `native_embedding` | SLMバックエンド向けに、ネイティブRustによるローカル埋め込み（Embedding）モデルの推論とコサイン類似度計算を提供。 | **実装完了** |
-| `skill_arena` | スキルの並列実行と結果の評価、ランキング。**Phase 3**にてSQLite永続化と、MoE Routingのための実行前後の淘汰（Culling）フィードバックループを実装完了。 | **Phase 3 完了** |
+| `skill_arena` | スキルの並列実行と結果の評価、ランキング。**Phase 3**にてSQLite永続化と、MoE Routingのための実行前後の淘汰（Culling）フィードバックループを実装完了。また **Autodata Boltzmann 選択** による探索と搾取のトレードオフ最適化を統合。 | **強化完了** |
 | `slm_bridge` | SuperLocalMemory (SLM) CLI との通信ブリッジ。Poincare スコアに基づく記憶の重要度算出を提供。 | **Phase 4 完了** |
 | `spec_provider` | `FsSpecProvider` を通じた動的ワークフロー仕様のファイルシステムへのエクスポート基盤。パストラバーサル防御、symlink拒否、正規表現によるシークレットサニタイズを実装。 | **Phase 4 完了** |
 | `prompt_registry` | Minijinjaベースのシステムプロンプト・テンプレートレンダリングエンジン。ゼロパニック対応の `NoopPromptRegistry` フォールバックを提供し、プロンプトのSSOTを確立。 | **Phase 4 完了** |
@@ -84,7 +84,7 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-06-12 (Asia/Tokyo) - LLM同時実行制御セマフォの導入、および関連ドキュメントの更新*
+*最終更新: 2026-06-29 (Asia/Tokyo) - Autodata Boltzmann 選択の実装およびライセンスチェックの監査・修正に伴う更新*
 
 ## Phase 6 Integration Notes
 

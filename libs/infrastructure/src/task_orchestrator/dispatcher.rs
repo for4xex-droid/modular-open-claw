@@ -113,8 +113,25 @@ impl TaskDispatcher {
                             score,
                             passed,
                             conductor,
+                            review_decision,
+                            feedback,
                         } => {
                             if let Some(ref store) = qgs_for_event {
+                                let mut details_map = std::collections::HashMap::new();
+                                if let Some(dec) = &review_decision {
+                                    details_map.insert(
+                                        "review_decision".to_string(),
+                                        serde_json::to_value(dec)
+                                            .unwrap_or(serde_json::Value::Null),
+                                    );
+                                }
+                                if let Some(fb) = &feedback {
+                                    details_map.insert(
+                                        "feedback".to_string(),
+                                        serde_json::to_value(fb).unwrap_or(serde_json::Value::Null),
+                                    );
+                                }
+                                let details_str = serde_json::to_string(&details_map).ok();
                                 let store_clone = store.clone();
                                 let j_id = job_id.clone();
                                 let cond = conductor.clone();
@@ -127,7 +144,7 @@ impl TaskDispatcher {
                                             &cond,
                                             None,
                                             None,
-                                            None,
+                                            details_str.as_deref(),
                                         )
                                         .await
                                     {

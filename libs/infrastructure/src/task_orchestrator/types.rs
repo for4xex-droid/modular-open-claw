@@ -6,6 +6,7 @@
  */
 
 use aiome_core::error::AiomeError;
+use aiome_core_contracts::contracts::{FeedbackCategory, ReviewDecision};
 use aiome_core_contracts::traits::Job;
 use async_trait::async_trait;
 use tokio::sync::mpsc;
@@ -52,6 +53,8 @@ pub enum TaskEvent {
         score: u32,
         passed: bool,
         conductor: String,
+        review_decision: Option<ReviewDecision>,
+        feedback: Option<FeedbackCategory>,
     },
 }
 

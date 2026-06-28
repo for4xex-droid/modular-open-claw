@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 import { useMemo } from 'react';
 import { cssVar } from '../../utils/cssVar';
 import { parseColorToRGB } from '../../utils/colorUtils';

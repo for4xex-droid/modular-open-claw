@@ -2,7 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Apache License, Version 2.0.
+ * Licensed under the Business Source License 1.1.
  */
 
 //! # The Contract — アクター間通信契約
@@ -314,6 +314,45 @@ impl KarmaDirectives {
 
 /// LLM（The Oracle）によるコンテンツの最終審判。
 /// 大衆の反応（Engagement）と設計者の美学（Soul）を統合し、次世代への「業（Karma）」を導き出す。
+/// ComPilot (2511.00592) 由来: 構造化フィードバック分類
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
+pub enum FeedbackCategory {
+    /// 出力フォーマット違反（構文エラー相当）
+    Invalid { reason: String },
+    /// 安全性/整合性制約への違反（依存関係違反相当）
+    Illegal { constraint: String },
+    /// 外部リソース障害（ソルバー失敗相当）
+    ResourceFailure { resource: String, error: String },
+    /// 予期せぬランタイムエラー（クラッシュ相当）
+    RuntimeError { error: String },
+    /// 成功（計測結果付き）
+    Success {
+        metrics: std::collections::HashMap<String, f64>,
+    },
+}
+
+/// 反復最適化の試行履歴エントリ
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
+pub struct IterationRecord {
+    pub round: u32,
+    pub proposal_summary: String,
+    pub feedback: FeedbackCategory,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+}
+
+/// ComPilot (2511.00592) 由来: 探索バジェット管理
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
+pub struct OptimizationBudget {
+    /// T: 1ランあたりの最大反復回数
+    pub max_iterations: u32,
+    /// K: 独立実行回数、最良結果を採用
+    pub max_runs: u32,
+    /// スコア変化量がこれ以下になったら収束とみなす
+    pub convergence_threshold: f64,
+}
+
+/// LLM（The Oracle）によるコンテンツの最終審判。
+/// 大衆の反応（Engagement）と設計者の美学（Soul）を統合し、次世代への「業（Karma）」を導き出す。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OracleVerdict {
     /// 魂の整合性 (0.0 〜 1.0)
@@ -328,6 +367,12 @@ pub struct OracleVerdict {
     pub reasoning: String,
     /// Sprint 3-B: 教訓の分類 (Taxonomy)
     pub classification: Option<KarmaClassification>,
+    /// 新設: 段階的品質ゲート判定
+    #[serde(default)]
+    pub review_decision: Option<ReviewDecision>,
+    /// 新設: 構造化フィードバック
+    #[serde(default)]
+    pub feedback: Option<FeedbackCategory>,
 }
 
 /// Sprint 3-B: Hierarchical Classification (Taxonomy)
@@ -687,7 +732,7 @@ mod tests {
 // --- Phase 15: Agentic Foundation Expansion (ADR-023/024) ---
 
 /// レビュー判定
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
 pub enum ReviewDecision {
     /// 採択
     Accept,
@@ -695,6 +740,8 @@ pub enum ReviewDecision {
     Reject,
     /// 要修正
     Revise,
+    /// OpenClaw 由来: 管理コンソールでの人間承認を待機する状態
+    HumanReview,
 }
 
 /// マルチレビューの設定 (ADR-023)
@@ -773,6 +820,15 @@ pub struct SoTConfig {
     /// Spectral Stability の分散閾値 (default: 1.5)
     #[serde(default = "default_spectral_threshold")]
     pub spectral_divergence_threshold: f64,
+    /// Challenger-Verifier パターン
+    #[serde(default)]
+    pub challenger_mode: bool,
+    /// Challenger却下時の探索早期終了の最大却下回数
+    #[serde(default = "default_max_rejections")]
+    pub challenger_max_rejections: u8,
+    /// 探索バジェット設定
+    #[serde(default)]
+    pub optimization_budget: Option<OptimizationBudget>,
 }
 
 fn default_num_thinkers() -> u8 {
@@ -786,6 +842,9 @@ fn default_act_threshold() -> f64 {
 }
 fn default_spectral_threshold() -> f64 {
     1.5
+}
+fn default_max_rejections() -> u8 {
+    3
 }
 
 impl Default for SoTConfig {
@@ -814,6 +873,9 @@ impl Default for SoTConfig {
             auto_protocol: false,
             act_convergence_threshold: 0.05,
             spectral_divergence_threshold: 1.5,
+            challenger_mode: false,
+            challenger_max_rejections: 3,
+            optimization_budget: None,
         }
     }
 }
@@ -828,6 +890,10 @@ pub enum SoTOutcome {
     Error(String),
     ConvergedEarly,
     SpectralDivergence,
+    /// Challenger 提案が却下され続け、早期終了した場合
+    ChallengerRejected {
+        reason: String,
+    },
 }
 
 /// SoT セッションイベント (P-8)

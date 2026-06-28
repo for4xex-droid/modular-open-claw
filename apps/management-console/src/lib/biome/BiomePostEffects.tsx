@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { TachyonEffect } from './effects/TachyonEffect';
 import { HiggsEffect } from './effects/HiggsEffect';

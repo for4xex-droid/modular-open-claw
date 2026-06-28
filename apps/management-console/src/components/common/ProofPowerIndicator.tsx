@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../../i18n';
 import { motion, useSpring, useTransform } from 'framer-motion';

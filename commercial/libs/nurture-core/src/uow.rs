@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 use async_trait::async_trait;
 use commerce_protocol::error::NurtureError;
 use uuid::Uuid;

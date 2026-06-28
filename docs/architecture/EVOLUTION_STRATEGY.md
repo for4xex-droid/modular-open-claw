@@ -46,6 +46,9 @@ Aiome は、完全なオープンソースとして提供されるエージェ�
 10. **Biome Evolution Layer (Phase 3 / Biome Integration)**:
     - **役割**: セルオートマトンシミュレーション（`BiomeEngine`）の進化プロセスを観察・分析し、魂（`AgentSoul`）の形質固定と成長にフィードバックする。
     - **特徴**: アイドル時の夢想 (`biome_evolution_dream`) からトリガーされ、進化結果の希少度（rarity）に応じた `outcome_valence`（Legendary=1.0, Rare=0.8, Common=0.5）を適用し、`PredictiveModel` の `plasticity` 更新および `Experience` の蓄積を実行します。Legendary 達成時は `core_memory` (長期記憶) として `AgentSoul` に永続的に刻まれ、ヒッグス粒子による形質固定（`FrozenTraitSnapshot`）が発生します。
+11. **Skill Evolution Layer (Autodata Boltzmann Selection)**:
+    - **役割**: 利用可能なスキル候補から確率分布に基づいて適切なスキルを選択・割り当てる。
+    - **特徴**: スキルアリーナ（`SkillArena`）に実装された `select_skill_boltzmann` メソッドが、スキルの過去の成功率から算出したスコアを基に Boltzmann サンプリングを実施。探索フロア（5%）と最低試行回数ガード（MIN_RUNS=3）により、良好なスキルの搾取と新規・低評価スキルの探索（Exploration-Exploitation）のトレードオフを数理的に最適化します。
 
 ---
 
@@ -71,5 +74,5 @@ SQLiteの `agent_stats` テーブルで管理される指標のほか、**Samsar
 
 ---
 
-最終更新: 2026-06-10 (Aiome v1.0 / Biome Evolution Dream & P3-13 Integration)
+最終更新: 2026-06-29 (Aiome v1.0 / Autodata Boltzmann Selection & License Compliance Integration)
 Aiome Development Team

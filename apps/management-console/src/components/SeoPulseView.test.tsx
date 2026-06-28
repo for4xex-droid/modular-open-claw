@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 import { render, screen, waitFor, act } from '@testing-library/react';
 import SeoPulseView from './SeoPulseView';
 import { authenticatedFetch } from '../lib/auth';

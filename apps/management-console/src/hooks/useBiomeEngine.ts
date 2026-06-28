@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { RarityProgress, BiomeEvent } from './useBiomeEngine';
 import BiomeWorker from './biome.worker?worker';

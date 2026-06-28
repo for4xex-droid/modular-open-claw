@@ -6,9 +6,9 @@
  */
 
 use crate::society_of_thought::SoTEngine;
-use aiome_core::contracts::OracleVerdict;
 use aiome_core::error::AiomeError;
 use aiome_core::llm_provider::LlmProvider;
+use aiome_core_contracts::contracts::{OracleVerdict, ReviewDecision};
 use aiome_core_contracts::events::CoreEvent;
 use std::sync::Arc;
 use tokio::sync::broadcast;
@@ -121,11 +121,22 @@ impl Oracle {
             .await?;
 
         let json_str = crate::llm::utils::extract_json(&resp.content)?;
-        let verdict = serde_json::from_str::<OracleVerdict>(json_str.as_str()).map_err(|e| {
-            AiomeError::Infrastructure {
-                reason: format!("Failed to parse Oracle JSON: {}", e),
-            }
-        })?;
+        let mut verdict =
+            serde_json::from_str::<OracleVerdict>(json_str.as_str()).map_err(|e| {
+                AiomeError::Infrastructure {
+                    reason: format!("Failed to parse Oracle JSON: {}", e),
+                }
+            })?;
+
+        let avg_score = (verdict.alignment_score + verdict.growth_score) / 2.0;
+        let decision = if avg_score >= 0.85 {
+            ReviewDecision::Accept
+        } else if avg_score > 0.60 {
+            ReviewDecision::HumanReview
+        } else {
+            ReviewDecision::Reject
+        };
+        verdict.review_decision = Some(decision);
 
         info!(
             "🔮 [Oracle] Verdict: Alignment={}, Growth={}, Evolve={}",
@@ -213,6 +224,15 @@ impl Oracle {
             }
         }
 
+        let avg_score = (avg_alignment / count + avg_growth / count) / 2.0;
+        let decision = if avg_score >= 0.85 {
+            ReviewDecision::Accept
+        } else if avg_score > 0.60 {
+            ReviewDecision::HumanReview
+        } else {
+            ReviewDecision::Reject
+        };
+
         let consensus_verdict = OracleVerdict {
             alignment_score: avg_alignment / count,
             growth_score: avg_growth / count,
@@ -225,6 +245,8 @@ impl Oracle {
                 true_votes > (verdicts.len() / 2)
             ),
             classification: verdicts[0].classification.clone(),
+            review_decision: Some(decision),
+            feedback: None,
         };
 
         Ok(consensus_verdict)
@@ -375,6 +397,16 @@ impl Oracle {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: format!("Failed to parse MultiReview JSON: {}", e),
             })?;
+
+        // 閾値に基づくオーバーライド (P3 / OpenClaw)
+        let decision = if result.overall_score >= 8.5 {
+            aiome_core_contracts::contracts::ReviewDecision::Accept
+        } else if result.overall_score > 6.0 {
+            aiome_core_contracts::contracts::ReviewDecision::HumanReview
+        } else {
+            aiome_core_contracts::contracts::ReviewDecision::Reject
+        };
+        result.decision = decision;
 
         result.reflections = reflections;
         Ok(result)
@@ -608,5 +640,55 @@ mod tests {
             found_progress = found;
         }
         assert!(found_progress, "Should have bridged SoTProgress events");
+    }
+
+    #[tokio::test]
+    async fn test_quality_gate_review_decision_mapping() {
+        use std::sync::Arc;
+
+        // 1. Accept 判定テスト: 平均スコア >= 0.85
+        let p1 = Arc::new(MockLlmProvider {
+            response: "```json\n{\"alignment_score\": 0.9, \"growth_score\": 0.8, \"should_evolve\": true, \"reasoning\": \"OK\", \"lesson\": \"Keep going\"}\n```".to_string(),
+        });
+        let oracle_accept =
+            Oracle::new(p1.clone(), "Aesthetics".to_string()).with_multi_providers(vec![p1]);
+        let verdict = oracle_accept
+            .evaluate_multi_judge(7, "Topic", "Style", 1000, 100, "[]")
+            .await
+            .expect("Should return verdict");
+        assert_eq!(
+            verdict.review_decision,
+            Some(aiome_core_contracts::contracts::ReviewDecision::Accept)
+        );
+
+        // 2. HumanReview 判定テスト: 0.60 < 平均スコア < 0.85
+        let p2 = Arc::new(MockLlmProvider {
+            response: "```json\n{\"alignment_score\": 0.7, \"growth_score\": 0.7, \"should_evolve\": false, \"reasoning\": \"Borderline\", \"lesson\": \"Review needed\"}\n```".to_string(),
+        });
+        let oracle_review =
+            Oracle::new(p2.clone(), "Aesthetics".to_string()).with_multi_providers(vec![p2]);
+        let verdict = oracle_review
+            .evaluate_multi_judge(7, "Topic", "Style", 1000, 100, "[]")
+            .await
+            .expect("Should return verdict");
+        assert_eq!(
+            verdict.review_decision,
+            Some(aiome_core_contracts::contracts::ReviewDecision::HumanReview)
+        );
+
+        // 3. Reject 判定テスト: 平均スコア <= 0.60
+        let p3 = Arc::new(MockLlmProvider {
+            response: "```json\n{\"alignment_score\": 0.5, \"growth_score\": 0.5, \"should_evolve\": false, \"reasoning\": \"Poor\", \"lesson\": \"Do not evolve\"}\n```".to_string(),
+        });
+        let oracle_reject =
+            Oracle::new(p3.clone(), "Aesthetics".to_string()).with_multi_providers(vec![p3]);
+        let verdict = oracle_reject
+            .evaluate_multi_judge(7, "Topic", "Style", 1000, 100, "[]")
+            .await
+            .expect("Should return verdict");
+        assert_eq!(
+            verdict.review_decision,
+            Some(aiome_core_contracts::contracts::ReviewDecision::Reject)
+        );
     }
 }

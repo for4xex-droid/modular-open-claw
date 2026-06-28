@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 import React from 'react';
 import { Shield, Sparkles, Heart } from 'lucide-react';
 import { useTranslation } from '../../i18n';

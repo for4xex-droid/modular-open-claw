@@ -2,7 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Apache License, Version 2.0.
+ * Licensed under the Business Source License 1.1.
  */
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=proto/a2a_internal.proto");

@@ -613,7 +613,8 @@ pub async fn init_core_services(
         infrastructure::skills::discovery::DefaultToolDiscoveryEngine::new(
             wasm_skill_manager.clone(),
             fast_provider.clone(),
-        ),
+        )
+        .with_mcp_source(mcp_manager.clone()),
     );
     let strategic_planner = Arc::new(
         infrastructure::task_orchestrator::planner::DefaultStrategicPlanner::new(

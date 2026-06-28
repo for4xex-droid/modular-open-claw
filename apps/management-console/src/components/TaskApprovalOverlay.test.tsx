@@ -1,3 +1,9 @@
+/*
+ * Aiome - The Autonomous AI Operating System
+ * Copyright (C) 2026 motivationstudio, LLC
+ *
+ * Licensed under the Business Source License 1.1.
+ */
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import TaskApprovalOverlay from './TaskApprovalOverlay';
 import { authenticatedFetch } from '../lib/auth';

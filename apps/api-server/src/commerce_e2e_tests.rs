@@ -2,7 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Apache License, Version 2.0.
+ * Licensed under the Business Source License 1.1.
  */
 use crate::api_integration_tests::create_test_server;
 use axum::http::StatusCode;

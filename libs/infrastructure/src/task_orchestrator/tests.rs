@@ -849,3 +849,121 @@ async fn test_dispatcher_stores_karma_with_soul_path() {
         "soul_hash should not be unknown when soul_path is provided"
     );
 }
+
+#[tokio::test]
+async fn test_dispatch_loop_human_review_transition() {
+    use crate::task_orchestrator::{TaskConductor, TaskEvent};
+    use aiome_core_contracts::contracts::ReviewDecision;
+    use aiome_core_contracts::traits::Job;
+    use aiome_core_contracts::traits::JobStatus;
+
+    struct SucceedingConductor;
+    #[async_trait::async_trait]
+    impl TaskConductor for SucceedingConductor {
+        fn conductor_name(&self) -> &str {
+            "SucceedingConductor"
+        }
+        fn capable_categories(&self) -> Vec<String> {
+            vec!["review_cat".to_string()]
+        }
+        async fn conduct(
+            &self,
+            _job: Job,
+            _progress_tx: tokio::sync::mpsc::Sender<TaskEvent>,
+        ) -> Result<(String, Option<String>), AiomeError> {
+            Ok(("success_output".to_string(), Some("hash_123".to_string())))
+        }
+    }
+
+    #[derive(Debug)]
+    struct LocalMockLlm {
+        response: String,
+    }
+    #[async_trait::async_trait]
+    impl aiome_core::llm_provider::LlmProvider for LocalMockLlm {
+        fn name(&self) -> &str {
+            "LocalMockLlm"
+        }
+
+        async fn complete(
+            &self,
+            _prompt: &str,
+            _preamble: Option<&str>,
+        ) -> Result<aiome_core::llm_provider::LlmResponse, aiome_core::error::AiomeError> {
+            Ok(aiome_core::llm_provider::LlmResponse {
+                content: self.response.clone(),
+                stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                ..Default::default()
+            })
+        }
+
+        async fn complete_with_cache(
+            &self,
+            _request: aiome_core_contracts::llm::LlmRequest,
+        ) -> Result<aiome_core::llm_provider::LlmResponse, aiome_core::error::AiomeError> {
+            self.complete("", None).await
+        }
+
+        async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
+            Ok(())
+        }
+    }
+
+    let mut job = Job::default();
+    job.id = "job-review-1".into();
+    job.category = "review_cat".into();
+    job.requires_review = true;
+
+    let job_queue = Arc::new(GlobalMockJobQueue {
+        job_to_return: std::sync::Mutex::new(Some(job.clone())),
+        fetched_job: std::sync::Mutex::new(Some(job)),
+        ..Default::default()
+    });
+
+    let p_llm = Arc::new(LocalMockLlm {
+        response: "```json\n{\"alignment_score\": 0.7, \"growth_score\": 0.7, \"should_evolve\": false, \"reasoning\": \"Borderline\", \"lesson\": \"Review needed\"}\n```".to_string(),
+    });
+    let mock_oracle_review = Arc::new(
+        crate::oracle::Oracle::new(p_llm.clone(), "Aesthetics".to_string())
+            .with_multi_providers(vec![p_llm]),
+    );
+
+    let mut dispatcher = TaskDispatcher::new(
+        job_queue.clone(),
+        Duration::from_millis(10),
+        None,                     // 3 (core_event_tx)
+        None,                     // 4
+        None,                     // 5
+        None,                     // 6
+        None,                     // 7
+        Some(mock_oracle_review), // 8 (oracle)
+        None,                     // 9
+        None,                     // 10
+        None,                     // 11
+        None,                     // 12
+        None,                     // 13
+    );
+    dispatcher.register_conductor(Arc::new(SucceedingConductor));
+
+    let mut rx = dispatcher.subscribe_events();
+
+    let _handle = tokio::spawn(async move {
+        dispatcher.run_dispatch_loop().await;
+    });
+
+    let mut found_awaiting_input = false;
+    for _ in 0..20 {
+        if let Ok(TaskEvent::AwaitingInput { job_id, .. }) = rx.try_recv() {
+            if job_id == "job-review-1" {
+                found_awaiting_input = true;
+                break;
+            }
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+
+    assert!(
+        found_awaiting_input,
+        "Dispatcher should emit AwaitingInput event"
+    );
+}

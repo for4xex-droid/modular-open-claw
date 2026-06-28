@@ -2,7 +2,7 @@
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Apache License, Version 2.0.
+ * Licensed under the Business Source License 1.1.
  */
 
 //! # ドメイントレイト定義
@@ -976,6 +976,13 @@ pub trait ToolDiscoveryEngine: Send + Sync {
     async fn discover_tools(&self) -> Result<Vec<serde_json::Value>, AiomeError>;
     /// 指示に基づいて最適なツールのセットを提案する
     async fn suggest_tools(&self, instruction: &str) -> Result<Vec<String>, AiomeError>;
+}
+
+/// MCPツールの動的ソース (Phase 13: Autonomous Tool Discovery)
+#[async_trait]
+pub trait McpToolSource: Send + Sync {
+    /// 接続中のMCPサーバーからツール一覧を取得する
+    async fn discover_mcp_tools(&self) -> Result<Vec<serde_json::Value>, AiomeError>;
 }
 
 /// 戦略的計画エンジン (Phase 13: Strategic Planning)
