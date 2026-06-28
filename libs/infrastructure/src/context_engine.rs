@@ -44,10 +44,18 @@ pub struct ContextBudget {
     /// ジョブ実行中の最大消費コスト（USドル）
     #[serde(default = "default_max_job_cost_usd")]
     pub max_job_cost_usd: f64,
+
+    /// ジョブあたりの最大リトライ回数（Conductor エラー + Oracle Reject 合算）
+    #[serde(default = "default_max_job_retries")]
+    pub max_job_retries: i64,
 }
 
 fn default_max_job_cost_usd() -> f64 {
     5.0 // Default to $5.0 cap per job to prevent runaway automation
+}
+
+fn default_max_job_retries() -> i64 {
+    3 // Default matches prior hardcoded value in core_ops.rs
 }
 
 fn default_cortex_chars() -> usize {
@@ -85,6 +93,7 @@ impl Default for ContextBudget {
             max_curated_entries: default_max_curated_entries(),
             adaptation_window_days: default_adaptation_window_days(),
             max_job_cost_usd: default_max_job_cost_usd(),
+            max_job_retries: default_max_job_retries(),
         }
     }
 }

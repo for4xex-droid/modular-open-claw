@@ -1,4 +1,16 @@
-## License Compliance (ライセンス準拠監査と修正) の実装 (2026-06-29)
+## Verify-to-Iterate Loop / Reflexion Loop 統合 (2026-06-29)
+
+- **変更内容**:
+    - `libs/infrastructure/src/task_orchestrator/dispatch_loop.rs` [MODIFY]: Oracle `Reject`/`Revise` → `fail_job` の即時終了を廃止し、`increment_job_retry_count` + `append_job_karma_directives` + `requeue_job` のリトライパスに変更。上限到達時は `AwaitingInput`（人間介入）に遷移。
+    - `libs/infrastructure/src/task_orchestrator/goal_processor.rs` [MODIFY]: `job.topic` と `job.karma_directives` の排他的処理 (`if/else`) をマージロジックに変更。JSON 構造は非マージ（構造保全）、プレーンテキスト修復ヒントのみ `[Previous Execution Context]` タグ付きでマージ。
+    - `libs/infrastructure/src/context_engine.rs` [MODIFY]: `ContextBudget` に `max_job_retries: i64` フィールド追加（デフォルト: 3）。
+    - `libs/infrastructure/src/job_queue/core_ops.rs` [MODIFY]: `do_increment_job_retry_count` のハードコード `count >= 3` を `ContextBudget::default().max_job_retries` に置き換え。
+- **波及効果**:
+    - **dispatch_loop.rs → goal_processor.rs**: Oracle Reject 時に `karma_directives` に蓄積された Oracle フィードバックが、次回リトライ時に GoalProcessor 経由でプランナーに伝搬されるようになった。Watchtower Read-Path（`WATCHTOWER_INSIGHT` 注入）と相補的に機能。
+    - **context_engine.rs → core_ops.rs**: `max_job_retries` が設定値化されたことで、将来的に設定ファイル経由でリトライ上限を動的に変更可能。既存テスト（`test_job_retry_count_poison_pill`）はデフォルト値 3 で動作するため影響なし。
+    - **既存テスト**: ワークスペース全体の 1,103 テストがデグレーションなくパス。
+
+
 
 - **変更内容**:
     - `libs/biome-engine/Cargo.toml` [MODIFY], `templates/minimal-skill/Cargo.toml` [MODIFY]: `license` フィールドの不足を補完。

@@ -381,12 +381,43 @@ impl TaskDispatcher {
                                                                 }
                                                                 aiome_core_contracts::contracts::ReviewDecision::Reject | aiome_core_contracts::contracts::ReviewDecision::Revise => {
                                                                     let reason = verdict.reasoning.clone();
-                                                                    warn!("❌ Job {} failed Oracle review (Reject): {}", j_id, reason);
-                                                                    if let Err(db_err) = q.fail_job(&j_id, &reason).await {
-                                                                        error!("Failed to mark job {} as failed in DB: {}", j_id, db_err);
-                                                                    }
-                                                                    if let Err(e) = p_tx.send(TaskEvent::Failed { job_id: j_id.clone(), error: reason }).await {
-                                                                        tracing::warn!("Failed to send failed event for {}: {}", j_id, e);
+                                                                    warn!("🔄 Job {} rejected by Oracle (decision: {:?}). Initiating Verify-to-Iterate loop.", j_id, decision);
+
+                                                                    // Verify-to-Iterate Loop: Check retry budget
+                                                                    let is_poisoned = q.increment_job_retry_count(&j_id).await.unwrap_or(true);
+
+                                                                    if is_poisoned {
+                                                                        // Max retries exhausted → Escalate to human (AwaitingInput)
+                                                                        // Rationale: AwaitingInput preserves Oracle feedback for human review,
+                                                                        // unlike Failed which discards all remediation context.
+                                                                        warn!("🛑 Job {} exhausted retry budget after Oracle rejection. Escalating to human.", j_id);
+                                                                        if let Err(db_err) = q.update_job_status(&j_id, JobStatus::AwaitingInput).await {
+                                                                            error!("Failed to update job {} to AwaitingInput: {}", j_id, db_err);
+                                                                        }
+                                                                        if let Err(e) = p_tx.send(TaskEvent::AwaitingInput {
+                                                                            job_id: j_id.clone(),
+                                                                            reason: format!("Oracle rejected after max retries: {}", reason),
+                                                                        }).await {
+                                                                            tracing::warn!("Failed to send AwaitingInput event for {}: {}", j_id, e);
+                                                                        }
+                                                                    } else {
+                                                                        // Retry budget available → Append Oracle feedback and requeue
+                                                                        let repair_hint = format!(
+                                                                            "[Oracle Feedback] Decision: {:?}. Reason: {}",
+                                                                            decision, reason,
+                                                                        );
+                                                                        if let Err(e) = q.append_job_karma_directives(&j_id, &repair_hint).await {
+                                                                            error!("Failed to append Oracle feedback to job {}: {}", j_id, e);
+                                                                        }
+
+                                                                        // Clear partial trajectory to prevent stale context
+                                                                        if let Err(e) = q.clear_trajectory_steps(&j_id).await {
+                                                                            error!("Failed to clear trajectory steps for {}: {}", j_id, e);
+                                                                        }
+                                                                        if let Err(e) = q.requeue_job(&j_id).await {
+                                                                            error!("Failed to requeue job {}: {}", j_id, e);
+                                                                        }
+                                                                        info!("🔄 [Reflexion] Job {} requeued with Oracle feedback for self-repair iteration.", j_id);
                                                                     }
                                                                 }
                                                             }

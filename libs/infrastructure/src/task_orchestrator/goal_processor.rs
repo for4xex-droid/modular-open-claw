@@ -27,15 +27,32 @@ impl TaskDispatcher {
             "topic": job.topic,
         });
 
-        // Use topic or karma_directives as the instruction
+        // Use topic as base instruction, merge karma_directives (self-repair hints) if present
+        // Reflexion Loop: Oracle/Watchtower のフィードバックがプレーンテキストとして
+        // karma_directives に蓄積されている場合、プランナーに渡す指示に統合する。
+        // JSON 構造（parent_job_id 等のサブジョブ追跡メタデータ）はマージしない（構造保全）。
         let instruction = if job.topic.is_empty() {
-            job.karma_directives.as_deref().unwrap_or("No instruction")
+            job.karma_directives
+                .as_deref()
+                .unwrap_or("No instruction")
+                .to_string()
         } else {
-            &job.topic
+            let base = job.topic.clone();
+            if let Some(directives) = &job.karma_directives {
+                if !directives.starts_with('{') {
+                    // Plain-text directives: merge as execution context
+                    format!("{}\n\n[Previous Execution Context]:\n{}", base, directives)
+                } else {
+                    // JSON structure: preserve as-is (sub-job tracking metadata)
+                    base
+                }
+            } else {
+                base
+            }
         };
 
         let steps: Vec<aiome_core_contracts::trajectory::TrajectoryStep> =
-            planner.plan_goal(instruction, context).await?;
+            planner.plan_goal(&instruction, context).await?;
 
         // --- Phase 3: Constitutional Validation ---
         // バリデーターが未設定の場合でも、デフォルトのバリデーターを適用して安全性を確保する (G-21 強化)

@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### Added
+- **Verify-to-Iterate Loop (Oracle Reject 時の自律修正ループ)**:
+  - `libs/infrastructure/src/task_orchestrator/dispatch_loop.rs` [MODIFY]: Oracle の `Reject`/`Revise` 判定時に即座に `fail_job` で終了するのではなく、フィードバックを `karma_directives` に蓄積して `requeue_job` でリトライする Reflexion Loop を実装。リトライ上限到達時は `AwaitingInput`（人間介入）に遷移し、成果物と Oracle フィードバックを保全。
+  - `libs/infrastructure/src/task_orchestrator/goal_processor.rs` [MODIFY]: `job.topic` と `job.karma_directives` の排他的処理を廃止し、プレーンテキストの自己修復ヒントを topic に動的マージするロジックを実装。JSON 構造（サブジョブ追跡メタデータ）は構造保全のため非マージ。
+  - `libs/infrastructure/src/context_engine.rs` [MODIFY]: `ContextBudget` に `max_job_retries` フィールドを追加（デフォルト: 3）。リトライ上限をハードコードから設定値に昇格。
+  - `libs/infrastructure/src/job_queue/core_ops.rs` [MODIFY]: `increment_job_retry_count` のリトライ上限判定を `ContextBudget::default().max_job_retries` に置き換え。
+
 ### Fixed
 - **Clippy Warning Resolution (Clippy警告対処に伴うリファクタリング)**:
   - `libs/infrastructure/src/society_of_thought.rs` [MODIFY]: `collapsible_else_if` 警告に対処するため、Challenger-Verifier パターンの `else { if ... }` ブロックを `else if` に整理。

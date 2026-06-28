@@ -582,7 +582,8 @@ impl CoreOps for UniversalJobQueue {
         );
         let count: i64 = crate::sql_fetch_one!(&self.pool, (i64,), &q2, job_id).map(|r| r.0)?;
 
-        if count >= 3 {
+        let max_retries = crate::context_engine::ContextBudget::default().max_job_retries;
+        if count >= max_retries {
             let now = Utc::now().to_rfc3339();
             let q3 = format!(
                 "UPDATE jobs SET status = 'Failed', error_message = 'Poison Pill: Too many retries', updated_at = {0} WHERE id = {1}",

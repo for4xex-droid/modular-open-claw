@@ -74,8 +74,8 @@
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
 | `x_signal_probe` | reqwest と X_BEARER_TOKEN を用いた超軽量な X API トレンド収集アダプタ。**Phase 8.7** にて、429 Retry-After 自律解析と、DashMap によるアンダーフロー無縁 (`saturating_sub`) な絶対安全レート制限機構へ到達。 | **Phase 8.7 完了** |
 | `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
-| `task_orchestrator`| 非同期タスクの管理とディスパッチ。サブモジュール（`types`, `dispatcher`, `dispatch_loop`, `goal_processor`、およびワークフロー実行を担う `libs/infrastructure/src/task_orchestrator/workflow_conductor.rs`）に分割し、`mod.rs` を後方互換ハブモジュールとして再構成。 | **分割・構造化完了** |
-| `gig_metadata_updater` | `GigMetadataUpdater` トレイトの SQLite 実装 (`DbGigUpdater`)。OxiLean 検証結果 (`oxilean_verified`, `oxilean_oxp`) を `ai_artifacts` テーブルの `file_manifest` JSON に永続化し、Presentation 層から DB 直接アクセスを排除。 | **Sovereign Pipeline Phase 1 完了** |
+| `task_orchestrator`| 非同期タスクの管理とディスパッチ。Oracle の Reject/Revise 時にフィードバックを蓄積して再試行を行う Verify-to-Iterate (自己修復リトライ) ループ、および自己修復ヒントを安全にプランナー指示へマージする GoalProcessor マージロジックを統合。 | **分割・構造化・自己修復強化完了** |
+| `gig_metadata_updater` | `GigMetadataUpdater` トレイトの SQLite 実装 (`DbGigUpdater`)。OxiLean 検証結果 (`oxilean_verified`, `oxilean_oxp`) を `ai_artifacts` テーブル of `file_manifest` JSON に永続化し、Presentation 層から DB 直接アクセスを排除。 | **Sovereign Pipeline Phase 1 完了** |
 | `grpc_proof_gate` | `FormalProofGate` トレイトの gRPC 実装 (`GrpcFormalProofGate`)。shadow-worker の `ProofVerifierService` と tonic チャンネル経由で通信し、WASM スキルの形式検証を透過的に実行。空トークン時の送信遮断によるゼロトラスト保証付き。 | **Sovereign Pipeline Phase 1 完了** |
 | `workflow` | ワークフロー定義の構造、バリデーション、および Job リストへのコンパイルを提供。関連ファイル: `libs/infrastructure/src/workflow/` (`schema.rs`, `store.rs`, `transpiler.rs`, `validator.rs`) | **Phase 10 完了** |
 | `backup_guard` | `bootstrap/database.rs::backup_sqlite_db_before_migration()` によるマイグレーション前の自動 DB スナップショット。`:memory:` / PostgreSQL 自動スキップ。`scripts/backup.sh` は SQLite Online Backup (`sqlite3 .backup`) による WAL-safe ホットバックアップ + 世代ローテーション + SHA256 チェックサム + 暗号化監査を提供。 | **Sinking Ship #19 完了** |
@@ -84,7 +84,7 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-06-29 (Asia/Tokyo) - Autodata Boltzmann 選択の実装およびライセンスチェックの監査・修正に伴う更新*
+*最終更新: 2026-06-29 (Asia/Tokyo) - Verify-to-Iterate 自己修復ループ統合および Boltzmann 選択の実装に伴う更新*
 
 ## Phase 6 Integration Notes
 
