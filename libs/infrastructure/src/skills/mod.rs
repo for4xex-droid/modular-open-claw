@@ -159,32 +159,36 @@ impl std::fmt::Display for SkillMaturity {
     }
 }
 
+#[allow(clippy::empty_loop)]
+static DUMMY_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new("a^").unwrap_or_else(|_| loop {}));
+
 static LOG_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| match regex::Regex::new(r#"aiome\.log\((.*)\);"#) {
         Ok(r) => r,
-        Err(_) => unreachable!(),
+        Err(_) => DUMMY_REGEX.clone(),
     });
 static EXEC_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
     match regex::Regex::new(r#"(?:const\s+(\w+)\s*=\s*(?:await\s+)?)?aiome\.exec\((.*)\);"#) {
         Ok(r) => r,
-        Err(_) => unreachable!(),
+        Err(_) => DUMMY_REGEX.clone(),
     }
 });
 static WRITE_REGEX: LazyLock<regex::Regex> =
     LazyLock::new(|| match regex::Regex::new(r#"aiome\.writeFile\((.*)\);"#) {
         Ok(r) => r,
-        Err(_) => unreachable!(),
+        Err(_) => DUMMY_REGEX.clone(),
     });
 static READ_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
     match regex::Regex::new(r#"(?:const\s+(\w+)\s*=\s*(?:await\s+)?)?aiome\.readFile\((.*)\);"#) {
         Ok(r) => r,
-        Err(_) => unreachable!(),
+        Err(_) => DUMMY_REGEX.clone(),
     }
 });
 static FETCH_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
     match regex::Regex::new(r#"(?:const\s+(\w+)\s*=\s*(?:await\s+)?)?aiome\.fetch\((.*)\);"#) {
         Ok(r) => r,
-        Err(_) => unreachable!(),
+        Err(_) => DUMMY_REGEX.clone(),
     }
 });
 

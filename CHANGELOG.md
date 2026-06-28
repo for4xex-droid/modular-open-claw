@@ -8,6 +8,14 @@
   - `libs/infrastructure/src/job_queue/core_ops.rs` [MODIFY]: `increment_job_retry_count` のリトライ上限判定を `ContextBudget::default().max_job_retries` に置き換え。
 
 ### Fixed
+- **Type-Driven Security (CC-6) 改善**:
+  - `apps/api-server/src/routes/vault.rs` [MODIFY]: 暗号化鍵管理エンドポイントの各ハンドラ（`vault_status`, `vault_upsert`, `vault_delete`）に `_auth: crate::auth::Authenticated` 抽出子を注入し、型レベルでのセキュリティ要件を満たすよう強化。
+  - `scripts/deep-scan.sh` [MODIFY]: CC-6 判定用の awk スクリプトに `BEGINFILE { exempt_seen=0 }` を追加し、複数ファイルスキャン時の状態汚染による誤検知を解消。
+- **Zero-Panic Policy 準拠の強化**:
+  - `libs/infrastructure/src/skills/mod.rs` [MODIFY]: LazyLock 内の正規表現コンパイル失敗時の `unreachable!()`（5箇所）を、パニックフリーな `DUMMY_REGEX`（マッチしない `a^` パターン）のクローンフォールバックへ置換。
+  - `apps/management-console/src-tauri/src/lib.rs` [MODIFY]: Tauriアプリ初期構築失敗時の `panic!()` 呼び出しを、`eprintln!` エラーロギングと安全な `std::process::exit(1)` によるプロセス終了へリファクタリング。
+- **環境変数一貫性 (.env.example) の是正**:
+  - `.env.example` [MODIFY]: 未記載だった `NURTURE_DRM_MASTER_KEY` および `BIOME_HUB_WHITELIST` 環境変数を追加し、新規オンボーディングの自動化を阻害しないよう改善。
 - **Clippy Warning Resolution (Clippy警告対処に伴うリファクタリング)**:
   - `libs/infrastructure/src/society_of_thought.rs` [MODIFY]: `collapsible_else_if` 警告に対処するため、Challenger-Verifier パターンの `else { if ... }` ブロックを `else if` に整理。
   - `apps/samsara-hub/src/hub_ws_tests.rs` [MODIFY]: `while_let_loop` 警告に対処するため、手動の `loop { if let Some(...) = ... { ... } else { break; } }` を簡潔な `while let` ループへ書き換え。

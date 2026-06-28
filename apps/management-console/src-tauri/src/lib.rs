@@ -326,7 +326,10 @@ pub fn run() {
             Ok(())
         })
         .build(tauri::generate_context!())
-        .unwrap_or_else(|e| panic!("error while building tauri application: {}", e));
+        .unwrap_or_else(|e| {
+            eprintln!("error while building tauri application: {}", e);
+            std::process::exit(1);
+        });
 
     app.run(|_app_handle, event| {
         if let tauri::RunEvent::ExitRequested { .. } = event {

@@ -422,6 +422,7 @@ cross_cutting_checks() {
   echo "── CC-6: Type-Driven Security (Auth Extractor Enforcement) ──"
   local total_handlers auth_handlers missing_auth_count
   total_handlers=$(find apps/api-server/src/routes apps/api-server/src/stream.rs -name "*.rs" -exec awk '
+    BEGINFILE { exempt_seen=0 }
     /auth-exempt/ { exempt_seen=1 }
     /pub async fn/ {
       if (!exempt_seen) c++

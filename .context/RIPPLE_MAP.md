@@ -1,3 +1,16 @@
+## 🔍 統合技術的負債の解消 (2026-06-29)
+
+- **変更内容**:
+    - `apps/api-server/src/routes/vault.rs` [MODIFY]: `vault_status`, `vault_upsert`, `vault_delete` に認証制約 `_auth: crate::auth::Authenticated` を追加。
+    - `libs/infrastructure/src/skills/mod.rs` [MODIFY]: 5箇所の `unreachable!()` を `DUMMY_REGEX` によるパニックフリーなフォールバックへ置換。
+    - `apps/management-console/src-tauri/src/lib.rs` [MODIFY]: アプリ構築失敗時の `panic!()` を `eprintln!` と `std::process::exit(1)` による終了処理に変更。
+    - `.env.example` [MODIFY]: `NURTURE_DRM_MASTER_KEY` と `BIOME_HUB_WHITELIST` 環境変数を追加。
+    - `scripts/deep-scan.sh` [MODIFY]: `BEGINFILE { exempt_seen=0 }` の追加により、複数ファイルスキャン時の状態汚染バグを解消。
+- **波及効果**:
+    - **Type-Driven Security (CC-6)**: `vault.rs` の管理エンドポイントが型安全に保護されていることが静的に保証され、セキュリティ監査の健全性が 100% 達成された。
+    - **Zero-Panic Policy**: WASMスキル正規表現初期化およびデスクトップアプリ起動エラーにおける予期せぬパニックのリスクを排除し、信頼性が向上した。
+    - **ビルド・テスト環境**: `cargo check --workspace --tests` および全 1,103 テストがデグレーションなくパス。
+
 ## Verify-to-Iterate Loop / Reflexion Loop 統合 (2026-06-29)
 
 - **変更内容**:

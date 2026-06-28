@@ -35,7 +35,10 @@ pub struct StoreSecretRequest {
     pub value: String,
 }
 
-pub async fn vault_status(State(state): State<AppState>) -> Result<impl IntoResponse, AppError> {
+pub async fn vault_status(
+    State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
+) -> Result<impl IntoResponse, AppError> {
     let vault_secret = state
         .config
         .vault_secret
@@ -75,6 +78,7 @@ pub async fn vault_status(State(state): State<AppState>) -> Result<impl IntoResp
 
 pub async fn vault_upsert(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Json(payload): Json<StoreSecretRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let vault_secret = state
@@ -117,6 +121,7 @@ pub async fn vault_upsert(
 
 pub async fn vault_delete(
     State(state): State<AppState>,
+    _auth: crate::auth::Authenticated,
     Path(key): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
     let vault_secret = state
