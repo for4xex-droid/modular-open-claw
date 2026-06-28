@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Fixed
+- **Clippy Warning Resolution (Clippy警告対処に伴うリファクタリング)**:
+  - `libs/infrastructure/src/society_of_thought.rs` [MODIFY]: `collapsible_else_if` 警告に対処するため、Challenger-Verifier パターンの `else { if ... }` ブロックを `else if` に整理。
+  - `apps/samsara-hub/src/hub_ws_tests.rs` [MODIFY]: `while_let_loop` 警告に対処するため、手動の `loop { if let Some(...) = ... { ... } else { break; } }` を簡潔な `while let` ループへ書き換え。
+  - `apps/api-server/src/internal_services/commune_ws.rs` [MODIFY]: `explicit_auto_deref` 警告に対処するため、不要な逆参照 `&*seed` を自動参照 `&seed` に修正。
+
 ### Added
 - **License Compliance (ライセンス準拠監査と修正) [/license-check]**:
   - `libs/biome-engine/Cargo.toml` [MODIFY], `templates/minimal-skill/Cargo.toml` [MODIFY]: パッケージ情報の `license = "Apache-2.0"` フィールドの欠落を補完。
