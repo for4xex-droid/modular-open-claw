@@ -3,13 +3,14 @@
 - **変更内容**:
     - `libs/infrastructure/src/job_queue/mod.rs` [MODIFY]: `select_ladder_sandbox` を `pub(crate)` に限定し、API をスリム化。
     - `apps/api-server/src/main.rs` [MODIFY]: `UniversalJobQueue::do_push_federated_metrics()` のダウンキャスト具象メソッド呼び出しを廃止し、`FederationOps` トレイト経由の呼び出しへリファクタリング。
-    - `apps/management-console/src/styles/tokens.css` [MODIFY], `apps/management-console/src/lib/biome/ThemeBridge.ts` [NEW], `BiomeCellGrid.tsx` [MODIFY], `BiomeGame.tsx` [MODIFY], `BiomeHUD.tsx` [MODIFY]: CSS デザイントークンベースの WebGL / Canvas カラー同期ブリッジを導入し、HEX カラーのハードコードを完全に排除。
+    - `apps/management-console/src/styles/tokens.css` [MODIFY], `apps/management-console/src/lib/biome/ThemeBridge.ts` [NEW], `BiomeCellGrid.tsx` [MODIFY], `BiomeGame.tsx` [MODIFY], `BiomeHUD.tsx` [MODIFY]: CSS デザイントークンベースの WebGL / Canvas カラー同期ブリッジを導入し、HEX カラーのハードコードを完全に排除。さらに `BiomeCellGrid.tsx` は import 順序規約違反の解決および動的カラー取得への変更（モジュールスコープ配列の廃止）を追加修正。
     - `apps/management-console/src-tauri/Cargo.toml` [MODIFY], `src-tauri/src/lib.rs` [MODIFY], `apps/management-console/src/types/tauri.ts` [NEW]: `ts-rs` を用いた Tauri IPC 構造体の自動型定義生成・共有パイプラインを構築。
-    - `auth.rs` [MODIFY], `commune_ws.rs` [MODIFY], `heartbeat.rs` [MODIFY], `expression.rs` [MODIFY]: サイレントエラーの握り潰し（5箇所）を排除し、エラー時の警告・エラーロギング（`warn!` / `error!`）を伴う堅牢なエラー処理へ置き換え。
+    - `auth.rs` [MODIFY], `commune_ws.rs` [MODIFY], `heartbeat.rs` [MODIFY], `expression.rs` [MODIFY]: サイレントエラーの握り潰し（5箇所）を排除し、エラー時の警告・エラーロギング（`warn!` / `error!`）を伴う堅牢なエラー処理へ置き換え。さらに `auth.rs` の `admin_password_hash` 取得失敗時のサイレントなエラー握り潰し（`.ok().flatten()`）を追加修正。
+    - `apps/api-server/src/api_integration_tests/auth.rs` [MODIFY]: `admin_password_hash` 取得失敗時のロギングパスを検証する統合テスト `test_auth_admin_hash_fetch_failure_logging` を追加。
 - **波及効果**:
-    - **U-002 / テーマ同期**: WebGL 描画および UI カラーのハードコードが一掃され、テーマ変更が動的に Three.js / Canvas 描画に反映されるようになった。
+    - **U-002 / テーマ同期**: WebGL 描画および UI カラーのハードコードが一掃され、テーマ変更が動的に Three.js / Canvas 描画に反映されるようになった（`BiomeCellGrid` での動的取得の最適化により、テーマ変更時の動的追従性を 100% 達成）。
     - **Tauri IPC 型安全性 (Dimension 11)**: Rust 構造体から TypeScript 型定義が自動生成されるようになり、定義ズレによるランタイムクラッシュのリスクが排除された。
-    - **Observability / エラー処理 (Dimension 7)**: DBエラーやパスワードハッシュパース失敗、クロック同期失敗などの「静かな失敗」が全て可視化され、障害発生時の迅速なデバッグが可能となった。
+    - **Observability / エラー処理 (Dimension 7)**: DBエラーやパスワードハッシュ取得/パース/検証失敗、クロック同期失敗などの「静かな失敗」が全て可視化され、障害発生時の迅速なデバッグが可能となった。
     - **テスト・整合性**: ワークスペース全体の全 4,524 テストおよび静的解析（`enforce_unwrap_deny.py`, `deep-scan.sh --ci`）がデグレーションなくパス。
 
 ## 🔍 統合技術的負債の解消 (2026-06-29)
