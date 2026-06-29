@@ -17,7 +17,7 @@
   - `apps/api-server/src/main.rs` [MODIFY]: バックグラウンド定期処理タスク内での `UniversalJobQueue::do_push_federated_metrics()` 具象メソッドへのダウンキャスト呼び出しを廃止し、`FederationOps` トレイト経由のクリーンな呼び出しに移行。
 - **Quick Wins: Silent Error Suppression & Logger (Dimension 7)**:
   - `apps/api-server/src/routes/auth.rs` [MODIFY]: 管理者パスワードハッシュのパース/検証失敗時の警告ログ追加に加え、取得失敗時に存在した `.ok().flatten()` エラー握り潰しを `match` 式に変更し、DBエラー発生時に `warn!` 警告を出力するように追加修正。
-  - `apps/api-server/src/api_integration_tests/auth.rs` [MODIFY]: `admin_password_hash` 取得失敗時のロギングルートを検証する統合テスト `test_auth_admin_hash_fetch_failure_logging` を追加。
+  - `apps/api-server/src/api_integration_tests/auth.rs` [MODIFY]: `admin_password_hash` 取得失敗時のロギングルートを検証する統合テスト `test_auth_admin_hash_fetch_failure_logging` を追加。また、テスト内のコメント記述を修正後の挙動に合わせて正確に更新。
   - `apps/api-server/src/internal_services/commune_ws.rs` [MODIFY]: 2箇所の `.unwrap_or(None)` を `match` 表現に変更しDB接続・クエリエラー警告（`warn!`/`error!`）を追加。クロック同期失敗時の戻り値破棄にも `warn!` を追加。
   - `apps/api-server/src/internal_services/heartbeat.rs` [MODIFY]: 設定値取得失敗の `.ok().flatten()` エラー抑制を `match` に変更し `warn!` 警告を追加。
   - `apps/api-server/src/routes/expression.rs` [MODIFY]: TTS voice 設定取得失敗時の `.unwrap_or(None)` を `match` による `warn!` 警告と "alloy" への安全フォールバックへ修正。
