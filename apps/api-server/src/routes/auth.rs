@@ -127,13 +127,18 @@ pub async fn token_handler(
             .ok_or_else(|| AppError::bad_request("Missing client_secret for password grant"))?;
 
         use aiome_core_contracts::SettingsOps;
-        let admin_hash = state
+        let admin_hash = match state
             .job_queue
             .get_inner()
             .get_setting_value("admin_password_hash")
             .await
-            .ok()
-            .flatten();
+        {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!("⚠️ Failed to fetch admin_password_hash: {}", e);
+                None
+            }
+        };
 
         let mut authenticated = false;
 

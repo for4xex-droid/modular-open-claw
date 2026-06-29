@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { createCellGeometry } from './cellGeometries';
 import { CELL_COUNT, RENDER_STRIDE, GRID_WIDTH, MORPH_COUNT, InjectionMark } from './biomeTypes';
 import { biomeCellVertexShader, biomeCellFragmentShader } from './shaders/biomeCell';
+import ThemeBridge from './ThemeBridge';
 
 // --- shaderMaterial の定義 ---
 const BiomeCellMaterial = shaderMaterial(
@@ -31,19 +32,6 @@ interface BiomeCellGridProps {
   hoverCell: { x: number; y: number } | null;
 }
 
-import ThemeBridge from './ThemeBridge';
-
-const ELEMENT_COLORS = [
-  ThemeBridge.getElementColor('c'),
-  ThemeBridge.getElementColor('n'),
-  ThemeBridge.getElementColor('p'),
-  ThemeBridge.getElementColor('h'),
-  ThemeBridge.getElementColor('o'),
-  ThemeBridge.getElementColor('s'),
-  ThemeBridge.getElementColor('fe'),
-  ThemeBridge.getElementColor('si')
-];
-const FALLBACK_COLOR = ThemeBridge.getElementColor('fallback');
 const PI = Math.PI;
 
 // 8元素比率からHSLを導出してRGBカラーを返す (grid.frag L27-78 の移植)
@@ -59,7 +47,7 @@ function computeElementColor(tempColor: THREE.Color, renderView: Float32Array, o
 
   const total = C + N + P + H + O + S + Fe + Si;
   if (total < 1.0) {
-    tempColor.copy(FALLBACK_COLOR);
+    tempColor.copy(ThemeBridge.getElementColor('fallback'));
     return;
   }
 
