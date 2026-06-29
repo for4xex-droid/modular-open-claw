@@ -33,6 +33,7 @@ interface BiomeCellGridProps {
 }
 
 const PI = Math.PI;
+const ELEMENT_KEYS = ['c', 'n', 'p', 'h', 'o', 's', 'fe', 'si'] as const;
 
 // 8元素比率からHSLを導出してRGBカラーを返す (grid.frag L27-78 の移植)
 function computeElementColor(tempColor: THREE.Color, renderView: Float32Array, offset: number) {
@@ -148,7 +149,7 @@ export function BiomeCellGrid({ renderView, rarity, injectionMarks, hoverCell }:
         const dist = Math.abs(cx - mark.x) + Math.abs(cy - mark.y);
         if (dist < 5) {
           const ripple = (1 - mark.age) * (1 - dist / 5) * 0.4;
-          tempColor.lerp(ELEMENT_COLORS[mark.elementIdx] || FALLBACK_COLOR, ripple);
+          tempColor.lerp(ThemeBridge.getElementColor(ELEMENT_KEYS[mark.elementIdx] ?? 'fallback'), ripple);
         }
       }
 

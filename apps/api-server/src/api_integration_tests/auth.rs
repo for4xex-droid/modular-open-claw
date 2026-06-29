@@ -417,15 +417,15 @@ async fn test_auth_password_grant_with_argon2id() {
 async fn test_auth_admin_hash_fetch_failure_logging() {
     let (server, state, _tmp) = create_test_server().await;
 
-    // DBを破綻させる代わりに、設定自体を壊すか、存在しない場合の挙動を確認する。
-    // ここでは、パスワード検証がDBエラー相当でフォールバックされ、ログ警告ルートを通ることをテストする。
-    // 現状はOk(None)として握り潰されているが、これをエラーにして警告が飛ぶことを期待する。
+    // system_settings テーブルをドロップしてDBエラーを発生させる。
+    // 修正後の auth.rs では、get_setting_value() の Err 時に warn! ログを出力してから
+    // None にフォールバックし、.env シークレットでの照合へ移行する。
+    // テスト環境のシークレットと一致しないため最終的に FORBIDDEN となる。
     let payload = json!({
         "grant_type": "password",
         "client_secret": "any_password"
     });
 
-    // DBエラーを起こすため、一時的にプールを無効化するか、またはDB自体から設定テーブルをドロップする
     let db = state.db_pool.get_inner();
     if let infrastructure::db::DatabasePool::Sqlite(sqlite_pool) = &**db {
         let _ = sqlx::query("DROP TABLE system_settings")
@@ -434,6 +434,5 @@ async fn test_auth_admin_hash_fetch_failure_logging() {
     }
 
     let resp = server.post("/api/v1/auth/token").json(&payload).await;
-    // settingsテーブルが消えたため、本来ならDBエラーが発生し、warn!ログがトリガーされる
     assert_eq!(resp.status_code(), axum::http::StatusCode::FORBIDDEN);
 }
