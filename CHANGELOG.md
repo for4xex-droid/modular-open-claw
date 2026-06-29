@@ -9,6 +9,11 @@
   - `apps/management-console/src/styles/tokens.css` [MODIFY]: 16px (1rem) 相当のフォントサイズトークン `--font-size-md` が欠損していたため補完。
 
 ### Fixed
+- **Biome 多言語化に伴う既存テストの回復**:
+  - `apps/management-console/src/lib/biome/BiomeComponents.test.tsx` [MODIFY]: i18n モック環境の挙動に合わせ、アサーション文字列をモックキー（`biomeConsole.activeCells` や `biomeConsole.elementRatio` など）に修正。
+  - `apps/management-console/src/lib/biome/BiomeComponents.test.tsx` [MODIFY]: 一部の Jest 実行環境で絵文字 `🔍` が文字化け（`` など）を起こし要素検知に失敗する不確実性を排除するため、詳細トグルの取得を部分一致正規表現 `/biomeConsole\.detail/i` にブラッシュアップ。
+- **デザインシステム仕様書の同期漏れ是正**:
+  - `apps/management-console/DESIGN.md` [MODIFY]: `--font-size-md` (1rem) トークンの追加仕様を YAML スキーマに追記同期し、ビルドフック警告を解決。
 - **Tauri CSP ポート予防的追加 (Release Readiness)**:
   - `apps/management-console/src-tauri/tauri.conf.json` [MODIFY]: 将来的な key-proxy (3017) / nurture-api (3020) との直接通信に備え、予防的に `connect-src` にポートを追加。
 - **U-002 スタイルトークン違反の完全是正 (全 Biome コンポーネント)**:

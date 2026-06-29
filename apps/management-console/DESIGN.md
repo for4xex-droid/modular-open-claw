@@ -143,6 +143,7 @@ typography:
   font-size-xs: "0.6875rem"
   font-size-sm: "0.75rem"
   font-size-base: "0.875rem"
+  font-size-md: "1rem"
   font-size-lg: "1.125rem"
   font-size-2xl: "1.5rem"
   font-display: "'Outfit', 'Artemis Inter', system-ui, sans-serif"

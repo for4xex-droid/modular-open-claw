@@ -246,11 +246,11 @@ describe('Biome HUD & Controls Components', () => {
     expect(screen.getByText('Legendary Specimen A')).toBeInTheDocument();
     
     // 詳細トグルボタンをクリック
-    const detailBtn = screen.getByRole('button', { name: /🔍 詳細/i });
+    const detailBtn = screen.getByRole('button', { name: /biomeConsole\.detail/i });
     fireEvent.click(detailBtn);
 
     // 展開後に詳細が表示されていることをアサート
-    expect(screen.getByText(/活性セル数: 50/i)).toBeInTheDocument();
+    expect(screen.getByText(/biomeConsole\.activeCells 50/i)).toBeInTheDocument();
     expect(screen.getByText('C')).toBeInTheDocument();
     expect(screen.getByText('40.0%')).toBeInTheDocument();
     expect(screen.getByText('Predator')).toBeInTheDocument();
@@ -276,7 +276,7 @@ describe('Biome HUD & Controls Components', () => {
 
     expect(screen.getByText(/Legendary/)).toBeInTheDocument();
     expect(screen.getByText(/300/)).toBeInTheDocument();
-    expect(screen.getByText(/活性セル数: 50/)).toBeInTheDocument();
+    expect(screen.getByText(/biomeConsole\.activeCells 50/)).toBeInTheDocument();
     expect(screen.getByText('C')).toBeInTheDocument();
     expect(screen.getByText('40.0%')).toBeInTheDocument();
     expect(screen.getByText('Predator')).toBeInTheDocument();
@@ -325,12 +325,12 @@ describe('Biome HUD & Controls Components', () => {
     expect(screen.getByText('Faulty Specimen')).toBeInTheDocument();
     
     // 詳細トグルボタンをクリックして展開するが、解析失敗データのためパーセントバー等は描画されず、かつクラッシュもしないこと
-    const detailBtn = screen.getByRole('button', { name: /🔍 詳細/i });
+    const detailBtn = screen.getByRole('button', { name: /biomeConsole\.detail/i });
     fireEvent.click(detailBtn);
 
-    expect(screen.queryByText(/元素比率/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/形態分布/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/発見した反応/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/活性セル数/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/biomeConsole\.elementRatio/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/biomeConsole\.morphologyDistribution/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/biomeConsole\.discoveredReactions/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/biomeConsole\.activeCells/i)).not.toBeInTheDocument();
   });
 });
