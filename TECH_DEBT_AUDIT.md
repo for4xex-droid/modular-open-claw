@@ -26,11 +26,11 @@ v9.0 では、Git ホットスポット分析（過去3ヶ月で変更頻度の�
 
 | # | 負債 | 深刻度 | 影響 | 見積もり | Status |
 |---|---|---|---|---|---|
-| **P1** | **WebGL カラーコードと tokens.css のブリッジ化 (U-002)** | 🔴 | `BiomeCellGrid.tsx:35-44` および `BiomeGame.tsx:248-255` における 8元素カラーの HEX ハードコード。テーマ切替が WebGL 描画に反映されない。 | 5h | — |
+| **P1** | **WebGL カラーコードと tokens.css のブリッジ化 (U-002)** | 🔴 | `BiomeCellGrid.tsx:35-44` および `BiomeGame.tsx:248-255` における 8元素カラーの HEX ハードコード。テーマ切替が WebGL 描画に反映されない。 | 5h | `[RESOLVED]` |
 | **P2** | **フロントエンド型安全性 (as any) の解消** | 🔴 | `WorkflowBuilder.tsx:101,234,271` / `workflowConverter.ts:139` / `api_resolver.ts:25` の計5箇所。型チェックが無効化され、ランタイムエラーの温床。 | 4h | — |
-| **P3** | **Tauri IPC 構造体の TypeScript 自動生成同期化** | 🟡 | `src-tauri/src/lib.rs` の Rust 構造体と `management-console/src/types/` の TypeScript interface が手動同期。`ts-rs` 等による自動生成パイプライン未導入。 | 5h | — |
+| **P3** | **Tauri IPC 構造体の TypeScript 自動生成同期化** | 🟡 | `src-tauri/src/lib.rs` の Rust 構造体と `management-console/src/types/` の TypeScript interface が手動同期。`ts-rs` 等による自動生成パイプライン未導入。 | 5h | `[RESOLVED]` |
 | **P4** | **`skills/mod.rs` (1,134行) God Module の分解** | 🟡 | テストを除いた純粋な本番コードが 1,134行。スキル登録、正規表現マッチング、ディスパッチが1ファイルに密結合。 | 4h | `[NEW]` |
-| **P5** | **Error 型の統一 (10種類 → 3階層)** | 🟡 | `thiserror` 7ファイル vs `anyhow` 47ファイルの混在。ただし `error.rs` の変換層 (22テスト) は模範的な設計。 | 6h | — |
+| **P5** | **Error 型 of 統一 (10種類 → 3階層)** | 🟡 | `thiserror` 7ファイル vs `anyhow` 47ファイルの混在。ただし `error.rs` の変換層 (22テスト) は模範的な設計。 | 6h | — |
 
 > **`[RESOLVED]` — 旧P4 (`discovery.rs` God Module)**: 以前 1,113行と報告していた `skills/discovery.rs` は現在 305行に縮小されています。
 
@@ -43,11 +43,11 @@ v9.0 では、Git ホットスポット分析（過去3ヶ月で変更頻度の�
 | **QW-7** | `BiomeEventToast.tsx` のインライン styles から HEX フォールバックを排除 | `BiomeEventToast.tsx:48-53` | tokens.css 準拠 | `[RESOLVED]` |
 | **QW-8** | `api_resolver.ts` 内の `window as any` をグローバル宣言 or `typeof window` 型ガードへ | `api_resolver.ts:25` | 型安全性 | `[RESOLVED]` |
 | **QW-9** | `dispatcher.rs` の `.ok()` エラー抑制に警告ログ出力を追加 | `dispatcher.rs:134` | デバッグアビリティ | `[RESOLVED]` |
-| **QW-10** | `auth.rs` の管理者ハッシュパース失敗時に `warn!` ログを出力 | [auth.rs:142](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/routes/auth.rs#L142) | 認証失敗の可観測性確保 | — |
-| **QW-11** | `commune_ws.rs` の `.unwrap_or(None)` 2箇所を `match` + `warn!` に置換 | [commune_ws.rs:93](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/internal_services/commune_ws.rs#L93), [commune_ws.rs:112](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/internal_services/commune_ws.rs#L112) | DB クエリ失敗時の可観測性確保 | `[NEW]` |
-| **QW-12** | `commune_ws.rs` の `sync_local_clock` 結果の `let _ =` を `if let Err(e) = ... { warn!(...) }` に | [commune_ws.rs:271](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/internal_services/commune_ws.rs#L271) | クロック同期失敗時のログ出力 | `[NEW]` |
-| **QW-13** | `heartbeat.rs` の設定取得 `.ok().flatten()` を `match` + `warn!` に置換 | [heartbeat.rs:115](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/internal_services/heartbeat.rs#L115) | 設定DB接続失敗の可観測性確保 | `[NEW]` |
-| **QW-14** | `expression.rs` の TTS voice 設定取得 `.unwrap_or(None)` にログ出力追加 | [expression.rs:162](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/routes/expression.rs#L162) | TTS 設定フォールバック時の透過性 | `[NEW]` |
+| **QW-10** | `auth.rs` の管理者ハッシュパース失敗時に `warn!` ログを出力 | [auth.rs:142](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/routes/auth.rs#L142) | 認証失敗の可観測性確保 | `[RESOLVED]` |
+| **QW-11** | `commune_ws.rs` の `.unwrap_or(None)` 2箇所を `match` + `warn!` に置換 | [commune_ws.rs:93](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/internal_services/commune_ws.rs#L93), [commune_ws.rs:112](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/internal_services/commune_ws.rs#L112) | DB クエリ失敗時の可観測性確保 | `[RESOLVED]` |
+| **QW-12** | `commune_ws.rs` の `sync_local_clock` 結果の `let _ =` を `if let Err(e) = ... { warn!(...) }` に | [commune_ws.rs:271](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/internal_services/commune_ws.rs#L271) | クロック同期失敗時のログ出力 | `[RESOLVED]` |
+| **QW-13** | `heartbeat.rs` の設定取得 `.ok().flatten()` を `match` + `warn!` に置換 | [heartbeat.rs:115](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/internal_services/heartbeat.rs#L115) | 設定DB接続失敗の可観測性確保 | `[RESOLVED]` |
+| **QW-14** | `expression.rs` の TTS voice 設定取得 `.unwrap_or(None)` にログ出力追加 | [expression.rs:162](file:///Users/motista/Desktop/antigravity/aiome/apps/api-server/src/routes/expression.rs#L162) | TTS 設定フォールバック時の透過性 | `[RESOLVED]` |
 
 ---
 
@@ -126,10 +126,10 @@ v9.0 では、Git ホットスポット分析（過去3ヶ月で変更頻度の�
 | 総 LOC | 152k | 152k | 152k | 152k | **175k** (Rust 143k + TS 33k) | ↑ 再計測で正確化 |
 | Rust テスト定義数 (`#[test]`) | — | — | — | — | **1,347** | 新規指標 |
 | `cargo test` 実行パス数 | 4,459 | 4,524 | 4,524 | 4,524 | **4,524** | → |
-| U-002 違反 (TSX/WebGL) | 0 | 0 | 12 | 12 | **12** | → |
+| U-002 違反 (TSX/WebGL) | 0 | 0 | 12 | 12 | **0** | ✅ 完全解消 |
 | `as any` 本番使用 (TS) | 1 | 1 | 5 | 5 | **5** | → |
 | CC-6 違反 (Auth) | 0 | 6 | 0 | 0 | **0** | ✅ 完全解消維持 |
-| Silent error suppression | 0 | 1 | 1 | 1 | **6** (詳細特定) | ↑ 深掘りで正確化 |
+| Silent error suppression | 0 | 1 | 1 | 1 | **0** | ✅ 完全解消 |
 | God Module (本番1k+行) | 3 | 3 | 3 | 3 | **1** (`skills/mod.rs`) | ↓ 訂正・改善 |
 | `cargo audit` allowed warnings | — | — | — | — | **2** | 新規指標 |
 | 未ドキュメント pub fn | — | — | — | — | **181** | 新規指標 |

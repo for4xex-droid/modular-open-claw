@@ -155,12 +155,17 @@ pub async fn generate_expression(
     // 4. NG-22 / Phase 10.1a: Trigger TTS if configured
     if let Ok(Some(tts_prov)) = state.job_queue.get_setting_value("tts_provider").await {
         if tts_prov != "none" {
-            let voice = state
-                .job_queue
-                .get_setting_value("tts_voice")
-                .await
-                .unwrap_or(None)
-                .unwrap_or_else(|| "alloy".to_string());
+            let voice = match state.job_queue.get_setting_value("tts_voice").await {
+                Ok(Some(v)) => v,
+                Ok(None) => "alloy".to_string(),
+                Err(e) => {
+                    tracing::warn!(
+                        "⚠️ [TTS] Failed to fetch tts_voice: {}. Fallback to 'alloy'.",
+                        e
+                    );
+                    "alloy".to_string()
+                }
+            };
 
             tracing::info!(
                 "🗣️ [TTS] Synthesizing audio stream for Expression {} with voice '{}'",

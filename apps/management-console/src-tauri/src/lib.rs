@@ -11,6 +11,7 @@
 #![warn(missing_docs)]
 
 use std::sync::{Mutex, OnceLock};
+use ts_rs::TS;
 
 static SIDECAR_STATE: OnceLock<Mutex<SidecarState>> = OnceLock::new();
 
@@ -55,8 +56,9 @@ fn get_api_url() -> String {
 }
 
 /// サイドカーエンジンの稼働状態
-#[derive(serde::Serialize, Clone, Debug, PartialEq)]
+#[derive(serde::Serialize, Clone, Debug, PartialEq, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename_all = "camelCase")]
 pub struct SidecarStatus {
     /// api-server の状態
     pub api_server: String,
@@ -67,8 +69,9 @@ pub struct SidecarStatus {
 }
 
 /// システムおよび環境のステータス情報
-#[derive(serde::Serialize, Clone, Debug, PartialEq)]
+#[derive(serde::Serialize, Clone, Debug, PartialEq, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename_all = "camelCase")]
 pub struct SystemInfo {
     /// 稼働OS
     pub os: String,
@@ -523,8 +526,9 @@ fn generate_session_secret() -> String {
 }
 
 /// Nurture サイドカーのステータス情報
-#[derive(serde::Serialize, Clone, Debug)]
+#[derive(serde::Serialize, Clone, Debug, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename_all = "camelCase")]
 pub struct NurtureStatus {
     /// Nurture operation mode: "local" | "cloud" | "disabled"
     pub mode: String,
@@ -553,4 +557,18 @@ fn get_nurture_status() -> Result<NurtureStatus, String> {
             String::new()
         },
     })
+}
+
+#[cfg(test)]
+mod ts_export_tests {
+    use super::*;
+
+    #[test]
+    fn export_bindings() {
+        // ts-rs のエクスポートテスト
+        // これにより cargo test 実行時に自動的に bindings ディレクトリへ型定義が出力されます
+        <SidecarStatus as ts_rs::TS>::export().unwrap();
+        <SystemInfo as ts_rs::TS>::export().unwrap();
+        <NurtureStatus as ts_rs::TS>::export().unwrap();
+    }
 }

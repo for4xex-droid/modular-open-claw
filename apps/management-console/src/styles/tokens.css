@@ -202,4 +202,25 @@
 
   /* ── Blur ── */
   --blur-md: 12px;
+
+  /* ── Biome Elements (U-002 Theme Alignment) ── */
+  --biome-element-c: #4fc3f7;
+  --biome-element-n: #81c784;
+  --biome-element-p: #ffb74d;
+  --biome-element-h: #e57373;
+  --biome-element-o: #ba68c8;
+  --biome-element-s: #a1887f;
+  --biome-element-fe: #90a4ae;
+  --biome-element-si: #d4e157;
+  --biome-element-fallback: #01040a;
+
+  /* UI Specific Elements Override Colors (Gamepad Panel) */
+  --biome-ui-element-c: #33ff55;
+  --biome-ui-element-n: #4488ff;
+  --biome-ui-element-p: #ff9922;
+  --biome-ui-element-h: #cc44ff;
+  --biome-ui-element-o: #00ddff;
+  --biome-ui-element-s: #ffdd33;
+  --biome-ui-element-fe: #ff5544;
+  --biome-ui-element-si: #aaaaee;
 }

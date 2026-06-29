@@ -192,7 +192,7 @@ impl UniversalJobQueue {
     }
 
     /// ジョブの要求権限とカテゴリに応じて、動的に適切なサンドボックスプロファイルを選択する（Execution Ladder）
-    pub fn select_ladder_sandbox(
+    pub(crate) fn select_ladder_sandbox(
         &self,
         category: &str,
         manifest: &PermissionManifest,
@@ -817,7 +817,7 @@ impl Publisher for UniversalJobQueue {
 }
 
 impl UniversalJobQueue {
-    pub async fn do_push_federated_metrics(&self) -> Result<(), AiomeError> {
+    pub(crate) async fn do_push_federated_metrics(&self) -> Result<(), AiomeError> {
         <Self as FederationOps>::do_push_federated_metrics(self).await
     }
 }

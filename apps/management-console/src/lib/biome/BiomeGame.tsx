@@ -18,6 +18,7 @@ import { BiomeTutorial } from './BiomeTutorial';
 import { BiomeEventToast } from './BiomeEventToast';
 import { API_BASE } from '../../config';
 import { isAuthenticated } from '../../lib/auth';
+import ThemeBridge from './ThemeBridge';
 
 export interface BiomeGameProps {
   seed?: number;
@@ -245,14 +246,14 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
 
   // 元素に対応するカラー
   const elementColorMap: Record<string, string> = {
-    C: '#33ff55',
-    N: '#4488ff',
-    P: '#ff9922',
-    H: '#cc44ff',
-    O: '#00ddff',
-    S: '#ffdd33',
-    Fe: '#ff5544',
-    Si: '#aaaaee',
+    C: ThemeBridge.getUiElementColor('c'),
+    N: ThemeBridge.getUiElementColor('n'),
+    P: ThemeBridge.getUiElementColor('p'),
+    H: ThemeBridge.getUiElementColor('h'),
+    O: ThemeBridge.getUiElementColor('o'),
+    S: ThemeBridge.getUiElementColor('s'),
+    Fe: ThemeBridge.getUiElementColor('fe'),
+    Si: ThemeBridge.getUiElementColor('si'),
   };
 
   // 注入リップルアニメーションの起動

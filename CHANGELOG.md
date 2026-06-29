@@ -1,6 +1,27 @@
 ## [Unreleased]
 
 ### Added
+- **WebGL / Canvas テーマカラー同期 (U-002)**:
+  - `apps/management-console/src/lib/biome/ThemeBridge.ts` [NEW]: CSS変数から動的に Three.js/UI の色をパース・取得しキャッシュする `ThemeBridge` クラスを新規追加。ライト・ダークテーマ切替時などに CSS 属性の変更を `MutationObserver` で検知してキャッシュを自動更新する。
+  - `apps/management-console/src/styles/tokens.css` [MODIFY]: 8つの元素のカラーコード（WebGLおよびUI表示用）を CSS デザイントークンとして追加。
+  - `apps/management-console/src/lib/biome/BiomeCellGrid.tsx` [MODIFY], `apps/management-console/src/lib/biome/BiomeGame.tsx` [MODIFY]: ハードコードされた元素用の HEX カラーリテラルを排除し、`ThemeBridge` 経由で CSS デザイントークンカラーを取得するようにリファクタリング。
+  - `apps/management-console/src/lib/biome/BiomeHUD.tsx` [MODIFY]: インラインスタイル中の HEX カラーフォールバックを排除し、`tokens.css` への 100% 依存へ準拠。
+- **Tauri IPC 構造体の自動型共有 (Dimension 11)**:
+  - `apps/management-console/src-tauri/Cargo.toml` [MODIFY]: 自動 TypeScript バインディング生成用として `ts-rs` 依存関係を追加。
+  - `apps/management-console/src-tauri/src/lib.rs` [MODIFY]: Tauri IPC で使用される構造体 `SidecarStatus`, `SystemInfo`, `NurtureStatus` に `#[derive(TS)]` を追加。また、`cargo test` 実行時に自動的に TypeScript 用の型定義ファイル（`.ts`）を `src-tauri/bindings/` ディレクトリにエクスポートする自動生成テストモジュールを追加。
+  - `apps/management-console/src/types/tauri.ts` [NEW]: 自動生成された `.ts` 定義ファイルをフロントエンドから直感的にインポートできる re-export ブリッジを作成し、フロントエンド-バックエンド間の手動型同期の負債を完全に解消。
+
+### Fixed
+- **JobQueue トレイト API 乖離の解消**:
+  - `libs/infrastructure/src/job_queue/mod.rs` [MODIFY]: `UniversalJobQueue` 固有のメソッド群のうち、テスト以外で外部から不要な `select_ladder_sandbox` を `pub(crate)` に限定し、API の露出面を圧縮。
+  - `apps/api-server/src/main.rs` [MODIFY]: バックグラウンド定期処理タスク内での `UniversalJobQueue::do_push_federated_metrics()` 具象メソッドへのダウンキャスト呼び出しを廃止し、`FederationOps` トレイト経由のクリーンな呼び出しに移行。
+- **Quick Wins: Silent Error Suppression & Logger (Dimension 7)**:
+  - `apps/api-server/src/routes/auth.rs` [MODIFY]: 管理者パスワードハッシュのパース失敗時、および検証失敗時に警告ログ（`warn!`）を追加し、認証失敗の原因の可観測性を向上。
+  - `apps/api-server/src/internal_services/commune_ws.rs` [MODIFY]: 2箇所の `.unwrap_or(None)` を `match` 表現に変更。DB接続・クエリエラー（`sql_fetch_optional!`）を握り潰すことなくログに警告（`warn!`/`error!`）を出力しつつ、エラーを適切に呼び出し元へ伝播させるように強化。また、Lamport クロック同期失敗時の戻り値破棄（`let _ =`）についても `warn!` 警告ログを出力するように修正。
+  - `apps/api-server/src/internal_services/heartbeat.rs` [MODIFY]: 設定値取得失敗の `.ok().flatten()` エラー抑制を `match` 式に変更し、エラー時に `warn!` ログを記録するように改善。
+  - `apps/api-server/src/routes/expression.rs` [MODIFY]: TTS voice 設定取得失敗時の `.unwrap_or(None)` によるエラー握り潰しを `match` 式に変更し、エラー時に警告ログを出しつつ "alloy" に安全にフォールバックするよう修正。
+
+### Added
 - **Verify-to-Iterate Loop (Oracle Reject 時の自律修正ループ)**:
   - `libs/infrastructure/src/task_orchestrator/dispatch_loop.rs` [MODIFY]: Oracle の `Reject`/`Revise` 判定時に即座に `fail_job` で終了するのではなく、フィードバックを `karma_directives` に蓄積して `requeue_job` でリトライする Reflexion Loop を実装。リトライ上限到達時は `AwaitingInput`（人間介入）に遷移し、成果物と Oracle フィードバックを保全。
   - `libs/infrastructure/src/task_orchestrator/goal_processor.rs` [MODIFY]: `job.topic` と `job.karma_directives` の排他的処理を廃止し、プレーンテキストの自己修復ヒントを topic に動的マージするロジックを実装。JSON 構造（サブジョブ追跡メタデータ）は構造保全のため非マージ。

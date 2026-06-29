@@ -28,6 +28,7 @@ shared = { path = "../../../libs/shared" }
 sysinfo = "0.33"
 getrandom = "0.2"
 hex = "0.4"
+ts-rs = { version = "10.0.0", features = ["serde-compat"] }
 
 [dev-dependencies]
 serial_test = { workspace = true }

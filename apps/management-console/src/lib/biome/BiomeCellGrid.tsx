@@ -31,17 +31,19 @@ interface BiomeCellGridProps {
   hoverCell: { x: number; y: number } | null;
 }
 
+import ThemeBridge from './ThemeBridge';
+
 const ELEMENT_COLORS = [
-  new THREE.Color('#4fc3f7'), // C
-  new THREE.Color('#81c784'), // N
-  new THREE.Color('#ffb74d'), // P
-  new THREE.Color('#e57373'), // H
-  new THREE.Color('#ba68c8'), // O
-  new THREE.Color('#a1887f'), // S
-  new THREE.Color('#90a4ae'), // Fe
-  new THREE.Color('#d4e157')  // Si
+  ThemeBridge.getElementColor('c'),
+  ThemeBridge.getElementColor('n'),
+  ThemeBridge.getElementColor('p'),
+  ThemeBridge.getElementColor('h'),
+  ThemeBridge.getElementColor('o'),
+  ThemeBridge.getElementColor('s'),
+  ThemeBridge.getElementColor('fe'),
+  ThemeBridge.getElementColor('si')
 ];
-const FALLBACK_COLOR = new THREE.Color('#01040a');
+const FALLBACK_COLOR = ThemeBridge.getElementColor('fallback');
 const PI = Math.PI;
 
 // 8元素比率からHSLを導出してRGBカラーを返す (grid.frag L27-78 の移植)

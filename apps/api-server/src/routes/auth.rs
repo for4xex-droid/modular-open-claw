@@ -139,13 +139,20 @@ pub async fn token_handler(
 
         if let Some(hash) = admin_hash {
             use argon2::{Argon2, PasswordHash, PasswordVerifier};
-            if let Ok(parsed_hash) = PasswordHash::new(&hash) {
-                let argon2 = Argon2::default();
-                if argon2
-                    .verify_password(provided_secret.as_bytes(), &parsed_hash)
-                    .is_ok()
-                {
-                    authenticated = true;
+            match PasswordHash::new(&hash) {
+                Ok(parsed_hash) => {
+                    let argon2 = Argon2::default();
+                    if argon2
+                        .verify_password(provided_secret.as_bytes(), &parsed_hash)
+                        .is_ok()
+                    {
+                        authenticated = true;
+                    } else {
+                        tracing::warn!("⚠️ Admin password verification failed");
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("🚨 Invalid admin password hash stored in settings: {}", e);
                 }
             }
         } else {

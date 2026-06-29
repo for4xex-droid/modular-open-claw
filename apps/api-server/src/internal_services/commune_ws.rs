@@ -83,14 +83,18 @@ impl CommuneWsClient {
         const Q_SQLITE: &str = "SELECT value FROM system_settings WHERE key = ?";
         const Q_PG: &str = "SELECT value FROM system_settings WHERE key = $1";
 
-        let opt: Option<String> = sql_fetch_optional!(
+        let opt = sql_fetch_optional!(
             &**pool,
             (String,),
             sqlite: Q_SQLITE,
             pg: Q_PG,
             "metadata_free_receive_channel"
         )
-        .unwrap_or(None)
+        .map_err(|e| {
+            let err_msg = format!("Failed to fetch metadata_free_receive_channel: {}", e);
+            warn!("⚠️ [CommuneWsClient] {}", err_msg);
+            err_msg
+        })?
         .map(|r| r.0);
 
         Ok(opt)
@@ -102,14 +106,18 @@ impl CommuneWsClient {
         const Q_SQLITE: &str = "SELECT value FROM system_state WHERE key = ?";
         const Q_PG: &str = "SELECT value FROM system_state WHERE key = $1";
 
-        let opt: Option<String> = sql_fetch_optional!(
+        let opt = sql_fetch_optional!(
             &**pool,
             (String,),
             sqlite: Q_SQLITE,
             pg: Q_PG,
             "node_privkey"
         )
-        .unwrap_or(None)
+        .map_err(|e| {
+            let err_msg = format!("Failed to fetch node_privkey from db: {}", e);
+            error!("🚨 [CommuneWsClient] {}", err_msg);
+            err_msg
+        })?
         .map(|r| r.0);
 
         if let Some(privkey_b64) = opt {
@@ -268,11 +276,14 @@ impl CommuneWsClient {
                 .map_err(|e| format!("Clock tick failed: {}", e))?;
 
             let mut msg_to_store = decrypted_msg;
-            let _ = self
+            if let Err(e) = self
                 .state
                 .job_queue
                 .sync_local_clock(msg_to_store.lamport_clock)
-                .await;
+                .await
+            {
+                warn!("⚠️ [CommuneWsClient] Lamport clock sync failed: {}", e);
+            }
             msg_to_store.lamport_clock = clock;
 
             self.state

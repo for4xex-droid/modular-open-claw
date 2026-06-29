@@ -14,7 +14,7 @@ use infrastructure::score_tracker::ScoreTracker;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::interval;
-use tracing::info;
+use tracing::{info, warn};
 
 /// Heartbeat サービスを起動する。
 /// 自律的な話しかけ（Wakeup Ping）や、Score Plateau（停滞）の検知を定期的に実行する。
@@ -108,12 +108,17 @@ async fn check_suggestion(state: &AppState) {
 }
 
 async fn is_suggestion_enabled(state: &AppState) -> bool {
-    let flag = state
+    let flag = match state
         .job_queue
         .get_setting_value("feature_flag.intent_first_suggestion")
         .await
-        .ok()
-        .flatten();
+    {
+        Ok(v) => v,
+        Err(e) => {
+            warn!("⚠️ [Heartbeat] Failed to fetch feature flag: {}", e);
+            None
+        }
+    };
     // Default to true if not explicitly set to false
     flag.as_deref() != Some("false")
 }

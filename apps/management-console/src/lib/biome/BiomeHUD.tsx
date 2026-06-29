@@ -95,7 +95,7 @@ export function BiomeHUD({
         <div>
           <span style={{ fontSize: 'var(--font-size-2xs)', color: 'var(--text-muted)', fontWeight: '600' }}>現在の世代</span>
           <div 
-            style={{ fontSize: '2rem', fontWeight: 'bold', animation: 'neonGlow 2s infinite ease-in-out', color: 'var(--accent-cyan, #06b6d4)' }}
+            style={{ fontSize: '2rem', fontWeight: 'bold', animation: 'neonGlow 2s infinite ease-in-out', color: 'var(--accent-cyan)' }}
             data-testid="biome-generation"
           >
             {generation}
