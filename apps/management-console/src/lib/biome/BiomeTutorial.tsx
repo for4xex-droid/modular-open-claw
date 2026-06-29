@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 
 export interface BiomeTutorialProps {
   onClose: () => void;
@@ -18,8 +18,8 @@ interface Step {
 
 export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [highlightStyle, setHighlightStyle] = useState<React.CSSProperties>({});
-  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
+  const [highlightStyle, setHighlightStyle] = useState<CSSProperties>({});
+  const [tooltipStyle, setTooltipStyle] = useState<CSSProperties>({});
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   const steps: Step[] = [
@@ -103,8 +103,8 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
         height: rect.height + pad * 2,
         border: '3px solid var(--accent-cyan)',
         boxShadow: '0 0 15px var(--accent-cyan), 0 0 0 9999px var(--black-75, rgba(0, 0, 0, 0.75))',
-        borderRadius: '8px',
-        zIndex: 1000,
+        borderRadius: 'var(--radius-sm)',
+        zIndex: 1001,
         transition: 'all 0.3s ease',
         pointerEvents: 'none'
       });
@@ -157,8 +157,8 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
           pointerEvents: 'auto',
           background: 'var(--bg-deep-glass)',
           border: '1px solid var(--border-glass-bright)',
-          borderRadius: '12px',
-          padding: '16px',
+          borderRadius: 'var(--radius-md)',
+          padding: 'var(--space-sm)',
           boxShadow: '0 8px 32px var(--black-80, rgba(0, 0, 0, 0.8)), 0 0 20px var(--accent-cyan-10)',
           backdropFilter: 'blur(12px)',
           color: 'var(--white-100)',

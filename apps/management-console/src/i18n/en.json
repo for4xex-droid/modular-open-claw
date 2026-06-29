@@ -1028,6 +1028,22 @@
     "indicator": {
       "managed": "🔐 Managed in Abyss Vault"
     }
+  },
+  "biomeConsole": {
+    "dendouTitle": "🏛️ Hall of Fame Specimens",
+    "noSpecimens": "No specimens saved yet.",
+    "generationLabel": "Gen:",
+    "rarityLabel": "Rarity:",
+    "dateLabel": "Date:",
+    "close": "Close",
+    "detail": "Detail",
+    "load": "Load",
+    "finalRarity": "Final Rarity Rank",
+    "survivalGenerations": "Survival Generations:",
+    "activeCells": "Active Cell Count:",
+    "elementRatio": "Element Ratio",
+    "morphologyDistribution": "Morphology Distribution",
+    "discoveredReactions": "Discovered Reactions"
   }
 }
 

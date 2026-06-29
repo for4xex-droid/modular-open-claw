@@ -1028,6 +1028,22 @@
     "indicator": {
       "managed": "🔐 Abyss Vault で管理中"
     }
+  },
+  "biomeConsole": {
+    "dendouTitle": "🏛️ 殿堂入り標本",
+    "noSpecimens": "保存された標本はまだありません。",
+    "generationLabel": "世代:",
+    "rarityLabel": "ランク:",
+    "dateLabel": "日付:",
+    "close": "閉じる",
+    "detail": "詳細",
+    "load": "読込",
+    "finalRarity": "最終評価ランク",
+    "survivalGenerations": "生存世代数:",
+    "activeCells": "活性セル数:",
+    "elementRatio": "元素比率",
+    "morphologyDistribution": "形態分布",
+    "discoveredReactions": "発見した反応"
   }
 }
 

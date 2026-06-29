@@ -40,34 +40,35 @@ jest.mock('postprocessing', () => ({
   })),
 }));
 
-// BiomeEngine WASM のモック
-jest.mock('biome-engine', () => {
+// モック値を動的に制御するための mock プレフィックス付き変数
+let mockGenerationVal = 0;
+let mockActiveCellCountVal = 100;
+let mockElementBalanceVal = new Uint16Array([40, 30, 10, 20, 0, 0, 0, 0]);
+
+// useBiomeEngine フックのモック化（Worker や WASM の複雑な非同期処理をバイパス）
+jest.mock('../../hooks/useBiomeEngine', () => {
   return {
-    __esModule: true,
-    default: jest.fn().mockResolvedValue({
-      memory: { buffer: new ArrayBuffer(1024 * 1024) },
-    }),
-    BiomeEngine: jest.fn().mockImplementation(() => {
+    useBiomeEngine: jest.fn().mockImplementation(() => {
       return {
-        generation: () => 0,
+        loading: false,
+        error: null,
+        generation: mockGenerationVal,
         tick: jest.fn(),
-        apply_tachyon_rewind: jest.fn(),
-        render_data_ptr: () => 0,
-        render_data_len: () => 16384 * 12,
-        get_cell_detail: jest.fn(),
-        inject_element: jest.fn(),
-        apply_crisis: jest.fn(),
-        get_rarity: () => 0,
-        get_active_cell_count: () => 100,
-        get_element_balance: () => new Uint16Array([40, 30, 10, 20, 0, 0, 0, 0]),
-        get_mutation_boost: () => 1.0,
-        ticks_since_mutation: () => 0,
-        roll_substance: () => 0,
-        serialize_genome: () => '{}',
-        set_mutation_boost: jest.fn(),
-        get_rarity_progress: () => ({
+        rewind: jest.fn(),
+        getRenderView: jest.fn(() => new Float32Array(16384 * 12)),
+        getCellDetail: jest.fn(),
+        injectElement: jest.fn(),
+        applyCrisis: jest.fn(),
+        getRarity: () => 0,
+        getActiveCellCount: () => mockActiveCellCountVal,
+        getElementBalance: () => mockElementBalanceVal,
+        rollSubstance: () => 0,
+        getMutationBoost: () => 1.0,
+        ticksSinceMutation: () => 0,
+        serializeGenome: () => '{}',
+        getRarityProgress: () => ({
           rarity: 0,
-          active_cells: 0,
+          active_cells: mockActiveCellCountVal,
           morphology_count: 0,
           has_homeostasis: false,
           diversity_index: 0.0,
@@ -76,9 +77,9 @@ jest.mock('biome-engine', () => {
           condition_morph_4: false,
           condition_active_1000: false,
         }),
-        get_last_tick_events: () => [],
+        getLastTickEvents: () => [],
       };
-    }),
+    })
   };
 });
 
@@ -118,6 +119,61 @@ describe('BiomeGame Component', () => {
     });
 
     expect(screen.getByTestId('biome-generation')).toBeInTheDocument();
+  });
+
+  it('標本を保存した際に element_balance, active_cell_count が API 送信ペイロードに含まれ、世代が正しいこと', async () => {
+    // 状態をセットアップ
+    mockGenerationVal = 200; // リザルト画面をトリガーする世代
+    mockActiveCellCountVal = 85;
+    mockElementBalanceVal = new Uint16Array([10, 20, 30, 40, 0, 0, 0, 0]); // C=10, N=20, P=30, H=40
+
+    // Fetch API モック
+    const mockFetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({})
+    });
+    global.fetch = mockFetch;
+
+    // JWT 認証状態のモック
+    localStorage.setItem('jwt_token', 'mock-jwt-token');
+
+    render(<BiomeGame seed={42} />);
+
+    // ロード完了と結果ダイアログの表示を待つ
+    await waitFor(() => {
+      expect(screen.queryByText(/Loading/i)).not.toBeInTheDocument();
+    });
+
+    // 評価ランク画面が表示されていることを確認
+    expect(screen.getByTestId('result-rarity')).toBeInTheDocument();
+
+    // 💾 保存ボタンをクリック
+    const saveBtn = screen.getByRole('button', { name: /💾 標本を保存/i });
+    fireEvent.click(saveBtn);
+
+    // Fetch API が 2 回 (Run 保存と Specimen 保存) 呼ばれることを検証
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    // 1 回目のリクエスト (runs 保存) の検証
+    const runCall = mockFetch.mock.calls[0];
+    const runPayload = JSON.parse(runCall[1].body);
+    expect(runPayload.generation).toBe(200); // ハードコード 200 ではなく実際の世代 (200)
+
+    // 2 回目のリクエスト (specimens 保存) の検証
+    const specCall = mockFetch.mock.calls[1];
+    const specPayload = JSON.parse(specCall[1].body);
+    
+    // ペイロード検証
+    expect(specPayload.active_cell_count).toBe(85);
+    expect(specPayload.element_balance).toBe(JSON.stringify({
+      C: 10, N: 20, P: 30, H: 40,
+      O: 0, S: 0, Fe: 0, Si: 0
+    }));
+    
+    // クリーンアップ
+    localStorage.removeItem('jwt_token');
   });
 });
 

@@ -506,11 +506,20 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
       const runId = crypto.randomUUID();
       const agentId = crypto.randomUUID();
 
+      // WASM から現在の元素バランスを取得
+      const balanceRaw = getElementBalance();
+      const balance = {
+        C: balanceRaw[0] || 0, N: balanceRaw[1] || 0,
+        P: balanceRaw[2] || 0, H: balanceRaw[3] || 0,
+        O: balanceRaw[4] || 0, S: balanceRaw[5] || 0,
+        Fe: balanceRaw[6] || 0, Si: balanceRaw[7] || 0,
+      };
+
       // 1. Run 情報を送信
       const runPayload = {
         id: runId,
         agent_id: agentId,
-        generation: 200,
+        generation: generation,
         score: getActiveCellCount() * 1.5,
         max_generation: 200,
         cell_count: getActiveCellCount(),
@@ -537,7 +546,9 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
         run_id: runId,
         specimen_name: `Species_${currentSeed}`,
         genome_data: genomeStr,
-        rarity: rarity.toLowerCase()
+        rarity: rarity.toLowerCase(),
+        element_balance: JSON.stringify(balance),
+        active_cell_count: getActiveCellCount(),
       };
 
       const specRes = await fetch(`${API_BASE}/api/v1/biome/specimens`, {
@@ -868,6 +879,8 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
             setShowResult(false);
             setResultDismissed(true);
           }}
+          elementBalance={elementBalance}
+          activeCellCount={getActiveCellCount()}
         />
       )}
 

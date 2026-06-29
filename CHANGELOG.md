@@ -1,6 +1,23 @@
 ## [Unreleased]
 
 ### Added
+- **Biome 標本保存時の追加データ送信**:
+  - `apps/management-console/src/lib/biome/BiomeGame.tsx` [MODIFY]: 標本保存時 (handleSaveSpecimen) に、WASMから取得した最新の元素バランス (`element_balance`) と活性セル数 (`active_cell_count`) を保存 API ペイロードに追加して送信するように実装。また、`generation` のハードコードを解除。
+  - `apps/management-console/src/lib/biome/BiomeResult.tsx` [MODIFY]: リザルト画面に `elementBalance` と `activeCellCount` を受け取るプロパティを追加し、UI上で元素比率および活性セル数を表示するように結線。
+  - `apps/management-console/src/lib/biome/BiomeGame.test.tsx` [MODIFY]: useBiomeEngine フックをモック化して同期的なテスト制御を可能にし、標本保存時の API ペイロードに正しいデータが含まれることを検証する TDD テストケースを追加。
+- **Typography トークンスケール補完**:
+  - `apps/management-console/src/styles/tokens.css` [MODIFY]: 16px (1rem) 相当のフォントサイズトークン `--font-size-md` が欠損していたため補完。
+
+### Fixed
+- **Tauri CSP ポート予防的追加 (Release Readiness)**:
+  - `apps/management-console/src-tauri/tauri.conf.json` [MODIFY]: 将来的な key-proxy (3017) / nurture-api (3020) との直接通信に備え、予防的に `connect-src` にポートを追加。
+- **U-002 スタイルトークン違反の完全是正 (全 Biome コンポーネント)**:
+  - `apps/management-console/src/lib/biome/BiomeDendou.tsx` [MODIFY], `apps/management-console/src/lib/biome/BiomeResult.tsx` [MODIFY], `apps/management-console/src/lib/biome/BiomeEventToast.tsx` [MODIFY], `apps/management-console/src/lib/biome/BiomeTutorial.tsx` [MODIFY]: 合計 38 箇所のインラインスタイル生値 (padding, gap, margin, borderRadius, fontSize, fontFamily) を tokens.css 定義 of デザイントークンに完全置換。
+- **React import & CSSProperties 型参照の修正**:
+  - `apps/management-console/src/lib/biome/BiomeResult.tsx` [MODIFY], `apps/management-console/src/lib/biome/BiomeTutorial.tsx` [MODIFY]: `React.CSSProperties` を `CSSProperties` に修正し、不要な React インポートを型インポートにクリーンアップ。
+- **Biome 管理コンソールの多言語化 (i18n)**:
+  - `apps/management-console/src/i18n/ja.json` [MODIFY], `apps/management-console/src/i18n/en.json` [MODIFY]: Biome 管理 UI 用の翻訳テキスト辞書 `"biomeConsole"` オブジェクトを新規定義。
+  - `apps/management-console/src/lib/biome/BiomeDendou.tsx` [MODIFY], `apps/management-console/src/lib/biome/BiomeResult.tsx` [MODIFY]: 表示テキストおよびボタンラベル、各ヘッダーを `useTranslation` フックを用いて多言語化。
 - **WebGL / Canvas テーマカラー同期 (U-002)**:
   - `apps/management-console/src/lib/biome/ThemeBridge.ts` [NEW]: CSS変数から動的に Three.js/UI の色をパース・取得しキャッシュする `ThemeBridge` クラスを新規追加。ライト・ダークテーマ切替時などに CSS 属性の変更を `MutationObserver` で検知してキャッシュを自動更新する。
   - `apps/management-console/src/styles/tokens.css` [MODIFY]: 8つの元素のカラーコード（WebGLおよびUI表示用）を CSS デザイントークンとして追加。
