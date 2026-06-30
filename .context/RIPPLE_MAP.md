@@ -1,4 +1,37 @@
+## 🔍 Biome 背景グレーバグ、レイアウト崩れ、およびチュートリアル見切れの根本修正 (2026-07-01)
+
+- **変更内容**:
+    - `apps/management-console/src/lib/biome/BiomeCanvas.tsx` [MODIFY]: `gl.alpha: false` を指定し、CSS背景色との不要な透過合成を完全に無効化。
+    - `apps/management-console/src/lib/biome/BiomeBackground.tsx` [MODIFY]: `depthWrite/depthTest` をデフォルトの不透明に戻し、Z座標を `-10` に設定して、セル（Z=0）が深度テストで最前面に正しく上書き描画されるよう修正。また、細胞風のボロノイノイズを廃止し、滑らかなラジアルグラデーションに置き換え。
+    - `apps/management-console/src/lib/biome/shaders/biomeCell.ts` [MODIFY]: セルのフラグメントシェーダーでの出力を 1.8倍 にブースト。
+    - `apps/management-console/src/lib/biome/BiomeCellGrid.tsx` [MODIFY]: セルの描画スケールを 0.65 に拡大。
+    - `apps/management-console/src/lib/biome/BiomePostEffects.tsx` [MODIFY]: Bloomの `luminanceSmoothing` を 0.2 に引き締め。
+    - `apps/management-console/src/lib/biome/BiomeGame.tsx` [MODIFY]: 左・中・右に分かれる対称的な 3カラムフレックスレイアウト を導入し、右サイドバーの縦伸びと左キャンバスの押し下げ・画面切れを解消。
+    - `apps/management-console/src/lib/biome/BiomeTutorial.tsx` [MODIFY]: ツールチップ幅を最大 460px に制限し、`window.innerHeight` に基づく上下限クリップ処理（16pxセーフティ）を追加して画面外への見切れを防止。
+- **波及効果**:
+    - **ビジュアル / UI体験**: 細胞ノイズの生理的嫌悪感が解消され、吸い込まれるようなプレミアムな宇宙的ダークグラデーションに一新。暗い背景色が Bloom を通して画面全体に漏れ出していた濁り（グレー現象）が消去され、1.8倍に輝くセル（0.65スケール）が漆黒に鮮やかに浮き上がる美しい3カラムHUDが完成。
+    - **ユーザビリティ**: 画面の下半分が見切れる問題やスクロールの必要性が完全に根絶され、全コントロール（速度、元素、災害）とマップ情報がスクロールなしで一画面で操作可能。チュートリアルダイアログの見切れも完全に排除され、あらゆる解像度で確実に戻る・次へボタンが操作可能。
+
+## 🔍 Biome 芋づる式拡散の是正（ダブルバッファリング）、自然死猶予措置、および高DPR表示バグの修正 (2026-06-30)
+
+- **変更内容**:
+    - `libs/biome-engine/src/grid.rs` [MODIFY]: 1フレーム内のループ進行方向に元素が玉突き移動してグリッドが飽和する「芋づる式拡散バグ」（左下1/4のグレー正方形領域の正体）を防ぐため、`current_cells`（前フレーム）を基準に拡散量を判定・算出する厳格なダブルバッファリング拡散を実装。また、拡散直後の新生セルが餓死（Decay）して生命の伝播が止まってしまうのを防ぐため、前フレームで非アクティブだったセルに対する Decay 処理を1フレーム猶予するロジックを導入。
+    - `libs/biome-engine/src/lib.rs` [MODIFY]: 全元素の拡散が機能するようになったことに伴うセルの元素量減少による進化不整合を防ぐため、テスト `test_engine_last_tick_events` 内の H と O の注入量を 45000 から 60000 に調整。
+    - `apps/management-console/src/lib/biome/BiomeCanvas.tsx` [MODIFY]: Canvasに `dpr={[1, 2]}` を指定し、カメラに `orthographic` 設定を直接組み込んで `manual` 制御を廃止。これにより、Retina等の高DPR環境でビューポート解像度やアスペクト比が同期せず、セル位置が大幅にY軸方向へズレたり、描画が左下1/4に縮小されていたバグを完全に解消。また、エフェクト適用時の Dpr 同期問題を解消。
+    - `apps/management-console/src/lib/biome/BiomeBorder.tsx` [NEW]: セルオートマトン育成エリアの 128x128 境界を視覚化するネオンシアン色の枠線と四隅のL字型コーナーマークを描画するコンポーネントを新規作成。時間経過による不透明度の脈動アニメーションを実装。
+    - `apps/management-console/src/lib/biome/shaders/biomeCell.ts` [MODIFY]: 頂点シェーダーにおいて、Three.js の自動的な `instanceColor` 属性注入と衝突した際の `redefinition` エラーおよび未定義エラーを防ぐため、マクロガード `#ifndef USE_INSTANCING_COLOR` を施した上で `attribute vec3 instanceColor;` を明示宣言。
+    - `apps/management-console/src/lib/biome/BiomeCanvas.test.tsx` [MODIFY]: 頂点シェーダー内にマクロガード付きの属性宣言が存在することを検証するように、既存の TDD テストコードを更新。
+    - `apps/management-console/src/lib/biome/BiomePostEffects.tsx` [MODIFY]: `<EffectComposer>` に `disableNormalPass` を指定し、不要な法線パスの自動レンダリングとそれに伴う左下へのグレーの半透明面誤投影バグを排除。
+    - `apps/management-console/src/lib/biome/BiomeCellGrid.tsx` [MODIFY]: `react` からの `useEffect` インポート漏れを補正し、マウント/レアリティ変更時に全インスタンス行列のスケールを `0` にリセットする `useEffect` を追加（1フレーム目の未配置セル残留バグの防止）。
+- **波及効果**:
+    - **シミュレーション精度 / セルオートマトン**: 芋づる式拡散の根絶により、元素が不自然に高速で全域に爆発伝播してグリッドが飽和する現象が完全に解消された。さらに新生セルの猶予により、新領域への穏やかで動的な拡散挙動が実現し、多様性指数（Shannon）が正しく上昇して進化ランクが機能するようになった。
+    - **ビジュアル / UI 崩れ**: セル飽和（極限希釈によるグレー化）の解消と、高DPR環境におけるWebGLビューポート・NormalPass・マウント時残留バグの修正が合わさり、画面左下を覆っていた不当なグレーの正方形が 100% 完全に根絶された。また、新規追加した `BiomeBorder` により育成エリアが明確に可視化され、UI 品質が大幅に向上した。
+    - **テストスイートの健全性**: 修正後、`biome-engine` クレートのユニットテスト、およびフロントエンドの Jest テストが 100% GREEN パス。アプリ全体のビルドエラーも完全に防止された。
+
+
+
 ## 🔍 Biome 本番化 & Tauri CSP 修正 (U-002) (2026-06-30)
+
 
 - **変更内容**:
     - `apps/management-console/src/styles/tokens.css` [MODIFY]: 16px (1rem) 相当のフォントサイズトークン `--font-size-md` を追加補完。

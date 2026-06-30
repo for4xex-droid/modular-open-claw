@@ -155,32 +155,50 @@ impl BiomeGrid {
                 let idx = y * GRID_WIDTH + x;
                 let cell = &current_cells[idx];
 
-                if cell.active && !cell.is_frozen && cell.elements[0] > 100 {
-                    let spread_amount = cell.elements[0] / 10;
-                    if spread_amount == 0 {
-                        continue;
-                    }
+                if cell.active && !cell.is_frozen {
+                    // 全8元素について拡散を処理
+                    for e in 0..8 {
+                        let amount = cell.elements[e];
+                        if amount > 100 {
+                            let spread_amount = amount / 10; // 10%を拡散用に切り出す
+                            let neighbors = [
+                                (x.wrapping_sub(1), y),
+                                (x + 1, y),
+                                (x, y.wrapping_sub(1)),
+                                (x, y + 1),
+                            ];
 
-                    let neighbors = [
-                        (x.wrapping_sub(1), y),
-                        (x + 1, y),
-                        (x, y.wrapping_sub(1)),
-                        (x, y + 1),
-                    ];
+                            // 有効な近傍セルのインデックスを収集
+                            let mut valid_neighbors = Vec::new();
+                            for &(nx, ny) in &neighbors {
+                                if nx < GRID_WIDTH && ny < GRID_HEIGHT {
+                                    valid_neighbors.push(ny * GRID_WIDTH + nx);
+                                }
+                            }
 
-                    for &(nx, ny) in &neighbors {
-                        if nx < GRID_WIDTH && ny < GRID_HEIGHT {
-                            let n_idx = ny * GRID_WIDTH + nx;
-                            let rand_factor: u16 = rng.gen_range(80..=120);
-                            let final_spread =
-                                ((spread_amount as u32 * rand_factor as u32) / 100) as u16;
+                            if !valid_neighbors.is_empty() {
+                                // 有効な近傍の数でベース拡散量を均等分割
+                                let num_neighbors = valid_neighbors.len();
+                                let base_spread = spread_amount / num_neighbors as u16;
 
-                            if final_spread > 0 && next_cells[idx].elements[0] >= final_spread {
-                                next_cells[n_idx].active = true;
-                                next_cells[n_idx].elements[0] =
-                                    next_cells[n_idx].elements[0].saturating_add(final_spread);
-                                next_cells[idx].elements[0] =
-                                    next_cells[idx].elements[0].saturating_sub(final_spread);
+                                if base_spread > 0 {
+                                    for &n_idx in &valid_neighbors {
+                                        let rand_factor: u16 = rng.gen_range(80..=120);
+                                        let final_spread =
+                                            ((base_spread as u32 * rand_factor as u32) / 100)
+                                                as u16;
+
+                                        if final_spread > 0 {
+                                            next_cells[n_idx].active = true;
+                                            next_cells[n_idx].elements[e] = next_cells[n_idx]
+                                                .elements[e]
+                                                .saturating_add(final_spread);
+                                            next_cells[idx].elements[e] = next_cells[idx].elements
+                                                [e]
+                                                .saturating_sub(final_spread);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -195,7 +213,7 @@ impl BiomeGrid {
         ticks_since_mutation += 1;
         let force_mutate = ticks_since_mutation >= 1000;
 
-        for cell in next_cells.iter_mut() {
+        for (idx, cell) in next_cells.iter_mut().enumerate() {
             if cell.active && !cell.is_frozen {
                 // 1. 元素反応
                 crate::element::react_elements(cell);
@@ -217,6 +235,17 @@ impl BiomeGrid {
 
                 // 3. 形態決定
                 cell.morphology = crate::evolution::determine_morphology(&cell.elements);
+
+                // 4. 自然死 (Decay) - 総元素質量が 50 未満に枯渇したセルは休眠に戻す
+                // ただし、このフレームで新しく活性化された（前フレームでは非アクティブだった）新生セルは猶予
+                let is_newly_active = !current_cells[idx].active;
+                if !is_newly_active {
+                    let total_mass: u32 = cell.elements.iter().map(|&e| e as u32).sum();
+                    if total_mass < 50 {
+                        cell.active = false;
+                        cell.elements = [0u16; 8];
+                    }
+                }
             }
         }
 
@@ -391,5 +420,53 @@ mod tests {
 
         // また、隣のセル（例: 6,5）に拡散してアクティブ化していないこと
         assert!(!grid.get_cell(6, 5).active);
+    }
+
+    #[test]
+    fn test_decay_system_kills_depleted_cells() {
+        let mut grid = BiomeGrid::new(42);
+
+        // 活性セルだが、元素の合計量が 49 (< 50)
+        let cell = grid.get_cell_mut(5, 5);
+        cell.active = true;
+        cell.elements = [49, 0, 0, 0, 0, 0, 0, 0];
+        cell.is_frozen = false;
+
+        grid.tick();
+
+        let result = grid.get_cell(5, 5);
+        // 総質量が50未満なので、自然死（休眠化）していること
+        assert!(
+            !result.active,
+            "Cell with less than 50 elements should decay and become inactive"
+        );
+        // 残存元素も完全にクリアされていること
+        assert_eq!(result.elements, [0u16; 8]);
+    }
+
+    #[test]
+    fn test_all_elements_diffusion() {
+        let mut grid = BiomeGrid::new(42);
+
+        // 窒素 (elements[1]) を 1000 注入したアクティブセル
+        let cell = grid.get_cell_mut(5, 5);
+        cell.active = true;
+        cell.elements[1] = 1000;
+
+        grid.tick();
+
+        // 隣接するセルのいずれか（例: 5,6 や 6,5 など）に窒素が拡散してアクティブ化していることを確認
+        let neighbors = [
+            grid.get_cell(4, 5),
+            grid.get_cell(6, 5),
+            grid.get_cell(5, 4),
+            grid.get_cell(5, 6),
+        ];
+
+        let active_neighbor_exists = neighbors.iter().any(|c| c.active && c.elements[1] > 0);
+        assert!(
+            active_neighbor_exists,
+            "Nitrogen should diffuse to neighbors and activate them"
+        );
     }
 }

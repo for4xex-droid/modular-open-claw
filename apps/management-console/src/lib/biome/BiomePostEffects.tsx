@@ -53,7 +53,7 @@ export function BiomePostEffects({
         key="bloom"
         intensity={1.2} 
         luminanceThreshold={0.15} 
-        luminanceSmoothing={0.9} 
+        luminanceSmoothing={0.2} 
         mipmapBlur
       />
     );
@@ -65,8 +65,9 @@ export function BiomePostEffects({
   }
 
   return (
-    <EffectComposer>
+    <EffectComposer disableNormalPass>
       {passes}
     </EffectComposer>
   );
+
 }

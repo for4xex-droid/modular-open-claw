@@ -6,6 +6,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import { BiomeCanvas } from './BiomeCanvas';
+import { biomeCellVertexShader } from './shaders/biomeCell';
 
 // R3F 関連をモック
 jest.mock('@react-three/fiber', () => ({
@@ -79,4 +80,14 @@ describe('BiomeCanvas', () => {
     );
     expect(screen.getByTestId('sparkles')).toBeInTheDocument();
   });
+
+  it('should declare instanceColor attribute with macro guard in vertex shader', () => {
+    // 重複による redefinition エラーを防ぐマクロガードと、その中での attribute 宣言を検査
+    expect(biomeCellVertexShader).toContain('#ifndef USE_INSTANCING_COLOR');
+    expect(biomeCellVertexShader).toContain('attribute vec3 instanceColor;');
+    expect(biomeCellVertexShader).toContain('#endif');
+  });
 });
+
+
+

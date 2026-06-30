@@ -111,7 +111,7 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
 
       // Calculate tooltip position (always show below/above the highlighted element)
       const tooltipHeight = tooltipRef.current?.offsetHeight || 180;
-      const tooltipWidth = tooltipRef.current?.offsetWidth || 340;
+      const tooltipWidth = Math.min(460, tooltipRef.current?.offsetWidth || 380);
       
       let top = rect.bottom + pad + 12;
       let left = rect.left + (rect.width - tooltipWidth) / 2;
@@ -120,6 +120,8 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
       if (top + tooltipHeight > window.innerHeight) {
         top = rect.top - tooltipHeight - pad - 12;
       }
+      // Viewport safety margins
+      top = Math.max(16, Math.min(window.innerHeight - tooltipHeight - 16, top));
       // Adjust horizontally
       left = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, left));
 
@@ -128,6 +130,7 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
         top,
         left,
         width: `${tooltipWidth}px`,
+        maxWidth: '460px',
         zIndex: 1001,
         transition: 'all 0.3s ease'
       });

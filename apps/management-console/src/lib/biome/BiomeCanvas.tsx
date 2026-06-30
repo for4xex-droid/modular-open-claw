@@ -5,14 +5,14 @@
  * Licensed under the Business Source License 1.1.
  */
 import { Canvas } from '@react-three/fiber';
-import { OrthographicCamera } from '@react-three/drei';
 import { BiomeBackground } from './BiomeBackground';
 import { BiomeLighting } from './BiomeLighting';
+import { BiomeBorder } from './BiomeBorder';
 import { BiomeCellGrid } from './BiomeCellGrid';
 import { BiomeSparkles } from './BiomeSparkles';
 import { BiomePostEffects } from './BiomePostEffects';
 import { BiomeCanvasProps } from './biomeTypes';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 export function BiomeCanvas({
   width,
@@ -29,52 +29,65 @@ export function BiomeCanvas({
 }: BiomeCanvasProps) {
   const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
 
-  const handlePointerMove = (e: any) => {
-    // Canvas上のraycast交点からグリッド座標(0-127)を取得
+  const handlePointerMove = useCallback((e: any) => {
     const x = Math.floor(e.point.x);
     const y = Math.floor(e.point.y);
     if (x >= 0 && x < 128 && y >= 0 && y < 128) {
-      const coord = { x, y };
-      if (!hoverCell || hoverCell.x !== x || hoverCell.y !== y) {
-        setHoverCell(coord);
+      setHoverCell(prev => {
+        if (prev && prev.x === x && prev.y === y) return prev;
+        const coord = { x, y };
         if (onHover) onHover(coord);
-      }
+        return coord;
+      });
     } else {
-      handlePointerLeave();
+      setHoverCell(prev => {
+        if (prev === null) return prev;
+        if (onHover) onHover(null);
+        return null;
+      });
     }
-  };
+  }, [onHover]);
 
-  const handlePointerLeave = () => {
-    setHoverCell(null);
-    if (onHover) onHover(null);
-  };
+  const handlePointerLeave = useCallback(() => {
+    setHoverCell(prev => {
+      if (prev === null) return prev;
+      if (onHover) onHover(null);
+      return null;
+    });
+  }, [onHover]);
 
-  const handlePointerDown = (e: any) => {
+  const handlePointerDown = useCallback((e: any) => {
     const x = Math.floor(e.point.x);
     const y = Math.floor(e.point.y);
     if (x >= 0 && x < 128 && y >= 0 && y < 128) {
       if (onClick) onClick({ x, y });
     }
-  };
+  }, [onClick]);
 
   return (
-    <div style={{ width, height, position: 'relative' }}>
+    <div style={{
+      width: `${width}px`,
+      height: `${height}px`,
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
       <Canvas
-        gl={{ antialias: true }}
+        gl={{ antialias: true, alpha: false }}
+        dpr={[1, 2]}
+        orthographic
+        camera={{
+          left: 0,
+          right: 128,
+          top: 128,
+          bottom: 0,
+          near: 0.1,
+          far: 1000,
+          position: [0, 0, 10],
+        }}
       >
-        <OrthographicCamera
-          makeDefault
-          left={0}
-          right={128}
-          top={128}
-          bottom={0}
-          near={0.1}
-          far={1000}
-          position={[0, 0, 10]}
-          manual
-        />
         <BiomeBackground />
         <BiomeLighting rarity={rarity} />
+        <BiomeBorder />
         <BiomeCellGrid
           renderView={renderView}
           rarity={rarity}
@@ -102,4 +115,3 @@ export function BiomeCanvas({
     </div>
   );
 }
-

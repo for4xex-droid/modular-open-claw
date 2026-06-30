@@ -633,153 +633,30 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
 
   const renderView = getRenderView();
 
+
   return (
     <div style={{
       display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'flex-start',
       gap: 'var(--layout-panel-gap)',
       padding: 'var(--layout-panel-gap)',
       background: 'var(--bg-primary)',
       borderRadius: 'var(--radius-md)',
       color: 'var(--white-100)',
       fontFamily: 'var(--font-main)',
-      position: 'relative'
+      position: 'relative',
+      width: '100%',
+      boxSizing: 'border-box'
     }}>
-      {/* メインレンダラー */}
-      <div style={{ flex: '1', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        {/* 512x512 固定サイズコンテナ: キャンバスとオーバーレイの座標基準を統一 */}
-        <div style={{
-          width: '512px',
-          height: '512px',
-          position: 'relative',
-          flexShrink: 0,
-          transform: `translate(${shakeOffset.x}px, ${shakeOffset.y}px)`,
-          transition: 'transform 0.05s ease-out'
-        }}>
-        <BiomeCanvas
-          width={512}
-          height={512}
-          renderView={renderView}
-          rarity={rarityIndex}
-          effectType={effectType}
-          effectIntensity={effectIntensity}
-          effectCenter={effectCenter}
-          onClick={handleCanvasClick}
-          onHover={handleHover}
-          bloomEnabled={bloomEnabled}
-          injectionMarks={injectionMarks}
-        />
-        
-        {/* マイルストーンフラッシュ */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '512px',
-          height: '512px',
-          borderRadius: 'var(--radius-md)',
-          background: 'radial-gradient(circle at center, rgba(0, 240, 255, 0.12) 0%, transparent 70%)',
-          boxShadow: flash ? '0 0 30px rgba(0, 240, 255, 0.3), inset 0 0 30px rgba(0, 240, 255, 0.1)' : 'none',
-          opacity: flash ? 1 : 0,
-          pointerEvents: 'none',
-          transition: flash ? 'none' : 'opacity 0.3s ease-out',
-          zIndex: 10
-        }} />
-
-        {/* パーティクルバースト */}
-        {particles.map(p => (
-          <div
-            key={p.id}
-            style={{
-              position: 'absolute',
-              left: `${p.x}px`,
-              top: `${p.y}px`,
-              width: `${p.size}px`,
-              height: `${p.size}px`,
-              borderRadius: '50%',
-              background: p.color,
-              boxShadow: `0 0 ${p.size * 2}px ${p.color}`,
-              opacity: Math.max(0, p.life),
-              pointerEvents: 'none',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 15
-            }}
-          />
-        ))}
-
-        {/* フローティングテキスト */}
-        {floatingTexts.map(t => (
-          <div
-            key={t.id}
-            style={{
-              position: 'absolute',
-              left: `${t.x}px`,
-              top: `${t.y}px`,
-              color: t.color,
-              fontFamily: 'var(--font-main)',
-              fontWeight: 'bold',
-              fontSize: '1rem',
-              textShadow: `0 0 8px ${t.color}, 0 0 16px ${t.color}`,
-              opacity: Math.max(0, t.life),
-              pointerEvents: 'none',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 15,
-              whiteSpace: 'nowrap'
-            }}
-          >
-            {t.text}
-          </div>
-        ))}
-
-        {/* ホバー詳細ツールチップ */}
-        {hoverCell && hoverData && (
-          <div style={{
-            position: 'absolute',
-            bottom: '16px',
-            left: '16px',
-            background: 'rgba(10, 15, 30, 0.85)',
-            border: '1px solid var(--accent-cyan, #00f0ff)',
-            borderRadius: 'var(--radius-sm)',
-            padding: '8px 12px',
-            fontSize: '0.8rem',
-            color: 'var(--white-90)',
-            pointerEvents: 'none',
-            zIndex: 20,
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '4px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
-          }}>
-            <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)', display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-              <span>座標 ({hoverCell.x}, {hoverCell.y})</span>
-              <span>{hoverData.active ? '🟢 生存' : '⚫ 休眠'}</span>
-            </div>
-            {hoverData.active && (
-              <>
-                <div>形態: {
-                  hoverData.morphology === 1 ? '🌲 生産者 (Producer)' :
-                  hoverData.morphology === 2 ? '🌊 消費者 (Consumer)' :
-                  hoverData.morphology === 3 ? '⚔️ 捕食者 (Predator)' : '🍂 分解者 (Basic)'
-                }</div>
-                <div>エネルギー: {hoverData.energy}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginTop: '2px', fontSize: '0.75rem' }}>
-                  <span>C: {hoverData.elements[0]}</span>
-                  <span>N: {hoverData.elements[1]}</span>
-                  <span>P: {hoverData.elements[2]}</span>
-                  <span>H: {hoverData.elements[3]}</span>
-                </div>
-                {hoverData.is_frozen && (
-                  <div style={{ color: '#00f0ff', fontSize: '0.75rem', marginTop: '2px' }}>❄️ 凍結状態</div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-        </div>{/* 512x512 固定コンテナ終了 */}
-      </div>
-
-      {/* コントロール・情報HUDパネル */}
-      <div style={{ width: 'var(--layout-right-panel-width)', display: 'flex', flexDirection: 'column', gap: 'var(--layout-panel-gap)' }}>
+      {/* 1. 左カラム: ステータスHUD & サイクル速度設定 */}
+      <div style={{ 
+        width: '270px', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: 'var(--layout-panel-gap)',
+        flexShrink: 0
+      }}>
         <BiomeHUD
           generation={generation}
           rarity={rarity}
@@ -789,8 +666,6 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
           activeCellCount={getActiveCellCount()}
           rarityProgress={rarityProgress}
         />
-        
-        {/* シミュレーションサイクル選択速度パネル */}
         <CycleSelect
           speed={speed}
           onSpeedChange={setSpeed}
@@ -799,7 +674,154 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
           bloomEnabled={bloomEnabled}
           onToggleBloom={() => setBloomEnabled(!bloomEnabled)}
         />
+      </div>
 
+      {/* 2. 中央カラム: メイン3Dキャンバス (512x512) */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        flexShrink: 0
+      }}>
+        <div style={{
+          width: '512px',
+          height: '512px',
+          position: 'relative',
+          flexShrink: 0,
+          transform: `translate(${shakeOffset.x}px, ${shakeOffset.y}px)`,
+          transition: 'transform 0.05s ease-out'
+        }}>
+          <BiomeCanvas
+            width={512}
+            height={512}
+            renderView={renderView}
+            rarity={rarityIndex}
+            effectType={effectType}
+            effectIntensity={effectIntensity}
+            effectCenter={effectCenter}
+            onClick={handleCanvasClick}
+            onHover={handleHover}
+            bloomEnabled={bloomEnabled}
+            injectionMarks={injectionMarks}
+          />
+          
+          {/* マイルストーンフラッシュ */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '512px',
+            height: '512px',
+            borderRadius: 'var(--radius-md)',
+            background: 'radial-gradient(circle at center, rgba(0, 240, 255, 0.12) 0%, transparent 70%)',
+            boxShadow: flash ? '0 0 30px rgba(0, 240, 255, 0.3), inset 0 0 30px rgba(0, 240, 255, 0.1)' : 'none',
+            opacity: flash ? 1 : 0,
+            pointerEvents: 'none',
+            transition: flash ? 'none' : 'opacity 0.3s ease-out',
+            zIndex: 10
+          }} />
+
+          {/* パーティクルバースト */}
+          {particles.map(p => (
+            <div
+              key={p.id}
+              style={{
+                position: 'absolute',
+                left: `${p.x}px`,
+                top: `${p.y}px`,
+                width: `${p.size}px`,
+                height: `${p.size}px`,
+                borderRadius: '50%',
+                background: p.color,
+                boxShadow: `0 0 ${p.size * 2}px ${p.color}`,
+                opacity: Math.max(0, p.life),
+                pointerEvents: 'none',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 15
+              }}
+            />
+          ))}
+
+          {/* フローティングテキスト */}
+          {floatingTexts.map(t => (
+            <div
+              key={t.id}
+              style={{
+                position: 'absolute',
+                left: `${t.x}px`,
+                top: `${t.y}px`,
+                color: t.color,
+                fontFamily: 'var(--font-main)',
+                fontWeight: 'bold',
+                fontSize: '1rem',
+                textShadow: `0 0 8px ${t.color}, 0 0 16px ${t.color}`,
+                opacity: Math.max(0, t.life),
+                pointerEvents: 'none',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 15,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {t.text}
+            </div>
+          ))}
+
+          {/* ホバー詳細ツールチップ */}
+          {hoverCell && hoverData && (
+            <div style={{
+              position: 'absolute',
+              bottom: '16px',
+              left: '16px',
+              background: 'rgba(10, 15, 30, 0.85)',
+              border: '1px solid var(--accent-cyan, #00f0ff)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '8px 12px',
+              fontSize: '0.8rem',
+              color: 'var(--white-90)',
+              pointerEvents: 'none',
+              zIndex: 20,
+              backdropFilter: 'blur(8px)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+            }}>
+              <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)', display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+                <span>座標 ({hoverCell.x}, {hoverCell.y})</span>
+                <span>{hoverData.active ? '🟢 生存' : '⚫ 休眠'}</span>
+              </div>
+              {hoverData.active && (
+                <>
+                  <div>形態: {
+                    hoverData.morphology === 1 ? '🌲 生産者 (Producer)' :
+                    hoverData.morphology === 2 ? '🌊 消費者 (Consumer)' :
+                    hoverData.morphology === 3 ? '⚔️ 捕食者 (Predator)' : '🍂 分解者 (Basic)'
+                  }</div>
+                  <div>エネルギー: {hoverData.energy}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginTop: '2px', fontSize: '0.75rem' }}>
+                    <span>C: {hoverData.elements[0]}</span>
+                    <span>N: {hoverData.elements[1]}</span>
+                    <span>P: {hoverData.elements[2]}</span>
+                    <span>H: {hoverData.elements[3]}</span>
+                  </div>
+                  {hoverData.is_frozen && (
+                    <div style={{ color: '#00f0ff', fontSize: '0.75rem', marginTop: '2px' }}>❄️ 凍結状態</div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 3. 右カラム: 元素・災害コントロール & 各種アクション */}
+      <div style={{ 
+        width: '270px', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: 'var(--layout-panel-gap)',
+        flexShrink: 0
+      }}>
         <BiomeControls
           selectedElement={selectedElement}
           onSelectElement={(el) => {
@@ -836,7 +858,8 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
               padding: '8px',
               cursor: 'pointer',
               fontWeight: '600',
-              transition: 'background 0.2s'
+              transition: 'background 0.2s',
+              width: '100%'
             }}
             onMouseEnter={(e) => e.currentTarget.style.background = 'var(--white-10)'}
             onMouseLeave={(e) => e.currentTarget.style.background = 'var(--white-05)'}
@@ -857,7 +880,8 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
             padding: '8px',
             cursor: 'pointer',
             fontWeight: '600',
-            transition: 'background 0.2s'
+            transition: 'background 0.2s',
+            width: '100%'
           }}
           onMouseEnter={(e) => e.currentTarget.style.background = 'var(--white-10)'}
           onMouseLeave={(e) => e.currentTarget.style.background = 'var(--white-05)'}
@@ -870,6 +894,7 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
         )}
       </div>
 
+      {/* 4. フルスクリーンダイアログ・トースト */}
       {showResult && (
         <BiomeResult
           generation={generation}

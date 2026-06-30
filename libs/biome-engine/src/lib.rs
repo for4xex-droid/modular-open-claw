@@ -518,8 +518,8 @@ mod tests {
         engine.inject_element(0, 0, 0, 100);
         engine.tick();
 
-        engine.inject_element(0, 0, 3, 45000); // H
-        engine.inject_element(0, 0, 4, 45000); // O
+        engine.inject_element(0, 0, 3, 60000); // H
+        engine.inject_element(0, 0, 4, 60000); // O
         engine.tick();
 
         // 内部フィールドを直接検証します（JsValueを返す get_last_tick_events は non-wasm ではパニックするため）

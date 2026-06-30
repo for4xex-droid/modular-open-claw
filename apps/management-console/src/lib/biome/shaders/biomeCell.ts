@@ -11,6 +11,10 @@ export const biomeCellVertexShader = /* glsl */`
   varying vec3 vNormal;
   varying vec3 vWorldPos;
 
+#ifndef USE_INSTANCING_COLOR
+  attribute vec3 instanceColor;
+#endif
+
   void main() {
     vUv = uv;  // ジオメトリの UV -> セル内ローカル座標 (0-1)
     vColor = instanceColor;
@@ -107,6 +111,6 @@ export const biomeCellFragmentShader = /* glsl */`
       color += vec3(0.3, 0.2, 0.05) * legendaryPulse * 0.15;
     }
 
-    gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = vec4(color * 1.8, 1.0);
   }
 `;

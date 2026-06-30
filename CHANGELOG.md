@@ -1,7 +1,51 @@
 ## [Unreleased]
 
+### Fixed
+- **BiomeCanvas バックグラウンドおよびレイアウトバランスの根本修正**:
+  - `apps/management-console/src/lib/biome/BiomeCanvas.tsx` [MODIFY]: `gl={{ antialias: true, alpha: false }}` を追加し、WebGLコンテキストを不透過に設定。これにより、R3F v9 のデフォルト `alpha: true` とポストプロセス（Bloom）の組み合わせで発生していた、CSS背景色との不均一なアルファ合成による「背景全体がグレーに濁る不具合」を解決。また、未使用の `import * as THREE` をクリーンアップ。
+  - `apps/management-console/src/lib/biome/BiomeBackground.tsx` [MODIFY]: 境界線の中身がグレーになるバグおよびセルの上に背景が被さるZオーダーバグを修正。背景マテリアルの `depthWrite/depthTest` 設定をデフォルトの不透明に戻し、Z座標を奥（`-10`）に配置することで、深度テストによりセルが手前に正しく完全に不透明描画されるように修正。さらに、生理的に気持ち悪いと感じられていた細胞風のボロノイノイズ（`cellularNoise`）を廃止し、滑らかな円形グラデーションに変更。
+  - `apps/management-console/src/lib/biome/shaders/biomeCell.ts` [MODIFY]: セルのカラー出力を1.8倍にブーストし、背景のダークグラデーションから鮮明に際立たせ、Bloom効果（発光感）を強調。
+  - `apps/management-console/src/lib/biome/BiomeCellGrid.tsx` [MODIFY]: セルの描画スケール（`scale`）を `0.35` → `0.65` に拡大し、背景に埋もれていた粒状のセルの視認性を劇的に改善。
+  - `apps/management-console/src/lib/biome/BiomePostEffects.tsx` [MODIFY]: Bloomの `luminanceSmoothing` を `0.9` から `0.2` に下げて閾値をシャープにし、暗い背景色がGlowに漏れ出してセルにオーバーレイする現象を完全に遮断。
+  - `apps/management-console/src/lib/biome/BiomeGame.tsx` [MODIFY]: コントロール類が縦に積まれてスクロールが必要だった不均一なレイアウトを解消。左にHUD・速度、中央に512x512キャンバス、右に元素・災害操作パネルを配置する「美しい3カラム（3列）レイアウト」へ再構成。これにより画面切れを根絶し、一画面に全情報を収容。
+  - `apps/management-console/src/lib/biome/BiomeTutorial.tsx` [MODIFY]: チュートリアル表示の最大幅を 460px に制限し、折り返しを最適化して可読性を向上。さらに縦方向の絶対ガードレール（上下マージン 16px）を導入し、出現ステップやターゲット要素の位置によってボタンが画面外に見切れる（操作不能になる）バグを恒久的に防止。
+- **R3F v9 のリサイズ追従時における OrthographicCamera のアスペクト比・描画領域不整合バグの根本修正**:
+  - `apps/management-console/src/lib/biome/BiomeCanvas.tsx` [MODIFY]: `<Canvas>` の `camera` prop に `left: 0, right: 128, top: 128, bottom: 0, manual: true` を直接指定するよう修正。R3F v9 内のカメラ更新処理において、`camera.manual = true` フラグを適切に立てることで、リサイズ時にカメラのフラスタム座標系（128x128）が Canvas のピクセルサイズで自動的に上書きされてしまう問題を解消。これにより、Canvas サイズ変化時（特に縦長/横長のフレックスレイアウト下）に境界線がスリット状に潰れたり、セル描画が極小化して画面最下部にズレて詰まっていた表示バグを完全に是正。また、以前定義していた dynamic zoom 計算などのアドホックな `CameraForcer` デバッグコードをクリーンアップ。
+
+### Added
+- **Biome 育成グリッドの境界線表示追加 (`BiomeBorder.tsx`)**:
+  - `apps/management-console/src/lib/biome/BiomeBorder.tsx` [NEW]: セルオートマトン育成エリアの 128x128 境界を視覚化するネオンシアン色の枠線と四隅のL字型コーナーマークを描画するコンポーネントを新規作成。時間経過による不透明度の脈動アニメーションを実装。
+  - `apps/management-console/src/lib/biome/BiomeCanvas.tsx` [MODIFY]: キャンバス内に `BiomeBorder` を追加し、育成エリアの視認性を向上。
+
+### Fixed
+- **DPRおよびアスペクト比不整合に伴うセル位置のズレ・縮小バグの修正**:
+  - `apps/management-console/src/lib/biome/BiomeCanvas.tsx` [MODIFY]: `manual` プロパティ付きの `OrthographicCamera` コンポーネントを廃止し、R3F Canvas 自体の `orthographic` 設定にカメラプロパティを統合。これにより、Retinaディスプレイなどの高DPR環境でビューポート解像度やアスペクト比が同期せず、セル位置が大幅にY軸方向へズレたり描画が左下1/4に縮小されていたバグを完全に解消。
+  - `apps/management-console/src/lib/biome/shaders/biomeCell.ts` [MODIFY]: 頂点シェーダーにおいて、Three.js の自動的な `instanceColor` 属性注入と衝突した際の `redefinition` エラーおよび未定義エラーを防ぐため、マクロガード `#ifndef USE_INSTANCING_COLOR` を施した上で `attribute vec3 instanceColor;` を明示宣言。
+  - `apps/management-console/src/lib/biome/BiomeCanvas.test.tsx` [MODIFY]: 頂点シェーダー内にマクロガード付きの属性宣言が存在することを検証するように、既存の TDD テストコードをブラッシュアップ。
+
+### Added
+- **Biome セルオートマトンの自然死（Decay）処理の導入と新生セル猶予**:
+  - `libs/biome-engine/src/grid.rs` [MODIFY]: 毎フレーム各セルの総元素質量を検査し、一定値（50）未満に枯渇したアクティブセルを自動的に非活性化（`active = false`）して休眠状態に戻す「自然死」ロジックを実装。ただし、そのフレームで新しく活性化された（前フレーム非アクティブだった）新生セルについては1フレームの猶予措置を適用し、拡散伝播の餓死による阻害を防止。また、TDDテスト `test_decay_system_kills_depleted_cells` を追加。
+- **InstancedMesh の初期化（1フレーム目の残留バグ）対策**:
+  - `apps/management-console/src/lib/biome/BiomeCellGrid.tsx` [MODIFY]: マウント/レアリティ変更時にすべてのインスタンス行列のスケールを `0`（非表示）にリセットする `useEffect` 初期化処理を導入。マウントの最初の1フレームにおいて、未配置のインスタンスが原点 (0,0) に巨大なグレーの正方形として描画・残留する WebGL バグを防止。
+
+### Fixed
+- **Biome セルオートマトン全元素の拡散処理における芋づる式拡散の是正（厳格なダブルバッファリング）**:
+  - `libs/biome-engine/src/grid.rs` [MODIFY]: 拡散量および可否判定を `current_cells`（前フレームの状態）の元素量を基準に算出するようにし、反映先のみを `next_cells` とすることで、1フレーム内で元素がループの進行方向に玉突き移動してグリッド全体（左下1/4のグレー正方形領域）を飽和させていた「芋づる式拡散バグ」を完全に解消。全8元素（0..8）に対しての正しい拡散挙動を実装。TDDテスト `test_all_elements_diffusion` を追加。
+- **高DPR（Retina）環境での WebGL 解像度不整合（グレー正方形）とシェーダーエラーの是正**:
+  - `apps/management-console/src/lib/biome/BiomeCanvas.tsx` [MODIFY]: Canvasに存在していた不整合の原因となる `dpr={1}` のハードコード指定を削除（ブラウザおよび Three.js 側の自動スケーリングに追従）。
+  - `apps/management-console/src/lib/biome/BiomeCellGrid.tsx` [MODIFY]: `useEffect` 初期化処理内で、各セルマテリアルの `vertexColors` プロパティを明示的かつ確実に `true` に設定し、`needsUpdate` を発火させることで、Three.js の自動的な `instanceColor` 属性の注入と GLSL マクロコンパイルの順序を完全に同期。これにより、手動定義の衝突による `redefinition` エラーおよび未定義（`undeclared identifier`）エラーを恒久的に防止。
+  - `apps/management-console/src/lib/biome/shaders/biomeCell.ts` [MODIFY]: 動的注入との重複競合を防ぐため、頂点シェーダーから手動の `instanceColor` 属性定義を完全に排除。
+  - `apps/management-console/src/lib/biome/BiomeCanvas.test.tsx` [MODIFY]: `biomeCellVertexShader` に手動の属性定義が含まれていないことをアサーションする Jest 用 TDD テストケースを新規追加。
+  - `apps/management-console/src/lib/biome/BiomePostEffects.tsx` [MODIFY]: `<EffectComposer>` に `disableNormalPass` を明示的に指定し、不要な `NormalPass` の自動生成とそれに伴う左下へのグレーの半透明面誤投影バグを排除。
+  - `apps/management-console/src/lib/biome/BiomeCellGrid.tsx` [MODIFY]: `react` からの `useEffect` インポート漏れを修正し、参照エラーを防止。
+  - `libs/biome-engine/src/lib.rs` [MODIFY]: 全元素が拡散するようになったことに伴い、テスト `test_engine_last_tick_events` での H と O の注入量を 45000 から 60000 に引き上げ、拡散後も進化閾値（>40000）を維持するように修正。
+
+
+
 ### Added
 - **Biome 標本保存時の追加データ送信**:
+
   - `apps/management-console/src/lib/biome/BiomeGame.tsx` [MODIFY]: 標本保存時 (handleSaveSpecimen) に、WASMから取得した最新の元素バランス (`element_balance`) と活性セル数 (`active_cell_count`) を保存 API ペイロードに追加して送信するように実装。また、`generation` のハードコードを解除。
   - `apps/management-console/src/lib/biome/BiomeResult.tsx` [MODIFY]: リザルト画面に `elementBalance` と `activeCellCount` を受け取るプロパティを追加し、UI上で元素比率および活性セル数を表示するように結線。
   - `apps/management-console/src/lib/biome/BiomeGame.test.tsx` [MODIFY]: useBiomeEngine フックをモック化して同期的なテスト制御を可能にし、標本保存時の API ペイロードに正しいデータが含まれることを検証する TDD テストケースを追加。

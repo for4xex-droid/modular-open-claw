@@ -4,7 +4,8 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
+
 import { useFrame, extend } from '@react-three/fiber';
 import { shaderMaterial } from '@react-three/drei';
 import * as THREE from 'three';
@@ -105,7 +106,31 @@ export function BiomeCellGrid({ renderView, rarity, injectionMarks, hoverCell }:
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const tempColor = useMemo(() => new THREE.Color(), []);
 
+  // マウント/ジオメトリ変更時に、全インスタンスの初期スケールを 0（非表示）にして 1フレーム目の残留バグを防止
+  // さらに、マテリアルの vertexColors プロパティを確実に true に設定してシェーダーエラーを防ぐ
+  useEffect(() => {
+    const tempMatrix = new THREE.Matrix4().makeScale(0, 0, 0);
+    for (let m = 0; m < MORPH_COUNT; m++) {
+      const mesh = meshRefs.current[m];
+      if (mesh && mesh.instanceMatrix) {
+        for (let i = 0; i < CELL_COUNT; i++) {
+          mesh.setMatrixAt(i, tempMatrix);
+        }
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.count = 0;
+      }
+
+      const mat = materialRefs.current[m];
+      if (mat) {
+        mat.vertexColors = true;
+        mat.needsUpdate = true;
+      }
+    }
+  }, [rarity]);
+
+
   useFrame(({ clock }) => {
+
     if (!renderView || renderView.length === 0) return;
     const time = clock.getElapsedTime();
     const counts = new Array(MORPH_COUNT).fill(0);
@@ -136,7 +161,7 @@ export function BiomeCellGrid({ renderView, rarity, injectionMarks, hoverCell }:
       } else {
         dummy.rotation.set(0, 0, 0);
       }
-      const scale = 0.35 + rarity * 0.03;
+      const scale = 0.65 + rarity * 0.05;
       dummy.scale.setScalar(scale);
       dummy.updateMatrix();
       mesh.setMatrixAt(idx, dummy.matrix);
@@ -179,6 +204,7 @@ export function BiomeCellGrid({ renderView, rarity, injectionMarks, hoverCell }:
 
   return (
     <group>
+
       {geometries.map((geo, morph) => (
         <instancedMesh
           key={`${morph}_${rarity}`}
