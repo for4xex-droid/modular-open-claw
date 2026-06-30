@@ -1,6 +1,8 @@
 ## [Unreleased]
 
 ### Fixed
+- **依存パッケージのセキュリティ脆弱性修正**:
+  - `libs/infrastructure/Cargo.toml` [MODIFY], `libs/core/Cargo.toml` [MODIFY]: `ammonia` パッケージの脆弱性（RUSTSEC-2026-0193: mXSS in ammonia via MathML `annotation-xml` encoding strip）に対処するため、バージョンを安全な `4.1.3` にアップデート。
 - **BiomeCanvas バックグラウンドおよびレイアウトバランスの根本修正**:
   - `apps/management-console/src/lib/biome/BiomeCanvas.tsx` [MODIFY]: `gl={{ antialias: true, alpha: false }}` を追加し、WebGLコンテキストを不透過に設定。これにより、R3F v9 のデフォルト `alpha: true` とポストプロセス（Bloom）の組み合わせで発生していた、CSS背景色との不均一なアルファ合成による「背景全体がグレーに濁る不具合」を解決。また、未使用の `import * as THREE` をクリーンアップ。
   - `apps/management-console/src/lib/biome/BiomeBackground.tsx` [MODIFY]: 境界線の中身がグレーになるバグおよびセルの上に背景が被さるZオーダーバグを修正。背景マテリアルの `depthWrite/depthTest` 設定をデフォルトの不透明に戻し、Z座標を奥（`-10`）に配置することで、深度テストによりセルが手前に正しく完全に不透明描画されるように修正。さらに、生理的に気持ち悪いと感じられていた細胞風のボロノイノイズ（`cellularNoise`）を廃止し、滑らかな円形グラデーションに変更。
