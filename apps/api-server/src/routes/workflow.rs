@@ -374,6 +374,58 @@ pub async fn fork_workflow(
     Ok((StatusCode::OK, Json(response_body)))
 }
 
+/// [GET] /api/v1/workflows/:id/export — 単一ワークフローを Playbook マニフェスト v1 として出力
+#[utoipa::path(
+    get,
+    path = "/api/v1/workflows/{id}/export",
+    responses(
+        (status = 200, description = "Workflow exported as playbook manifest v1"),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Workflow not found")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn export_workflow(
+    auth: Authenticated,
+    State(state): State<AppState>,
+    axum::extract::Path(id): axum::extract::Path<Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    let store = WorkflowStore::new((**state.db_pool.get_inner()).clone());
+
+    let wf = store
+        .get_workflow(id)
+        .await
+        .map_err(|e| AppError::internal(format!("Failed to fetch workflow: {}", e)))?
+        .ok_or_else(|| AppError::not_found("Workflow not found"))?;
+
+    // BOLA チェック (作成者本人用または公開設定のもの以外は403)
+    if wf.creator_id != auth.agent_id.to_string() && wf.visibility == "private" {
+        return Err(AppError::forbidden("Access denied"));
+    }
+
+    let version = wf.current_version as u32;
+    let def = store
+        .get_version(id, version)
+        .await
+        .map_err(|e| AppError::internal(format!("Failed to fetch workflow version: {}", e)))?
+        .ok_or_else(|| AppError::not_found("Workflow version definition not found"))?;
+
+    let tags: Vec<String> = serde_json::from_str(&wf.tags).unwrap_or_default();
+    let manifest = infrastructure::workflow::playbook::PlaybookManifest {
+        playbook_version: infrastructure::workflow::playbook::PLAYBOOK_MANIFEST_VERSION,
+        id: format!("wf-{}", id.simple()),
+        name: wf.name,
+        description: wf.description,
+        tags,
+        required_skills: vec![],
+        required_mcp_servers: vec![],
+        workflows: vec![def],
+    };
+
+    Ok((StatusCode::OK, Json(manifest)))
+}
+
 /// [GET] /api/v1/workflows/:id/versions
 pub async fn list_versions(
     auth: Authenticated,
