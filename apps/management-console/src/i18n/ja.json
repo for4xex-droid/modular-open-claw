@@ -305,7 +305,16 @@
     "failed": "セットアップに失敗しました",
     "noToken": "サーバーからアクセストークンが返されませんでした",
     "networkError": "サーバーに接続できません。ネットワーク接続を確認して再試行してください。",
-    "unknownError": "不明なエラー"
+    "unknownError": "不明なエラー",
+    "playbookTitle": "業務テンプレートを選ぶ",
+    "playbookDesc": "業務ワークフロー一式をワンクリックで導入し、初日からエージェントに仕事を任せられます。後から追加することもできます。",
+    "playbookInstall": "導入",
+    "playbookInstalling": "導入中...",
+    "playbookInstalled": "導入済み",
+    "playbookSkip": "スキップ",
+    "playbookStart": "Aiome を開始",
+    "playbookError": "導入に失敗しました",
+    "playbookMissingDeps": "不足している依存関係"
   },
   "onboarding": {
     "welcome": "Aiomeへようこそ",

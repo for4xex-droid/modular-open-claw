@@ -4,15 +4,25 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, User, ShieldAlert, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, User, ShieldAlert, Loader2, Eye, EyeOff, BookOpen, Check } from 'lucide-react';
 import { useTranslation } from '../i18n';
 import { API_BASE } from '../config';
-import { setAuthToken } from '../lib/auth';
+import { setAuthToken, authenticatedFetch } from '../lib/auth';
 
 interface SetupWizardProps {
     onComplete: () => void;
+}
+
+interface PlaybookSummary {
+    id: string;
+    name: string;
+    description: string;
+    tags: string[];
+    workflow_count: number;
+    required_skills: string[];
+    required_mcp_servers: string[];
 }
 
 /** Password strength evaluator (0-4 scale) — pure function, no i18n dependency */
@@ -54,6 +64,52 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
 
     const [isSaving, setIsSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+    // STEP 6: Playbook selection state
+    const [playbooks, setPlaybooks] = useState<PlaybookSummary[]>([]);
+    const [installedPlaybooks, setInstalledPlaybooks] = useState<string[]>([]);
+    const [installingPlaybook, setInstallingPlaybook] = useState<string | null>(null);
+    const [playbookErrors, setPlaybookErrors] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        if (step !== 6) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await authenticatedFetch(`${API_BASE}/api/v1/playbooks`);
+                if (!res.ok) throw new Error(`Failed to load playbooks: ${res.status}`);
+                const data: PlaybookSummary[] = await res.json();
+                if (!cancelled) setPlaybooks(data);
+            } catch (error) {
+                console.error("Failed to load playbooks", error);
+                if (!cancelled) setPlaybooks([]);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [step]);
+
+    const handleInstallPlaybook = async (id: string) => {
+        setInstallingPlaybook(id);
+        setPlaybookErrors(prev => ({ ...prev, [id]: '' }));
+        try {
+            const res = await authenticatedFetch(`${API_BASE}/api/v1/playbooks/${id}/install`, { method: 'POST' });
+            if (res.status === 422) {
+                const body = await res.json().catch(() => ({}));
+                const missing = [
+                    ...(body.missing_skills || []),
+                    ...(body.missing_mcp_servers || [])
+                ].join(', ');
+                throw new Error(`${t('setup.playbookMissingDeps') || 'Missing dependencies'}: ${missing}`);
+            }
+            if (!res.ok) throw new Error(`${t('setup.playbookError') || 'Installation failed'} (${res.status})`);
+            setInstalledPlaybooks(prev => [...prev, id]);
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : (t('setup.playbookError') || 'Installation failed');
+            setPlaybookErrors(prev => ({ ...prev, [id]: msg }));
+        } finally {
+            setInstallingPlaybook(null);
+        }
+    };
 
     const pwStrength = useMemo(() => {
         const score = evaluatePasswordScore(password);
@@ -106,9 +162,9 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
             if (!data.access_token) throw new Error(t('setup.noToken') || 'Server did not return an access token');
             setAuthToken(data.access_token);
             onComplete();
-            
-            // Force reload to apply BootMode::Normal
-            window.location.reload();
+
+            // Proceed to Playbook selection (reload happens on Start/Skip there)
+            setStep(6);
         } catch (error: unknown) {
             console.error("Setup failed", error);
             const msg = error instanceof Error ? error.message : '';
@@ -476,6 +532,82 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                             <p style={{ color: 'var(--text-secondary)' }}>
                                 {t('setup.awakeningDesc') || 'Securing credentials and booting core modules.'}
                             </p>
+                        </motion.div>
+                    )}
+
+                    {/* STEP 6: Playbook selection (after successful init; reload on Start/Skip) */}
+                    {step === 6 && (
+                        <motion.div key="step6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                            <div style={{ padding: '1.5rem', background: 'var(--white-03)', borderRadius: '50%', marginBottom: '1rem', display: 'inline-block' }}>
+                                <BookOpen size={40} color="var(--accent-cyan)" />
+                            </div>
+                            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+                                {t('setup.playbookTitle') || 'Choose a Playbook'}
+                            </h2>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                                {t('setup.playbookDesc') || 'Install ready-made business workflows so your agent can start working today. You can skip this and add them later.'}
+                            </p>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.5rem', maxHeight: '260px', overflowY: 'auto' }}>
+                                {playbooks.map(pb => {
+                                    const installed = installedPlaybooks.includes(pb.id);
+                                    const installing = installingPlaybook === pb.id;
+                                    return (
+                                        <div key={pb.id} style={{ padding: '1rem', background: 'var(--white-03)', border: `1px solid ${installed ? 'var(--accent-emerald)' : 'var(--border-glass)'}`, borderRadius: 'var(--radius-md)', textAlign: 'left' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                                                <div>
+                                                    <strong style={{ display: 'block', color: 'var(--accent-cyan)' }}>{pb.name}</strong>
+                                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{pb.description}</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleInstallPlaybook(pb.id)}
+                                                    disabled={installed || installing}
+                                                    style={{
+                                                        padding: '0.5rem 1rem',
+                                                        background: installed ? 'var(--accent-emerald)' : 'var(--accent-cyan)',
+                                                        color: 'var(--text-inverse)',
+                                                        border: 'none',
+                                                        borderRadius: 'var(--radius-md)',
+                                                        fontWeight: 700,
+                                                        cursor: installed || installing ? 'default' : 'pointer',
+                                                        opacity: installing ? 0.6 : 1,
+                                                        whiteSpace: 'nowrap',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.3rem'
+                                                    }}
+                                                >
+                                                    {installed
+                                                        ? (<><Check size={14} />{t('setup.playbookInstalled') || 'Installed'}</>)
+                                                        : installing
+                                                            ? (t('setup.playbookInstalling') || 'Installing...')
+                                                            : (t('setup.playbookInstall') || 'Install')}
+                                                </button>
+                                            </div>
+                                            {playbookErrors[pb.id] && (
+                                                <div role="alert" style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--accent-rose)' }}>
+                                                    {playbookErrors[pb.id]}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    style={{ padding: '0.8rem 2rem', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                    {t('setup.playbookSkip') || 'Skip'}
+                                </button>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    style={{ padding: '0.8rem 2rem', background: 'var(--accent-cyan)', color: 'var(--text-inverse)', border: 'none', borderRadius: 'var(--radius-md)', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                    {t('setup.playbookStart') || 'Start Aiome'}
+                                </button>
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
