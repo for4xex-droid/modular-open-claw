@@ -1,0 +1,74 @@
+{
+  "playbook_version": 1,
+  "id": "competitor-research",
+  "name": "競合リサーチ",
+  "description": "競合サイトのページを取得し、テキスト抽出のうえ要約と自社への示唆を生成するリサーチワークフローです。",
+  "tags": ["research"],
+  "required_skills": [],
+  "required_mcp_servers": [],
+  "workflows": [
+    {
+      "id": "1f8e2d3c-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+      "name": "競合サイト分析",
+      "description": "競合 URL のコンテンツを取得・整形し、事業上の示唆を含む要約を生成するワークフローです。",
+      "version": 1,
+      "nodes": [
+        {
+          "id": "start",
+          "node_type": { "Start": { "trigger": "Manual" } },
+          "label": "手動開始",
+          "config": {},
+          "position": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "http-fetch",
+          "node_type": { "HttpRequest": { "method": "GET", "url_template": "{{competitor_url}}" } },
+          "label": "競合サイトのページ取得",
+          "config": {},
+          "position": { "x": 250, "y": 0 }
+        },
+        {
+          "id": "transform-text",
+          "node_type": { "Transform": { "expression": "extract_text" } },
+          "label": "HTML から本文テキストを抽出",
+          "config": {},
+          "position": { "x": 500, "y": 0 }
+        },
+        {
+          "id": "llm-summary",
+          "node_type": { "LlmPrompt": { "model": null, "temperature": null } },
+          "label": "競合サイトの要約と示唆",
+          "config": {
+            "prompt": "抽出した競合サイトの本文テキストを読み、提供価値・ターゲット層・訴求ポイント・差別化要素を整理した要約を作成してください。続けて、自社が参考にすべき点と警戒すべき点を具体的なアクション案付きで日本語で示してください。"
+          },
+          "position": { "x": 750, "y": 0 }
+        }
+      ],
+      "edges": [
+        {
+          "source": "start",
+          "target": "http-fetch",
+          "source_handle": null,
+          "target_handle": null
+        },
+        {
+          "source": "http-fetch",
+          "target": "transform-text",
+          "source_handle": null,
+          "target_handle": null
+        },
+        {
+          "source": "transform-text",
+          "target": "llm-summary",
+          "source_handle": null,
+          "target_handle": null
+        }
+      ],
+      "variables": {
+        "competitor_url": "https://example.com"
+      },
+      "created_at": "2026-07-03T00:00:00Z",
+      "updated_at": "2026-07-03T00:00:00Z"
+    }
+  ]
+}

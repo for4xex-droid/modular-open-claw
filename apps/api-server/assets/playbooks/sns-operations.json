@@ -1,0 +1,59 @@
+{
+  "playbook_version": 1,
+  "id": "sns-operations",
+  "name": "SNS 運用",
+  "description": "SNS 投稿ドラフトを生成し、公開前に担当者が内容を確認・承認するワークフローです。",
+  "tags": ["sns"],
+  "required_skills": [],
+  "required_mcp_servers": [],
+  "workflows": [
+    {
+      "id": "9c5a1b2e-6d4f-4a8b-9c0d-1e2f3a4b5c6d",
+      "name": "SNS 投稿ドラフト作成と承認",
+      "description": "投稿テーマに沿ったドラフトを生成し、公開前に人間の承認を得る SNS 運用ワークフローです。",
+      "version": 1,
+      "nodes": [
+        {
+          "id": "start",
+          "node_type": { "Start": { "trigger": "Manual" } },
+          "label": "手動開始",
+          "config": {},
+          "position": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "llm-draft",
+          "node_type": { "LlmPrompt": { "model": null, "temperature": null } },
+          "label": "SNS 投稿ドラフト生成",
+          "config": {
+            "prompt": "指定されたテーマとトーンに合わせ、X（旧 Twitter）向けの投稿ドラフトを140字以内で3案作成してください。各案にはハッシュタグ候補を2つ付け、文体の違い（情報提供型・共感型・問いかけ型）が分かるようにしてください。"
+          },
+          "position": { "x": 250, "y": 0 }
+        },
+        {
+          "id": "human-approval",
+          "node_type": { "HumanApproval": { "prompt_message": "生成された投稿ドラフトを確認し、問題なければ承認してください", "timeout_seconds": null } },
+          "label": "投稿内容の承認",
+          "config": {},
+          "position": { "x": 500, "y": 0 }
+        }
+      ],
+      "edges": [
+        {
+          "source": "start",
+          "target": "llm-draft",
+          "source_handle": null,
+          "target_handle": null
+        },
+        {
+          "source": "llm-draft",
+          "target": "human-approval",
+          "source_handle": null,
+          "target_handle": null
+        }
+      ],
+      "variables": {},
+      "created_at": "2026-07-03T00:00:00Z",
+      "updated_at": "2026-07-03T00:00:00Z"
+    }
+  ]
+}
