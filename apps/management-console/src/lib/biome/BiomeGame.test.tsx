@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 // R3F + postprocessing モック
 jest.mock('@react-three/fiber', () => ({
@@ -135,7 +135,7 @@ describe('BiomeGame Component', () => {
     global.fetch = mockFetch;
 
     // JWT 認証状態のモック
-    localStorage.setItem('jwt_token', 'mock-jwt-token');
+    sessionStorage.setItem('aiome_secret', 'mock-jwt-token');
 
     render(<BiomeGame seed={42} />);
 
@@ -173,7 +173,7 @@ describe('BiomeGame Component', () => {
     }));
     
     // クリーンアップ
-    localStorage.removeItem('jwt_token');
+    sessionStorage.removeItem('aiome_secret');
   });
 });
 

@@ -167,7 +167,17 @@ impl JwtAuthManager {
 #[async_trait]
 impl AuthManager for JwtAuthManager {
     async fn validate_token(&self, token: &str) -> anyhow::Result<AiomeCustomClaims, AiomeError> {
-        let validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::EdDSA);
+        let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::EdDSA);
+        if let Ok(iss) = std::env::var("JWT_ISSUER") {
+            if !iss.is_empty() {
+                validation.set_issuer(&[iss.as_str()]);
+            }
+        }
+        if let Ok(aud) = std::env::var("JWT_AUDIENCE") {
+            if !aud.is_empty() {
+                validation.set_audience(&[aud.as_str()]);
+            }
+        }
         let token_data =
             jsonwebtoken::decode::<AiomeCustomClaims>(token, &self.decoding_key, &validation)
                 .map_err(|e| AiomeError::SecurityViolation {

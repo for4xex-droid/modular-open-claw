@@ -63,7 +63,7 @@ Once started, access the Management UI via your browser at port `1420`.
 
 > [!IMPORTANT]
 > **Production Security**:
-> A strong `API_SERVER_SECRET` environment variable (minimum 16 characters) is strictly required to start the server. If it is not set or uses an insecure default, the process will panic (terminate) immediately to protect your environment.
+> A strong `API_SERVER_SECRET` environment variable (minimum 16 characters) is strictly required to start the server. If it is not set or uses an insecure default, the process will panic (terminate) immediately to protect your environment. Release builds also require `A2A_NODE_TOKEN`. See the [Operations Manual](docs/guides/OPERATIONS_MANUAL.md) for details.
 
 ```bash
 git clone https://github.com/motivationstudio-llc/aiome
@@ -98,8 +98,6 @@ When Stripe API keys are not configured in `.env`, the system automatically fall
 For detailed technical specifications, transaction protocols, and sequence diagrams, please refer to [AIOME_NURTURE_SYNERGY.md](docs/architecture/AIOME_NURTURE_SYNERGY.md).
 
 ---
-
-## 🌌 What is Aiome? (Philosophy & Concept)
 
 Aiome is more than just an agent framework—it is an **Autonomous AI Operating System** fundamentally designed to let AI agents operate, defend themselves, and evolve safely.
 

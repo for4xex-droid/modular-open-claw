@@ -5,7 +5,6 @@
  * Licensed under the Business Source License 1.1.
  */
 
-#![allow(dead_code)]
 #![allow(clippy::default_constructed_unit_structs)]
 #![allow(clippy::field_reassign_with_default)]
 #![allow(clippy::type_complexity)]

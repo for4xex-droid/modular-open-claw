@@ -13,7 +13,7 @@
 ネットワークエラーや DB ロック（SQLite `BUSY`）に対し、100ms, 200ms, 400ms の指数バックオフリトライを実施。
 
 ### 2.2 冪等性保証
-すべてのトランザクションはユニークな `idempotency_key` を付与し、不慮のリトライによる二重決済を物理的に防止。
+すべてのトランザクションはユニークな `idempotency_key` を付与し、不慮のリトライによる二重決済を物理的に防止。内部 S2S API（`/internal/transfer`, `/internal/instant-refund`, `/internal/withdraw-points`）も `IdempotencyGate` 経由で同一キーの重複実行を拒否し、失敗時はキーを解放して正当なリトライを許可する。
 
 ### 2.3 暴走ストッパー (EconomyInterceptor)
 単一取引額、日次合計、残高のしきい値に基づき、ロジック上の「暴走」から資産を守る物理的な防壁（Guardrail）を実装。

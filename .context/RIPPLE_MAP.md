@@ -4403,3 +4403,32 @@ graph TD
     - X API への接続方式が公式 MCP と `xurl` ブリッジに統一されたことで、認証管理が `xurl` のローカル認証情報ストアに一任され、AIOME サーバー側での不要な OAuth トークン管理・流出リスクが解消。
     - `TrendSonar` モジュールが MCP の検索ツールを利用できるようになったことで、外部 reqwest 接続による X API 直接コールに加えて、MCP 経由のトレンド取得が透過的に統合された。
 
+## Phase: Improvement Plan P0–P3 (Security, Economy, Quality, Repo Hygiene)
+- **変更内容**:
+    - `commercial/apps/nurture-api/src/routes/internal/idempotency_gate.rs` [NEW]: 内部 transfer/refund/withdraw の冪等性ゲート。
+    - `libs/infrastructure/src/sql_helpers.rs` [NEW]: DB/JSON 明示エラー伝播ヘルパー。
+    - `apps/management-console/src/lib/biome/biomeApi.ts` [NEW]: Biome API クライアント統一。
+    - `apps/management-console/src-tauri/src/lib.rs` [MODIFY]: DRM キー永続化 (`resolve_drm_master_key`)。
+    - `apps/key-proxy/src/auth.rs` [MODIFY]: クエリパラメータ認証削除。
+    - `apps/api-server/src/bootstrap/core_services.rs` [MODIFY]: A2A トークン release fail-closed。
+    - `apps/api-server/src/router.rs` [MODIFY]: `/auth/token` レート制限。
+    - `docker-compose.test.yml` [TRACK]: CI Postgres テスト用 compose を Git 追跡。
+- **波及効果**:
+    - 内部 S2S 経済 API の二重送金リスク低減、認証情報のログ/URL 漏洩経路の縮小。
+    - Soul/Artifact/Federation データ読取りの silent corruption リスク低減。
+
+## Phase: Improvement Plan 検証フェーズ (Defect Verification & Fixes)
+- **変更内容**:
+    - `commercial/migrations/{sqlite,postgres}/20260702000000_payout_amount_usd_to_cents.sql` [NEW]: 既適用マイグレーション編集による sqlx `VersionMismatch` を解消（`20260426142940` は HEAD に復元）。
+    - `idempotency_gate.rs` [MODIFY]: `release_idempotent_key` 追加。失敗時にキー解放しないと同一キーのリトライが最大24時間 409 ブロックされる欠陥を修正。
+    - `misc.rs` [MODIFY]: transfer/refund/withdraw のエラーパスでキー解放を呼出し。
+    - `internal_routes_test.rs` [MODIFY]: 冪等性の重複リクエスト・失敗後リトライ検証テスト2件を追加（異常注入で検知可能なことを確認済み）。
+    - `libs/infrastructure/src/artifact_store.rs` [MODIFY]: カテゴリ厳格パース化の退行を小文字正規化で修正。
+- **既知の残課題**:
+    - `tests/swarm_simulation_test.sh` は `test_sig` バイパスの `cfg(test)` 化により実バイナリで署名検証を通過できず、Node B 同期ステップで失敗する見込み。スクリプト側で実 Ed25519 署名の生成が必要。
+    - BiomeGame Jest テスト1（Loading 不検出）とテスト3（OOM）は HEAD 由来の既存不具合（今回の変更とは無関係）。
+
+## Phase: `/docs-sync` (2026-07-03)
+- **同期対象**: `.env.example`, `commercial/.env.example`, `OPERATIONS_MANUAL.md`, `SECURITY_DESIGN.md`, `SECURITY_WHITEPAPER.md`, `INFRASTRUCTURE_MODULES.md`, `AIOME_NURTURE_SYNERGY.md` (§5.4.4), `README.md` / `README_en.md`, `ERROR_BUDGET_AND_RESILIENCE.md`, `CHANGELOG.md`
+- **内容**: 改善計画 P0–P3 および検証フェーズ修正を運用・セキュリティ・アーキテクチャ文書へ反映
+

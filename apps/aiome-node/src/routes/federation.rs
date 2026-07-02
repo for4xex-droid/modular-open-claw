@@ -5,6 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -29,10 +30,16 @@ pub fn router() -> Router<Arc<shared::config::AiomeConfig>> {
         .route("/sync", post(handle_sync))
 }
 
-async fn handle_handshake(Json(_payload): Json<FederationHandshake>) -> Json<HandshakeResponse> {
+async fn handle_handshake(Json(payload): Json<FederationHandshake>) -> Json<HandshakeResponse> {
+    let server_time = chrono::Utc::now().to_rfc3339();
+    tracing::info!(
+        node_id = %payload.node_id,
+        protocol_version = %payload.protocol_version,
+        "Federation handshake received"
+    );
     Json(HandshakeResponse {
         ack: true,
-        server_time: "2026-04-23T00:00:00Z".to_string(),
+        server_time,
     })
 }
 

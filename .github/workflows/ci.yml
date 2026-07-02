@@ -133,7 +133,7 @@ jobs:
       - name: NPM Audit (Critical Vulnerabilities)
         run: npm audit --audit-level=critical
       - name: NPM Signature Verification
-        run: npm audit signatures || true
+        run: npm audit signatures || true # intentional soft-fail (advisory)
       - name: Typecheck
         run: npm run lint
       - name: Run Unit Tests
@@ -168,7 +168,7 @@ jobs:
       - name: NPM Audit (Critical Vulnerabilities)
         run: npm audit --audit-level=critical
       - name: NPM Signature Verification
-        run: npm audit signatures || true
+        run: npm audit signatures || true # intentional soft-fail (advisory)
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
       - name: Run Playwright tests

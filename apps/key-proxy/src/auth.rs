@@ -50,22 +50,7 @@ pub(crate) async fn auth_middleware(
         }
     }
 
-    // Strategy 3: Query parameter fallback (for SDKs that use key=... instead of headers)
-    if !authenticated {
-        if let Some(query) = req.uri().query() {
-            for param in query.split('&') {
-                if let Some(provided_key) = param.strip_prefix("key=") {
-                    if bool::from(subtle::ConstantTimeEq::ct_eq(
-                        provided_key.as_bytes(),
-                        state.vault_secret.expose_secret().as_bytes(),
-                    )) {
-                        authenticated = true;
-                        break;
-                    }
-                }
-            }
-        }
-    }
+    // Strategy 3 removed: query-parameter auth leaks secrets into access logs / Referer.
 
     // Strategy 4: Custom header fallback (for Google GenAI SDK which uses x-goog-api-key)
     if !authenticated {

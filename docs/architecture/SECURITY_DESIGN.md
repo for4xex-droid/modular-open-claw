@@ -219,6 +219,10 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Fail-Safe Skill Arena (Phase 1-2 Reflexion)**: Handled edge cases in parallel AI execution where both skills crash simultaneously (`Err`, `Err`), allowing the Arena to retreat safely rather than crashing the evaluation thread.
 - **Zero-Panic Infrastructure Policy (AADP v5)**: Implemented strict AST and RegEx-based Anti-Pattern enforcement (`pattern-enforcer.sh` / `enforce_unwrap_deny.py`). All unauthorized `unwrap()`, `expect()`, and `panic!()` invocations are completely eradicated across production code (including P2P Federation SQLite row parsers) and integration tests to ensure deterministic stability. Known safe test unwraps are rigorously annotated with `// allow-anti-pattern`.
 - **Resilient Webhook Parsing**: Applies the "Parse-What-You-Need" pattern for Stripe webhooks, isolating standard deserialization panics. Enforces early idempotency rejection to prevent duplicate or tampered replay attacks on financial transactions.
+- **Internal Economy API Idempotency (2026-07)**: `nurture-api` internal routes (`/internal/transfer`, `/internal/instant-refund`, `/internal/withdraw-points`) require `idempotency_key` and route through `IdempotencyGate` backed by `IdempotencyStore`. Failed operations release reserved keys via `delete_key` so legitimate retries are not blocked for the TTL window.
+- **Auth Token Rate Limiting (2026-07)**: `/api/v1/auth/token` is limited to 5 requests per minute per IP to mitigate brute-force attacks.
+- **JWT Claim Pinning (2026-07)**: When `JWT_ISSUER` / `JWT_AUDIENCE` are set, token validation enforces `iss` and `aud` claims.
+- **A2A Fail-Closed Boot (2026-07)**: Release builds require `A2A_NODE_TOKEN`; debug builds may use a dev placeholder with a warning.
 - **Frontend Type Hardening**: Eradicates the use of `any` types in global Catch blocks across the Management Console and deeply nested Trajectory records. Enforces TypeScript's safe `err: unknown` pattern with explicit `instanceof Error` boundaries, mathematically neutralizing runtime TypeErrors caused by unhandled upstream panics.
 - **Cell-Based Architecture (CBA) Namespacing (Stage 0)**: Implements the 1-process=1-cell invariant. `AppDataResolver` strictly validates the `CELL_ID` environment variable using `is_safe_cell_id` (alphanumeric, max 64 chars) to prevent path traversal risks. Additionally, infrastructure scripts (e.g. `backup.sh`) are fortified with robust regex guards to neutralize any shell injection vectors before reaching OS execution.
 - **Production Fallback Safety (Phase 4)**: Renamed test mocks (`MockPromptRegistry`) to explicit production fallbacks (`NoopPromptRegistry`), eliminating the risk of `cfg(test)` conditional compilation bugs breaking production boot sequences, thus aligning with fail-graceful operations.
@@ -265,5 +269,8 @@ For SEO integrations like WordPress, Aiome avoids direct API token injection int
 - **Keychain Access Hardening (v1.0 Beta / Beta 2)**:
   - macOS Keychain への非対話型アクセスフリーズを回避するため、`VAULT_MASTER_PASSWORD` のロード時は環境変数の確認を macOS Keychain よりも優先するよう順序を変更。
 
+### 6.7 Query-Parameter Auth Removal (2026-07)
+The `key-proxy` no longer accepts `?key=` query-parameter authentication. Secrets must be supplied via `Authorization: Bearer` or approved header fallbacks only. This prevents vault credentials from appearing in access logs or Referer headers.
+
 ---
-*最終更新: 2026-06-26 (CBA isolation guard & P2P Federation E2E Encryption)*
+*最終更新: 2026-07-03 (Internal economy idempotency, auth token rate limit, JWT iss/aud pinning, key-proxy query auth removal)*

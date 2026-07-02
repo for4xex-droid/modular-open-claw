@@ -6,6 +6,7 @@
  */
 #![cfg_attr(test, allow(clippy::unwrap_used))]
 #![deny(unsafe_code)]
+// dead_code: 個別 #[allow] への段階移行中。pre-push clippy (-D warnings) 通過まで暫定維持。
 #![allow(dead_code)]
 #![allow(clippy::default_constructed_unit_structs)]
 #![allow(clippy::field_reassign_with_default)]

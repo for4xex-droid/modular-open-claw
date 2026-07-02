@@ -21,6 +21,7 @@ use secrecy::ExposeSecret;
 pub mod balance;
 pub mod escrow;
 pub mod gdpr;
+pub mod idempotency_gate;
 pub mod misc;
 pub mod types;
 

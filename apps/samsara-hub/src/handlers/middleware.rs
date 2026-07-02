@@ -43,10 +43,7 @@ pub async fn auth_middleware(
             warn!("⛔ [Hub] validate_token failed (token redacted)");
         }
     } else {
-        warn!(
-            "⛔ [Hub] Auth header does not start with Bearer. Received: {}",
-            auth_header
-        );
+        warn!("⛔ [Hub] Auth header does not start with Bearer (header redacted)");
     }
 
     if !authenticated {

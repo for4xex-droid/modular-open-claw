@@ -11,9 +11,9 @@ use tracing::warn;
 /// Verify an Ed25519 signature given Base64 encoded public key and signature,
 /// and the original payload string.
 pub fn verify_ed25519_signature(pubkey_b64: &str, sig_b64: &str, payload: &str) -> bool {
-    #[cfg(debug_assertions)]
+    #[cfg(test)]
     if sig_b64 == "test_sig" {
-        return true; // Bypass for debug test harnesses
+        return true; // Bypass for unit tests only
     }
 
     if let (Ok(pubkey_bytes), Ok(sig_bytes)) = (

@@ -24,7 +24,9 @@
 #![allow(clippy::unnecessary_to_owned)]
 #![allow(clippy::redundant_closure)]
 #![deny(unsafe_code)]
-#![allow(unused_imports, unused_variables, dead_code, unused_mut)]
+// dead_code: 個別 #[allow] への段階移行中。クレート全体 allow は pre-existing 17件の dead_code 解消まで暫定維持。
+#![allow(dead_code)]
+#![allow(unused_imports, unused_variables, unused_mut)]
 
 //! # Infrastructure — I/O実装層
 //!
@@ -174,6 +176,7 @@ pub mod soul_mutator;
 /// AgentSoulのSQLite永続化
 pub mod soul_store;
 pub mod spec_provider;
+pub mod sql_helpers;
 /// Let It Crash / Supervision Tree (Phase 1.5)
 pub mod supervisor;
 

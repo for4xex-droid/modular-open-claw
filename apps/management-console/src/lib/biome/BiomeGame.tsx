@@ -16,7 +16,7 @@ import { BiomeResult } from './BiomeResult';
 import { BiomeDendou, Specimen } from './BiomeDendou';
 import { BiomeTutorial } from './BiomeTutorial';
 import { BiomeEventToast } from './BiomeEventToast';
-import { API_BASE } from '../../config';
+import { fetchBiomeSpecimens, saveBiomeRun, saveBiomeSpecimen } from './biomeApi';
 import { isAuthenticated } from '../../lib/auth';
 import ThemeBridge from './ThemeBridge';
 
@@ -118,24 +118,8 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
   const fetchDendouList = useCallback(async () => {
     if (!isAuthenticated()) return;
     try {
-      const token = localStorage.getItem('jwt_token');
-      const res = await fetch(`${API_BASE}/api/v1/biome/specimens`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        // Specimen 構造体にマッピング
-        const mapped: Specimen[] = data.map((item: any) => ({
-          id: item.id,
-          name: item.specimen_name,
-          generation: 200, // 保存時の世代
-          rarity: item.rarity,
-          date: new Date(item.created_at).toLocaleDateString()
-        }));
-        setDendouList(mapped);
-      }
+      const data = await fetchBiomeSpecimens();
+        setDendouList(data);
     } catch (e) {
       console.error('Failed to fetch specimens', e);
     }
@@ -502,7 +486,6 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
   const handleSaveSpecimen = async () => {
     if (loading || !isAuthenticated()) return;
     try {
-      const token = localStorage.getItem('jwt_token');
       const runId = crypto.randomUUID();
       const agentId = crypto.randomUUID();
 
@@ -526,16 +509,7 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
         is_dendou: 1
       };
 
-      const runRes = await fetch(`${API_BASE}/api/v1/biome/runs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(runPayload)
-      });
-
-      if (!runRes.ok) throw new Error('Failed to save run');
+      await saveBiomeRun(runPayload);
 
       // 2. ゲノムデータを中央付近のセル(64,64)からシリアライズして取得
       const genomeStr = serializeGenome(64, 64) || '{}';
@@ -551,20 +525,10 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
         active_cell_count: getActiveCellCount(),
       };
 
-      const specRes = await fetch(`${API_BASE}/api/v1/biome/specimens`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(specimenPayload)
-      });
-
-      if (specRes.ok) {
-        setShowResult(false);
-        setShowDendou(true);
-        fetchDendouList();
-      }
+      await saveBiomeSpecimen(specimenPayload);
+      setShowResult(false);
+      setShowDendou(true);
+      fetchDendouList();
     } catch (e) {
       console.error('Failed to save specimen', e);
     }

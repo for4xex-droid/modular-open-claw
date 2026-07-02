@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
-**Version:** 3.2  
-**Last Updated:** 2026-06-18
+**Version:** 3.3  
+**Last Updated:** 2026-07-03
 
 ---
 
@@ -94,8 +94,14 @@ LOCAL_LLM_CONCURRENCY=2                          # Fast tier 用ローカルモ�
 # --- Nurture Hybrid Mode (Desktop) ---
 NURTURE_INTERNAL_SECRET=your_secret              # Nurture-API とのS2S認証用シークレット
 NURTURE_API_URL=http://localhost:3020            # Nurture-APIのローカルサイドカーURL
+NURTURE_DRM_MASTER_KEY=your_drm_key              # release 必須。Desktop debug は {data_dir}/.nurture_drm_master_key を自動生成・永続化
 # NURTURE_CLOUD_URL=https://nurture.your-domain.com # リモートの Nurture インスタンスを使用する場合設定
 # NURTURE_DISABLED=true                           # 経済機能を無効化しOSSモードで動作させる場合設定
+
+# --- Security (Production) ---
+A2A_NODE_TOKEN=your_a2a_token                    # release ビルド必須。未設定時は api-server が起動失敗
+# JWT_ISSUER=aiome                                # 設定時は JWT の iss を検証
+# JWT_AUDIENCE=aiome-api                          # 設定時は JWT の aud を検証
 
 # --- Data Directory Override ---
 # AIOME_DATA_DIR=/path/to/custom/data             # CLIとTauriデスクトップアプリで同じデータ領域を参照するためのパスオーバーライド
@@ -238,6 +244,10 @@ RUST_LOG=info cargo run -p api-server
 - [ ] 運用アラート: Discord Webhook アラート送信のために `.env` に `DISCORD_WEBHOOK_URL` を設定 (Phase C-4)
 - [ ] Tauri デスクトップビルド: `scripts/desktop_sidecar_manager.py` によるサイドカーバイナリの物理検証（`--check-core` または `--check-all`）を実行し、合格していることを確認 (Reflexion)
 - [ ] Tauri 環境変数: Nurture をローカル稼働させる場合は `.env` で `NURTURE_INTERNAL_SECRET` が安全に定義されているか確認。リモート利用時は `NURTURE_CLOUD_URL` が正しく設定されているか確認 (Reflexion)
+- [ ] Tauri デスクトップ (release): `NURTURE_DRM_MASTER_KEY` が環境変数または `{data_dir}/.nurture_drm_master_key` で解決できるか確認
+- [ ] api-server (release): `A2A_NODE_TOKEN` が設定されているか確認（未設定時は起動失敗）
+- [ ] nurture-api (cloud-storage): `S3_BUCKET_NAME` が設定されているか確認（未設定時は Mock へフォールバックせず起動エラー）
+- [ ] CI Postgres テスト: `docker-compose.test.yml` を用いた `db_config_test` がローカルで PASS するか確認
 
 
 ### 9. local Embedding Server (ruri-v3) の起動

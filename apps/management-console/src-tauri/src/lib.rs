@@ -140,6 +140,37 @@ fn check_docker_available() -> bool {
 
 use tauri_plugin_shell::ShellExt;
 
+fn resolve_drm_master_key(data_dir: &str) -> Result<String, String> {
+    if let Ok(key) = std::env::var("NURTURE_DRM_MASTER_KEY") {
+        if !key.is_empty() {
+            return Ok(key);
+        }
+    }
+
+    let key_path = format!("{data_dir}/.nurture_drm_master_key");
+    if let Ok(existing) = std::fs::read_to_string(&key_path) {
+        let trimmed = existing.trim().to_string();
+        if !trimmed.is_empty() {
+            return Ok(trimmed);
+        }
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        return Err(
+            "NURTURE_DRM_MASTER_KEY is not set and no persisted desktop key was found".to_string(),
+        );
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        let generated = generate_session_secret();
+        std::fs::write(&key_path, &generated)
+            .map_err(|e| format!("Failed to persist DRM master key at {key_path}: {e}"))?;
+        Ok(generated)
+    }
+}
+
 fn start_sidecars(app: &tauri::AppHandle) -> Result<(), String> {
     let mut state = get_sidecar_state()
         .lock()
@@ -162,6 +193,8 @@ fn start_sidecars(app: &tauri::AppHandle) -> Result<(), String> {
         NurtureMode::Local => {
             let nurture_db = format!("sqlite:{}/nurture.db", &data_dir);
 
+            let drm_master_key = resolve_drm_master_key(&data_dir)?;
+
             let nurture_sidecar = app
                 .shell()
                 .sidecar("nurture-api")
@@ -170,11 +203,7 @@ fn start_sidecars(app: &tauri::AppHandle) -> Result<(), String> {
                 .env("NURTURE_INTERNAL_SECRET", &nurture_secret)
                 .env("NURTURE_BIND_ADDR", "127.0.0.1")
                 .env("CELL_ID", &cell_id)
-                .env(
-                    "NURTURE_DRM_MASTER_KEY",
-                    std::env::var("NURTURE_DRM_MASTER_KEY")
-                        .unwrap_or_else(|_| "dev_drm_master_key_1234567890".to_string()),
-                );
+                .env("NURTURE_DRM_MASTER_KEY", &drm_master_key);
 
             let (_, nurture_child) = nurture_sidecar.spawn().map_err(|e| e.to_string())?;
             state.nurture_child = Some(nurture_child);

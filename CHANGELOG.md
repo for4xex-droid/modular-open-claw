@@ -1,6 +1,55 @@
 ## [Unreleased]
 
 ### Added
+- **改善計画 P0–P3 の一括実装（セキュリティ・経済・品質・リポジトリ衛生）**:
+  - `commercial/apps/nurture-api/src/routes/internal/idempotency_gate.rs` [NEW]: 内部送金・返金・ポイント引出し API に既存 `IdempotencyStore` を配線。
+  - `libs/infrastructure/src/sql_helpers.rs` [NEW]: DB 行読取り・JSON シリアライズの明示的エラー伝播ヘルパー。
+  - `apps/management-console/src/lib/biome/biomeApi.ts` [NEW]: BiomeGame の API 呼び出しを `authenticatedFetch` に統一。
+  - `docker-compose.test.yml`: CI 用 Postgres テスト compose を Git 追跡対象に追加。
+  - `.gitignore`: `aiome.db.bak.*` / `audit*.json` / `venv_new` / `workspace_*` / `.nurture_drm_master_key` を追加。`.context/RIPPLE_MAP.md` のみ Git 共有を許可。
+
+### Security & Robustness
+- **内部経済 API 冪等性**: `transfer` / `instant_refund` / `withdraw_points` が `idempotency_key` 必須 + `SQLiteIdempotencyStore` 経由で重複防止。
+- **Tauri DRM キー**: 固定 dev 既定値注入を廃止。env 未設定時は `{data_dir}/.nurture_drm_master_key` を生成・永続化（release は env 必須）。
+- **A2A トークン**: release ビルドで `A2A_NODE_TOKEN` 未設定時は起動失敗（debug のみ dev プレースホルダー）。
+- **key-proxy**: クエリパラメータ `?key=` 認証経路を削除（アクセスログ漏洩対策）。
+- **`/api/v1/auth/token`**: レート制限 5 req/min を追加。
+- **samsara-hub**: 認証失敗ログから Authorization ヘッダー平文出力を除去。
+- **JWT**: `JWT_ISSUER` / `JWT_AUDIENCE` 環境変数が設定されている場合に iss/aud をピン留め。
+- **S3**: cloud-storage feature 有効時、`S3_BUCKET_NAME` 未設定は Mock ではなく起動エラー。
+
+### Refactoring & Code Quality
+- **`unwrap_or_default` 撲滅（部分）**: `soul_store` / `artifact_store` / `job_queue/federation` の DB 読取り・JSON 処理を明示エラー化。
+- **`infrastructure/lib.rs`**: クレート全体 `dead_code` allow を削除（unused_* のみ暫定許可）。
+- **api-server bootstrap**: モジュール先頭 `dead_code` allow を削除。
+- **BiomeGame**: `localStorage['jwt_token']` を廃止し `authenticatedFetch` + `biomeApi.ts` に統一。
+- **aiome-node `/handshake`**: ハードコード server_time を `Utc::now()` に修正。
+- **出金スキーマ**: `amount_usd REAL` → `amount_usd_cents INTEGER`。既適用マイグレーション（`20260426142940`）の直接編集は sqlx の `VersionMismatch` を引き起こすため元に戻し、新規マイグレーション `20260702000000_payout_amount_usd_to_cents.sql`（SQLite/Postgres 両方、リネーム＋セント換算）で対応。
+- **tool_call_router / stripe webhook**: イベント送信失敗の握りつぶしをログ付き処理に変更。
+
+### Fixed (検証フェーズで発見・修正)
+- **冪等性ゲート キーリーク**: `transfer` / `instant_refund` / `withdraw_points` の処理失敗時に予約済み `idempotency_key` を `delete_key` で解放するよう修正。従来は一時的な失敗後の正当なリトライが最大24時間 409 でブロックされた。重複リクエスト検証テスト2件（`test_transfer_idempotency_duplicate_request` / `test_transfer_idempotency_key_released_on_failure`）を追加し、異常注入（ゲート無効化）で検知されることを確認済み。
+- **`artifact_store` カテゴリ解析の退行**: 厳格パース化により DB 内の大文字カテゴリ（`'Report'` 等）が拒否される退行を小文字正規化で修正。
+- **BiomeGame.test.tsx**: `fireEvent` の import 漏れ（HEAD 由来の潜在バグ）を修正。
+
+### Documentation (`/docs-sync`)
+- **`.env.example` / `commercial/.env.example`**: `JWT_ISSUER` / `JWT_AUDIENCE`、`A2A_NODE_TOKEN`（release 必須）、`NURTURE_DRM_MASTER_KEY`（Desktop 永続化）、`S3_BUCKET_NAME`（cloud-storage 必須）の説明を追記。
+- **`docs/guides/OPERATIONS_MANUAL.md`**: v3.3 — 本番セキュリティ環境変数と CI Postgres チェックリストを追加。
+- **`docs/architecture/SECURITY_DESIGN.md`**: 内部経済 API 冪等性、auth token レート制限、JWT iss/aud、key-proxy クエリ認証削除を追記。
+- **`docs/specs/SECURITY_WHITEPAPER.md`**: 同上のセキュリティ強化を Commerce / Abyss Vault セクションに反映。
+- **`docs/architecture/INFRASTRUCTURE_MODULES.md`**: `sql_helpers` モジュール追加、artifact/soul_store 更新。
+- **`docs/architecture/AIOME_NURTURE_SYNERGY.md`**: §5.4.4 `IdempotencyGate` シーケンス図を追加。
+- **`README.md` / `README_en.md`**: Production Security に `A2A_NODE_TOKEN` 必須を追記。
+- **`commercial/docs/ERROR_BUDGET_AND_RESILIENCE.md`**: 内部 S2S 冪等性ゲートの記述を追加。
+
+### Removed
+- Git 追跡から `aiome.db.bak.*` / `audit.json` / `rewrite_main.py` / `test_output.txt` / `scratch/` 残骸を除去。
+
+### Added
+- **Cursor マルチルート開発ワークスペース (`aiome.code-workspace`)**:
+  - Aiome 本体・Nurture `commercial/`・Management Console の 3 ルートを統合した VS Code / Cursor ワークスペースを追加。
+  - `cargo check/test`、`api-server` / `nurture-api` 起動、フロントエンド dev、Docker スタック起動タスクおよび LLDB デバッグ構成を同梱。
+  - `.cursor/mcp.json` の filesystem MCP スコープを `aiome` モノレポに限定。
 - **MCP Patterns 論文知見 (arXiv:2606.30317) に基づくツール総数・説明文の品質監視機能**:
   - `apps/api-server/src/mcp/client.rs` [MODIFY]: 統一型 `McpEndpoint` enum に、Stdio/HTTP トランスポート共通でサーバーIDを取得できる `pub fn id(&self) -> &str` メソッドを追加。また、ツール総数監視定数 `MCP_TOOL_BUDGET_WARN = 15` を追加。
   - `apps/api-server/src/mcp/client.rs` [MODIFY]: `discover_mcp_tools` 関数において、接続されている MCP サーバーからのツール総数を集計し、15個を超える場合に `[MCP][BudgetCheck]` 警告ログを出力する機能を追加。また、`description` が空または20文字未満の低品質なツールを一括検知し、`[MCP][DescriptionCheck]` 警告ログとして要約出力する品質監査ロジックを実装。

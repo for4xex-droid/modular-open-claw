@@ -12,7 +12,7 @@
 | `cortex_synth` | ドキュメント群からタスクに応じた高品質なJSONLデータセット（ShareGPT形式）を自律生成する教師データ蒸留エンジン。 | **実装完了** |
 | `auth` | OAuth 2.1 / JWT 検証 (`AuthManager`) を提供。ステートレスな認証基盤。**Phase 21** で `/api/v1/auth/authorize` 等のモックエンドポイントを実装。 | **実装完了 (Phase 8.2)** |
 | `a2ui` | LLM出力からリアクティブUIを動的にストリーミング生成する基盤（Generative UI）。型安全な `schema`、`A2uiValidator` による XSS/SSRF および深再帰(DoS)防御を提供。 | **Phase 0 完了** |
-| `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。Embedding 検索、CSAM 非同期スキャン、RT-6 監査ログ（読み書き時の全アクセス記録）、PathSandbox によるパストラバーサル防御、DRM vault ディレクトリ分離を実装。PostgreSQL/SQLite 両対応。 | **強化完了** |
+| `artifact_store` | 生成された画像や動画、スキルの成果物を永続化・管理。Embedding 検索、CSAM 非同期スキャン、RT-6 監査ログ（読み書き時の全アクセス記録）、PathSandbox によるパストラバーサル防御、DRM vault ディレクトリ分離を実装。PostgreSQL/SQLite 両対応。**2026-07** で DB 行読取りを `sql_helpers::require_column` / `json_parse` 経由の明示エラー化に移行。 | **強化完了** |
 | `buzz` | SNS等への自動投稿・スケジュール管理を行う自律型ワーカーおよび生成エンジン。 | **実装・堅牢化完了** |
 | `channel_bridge` | Discord/Telegram 等の外部チャンネルとの抽象化通信層。 | 実装完了 |
 | `circuit_breaker` | 外部APIのダウンタイムを検知し、安全に遮断。状態遷移時に `AlertManager` と非同期で連動し、トリップ時に Critical アラートを発火。 | 実装完了 |
@@ -65,7 +65,8 @@
 | `society_of_thought` | **ADR-032**: Dochkina (2026) の Endogeneity Paradox に基づく自己組織化熟議エンジン。Sequential マルチパス協調、自律ロール発明、Voluntary Self-Abstention、Capability-Aware Protocol Fallback を実装。Oracle `multi_review` と統合済。 | **ADR-032 完了** |
 | `soul_adapter` | 内部イベントから Experience へ変換、予測評価、および **Phase 37a** で L2.5 層 `WhisperMiddleware` を追加した Middleware Chain との連携。 | **Phase 37a 完了** |
 | `soul_mutator` | 経験に基づく人格（SOUL.md）の動的な書き換え（L0）。※ Phase 2以降は `soul` crate（L1-L3）のSamsaraEngineへ段階的に移行予定。 | 実装完了 |
-| `soul_store` | AIの魂（AgentSoul）と記憶（ExperienceBuffer）、Anamnesisの SQLite 永続化（L1-L3用）。**Phase 10.1b** で LoRA ハッシュ保存をサポート。 | **Phase 10.1 完了** |
+| `soul_store` | AIの魂（AgentSoul）と記憶（ExperienceBuffer）、Anamnesisの SQLite 永続化（L1-L3用）。**Phase 10.1b** で LoRA ハッシュ保存をサポート。**2026-07** で JSON シリアライズ/デシリアライズを `sql_helpers` 経由の明示エラー化に移行。 | **Phase 10.1 完了** |
+| `sql_helpers` | DB 行からの必須カラム抽出 (`require_column`) と JSON シリアライズ/デシリアライズ (`json_string`, `json_parse`) を `AiomeError::Infrastructure` で統一。`unwrap_or_default` による silent corruption を排除。 | **2026-07 追加** |
 | `trajectory_adapter` | 実行軌跡 (Trajectory) を RLHF 向けフォーマット (Triplet) に変換・抽出するアダプタ。`ConstitutionalValidator` と統合され、Phase G 監視ループの報酬計算 (Reward Signal) を担う。 | **Phase G 完了** |
 | `trajectory_store` | AgentRx の行動軌跡を SQLite に永続化。**ADR-024 Phase 2** で `job_id` および `tool_name` による詳細な追跡に対応し、**Phase G** にて `reward_signal` と `llm_prompt_hash` による RL フィードバック閉ループを統合。 | **機能拡張完了** |
 | `trend_sonar` | 外部トレンドの収集（Web/RSS/X）と LLM による評価・選別。マルチソース集約対応。**Phase 8.7** にて全体ストールを防ぐ `FuturesUnordered` + Timeout の並行アーキテクチャと依存性注入（DI）によるテスト分離パラダイムを確立。 | **Phase 8.7 完了** |
@@ -84,7 +85,7 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-06-29 (Asia/Tokyo) - Verify-to-Iterate 自己修復ループ統合および Boltzmann 選択の実装に伴う更新*
+*最終更新: 2026-07-03 (Asia/Tokyo) - sql_helpers 追加、artifact_store/soul_store 明示エラー化*
 
 ## Phase 6 Integration Notes
 

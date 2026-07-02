@@ -801,10 +801,20 @@ pub async fn init_core_services(
                 s.expose_secret().to_string()
             })
             .unwrap_or_else(|| {
-                tracing::warn!(
-                    "⚠️ [api-server] A2A_NODE_TOKEN not set! Insecure A2A communication."
-                );
-                "placeholder_for_phase51".to_string()
+                #[cfg(debug_assertions)]
+                {
+                    tracing::warn!(
+                        "⚠️ [api-server] A2A_NODE_TOKEN not set! Using insecure dev placeholder."
+                    );
+                    "dev_a2a_placeholder_do_not_use_in_prod".to_string()
+                }
+                #[cfg(not(debug_assertions))]
+                {
+                    tracing::error!(
+                        "🚨 [FATAL] A2A_NODE_TOKEN must be set in production for secure A2A gRPC!"
+                    );
+                    std::process::exit(1);
+                }
             });
         let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {
             endpoint_url,

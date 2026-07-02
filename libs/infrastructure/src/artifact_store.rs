@@ -110,10 +110,10 @@ impl UniversalArtifactStore {
         i32: sqlx::Decode<'a, R::Database> + sqlx::Type<R::Database>,
         &'a str: sqlx::ColumnIndex<R>,
     {
-        let cat_str: String = row.try_get("category").unwrap_or_default();
-        let tags_json: String = row.try_get("tags").unwrap_or_default();
-        let manifest_json: String = row.try_get("file_manifest").unwrap_or_default();
-        let karma_json: String = row.try_get("karma_refs").unwrap_or_default();
+        let cat_str: String = crate::sql_helpers::require_column(row, "category")?;
+        let tags_json: String = crate::sql_helpers::require_column(row, "tags")?;
+        let manifest_json: String = crate::sql_helpers::require_column(row, "file_manifest")?;
+        let karma_json: String = crate::sql_helpers::require_column(row, "karma_refs")?;
 
         let is_protected = row.try_get::<bool, _>("is_protected").unwrap_or_else(|_| {
             row.try_get::<i32, _>("is_protected")
@@ -122,22 +122,25 @@ impl UniversalArtifactStore {
         });
 
         Ok(ArtifactMeta {
-            id: row.try_get("id").unwrap_or_default(),
-            title: row.try_get("title").unwrap_or_default(),
-            category: serde_json::from_str(&format!("\"{}\"", cat_str))
-                .unwrap_or(ArtifactCategory::Report),
-            tags: serde_json::from_str(&tags_json).unwrap_or_default(),
-            created_by: row.try_get("created_by").unwrap_or_default(),
-            dir_path: row.try_get("dir_path").unwrap_or_default(),
-            files: serde_json::from_str(&manifest_json).unwrap_or_default(),
-            karma_refs: serde_json::from_str(&karma_json).unwrap_or_default(),
-            job_ref: row.try_get("job_ref").unwrap_or_default(),
-            soul_version_hash: row.try_get("soul_version_hash").unwrap_or_default(),
-            signature: row.try_get("signature").unwrap_or_default(),
-            text_content: row.try_get("text_content").unwrap_or_default(),
+            id: crate::sql_helpers::require_column(row, "id")?,
+            title: crate::sql_helpers::require_column(row, "title")?,
+            category: serde_json::from_str(&format!("\"{}\"", cat_str.to_lowercase())).map_err(
+                |e| AiomeError::Infrastructure {
+                    reason: format!("Invalid artifact category '{cat_str}': {e}"),
+                },
+            )?,
+            tags: crate::sql_helpers::json_parse(&tags_json, "tags")?,
+            created_by: crate::sql_helpers::require_column(row, "created_by")?,
+            dir_path: crate::sql_helpers::require_column(row, "dir_path")?,
+            files: crate::sql_helpers::json_parse(&manifest_json, "file_manifest")?,
+            karma_refs: crate::sql_helpers::json_parse(&karma_json, "karma_refs")?,
+            job_ref: crate::sql_helpers::require_column(row, "job_ref")?,
+            soul_version_hash: crate::sql_helpers::require_column(row, "soul_version_hash")?,
+            signature: crate::sql_helpers::require_column(row, "signature")?,
+            text_content: crate::sql_helpers::require_column(row, "text_content")?,
             edges: Vec::new(),
             is_protected,
-            created_at: row.try_get("created_at").unwrap_or_default(),
+            created_at: crate::sql_helpers::require_column(row, "created_at")?,
         })
     }
 

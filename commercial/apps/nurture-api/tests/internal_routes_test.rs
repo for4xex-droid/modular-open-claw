@@ -231,7 +231,7 @@ async fn test_forget_actor_purges_pii_and_physical_assets() {
         .await
         .unwrap();
 
-    sqlx::query("INSERT INTO nurture_payout_requests (id, actor_id, amount_usd, points_burned, status) VALUES (?, ?, 10.0, 1000, 'pending')")
+    sqlx::query("INSERT INTO nurture_payout_requests (id, actor_id, amount_usd_cents, points_burned, status) VALUES (?, ?, 1000, 1000, 'pending')")
         .bind(Uuid::new_v4().to_string())
         .bind(actor_id.to_string())
         .execute(&pool)
@@ -1045,4 +1045,173 @@ async fn test_internal_api_validate_activity_invalid_type() {
 
     // 不正なactivity_type -> 400 or 500 (200 OK にはならない)
     assert_ne!(res.status_code(), StatusCode::OK);
+}
+
+/// 冪等性ゲート: 同一 idempotency_key での重複 transfer が二重送金にならないこと
+#[tokio::test]
+async fn test_transfer_idempotency_duplicate_request() {
+    let (server, _tdir) = setup_test_server().await;
+    let from_id = Uuid::new_v4();
+    let to_id = Uuid::new_v4();
+
+    let cert = OxiLeanProofCertificate::generate(
+        "test-edge-node".to_string(),
+        950,
+        chrono::Utc::now().to_rfc3339(),
+        "test_secret_key",
+    );
+    let cert_b64 = base64::Engine::encode(
+        &base64::engine::general_purpose::STANDARD,
+        serde_json::to_string(&cert).unwrap(),
+    );
+
+    // 送金元に残高をチャージ
+    let charge = json!({
+        "actor_id": from_id,
+        "amount": 1000,
+        "currency": "coin",
+        "stripe_event_id": "evt_idemp_transfer",
+        "idempotency_key": "idemp_charge_for_transfer"
+    });
+    let res_charge = server
+        .post("/internal/coin-charge")
+        .add_header(
+            header::HeaderName::from_static("x-oxilean-proof-certificate"),
+            header::HeaderValue::from_str(&cert_b64).unwrap(),
+        )
+        .json(&charge)
+        .await;
+    assert_eq!(res_charge.status_code(), StatusCode::OK);
+
+    let transfer = json!({
+        "from_id": from_id,
+        "to_id": to_id,
+        "amount": 300,
+        "idempotency_key": "idemp_dup_transfer"
+    });
+
+    // 1回目: 正常に送金される
+    let res1 = server
+        .post("/internal/transfer")
+        .add_header(
+            header::HeaderName::from_static("x-oxilean-proof-certificate"),
+            header::HeaderValue::from_str(&cert_b64).unwrap(),
+        )
+        .json(&transfer)
+        .await;
+    assert_eq!(res1.status_code(), StatusCode::OK);
+    let body1: serde_json::Value = res1.json();
+    let tx_id1 = body1["transaction_id"].as_str().unwrap().to_string();
+
+    // 2回目（同一キー）: キャッシュ応答が返り、二重送金されない
+    let res2 = server
+        .post("/internal/transfer")
+        .add_header(
+            header::HeaderName::from_static("x-oxilean-proof-certificate"),
+            header::HeaderValue::from_str(&cert_b64).unwrap(),
+        )
+        .json(&transfer)
+        .await;
+    assert_eq!(res2.status_code(), StatusCode::OK);
+    let body2: serde_json::Value = res2.json();
+    assert_eq!(
+        body2["transaction_id"].as_str().unwrap(),
+        tx_id1,
+        "同一キーの再送は同じ transaction_id を返すべき（二重送金の禁止）"
+    );
+
+    // 残高検証: 300 は一度しか引き落とされていない
+    let res_balance = server
+        .get(&format!("/internal/balance/{}", from_id))
+        .add_header(
+            header::HeaderName::from_static("x-oxilean-proof-certificate"),
+            header::HeaderValue::from_str(&cert_b64).unwrap(),
+        )
+        .await;
+    let balance: serde_json::Value = res_balance.json();
+    assert_eq!(balance["balance"], 700, "二重送金が発生している");
+
+    // キーなしの transfer は 400 で拒否される
+    let no_key = json!({
+        "from_id": from_id,
+        "to_id": to_id,
+        "amount": 100
+    });
+    let res_no_key = server
+        .post("/internal/transfer")
+        .add_header(
+            header::HeaderName::from_static("x-oxilean-proof-certificate"),
+            header::HeaderValue::from_str(&cert_b64).unwrap(),
+        )
+        .json(&no_key)
+        .await;
+    assert_eq!(res_no_key.status_code(), StatusCode::BAD_REQUEST);
+}
+
+/// 冪等性ゲート: 処理失敗時にキーが解放され、同一キーでのリトライが可能なこと
+#[tokio::test]
+async fn test_transfer_idempotency_key_released_on_failure() {
+    let (server, _tdir) = setup_test_server().await;
+    let from_id = Uuid::new_v4();
+    let to_id = Uuid::new_v4();
+
+    let cert = OxiLeanProofCertificate::generate(
+        "test-edge-node".to_string(),
+        950,
+        chrono::Utc::now().to_rfc3339(),
+        "test_secret_key",
+    );
+    let cert_b64 = base64::Engine::encode(
+        &base64::engine::general_purpose::STANDARD,
+        serde_json::to_string(&cert).unwrap(),
+    );
+
+    // 残高ゼロのまま送金 -> 失敗する
+    let transfer = json!({
+        "from_id": from_id,
+        "to_id": to_id,
+        "amount": 500,
+        "idempotency_key": "idemp_retry_after_failure"
+    });
+    let res_fail = server
+        .post("/internal/transfer")
+        .add_header(
+            header::HeaderName::from_static("x-oxilean-proof-certificate"),
+            header::HeaderValue::from_str(&cert_b64).unwrap(),
+        )
+        .json(&transfer)
+        .await;
+    assert_ne!(res_fail.status_code(), StatusCode::OK);
+
+    // 残高をチャージしてから同一キーでリトライ -> キーが解放済みなので成功する
+    let charge = json!({
+        "actor_id": from_id,
+        "amount": 1000,
+        "currency": "coin",
+        "stripe_event_id": "evt_idemp_retry",
+        "idempotency_key": "idemp_charge_for_retry"
+    });
+    let res_charge = server
+        .post("/internal/coin-charge")
+        .add_header(
+            header::HeaderName::from_static("x-oxilean-proof-certificate"),
+            header::HeaderValue::from_str(&cert_b64).unwrap(),
+        )
+        .json(&charge)
+        .await;
+    assert_eq!(res_charge.status_code(), StatusCode::OK);
+
+    let res_retry = server
+        .post("/internal/transfer")
+        .add_header(
+            header::HeaderName::from_static("x-oxilean-proof-certificate"),
+            header::HeaderValue::from_str(&cert_b64).unwrap(),
+        )
+        .json(&transfer)
+        .await;
+    assert_eq!(
+        res_retry.status_code(),
+        StatusCode::OK,
+        "失敗後の同一キーのリトライは 409 でブロックされず成功すべき"
+    );
 }

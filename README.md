@@ -63,7 +63,7 @@ docker compose -f docker-compose.commercial.yml up -d
 
 > [!IMPORTANT]
 > **Production Security**:
-> 起動には必ず16文字以上の強固な `API_SERVER_SECRET` 環境変数が必要です。設定されていない場合、セキュリティ保護のためプロセスは起動直後にパニック（終了）します。
+> 起動には必ず16文字以上の強固な `API_SERVER_SECRET` 環境変数が必要です。設定されていない場合、セキュリティ保護のためプロセスは起動直後にパニック（終了）します。release ビルドでは `A2A_NODE_TOKEN` も必須です。詳細は [Operations Manual](docs/guides/OPERATIONS_MANUAL.md) を参照してください。
 
 ```bash
 git clone https://github.com/motivationstudio-llc/aiome
@@ -97,8 +97,6 @@ Aiome は、単にタスクをこなすだけでなく、ビルトインされ�
 より詳細な技術仕様や取引プロトコル、シーケンス図については、[AIOME_NURTURE_SYNERGY.md](docs/architecture/AIOME_NURTURE_SYNERGY.md) をご参照ください。
 
 ---
-
-## 🌌 Aiome とは？ (Philosophy & Concept)
 
 Aiome は、単なるエージェント・フレームワークを超えた、AIエージェントが安全に活動・進化するために設計された **「自律型 AI オペレーティングシステム」** です。
 

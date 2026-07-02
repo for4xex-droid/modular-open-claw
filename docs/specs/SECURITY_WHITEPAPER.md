@@ -1,6 +1,6 @@
 # Aiome: セキュリティ仕様書 (Security Whitepaper)
 
-**最終更新日: 2026-06-07**
+**最終更新日: 2026-07-03**
 
 ## 0. はじめに
 Aiome は、自律型 AI が直面する特有のセキュリティ脅威から、お客様の資産（APIクォータ、機密データ、稼働ログ）を守り抜くために設計されています。
@@ -14,6 +14,7 @@ APIキー（Gemini, OpenAI等）は、システムの生命線であり、最も
 *   **プロキシ分離アーキテクチャ**: メインの AI エンジンプロセスは API キーを一切保持しません。通信はすべて隔離された `key-proxy` プロセスを経由します。
 *   **Abyss Vault (メモリエントロピー保護)**: APIキー（Gemini, OpenAI）, `API_SERVER_SECRET`, `FEDERATION_SECRET` は起動直後に `secrecy::SecretString` へ展開され、環境変数からは `shared::security::scrub_env()` によって即座に抹消されます。これにより、万が一プロセスダンプを取得されても、平文のキーが露出するリスクを最小化します。
 *   **SSRF & リダイレクト防止**: 通信先はソースコードレベルでハードコードされており（ホワイトリスト制）、AI の誤操作や外部攻撃による不正なサーバーへのキー送信（SSRF）は構造的に発生しません。
+*   **Query-Parameter Auth Removal (2026-07)**: `key-proxy` は `?key=` クエリパラメータ認証を廃止しました。`VAULT_SECRET` は `Authorization: Bearer` または承認済みヘッダーのみで受け付け、アクセスログや Referer への秘密情報漏洩経路を排除します。
 *   **設定値/特徴フラグのサニタイジング (Directory Traversal Guard)**: `settings.rs` などの設定更新エンドポイントにおいて、`feature_flag` のキー名に対するディレクトリトラバーサル試行（`..` や `/` などのインジェクション）を防ぐため、厳格な英数字およびアンダースコア限定（`^[a-zA-Z0-9_]+$`）の文字種バリデーションが強制され、不正な設定インジェクションによるファイルシステムエスケープを構造的に遮断しています。
 *   **robots.txt ガードレール SSRF 防御**: MCP ツールによる外部 URL へのアクセス前に行われる `robots.txt` ポリシーチェックにおいて、`reqwest::redirect::Policy::none()` を強制し、リダイレクト応答を利用した内部ネットワークへの SSRF バイパス（例: `302 → http://127.0.0.1/admin`）を構造的に遮断しています。robots.txt の取得が失敗した場合は Fail-Open ポリシーによりアクセスを許容し、可用性を維持します。
 *   **A2C ギフト安全制限 (Phase 7.2)**: 自律的なギフト送信（`GiftEngine`）は、$5.0USD の厳格な上限設定と `MASTER_EMAIL` による管理者認証を必須としており、AI の誤動作や悪意あるエージェントによる資産流出を物理的に防ぎます。
@@ -30,6 +31,9 @@ LLM（プランナー）が生成した複数ステップから成る「行動�
 決済システムとの連携においては、金融トランザクションの完全性とサーバーの可用性を同時に担保するアーキテクチャが求められます。
 
 *   **Idempotency Early Rejection (冪等性の早期検証)**: Stripe および Polar 等からの Webhook 受信時、ペイロード全体をパース・デシリアライズする前に、イベントIDに基づく冪等性チェックを O(1) で実行します。特に Polar Webhook では、`polar_webhook_events` テーブルを用いた二重処理防止メカニズムを実装し、Stripe と同様のトランザクション境界でライセンス付与やサブスクリプション状態のライフサイクル管理を行います。これにより、悪意あるリプレイ攻撃や重複イベントの実行を最上位レイヤーで遮断し、二重決済や不正ライセンス付与を完全に防止します。
+*   **Internal S2S Economy Idempotency (2026-07)**: `nurture-api` の内部経済 API（送金・即時返金・ポイント引出し）も `idempotency_key` 必須とし、成功レスポンスをキャッシュして二重実行を防止します。処理失敗時は予約キーを解放し、正当なリトライが TTL 中に 409 でブロックされないよう webhook ハンドラと同じ `delete_key` パターンに揃えています。
+*   **Auth Endpoint Rate Limiting (2026-07)**: `/api/v1/auth/token` に 5 req/min のレート制限を適用し、ブルートフォース攻撃のリスクを低減します。
+*   **JWT iss/aud Pinning (2026-07)**: `JWT_ISSUER` / `JWT_AUDIENCE` 環境変数が設定されている場合、トークン検証時に issuer / audience を強制します。
 *   **Parse-What-You-Need (構造的デシリアライズ耐性)**: 外部決済サービスの API バージョンアップに伴う予期せぬ JSON 構造の変更によってシステム全体がパニックを起こすのを防ぐため、Webhook のデシリアライズ処理には不要なフィールドを無視する（`#[serde(ignore)]` 等）スワローレイヤーを設計しています。これにより、決済の疎結合な強靭性 (Resilience) が維持されます。
 *   **ADR-009 Karma Generation Path (経済整合性の保護)**: 決済トランザクション完了時に付与される「Karma」は、直接データベースの台帳(Ledger)を操作することをアーキテクチャレベルで禁止し、必ず `Webhook -> AgentHook -> KarmaForge` の一方向イベントフローを経由するよう強制（ADR-009）しています。これにより、未決済の状態で Karma のみが不正に生成される「ゴーストステート」を物理的に遮断します。
 
@@ -125,4 +129,4 @@ Aiome は連邦学習（Federation）機能を備えていますが、この通�
 Aiome のセキュリティは、「隠すこと」ではなく「破られない構造を作ること」に重点を置いています。たとえ内部ソースコードが公開されたとしても、数学的・物理的、強固なカオス耐性、そして OS アーキテクチャ上の制約によって、お客様の API キーやデータの完全性は守られ続けます。
 
 ---
-*最終更新: 2026-06-07 (Asia/Tokyo) - Polar Webhook Idempotency, Caddy Permissions-Policy, Alert Pipeline debouncer, Biome Security Note*
+*最終更新: 2026-07-03 (Asia/Tokyo) - Internal S2S idempotency, auth token rate limit, JWT iss/aud pinning, key-proxy query auth removal*

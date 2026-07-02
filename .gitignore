@@ -77,8 +77,16 @@ apps/api-server/workspace/
 
 # Dev-only compose files (OSS uses docker-compose.quickstart.yml)
 docker-compose.yml
-docker-compose.test.yml
 docker-compose.nurture.yml
+
+# Local DB backups and audit snapshots (never commit)
+aiome.db.bak.*
+audit*.json
+venv/
+venv_new/
+workspace_a/
+workspace_b/
+.nurture_drm_master_key
 
 # Local daemon config (contains machine-specific paths)
 scripts/com.aiome.daemon.plist
@@ -105,8 +113,9 @@ tla2tools.jar
 # Stray root files
 debug_shield.rs
 
-# Internal development context
+# Internal development context (RIPPLE_MAP is team-shared)
 .context/
+!.context/RIPPLE_MAP.md
 
 # MLIT MCP Server clones (setup via tools/setup-mlit-mcp.sh)
 tools/mlit-mcp/

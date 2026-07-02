@@ -63,12 +63,11 @@ pub struct TransferRequest {
     pub from_id: Uuid,
     pub to_id: Uuid,
     pub amount: u64,
-    /// Aiome 側で生成された冪等性キー（将来の重複防止用に予約）
     #[serde(default, rename = "idempotency_key")]
-    pub _idempotency_key: Option<String>,
+    pub idempotency_key: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct TransferResponse {
     pub transaction_id: String,
 }
@@ -78,7 +77,7 @@ pub struct InstantRefundRequest {
     pub transaction_id: String,
     pub actor_id: Uuid,
     #[serde(default, rename = "idempotency_key")]
-    pub _idempotency_key: Option<String>,
+    pub idempotency_key: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -86,7 +85,7 @@ pub struct WithdrawPointsRequest {
     pub actor_id: Uuid,
     pub points: u64,
     #[serde(default, rename = "idempotency_key")]
-    pub _idempotency_key: Option<String>,
+    pub idempotency_key: Option<String>,
 }
 
 #[derive(Deserialize)]

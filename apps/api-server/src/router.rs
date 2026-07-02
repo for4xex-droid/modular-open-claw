@@ -734,7 +734,17 @@ pub fn build_app(
             "/api/v1/auth/authorize",
             get(routes::auth::authorize_handler),
         )
-        .route("/api/v1/auth/token", post(routes::auth::token_handler))
+        .route(
+            "/api/v1/auth/token",
+            post(routes::auth::token_handler).route_layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::error_handling::HandleErrorLayer::new(
+                        handle_rate_limit,
+                    ))
+                    .buffer(5)
+                    .rate_limit(5, std::time::Duration::from_secs(60)),
+            ),
+        )
         .route(
             "/api/v1/commerce/webhook",
             axum::routing::post(routes::commerce_webhook::stripe_webhook),

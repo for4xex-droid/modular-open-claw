@@ -33,6 +33,98 @@ impl P2pSanitizer {
     }
 }
 
+fn immune_rule_from_sqlite(r: &sqlx::sqlite::SqliteRow) -> Result<ImmuneRule, AiomeError> {
+    use crate::sql_helpers::require_column;
+    use sqlx::Row;
+    let status: String = require_column(r, "status")?;
+    Ok(ImmuneRule {
+        id: require_column(r, "id")?,
+        pattern: require_column(r, "pattern")?,
+        severity: {
+            let severity: i64 = require_column(r, "severity")?;
+            severity.clamp(0, 255) as u8
+        },
+        action: require_column(r, "action")?,
+        approval_status: match status.as_str() {
+            "Approved" => aiome_core::contracts::ApprovalState::Approved,
+            "Rejected" => aiome_core::contracts::ApprovalState::Rejected,
+            _ => aiome_core::contracts::ApprovalState::Pending,
+        },
+        input_constraints: None,
+        created_at: require_column(r, "created_at")?,
+        lamport_clock: {
+            let clock: i64 = require_column(r, "lamport_clock")?;
+            clock as u64
+        },
+        node_id: r
+            .try_get("node_id")
+            .unwrap_or_else(|_| "unknown".to_string()),
+        signature: r.try_get("signature").ok(),
+    })
+}
+
+fn immune_rule_from_postgres(r: &sqlx::postgres::PgRow) -> Result<ImmuneRule, AiomeError> {
+    use crate::sql_helpers::require_column;
+    use sqlx::Row;
+    let status: String = require_column(r, "status")?;
+    Ok(ImmuneRule {
+        id: require_column(r, "id")?,
+        pattern: require_column(r, "pattern")?,
+        severity: {
+            let severity: i32 = require_column(r, "severity")?;
+            severity.clamp(0, 255) as u8
+        },
+        action: require_column(r, "action")?,
+        approval_status: match status.as_str() {
+            "Approved" => aiome_core::contracts::ApprovalState::Approved,
+            "Rejected" => aiome_core::contracts::ApprovalState::Rejected,
+            _ => aiome_core::contracts::ApprovalState::Pending,
+        },
+        input_constraints: None,
+        created_at: require_column(r, "created_at")?,
+        lamport_clock: {
+            let clock: i64 = require_column(r, "lamport_clock")?;
+            clock as u64
+        },
+        node_id: r
+            .try_get("node_id")
+            .unwrap_or_else(|_| "unknown".to_string()),
+        signature: r.try_get("signature").ok(),
+    })
+}
+
+fn arena_match_from_sqlite(r: &sqlx::sqlite::SqliteRow) -> Result<ArenaMatch, AiomeError> {
+    use crate::sql_helpers::require_column;
+    use sqlx::Row;
+    Ok(ArenaMatch {
+        id: require_column(r, "id")?,
+        skill_a: require_column(r, "skill_a")?,
+        skill_b: require_column(r, "skill_b")?,
+        topic: require_column(r, "topic")?,
+        output_a: r.try_get("output_a").ok(),
+        output_b: r.try_get("output_b").ok(),
+        winner: r.try_get("winner").ok(),
+        reasoning: require_column(r, "reasoning")?,
+        created_at: require_column(r, "created_at")?,
+    })
+}
+
+fn arena_match_from_postgres(r: &sqlx::postgres::PgRow) -> Result<ArenaMatch, AiomeError> {
+    use crate::sql_helpers::require_column;
+    use sqlx::Row;
+    Ok(ArenaMatch {
+        id: require_column(r, "id")?,
+        skill_a: require_column(r, "skill_a")?,
+        skill_b: require_column(r, "skill_b")?,
+        topic: require_column(r, "topic")?,
+        output_a: r.try_get("output_a").ok(),
+        output_b: r.try_get("output_b").ok(),
+        winner: r.try_get("winner").ok(),
+        reasoning: require_column(r, "reasoning")?,
+        created_at: require_column(r, "created_at")?,
+    })
+}
+
 #[async_trait]
 pub trait FederationOps {
     async fn do_export_federated_data(
@@ -99,43 +191,12 @@ impl FederationOps for UniversalJobQueue {
 
                 let rows_rules = crate::sql_fetch_raw!(p, &q_rules, since_ts)?;
                 for r in rows_rules {
-                    fed_rules.push(ImmuneRule {
-                        id: r.try_get("id").unwrap_or_default(),
-                        pattern: r.try_get("pattern").unwrap_or_default(),
-                        severity: r.try_get::<i64, _>("severity").unwrap_or(0) as u8,
-                        action: r.try_get("action").unwrap_or_default(),
-                        approval_status: match r
-                            .try_get::<String, _>("status")
-                            .unwrap_or_default()
-                            .as_str()
-                        {
-                            "Approved" => aiome_core::contracts::ApprovalState::Approved,
-                            "Rejected" => aiome_core::contracts::ApprovalState::Rejected,
-                            _ => aiome_core::contracts::ApprovalState::Pending,
-                        },
-                        input_constraints: None,
-                        created_at: r.try_get("created_at").unwrap_or_default(),
-                        lamport_clock: r.try_get::<i64, _>("lamport_clock").unwrap_or(0) as u64,
-                        node_id: r
-                            .try_get("node_id")
-                            .unwrap_or_else(|_| "unknown".to_string()),
-                        signature: r.try_get("signature").ok(),
-                    });
+                    fed_rules.push(immune_rule_from_sqlite(&r)?);
                 }
 
                 let rows_matches = crate::sql_fetch_raw!(p, &q_matches, since_ts)?;
                 for r in rows_matches {
-                    fed_matches.push(ArenaMatch {
-                        id: r.try_get("id").unwrap_or_default(),
-                        skill_a: r.try_get("skill_a").unwrap_or_default(),
-                        skill_b: r.try_get("skill_b").unwrap_or_default(),
-                        topic: r.try_get("topic").unwrap_or_default(),
-                        output_a: r.try_get("output_a").ok(),
-                        output_b: r.try_get("output_b").ok(),
-                        winner: r.try_get("winner").ok(),
-                        reasoning: r.try_get("reasoning").unwrap_or_default(),
-                        created_at: r.try_get("created_at").unwrap_or_default(),
-                    });
+                    fed_matches.push(arena_match_from_sqlite(&r)?);
                 }
             }
             crate::db::DatabasePool::Postgres(p) => {
@@ -146,43 +207,12 @@ impl FederationOps for UniversalJobQueue {
 
                 let rows_rules = crate::sql_fetch_raw!(p, &q_rules, since_ts)?;
                 for r in rows_rules {
-                    fed_rules.push(ImmuneRule {
-                        id: r.try_get("id").unwrap_or_default(),
-                        pattern: r.try_get("pattern").unwrap_or_default(),
-                        severity: r.try_get::<i32, _>("severity").unwrap_or(0) as u8,
-                        action: r.try_get("action").unwrap_or_default(),
-                        approval_status: match r
-                            .try_get::<String, _>("status")
-                            .unwrap_or_default()
-                            .as_str()
-                        {
-                            "Approved" => aiome_core::contracts::ApprovalState::Approved,
-                            "Rejected" => aiome_core::contracts::ApprovalState::Rejected,
-                            _ => aiome_core::contracts::ApprovalState::Pending,
-                        },
-                        input_constraints: None,
-                        created_at: r.try_get("created_at").unwrap_or_default(),
-                        lamport_clock: r.try_get::<i64, _>("lamport_clock").unwrap_or(0) as u64,
-                        node_id: r
-                            .try_get("node_id")
-                            .unwrap_or_else(|_| "unknown".to_string()),
-                        signature: r.try_get("signature").ok(),
-                    });
+                    fed_rules.push(immune_rule_from_postgres(&r)?);
                 }
 
                 let rows_matches = crate::sql_fetch_raw!(p, &q_matches, since_ts)?;
                 for r in rows_matches {
-                    fed_matches.push(ArenaMatch {
-                        id: r.try_get("id").unwrap_or_default(),
-                        skill_a: r.try_get("skill_a").unwrap_or_default(),
-                        skill_b: r.try_get("skill_b").unwrap_or_default(),
-                        topic: r.try_get("topic").unwrap_or_default(),
-                        output_a: r.try_get("output_a").ok(),
-                        output_b: r.try_get("output_b").ok(),
-                        winner: r.try_get("winner").ok(),
-                        reasoning: r.try_get("reasoning").unwrap_or_default(),
-                        created_at: r.try_get("created_at").unwrap_or_default(),
-                    });
+                    fed_matches.push(arena_match_from_postgres(&r)?);
                 }
             }
         }

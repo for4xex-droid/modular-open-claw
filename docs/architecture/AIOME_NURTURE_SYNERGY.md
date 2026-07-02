@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-07-02
+> **最終更新**: 2026-07-03
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -541,6 +541,45 @@ sequenceDiagram
             end
         end
         API-->>Stripe: 200 OK
+    end
+```
+
+### 5.4.4 内部経済 API 冪等性ゲート (`IdempotencyGate`)
+
+`nurture-api` の `/internal/transfer`, `/internal/instant-refund`, `/internal/withdraw-points` は `idempotency_key` 必須です。`IdempotencyGate` が既存 `IdempotencyStore` を用いて重複リクエストをキャッシュ応答または 409 で処理し、成功時のみレスポンスを保存します。処理失敗時は `delete_key` で予約を解放し、正当なリトライが TTL 中にブロックされないよう webhook ハンドラと同じパターンに揃えています。
+
+```mermaid
+sequenceDiagram
+    participant Caller as api-server / StripeCommerceEngine
+    participant NAPI as nurture-api /internal/*
+    participant Gate as IdempotencyGate
+    participant Store as IdempotencyStore
+    participant Engine as CommerceEngine
+
+    Caller->>NAPI: POST {..., idempotency_key}
+    NAPI->>Gate: begin_idempotent(key)
+    Gate->>Store: get_response(key)
+    alt キャッシュ済み
+        Store-->>Gate: Cached(status, body)
+        Gate-->>NAPI: Cached
+        NAPI-->>Caller: 同一レスポンス
+    else 処理中
+        Store-->>Gate: InProgress
+        Gate-->>NAPI: InProgress
+        NAPI-->>Caller: 409 Conflict
+    else 新規
+        Gate->>Store: reserve_key(key, TTL=24h)
+        Gate-->>NAPI: Proceed
+        NAPI->>Engine: transfer / refund / withdraw
+        alt 成功
+            Engine-->>NAPI: OK
+            NAPI->>Store: save_response(key, status, body)
+            NAPI-->>Caller: 200 OK
+        else 失敗
+            Engine-->>NAPI: Err
+            NAPI->>Store: delete_key(key)
+            NAPI-->>Caller: 4xx/5xx
+        end
     end
 ```
 
@@ -1152,7 +1191,7 @@ gantt
 | **PWA (2D-6)** | モバイルから NURTURE マーケットプレイスへのアクセスが可能に → 移動中のアセット購入 |
 | **Minecraft MCP (6-4)** | ゲーム内の成果が Karma に反映 → NURTURE の ReputationScore に影響 |
 | **視覚認識 (7-6)** | 画面の内容を理解した上でのコンテキスト購入推薦 → NURTURE の購買体験が飛躍的に向上 |
-| **開発オンボーディング (docs/)** | Samsara 人格データフローや Nurture 連携（S2S EdDSA認証、OxiLean証明書保護、`/internal/deduct`決済プロトコル）の Mermaid シーケンス図を完全網羅し、オンボーディングを迅速化（詳細は [DEVELOPER_ONBOARDING.md](file:///Users/motista/Desktop/antigravity/aiome/docs/DEVELOPER_ONBOARDING.md) を参照） |
+| **開発オンボーディング (docs/)** | Samsara 人格データフローや Nurture 連携（S2S EdDSA認証、OxiLean証明書保護、`/internal/deduct`決済プロトコル、**`/internal/transfer` 等の IdempotencyGate**）の Mermaid シーケンス図を完全網羅し、オンボーディングを迅速化（詳細は [DEVELOPER_ONBOARDING.md](file:///Users/motista/Desktop/antigravity/aiome/docs/DEVELOPER_ONBOARDING.md) を参照） |
 | **開発者向けテンプレート (templates/)** | WASM Skill、Node.js 経済連携（`use_escrow`等）、Python MCP サーバーの 3 テンプレートを提供し、他エコシステム（Dify等）からの移行や NURTURE 経済連携の実装を支援 |
 | **MCP 品質ゲート監査** | MCP サーバーからロードされるツールの総数バジェット（警告上限15）および説明文品質（20文字未満）を自動的に監査。低品質なツールや過剰なMCPサーバー接続からくるエージェントのパフォーマンス低下や競合リスクを未然に防止。 |
 | **公式 X (Twitter) MCP 統合** | 公式 X MCP クライアントとの stdio 連携テンプレート、および `TrendSonar` の adapter 連動を整備。自律トレンド収集の精度と速度を大幅に向上。 |

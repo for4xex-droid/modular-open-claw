@@ -77,17 +77,22 @@ impl UniversalSoulStore {
 
     /// Soulの状態を永続化する
     pub async fn save_soul(&self, soul: &AgentSoul) -> Result<(), AiomeError> {
-        let markers_json = serde_json::to_string(&soul.somatic_markers).unwrap_or_default();
-        let defenses_json = serde_json::to_string(&soul.defenses).unwrap_or_default();
-        let predictive_json = serde_json::to_string(&soul.predictive_model).unwrap_or_default();
-        let attachment_json = serde_json::to_string(&soul.attachment).unwrap_or_default();
-        let instinct_json = serde_json::to_string(&soul.instinct).unwrap_or_default();
-        let anamnesis_json = serde_json::to_string(&soul.anamnesis).unwrap_or_default();
-        let buffer_json = serde_json::to_string(&soul.experience_buffer).unwrap_or_default();
-        let semantic_json = serde_json::to_string(&soul.semantic_index).unwrap_or_default();
+        let markers_json =
+            crate::sql_helpers::json_string(&soul.somatic_markers, "somatic_markers")?;
+        let defenses_json = crate::sql_helpers::json_string(&soul.defenses, "defenses")?;
+        let predictive_json =
+            crate::sql_helpers::json_string(&soul.predictive_model, "predictive_model")?;
+        let attachment_json = crate::sql_helpers::json_string(&soul.attachment, "attachment")?;
+        let instinct_json = crate::sql_helpers::json_string(&soul.instinct, "instinct")?;
+        let anamnesis_json = crate::sql_helpers::json_string(&soul.anamnesis, "anamnesis")?;
+        let buffer_json =
+            crate::sql_helpers::json_string(&soul.experience_buffer, "experience_buffer")?;
+        let semantic_json =
+            crate::sql_helpers::json_string(&soul.semantic_index, "semantic_index")?;
         let persona_boundaries_json =
-            serde_json::to_string(&soul.persona_boundaries).unwrap_or_default();
-        let frozen_traits_json = serde_json::to_string(&soul.frozen_traits).unwrap_or_default();
+            crate::sql_helpers::json_string(&soul.persona_boundaries, "persona_boundaries")?;
+        let frozen_traits_json =
+            crate::sql_helpers::json_string(&soul.frozen_traits, "frozen_traits")?;
 
         let q = format!(
             r#"
@@ -319,25 +324,31 @@ impl UniversalSoulStore {
             id: id.to_string(),
             generation: r.get::<i64, _>("generation") as u32,
             soul_hash: r.get("soul_hash"),
-            somatic_markers: serde_json::from_str(&markers_json).unwrap_or_default(),
-            defenses: serde_json::from_str(&defenses_json).unwrap_or_default(),
-            predictive_model: serde_json::from_str(&predictive_json).unwrap_or_default(),
-            attachment: serde_json::from_str(&attachment_json).unwrap_or_default(),
-            instinct: serde_json::from_str(&instinct_json).unwrap_or_default(),
-            anamnesis: serde_json::from_str(&anamnesis_json).unwrap_or_default(),
-            experience_buffer: serde_json::from_str(&buffer_json).unwrap_or_default(),
+            somatic_markers: crate::sql_helpers::json_parse(&markers_json, "somatic_markers")?,
+            defenses: crate::sql_helpers::json_parse(&defenses_json, "defenses")?,
+            predictive_model: crate::sql_helpers::json_parse(&predictive_json, "predictive_model")?,
+            attachment: crate::sql_helpers::json_parse(&attachment_json, "attachment")?,
+            instinct: crate::sql_helpers::json_parse(&instinct_json, "instinct")?,
+            anamnesis: crate::sql_helpers::json_parse(&anamnesis_json, "anamnesis")?,
+            experience_buffer: crate::sql_helpers::json_parse(&buffer_json, "experience_buffer")?,
             lora_adapter_path: r.get("lora_adapter_path"),
             lora_base_model: r.get("lora_base_model"),
             lora_hash: r.get("lora_hash"),
             last_begging_at: r.get("last_begging_at"),
             semantic_index: semantic_json
-                .and_then(|s| serde_json::from_str(&s).ok())
+                .filter(|s| !s.is_empty())
+                .map(|s| crate::sql_helpers::json_parse(&s, "semantic_index"))
+                .transpose()?
                 .unwrap_or_default(),
             persona_boundaries: persona_json
-                .and_then(|s| serde_json::from_str(&s).ok())
+                .filter(|s| !s.is_empty())
+                .map(|s| crate::sql_helpers::json_parse(&s, "persona_boundaries"))
+                .transpose()?
                 .unwrap_or_default(),
             frozen_traits: frozen_traits_json
-                .and_then(|s| serde_json::from_str(&s).ok())
+                .filter(|s| !s.is_empty())
+                .map(|s| crate::sql_helpers::json_parse(&s, "frozen_traits"))
+                .transpose()?
                 .unwrap_or_default(),
         })
     }
@@ -364,25 +375,31 @@ impl UniversalSoulStore {
             id: id.to_string(),
             generation: r.get::<i64, _>("generation") as u32,
             soul_hash: r.get("soul_hash"),
-            somatic_markers: serde_json::from_str(&markers_json).unwrap_or_default(),
-            defenses: serde_json::from_str(&defenses_json).unwrap_or_default(),
-            predictive_model: serde_json::from_str(&predictive_json).unwrap_or_default(),
-            attachment: serde_json::from_str(&attachment_json).unwrap_or_default(),
-            instinct: serde_json::from_str(&instinct_json).unwrap_or_default(),
-            anamnesis: serde_json::from_str(&anamnesis_json).unwrap_or_default(),
-            experience_buffer: serde_json::from_str(&buffer_json).unwrap_or_default(),
+            somatic_markers: crate::sql_helpers::json_parse(&markers_json, "somatic_markers")?,
+            defenses: crate::sql_helpers::json_parse(&defenses_json, "defenses")?,
+            predictive_model: crate::sql_helpers::json_parse(&predictive_json, "predictive_model")?,
+            attachment: crate::sql_helpers::json_parse(&attachment_json, "attachment")?,
+            instinct: crate::sql_helpers::json_parse(&instinct_json, "instinct")?,
+            anamnesis: crate::sql_helpers::json_parse(&anamnesis_json, "anamnesis")?,
+            experience_buffer: crate::sql_helpers::json_parse(&buffer_json, "experience_buffer")?,
             lora_adapter_path: r.get("lora_adapter_path"),
             lora_base_model: r.get("lora_base_model"),
             lora_hash: r.get("lora_hash"),
             last_begging_at: r.get("last_begging_at"),
             semantic_index: semantic_json
-                .and_then(|s| serde_json::from_str(&s).ok())
+                .filter(|s| !s.is_empty())
+                .map(|s| crate::sql_helpers::json_parse(&s, "semantic_index"))
+                .transpose()?
                 .unwrap_or_default(),
             persona_boundaries: persona_json
-                .and_then(|s| serde_json::from_str(&s).ok())
+                .filter(|s| !s.is_empty())
+                .map(|s| crate::sql_helpers::json_parse(&s, "persona_boundaries"))
+                .transpose()?
                 .unwrap_or_default(),
             frozen_traits: frozen_traits_json
-                .and_then(|s| serde_json::from_str(&s).ok())
+                .filter(|s| !s.is_empty())
+                .map(|s| crate::sql_helpers::json_parse(&s, "frozen_traits"))
+                .transpose()?
                 .unwrap_or_default(),
         })
     }

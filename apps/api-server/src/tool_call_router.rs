@@ -10,6 +10,12 @@ use async_trait::async_trait;
 use infrastructure::output_filter::{FilterLevel, FilterStrategy, OutputFilter};
 use tokio::sync::mpsc;
 
+async fn emit_tool_event(tx: &mpsc::Sender<ToolExecutionEvent>, event: ToolExecutionEvent) {
+    if tx.send(event).await.is_err() {
+        tracing::debug!("Tool execution event receiver dropped before event delivery");
+    }
+}
+
 /// Tool Execution Result suitable for both Sync (AgentEngine) and Async (SSE) usage
 #[derive(Debug, Clone)]
 pub enum ToolExecutionEvent {
@@ -104,7 +110,7 @@ impl ToolCallRouter for DefaultToolCallRouter {
 
         tokio::spawn(async move {
             let start_time = std::time::Instant::now();
-            let _ = tx_clone.send(ToolExecutionEvent::Start(sn.clone())).await;
+            emit_tool_event(&tx_clone, ToolExecutionEvent::Start(sn.clone())).await;
 
             // === MoE Culling Check ===
             if let Some(stats) = state_rc.skill_arena.get_stats(&sn).await {
@@ -118,7 +124,7 @@ impl ToolCallRouter for DefaultToolCallRouter {
                             fail_rate * 100.0
                         );
                         tracing::warn!("{}", msg);
-                        let _ = tx_clone.send(ToolExecutionEvent::Error(msg)).await;
+                        emit_tool_event(&tx_clone, ToolExecutionEvent::Error(msg)).await;
                         return;
                     }
                 }
@@ -127,12 +133,14 @@ impl ToolCallRouter for DefaultToolCallRouter {
             // === Security Guardrail: Path Traversal Prevention ===
             if sn.contains('/') || sn.contains('\\') || sn.contains("..") {
                 tracing::warn!("Path traversal blocked in skill execution: {}", sn);
-                let _ = tx_clone
-                    .send(ToolExecutionEvent::Error(
+                emit_tool_event(
+                    &tx_clone,
+                    ToolExecutionEvent::Error(
                         "[Guardrail Block] Invalid skill name: potential path traversal detected"
                             .to_string(),
-                    ))
-                    .await;
+                    ),
+                )
+                .await;
                 return;
             }
 
@@ -219,12 +227,14 @@ impl ToolCallRouter for DefaultToolCallRouter {
                                 }
 
                                 if is_malicious {
-                                    let _ = tx_clone
-                                        .send(ToolExecutionEvent::Error(format!(
+                                    emit_tool_event(
+                                        &tx_clone,
+                                        ToolExecutionEvent::Error(format!(
                                             "[Guardrail Block] SSRF attempt detected: {}",
                                             error_msg
-                                        )))
-                                        .await;
+                                        )),
+                                    )
+                                    .await;
                                     return;
                                 }
                             }
@@ -232,7 +242,7 @@ impl ToolCallRouter for DefaultToolCallRouter {
                             // robots.txt check
                             if !check_robots_txt_policy(url_str).await {
                                 let host = parsed_url.host_str().unwrap_or("");
-                                let _ = tx_clone.send(ToolExecutionEvent::Error(format!("[Guardrail Block] Access to {} is prohibited by robots.txt policy", host))).await;
+                                emit_tool_event(&tx_clone, ToolExecutionEvent::Error(format!("[Guardrail Block] Access to {} is prohibited by robots.txt policy", host))).await;
                                 return;
                             }
                         }
@@ -246,22 +256,23 @@ impl ToolCallRouter for DefaultToolCallRouter {
             let actual_input = match pre_verdict {
                 HookVerdict::Deny(reason) => {
                     tracing::warn!("Hook blocked tool `{}` pre-execution: {}", sn, reason);
-                    let _ = tx_clone
-                        .send(ToolExecutionEvent::Error(format!(
-                            "[Hook Block] {}",
-                            reason
-                        )))
-                        .await;
+                    emit_tool_event(
+                        &tx_clone,
+                        ToolExecutionEvent::Error(format!("[Hook Block] {}", reason)),
+                    )
+                    .await;
                     return;
                 }
                 HookVerdict::Ask { reason, .. } => {
                     tracing::warn!("Hook requested user approval for tool `{}`: {}", sn, reason);
-                    let _ = tx_clone
-                        .send(ToolExecutionEvent::Error(format!(
+                    emit_tool_event(
+                        &tx_clone,
+                        ToolExecutionEvent::Error(format!(
                             "[Hook Ask] Requires User Approval: {}",
                             reason
-                        )))
-                        .await;
+                        )),
+                    )
+                    .await;
                     return;
                 }
                 HookVerdict::Transform(new_input) => new_input,
@@ -276,24 +287,28 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 let key = format!("agency.{}.mcp_suspended", agent_id);
                 if let Ok(Some(val)) = state_rc.job_queue.get_setting_value(&key).await {
                     if val == "true" {
-                        let _ = tx_clone
-                            .send(ToolExecutionEvent::Error(
+                        emit_tool_event(
+                            &tx_clone,
+                            ToolExecutionEvent::Error(
                                 "[Billing] MCP access suspended. Please update payment method."
                                     .to_string(),
-                            ))
-                            .await;
+                            ),
+                        )
+                        .await;
                         return;
                     }
                 }
 
                 if let Some(engine) = state_rc.commerce_engine.as_opt() {
                     if let Err(e) = engine.validate_activity(agent_id, "mcp_tool", 1).await {
-                        let _ = tx_clone
-                            .send(ToolExecutionEvent::Error(format!(
+                        emit_tool_event(
+                            &tx_clone,
+                            ToolExecutionEvent::Error(format!(
                                 "[Billing] MCP tool access denied: {}",
                                 e
-                            )))
-                            .await;
+                            )),
+                        )
+                        .await;
                         return;
                     }
                 }
@@ -315,7 +330,7 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 loop {
                     tokio::select! {
                         _ = heartbeat_ticker.tick() => {
-                            let _ = tx_clone.send(ToolExecutionEvent::Heartbeat("build in progress...".to_string())).await;
+                            emit_tool_event(&tx_clone, ToolExecutionEvent::Heartbeat("build in progress...".to_string())).await;
                         }
                         res = &mut forge_future => {
                             forge_result = match res {
@@ -459,7 +474,7 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 HookVerdict::Deny(reason) => {
                     tracing::warn!("Hook blocked tool `{}` post-execution: {}", sn, reason);
                     let block_msg = format!("[Hook Post-Block] {}", reason);
-                    let _ = tx_clone.send(ToolExecutionEvent::Error(block_msg)).await;
+                    emit_tool_event(&tx_clone, ToolExecutionEvent::Error(block_msg)).await;
                     return;
                 }
                 HookVerdict::Ask { reason, .. } => {
@@ -469,7 +484,7 @@ impl ToolCallRouter for DefaultToolCallRouter {
                         reason
                     );
                     let block_msg = format!("[Hook Post-Ask] Requires User Approval: {}", reason);
-                    let _ = tx_clone.send(ToolExecutionEvent::Error(block_msg)).await;
+                    emit_tool_event(&tx_clone, ToolExecutionEvent::Error(block_msg)).await;
                     return;
                 }
                 HookVerdict::Transform(new_output) => new_output,
@@ -502,9 +517,7 @@ impl ToolCallRouter for DefaultToolCallRouter {
                     chars_saved,
                     filtered.compression_ratio * 100.0
                 );
-                let _ = tx_clone
-                    .send(ToolExecutionEvent::TokenSaved(chars_saved))
-                    .await;
+                emit_tool_event(&tx_clone, ToolExecutionEvent::TokenSaved(chars_saved)).await;
             }
 
             let budget = infrastructure::context_engine::ContextBudget::default();
@@ -517,7 +530,7 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 &redacted_output,
                 budget.max_tool_output_chars,
             );
-            let _ = tx_clone.send(ToolExecutionEvent::Result(truncated)).await;
+            emit_tool_event(&tx_clone, ToolExecutionEvent::Result(truncated)).await;
         });
 
         rx
