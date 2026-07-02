@@ -601,17 +601,7 @@ impl WasmSkillManager {
                                         }
                                     }
 
-                                    let mut is_sensitive = false;
-                                    for component in final_path.components() {
-                                        if let std::path::Component::Normal(c) = component {
-                                            if let Some(s) = c.to_str() {
-                                                if s.starts_with(".env") || s == ".git" || s == "security.json" {
-                                                    is_sensitive = true;
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
+                                    let is_sensitive = is_sensitive_path(&final_path);
 
                                     if !path_allowed {
                                         serde_json::json!({ "success": false, "path": "", "error": "Security Violation: Path traversal blocked." }).to_string()
