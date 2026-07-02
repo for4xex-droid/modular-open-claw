@@ -1,3 +1,8 @@
+---
+name: css-architecture
+description: management-console の CSS レイアウト（特に position absolute/fixed のオーバーレイ配置・オフセット計算）を追加・修正するときに読む。tokens.css の CSS 変数 + calc() による自動追従パターン。色・角丸等の一般トークン規則は docs-ui-ux-golden-rules（U-001/U-002）を参照。
+---
+
 # CSS Architecture & Layout Patterns
 
 このスキルは、プロジェクトにおける UI レイアウト、特に絶対配置（`position: absolute` / `fixed`）を持つオーバーレイ要素やコンポーネントの位置合わせに関する設計原則（Karma）を規定します。
@@ -7,7 +12,7 @@ UIの変更によってレイアウトが崩れる（ズレる）のを防ぐた
 
 **レイアウトに関する具体的なピクセル数値（幅、高さ、パディング、ギャップなど）を、個別のReactコンポーネントにハードコードしてはいけません。**
 
-すべてのベースとなるレイアウト寸法は、必ず `src/styles/tokens.css` のルート変数（Custom Properties）として一元管理してください。
+すべてのベースとなるレイアウト寸法は、必ず `apps/management-console/src/styles/tokens.css` のルート変数（Custom Properties）として一元管理してください。
 
 ```css
 /* 良い例: tokens.css で一元管理 */
@@ -62,5 +67,24 @@ return (
   }
 }
 ```
+
+## 4. 参照前のトークン実在確認（NG実例より）
+
+CSS 変数を**参照する前に、必ず `tokens.css` に定義が実在するか grep で確認**してください。
+
+```css
+/* ❌ NG実例: 未定義トークンの参照（出典: CHANGELOG — --space-2xl / --accent-emerald-05 が
+   未定義のまま参照され UI 整合性エラーが発生した） */
+padding: var(--space-2xl);          /* tokens.css に存在しない → 無効値でレイアウト破綻 */
+
+/* ✅ 参照前に確認: rg -- "--space-2xl" apps/management-console/src/styles/tokens.css
+   未定義なら tokens.css への追加と DESIGN.md の同期（AGENTS.md Rule 10）をセットで行う */
+```
+
+## 完了条件
+
+- 新規・変更したレイアウト値がすべて `var(--layout-*)` 参照であること（生ピクセル値のハードコードが `rg -n "[0-9]+px" <変更ファイル>` で検出されない、または検出分に正当な理由がある）
+- 参照した全トークンが `tokens.css` に定義済みであること
+- `cd apps/management-console && npm run lint` が通ること
 
 今後は、Reactコンポーネント内でレイアウトのズレを調整する際は、「コンポーネントの数値をいじる」のではなく、「一元管理されたCSS変数を正しく参照できているか」を第一に確認してください。

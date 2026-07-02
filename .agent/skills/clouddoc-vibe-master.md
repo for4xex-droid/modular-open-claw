@@ -16,13 +16,13 @@ Aiome（大規模ボイラープレート）環境において、ノリと直感
 
 ### 1. 実装前の「構造プレビュー」
 新しい機能を実装する前に、必ずDocumentationに構造を問いかけ、実装の「ノリ」を決定します。
-- **アクション**: `grep` や `CLOUD_DOCUMENTATION.md` を参照し、類似の既存パターンを特定。
+- **アクション**: `grep` や `docs/CLOUD_DOCUMENTATION.md` を参照し、類似の既存パターンを特定。
 - **指示例**: 「新しいStripe課金プランを追加したい。既存のSubscriptionモデルとの関連図をMermaidで出して。」
 
 ### 2. コミット前の「ドキュメント・セルフ更新」
 プッシュする前に、ローカルでWikiを更新し、自分の変更が正しく図解されるか確認します。
 - **コマンド**: `python3 scripts/generate_docs.py`
-- **チェック**: 管理画面 (`localhost:3000`) で新しいモジュールが反映されているか、依存関係が設計通りかを目視。
+- **チェック**: 生成された `docs/{クレート名}.md` に新しいモジュールが反映されているか、依存関係が設計通りかを確認（スクリプトは `docs/` 配下に Markdown を出力する。Web 管理画面での確認機能は存在しない）。
 
 ### 3. Vibeガード（デストラクティブ変更の防止）
 大規模リファクタリング時、Documentationのコンテキストを利用して「壊してはいけない場所」を特定します。
@@ -36,7 +36,7 @@ Aiome（大規模ボイラープレート）環境において、ノリと直感
 4.  **[Push]**: GitHub Actions経由でDocumentation Cloudを更新。
 
 ## 📝 鉄の掟 (Required Reading)
-- `docs/DOCUMENTATION_USAGE_GUIDE.md` を常にプロジェクトの「真実」として扱う。
+- `docs/CLOUD_DOCUMENTATION.md` を常にプロジェクトの「真実」として扱う。
 - Doc Comments (`///` or `/** */`) を書くことは、将来の自分への最高の投資である。
 
 ---

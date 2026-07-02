@@ -1,5 +1,32 @@
 ## [Unreleased]
 
+### Added (実績由来の新スキル6件 2026-07-03)
+- `.agent/skills/` に memory Lessons・CHANGELOG の実障害から抽出した再発防止スキルを新設（全て発動条件・良い例/悪い例・Negative Test つき完了条件・出典を含む）:
+  - `api-route-wiring-check.md`: router.rs 配線漏れ防止の4点チェック（出典: memory/2026-04-24, 04-27）
+  - `sqlx-migration-safety.md`: 二重マイグレーション同期・適用済み SQL 編集禁止・TempDir スコープ（出典: VersionMismatch 事故, memory/2026-04-17, 05-01）
+  - `stripe-mock-centralization.md`: Commerce モック一元定義・本番パス偽成功禁止（出典: memory/2026-06-01, MockCommerceEngine 二重定義事故）
+  - `playwright-e2e-stabilization.md`: JWT 3パート構造・Suspense・Tokio 枯渇切り分け（出典: memory/2026-05-08, E2E 20時間ハング事故）
+  - `i18n-test-sync.md`: 翻訳キー parity とテスト期待値のキー同期（出典: memory/2026-06-14）
+  - `r3f-three-shader-patterns.md`: R3F v9 alpha/DPR/instanceColor/ダブルバッファリング（出典: memory/2026-06-30, RIPPLE_MAP 同日節）
+- `docs/guides/SKILLS_MANUAL.md` にセクション6（実績由来スキル群の一覧）を追加。
+
+### Changed (スキル棚卸し: 守り+攻め 2026-07-03)
+- **デッドパス・事実誤り修正**: `clouddoc-vibe-master.md`（`CLOUD_DOCUMENTATION.md` → `docs/` 配下へ、存在しない `DOCUMENTATION_USAGE_GUIDE.md` と「localhost:3000 管理画面」の虚偽前提を訂正）、`security-guardrails.md`（存在しない `resources/security/` を実在の検証済み実装マップ purge_entities / sanitize_for_prompt / Cleanroom に全面差し替え）、`css-architecture.md`（tokens.css の実パス補正）、`error-prevention-protocol.md`（旧 IDE のツール名 write_to_file/cat 依存の代替手段リストをツール非依存に）。
+- **発動条件の明確化**: frontmatter 欠落3件（architecture-rules / css-architecture / tauri-development）に発動・非発動条件つき description を追加。既存3件の name を kebab-case 化し description に発動場面を明記。
+- **実績出典つき追記**: U-002 に検証コマンドと成功/NG実例（RIPPLE_MAP 2026-06-10 / OP-029）、B-004 に MockPromptRegistry NG実例、R-005 に `unwrap_or_else(|_| loop {})` NG実例（OP-053）、error-prevention-protocol ルール3に制定契機（memory/2026-04-05）、css-architecture に未定義トークン NG実例と完了条件を追加。
+- バックアップ: `.context/archive/skills-backup-2026-07-03/`。
+
+### Changed (開発環境・エージェント運用のトークン最適化 2026-07-03)
+- **AGENTS.md スリム化（16.4KB→12.7KB、毎セッション約2割削減）**: ローカルログイン検証の完全手順を `docs/guides/LOCAL_LOGIN_VERIFICATION.md` [NEW] へ移管し要点3行に短縮。5つの「なぜこのルールが存在するか」節を1行の由来注記に圧縮（ルール本文は不変）。廃止済み `nurture_auditor.py` への言及を除去。
+- **`.cursorrules` 廃止**: AGENTS.md との完全重複（Safety/Verification の短縮版）のため削除し、AGENTS.md へ一本化。`CURSOR_MIGRATION_GUIDE.md` に廃止告知と再作成禁止を明記。
+- **`OPEN.md` [NEW] 未解決タスク台帳**: 日次 memory の Open がサイレント消失する構造欠陥を解消。HANDOVER.md P1 項目・MEMORY.md Blind Spots・直近 memory の未解決 Open・Upstream 待ち Issue A〜D を OP-xxx ID で一元管理。AGENTS.md メモリ管理ルールに正本参照を追加。
+- **design-catalog 分割**: 10社の `.design.md`（各13〜22KB）から `.prompt-guide.md`（各2.4〜3.9KB、色/タイポ/Agent Prompt Guide 抜粋）を生成。`design-catalog.md` インデックスを prompt-guide 優先・full 版オンデマンドに更新（1社参照時のトークン約80%削減）。
+- **汎用 skills 3件を移管**: Aiome 固有知識のない `backend-patterns.md` / `frontend-patterns.md` / `coding-standards.md` を `.agent/skills/` から `docs/guides/generic-patterns/` へ移動（SKILLS_MANUAL.md 同期済み）。
+- **workflow 整理**: ロードマップ誤配置の `implementation_plan.md` を `docs/roadmaps/` へ移動（HANDOVER.md / MASTER_BLUEPRINT.md / mission-control-principles.md のリンク更新）。旧 Antigravity 固有の `VIBE_WORKFLOW.md` / `spec-mode.md` を `.agent/workflows/archive/` へ。`/god-mode` `/expert-review` に非推奨・使い分け告知を追加。
+- **`scripts/docs-sync-check.sh` Check 8 [NEW]**: memory/ 日次ファイルの形式検査（20行以内・Done/Open/Lessons 3セクション、2026-07-03 以降のファイル対象）。Negative Test で git diff ベース実装の検知漏れ（memory/ は git 追跡外）を発見し、ファイルシステム走査方式へ修正済み。
+- **`/release-preflight` ステップ7.5 [NEW]**: CHANGELOG [Unreleased] の200行超過チェックを追加（リリース時のバージョン切り出しを強制）。
+- **メモリ二系統の整理**: 異常ファイル名 ``memory/2026-04-07.md` `` を教訓マージの上 `memory/archive/2026-04-07-handover.md` へ正規化。陳腐化した `.agent/memory/2026-04-01-phase2-handoff.md` をアーカイブ。`context-optimization.md` の「skills 常駐」誤記（全 skills 一括読込を誘発）を訂正。MEMORY.md の `nurture_auditor.py` 強制記述を現行ツール（grep + impact_query.py + RIPPLE_MAP）に更新。
+
 ### Added
 - **改善計画 P0–P3 の一括実装（セキュリティ・経済・品質・リポジトリ衛生）**:
   - `commercial/apps/nurture-api/src/routes/internal/idempotency_gate.rs` [NEW]: 内部送金・返金・ポイント引出し API に既存 `IdempotencyStore` を配線。

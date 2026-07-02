@@ -306,6 +306,53 @@ check_design_sync() {
 
 
 # ──────────────────────────────────────
+# Check 8: memory/ 日次ファイルの形式検査
+# AGENTS.md「メモリ管理」: 20行以内・Done/Open/Lessons の
+# 3セクション固定。
+# 注意: memory/ は git 追跡外（release-preflight ステップ2参照）
+# のため git diff では検知不能。ファイルシステムを直接走査し、
+# レガシー免除カットオフ日以降のファイルのみ検査する。
+# ──────────────────────────────────────
+check_memory_format() {
+  info "Check 8: memory/ 日次ファイル形式チェック"
+
+  # このカットオフ日以降の日次ファイルのみ検査（それ以前はレガシー免除）
+  local legacy_cutoff="2026-07-03"
+  local before_warn=$WARN_COUNT
+  local checked=0
+
+  local mf
+  for mf in memory/20[0-9][0-9]-[0-9][0-9]-[0-9][0-9].md; do
+    [[ -f "$mf" ]] || continue
+
+    local fdate
+    fdate=$(basename "$mf" .md)
+    # ISO 日付は文字列比較で大小判定可能
+    [[ "$fdate" < "$legacy_cutoff" ]] && continue
+    checked=$((checked + 1))
+
+    local line_count
+    line_count=$(wc -l < "$mf" | tr -d ' ')
+    if [[ "$line_count" -gt 20 ]]; then
+      warn "$mf が ${line_count} 行です（AGENTS.md 規定: 20行以内）"
+    fi
+
+    local section
+    for section in "## Done" "## Open" "## Lessons"; do
+      if ! grep -q "^${section}" "$mf"; then
+        warn "$mf に「${section}」セクションがありません（Done/Open/Lessons の3セクション固定）"
+      fi
+    done
+  done
+
+  if [[ $checked -eq 0 ]]; then
+    pass "検査対象の memory/ 日次ファイルなし（${legacy_cutoff} 以降）— スキップ"
+  elif [[ $WARN_COUNT -eq $before_warn ]]; then
+    pass "memory/ 日次ファイル ${checked} 件は形式に準拠しています"
+  fi
+}
+
+# ──────────────────────────────────────
 # Main
 # ──────────────────────────────────────
 main() {
@@ -340,6 +387,8 @@ main() {
   check_infra_module_doc
   echo ""
   check_design_sync
+  echo ""
+  check_memory_format
 
   echo ""
   echo "──────────────────────────────────────"

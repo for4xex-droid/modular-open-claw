@@ -1,3 +1,8 @@
+---
+name: architecture-rules
+description: Rust バックエンド（libs/・apps/）のコードを書く・変更する前に必読の Aiome 固有アーキテクチャルール（R-001〜R-008）。JobQueue/SQLite/async 再帰/JSON構築/unwrap 禁止等。UI のみの変更では不要。
+---
+
 # Aiome Architecture Rules — AI Agent Must-Read
 
 > **Status**: Accepted  
@@ -100,6 +105,11 @@ let value = config.get("key").unwrap_or_else(|| {
 // ❌ 禁止（テスト以外）
 let value = config.get("key").unwrap();
 let value = config.get("key").expect("key not found");
+
+// ❌ 禁止 — パニック検出回避のための無限ループも同罪
+// NG実例: skills/mod.rs L163 の unwrap_or_else(|_| loop {}) は CPU 100% で沈黙する
+// （出典: REMAINING_TASKS.md 2026-07-02 / OPEN.md OP-053）
+let value = init().unwrap_or_else(|_| loop {});
 ```
 
 ---

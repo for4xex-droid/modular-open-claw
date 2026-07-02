@@ -83,4 +83,4 @@ async fn chaos_[component]_[failure_mode]() {
 ## 関連ワークフロー
 - `/tdd` — テスト駆動開発
 - `/red-team` — セキュリティ攻撃シミュレーション
-- `/god-mode` — 究極のコンボワークフロー（Chaos 統合済み）
+- `/god-mode` — 究極のコンボワークフロー（Chaos 統合済み）（非推奨、/task 推奨）

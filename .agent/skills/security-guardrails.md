@@ -1,25 +1,29 @@
 ---
-name: Security Guardrails
-description: プロジェクトに堅牢なセキュリティガードレール（入力検証、無害化など）を実装するためのガイド
+name: security-guardrails
+description: 外部入力（RSS/Web/LLM出力/ユーザー入力）を扱うコードやサニタイズ処理を実装・変更するときに読む。リポジトリ内の検証済み実装（purge_entities / sanitize_for_prompt / Cleanroom）の所在マップ。auth.rs 等の Safety-Critical Zone 変更許可については AGENTS.md を参照。
 ---
 
 # Security Guardrails
 
-セキュリティ実装を行う際は、必ず以下の **Security Starter Kit** のテンプレートを参照し、利用してください。
+セキュリティ実装を行う際は、必ず本リポジトリの**既存の検証済み実装**を参照・再利用してください。
 車輪の再発明を避け、検証済みのパターンを使用することで脆弱性を防ぎます。
 
-- **リソースの場所**: プロジェクトの `resources/security/` または社内セキュリティ・ガイドラインを参照してください。
+## 検証済み実装の場所（車輪の再開発禁止）
 
-## テンプレートの使用方法
+| 用途 | 実装 |
+|---|---|
+| 外部入力の無害化（エンティティ除去） | `libs/core/src/security_impl.rs` の `purge_entities()` |
+| プロンプトインジェクション防御 | `libs/shared/src/guardrails.rs` の `sanitize_for_prompt()` |
+| 課金・レート系ガード | `libs/infrastructure/src/job_queue/guardrails.rs` |
+| スキルの AI セキュリティ監査 | `libs/infrastructure/src/skills/cleanroom.rs`（Cleanroom, G-22） |
 
-### Rustプロジェクトの場合
-1. セキュリティ・テンプレートのリファレンスを読み込む。
-2. 内容を理解し、プロジェクトの `src/utils/guardrails.rs` 等にコピーまたは適合させて実装する。
-3. 特に「SQLインジェクション対策」「XSS対策」「パス・トラバーサル対策」が含まれているか確認する。
+**職責分離**: 文字列の安全な切り詰めは `shared::strings`、プロンプトインジェクション防御は `shared::guardrails::sanitize_for_prompt` を使う（混同しない）。
 
-### Pythonプロジェクトの場合
-1. 安全な要件定義（Secure Requirements）を確認する。
-2. `defusedxml` などの推奨ライブラリが含まれているか確認する。
+## 実装手順
+
+1. 上記テーブルから該当する既存実装を `view` で読み、再利用または同パターンで拡張する。
+2. 新規のセキュリティ処理を書く場合、「SQLインジェクション対策」「XSS対策」「パス・トラバーサル対策」の3点が含まれているか確認する。
+3. Negative Test（不正入力を投げて拒否されることの確認）を必ず書く（AGENTS.md Verification Protocol）。
 
 ## 実装時の注意点
 

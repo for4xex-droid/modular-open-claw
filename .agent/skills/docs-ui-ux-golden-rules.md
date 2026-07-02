@@ -47,6 +47,8 @@ description: ドキュメント操作・UI/UX開発・ビルド検証時にAIエ
 **Mock構造体は例外なく `#[cfg(any(test, debug_assertions))]` で囲え。**
 `cargo check --release` で参照不可能であることを確認。
 
+> NG実例: `MockPromptRegistry` が本番コードの fallback として参照されており、`NoopPromptRegistry` への改名・分離を要した（出典: CHANGELOG）。「Mock」と名の付くものが release ビルドに到達した時点で違反。
+
 ### B-005: バックグラウンドプロセス管理 (Process Lifecycle) [HIGH]
 **`Command::new()` で子プロセスを起動する場合の必須設定:**
 - `.kill_on_drop(true)`
@@ -62,6 +64,10 @@ description: ドキュメント操作・UI/UX開発・ビルド検証時にAIエ
 
 ### U-002: デザイントークンの全参照 (Honor the Tokens) [CRITICAL]
 色・隙間・角丸・レイアウト幅の生値（`#00f2ff`, `12px`, `280px`）のハードコード禁止。すべて `var(--xxx)` で参照。
+検証コマンド: `python3 scripts/test_ui_hex_violations.py`（0 違反で合格）。
+
+> 実績: 2026-06-10、Biome UI のインライン生値38箇所を tokens.css 参照へ置換し 0 違反を達成（出典: RIPPLE_MAP.md 2026-06-10 節）。
+> NG実例: `biome-popup-entry.tsx` L36 の背景色 `#030712` 直書きが技術的負債として摘出された（出典: CHANGELOG [Unreleased] / OPEN.md OP-029）。
 
 ### U-003: 編集後の型チェック義務 (TSC After Edit) [HIGH]
 TSXを編集したら `npm run lint` を即実行。通らなければ「完了」と報告するな。

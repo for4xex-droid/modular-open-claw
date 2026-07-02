@@ -2,6 +2,8 @@
 description: Brainstorm, TDD, Reflexion, Chaos, Red-Team を連鎖させ、最高品質の成果物を生み出す究極のコンボワークフロー
 ---
 
+> [!NOTE] このワークフローは `/task` オーケストレーターに統合予定です。新規利用は `/task` を推奨します。
+
 # /god-mode - 神の一手
 
 重要かつ難解なタスクに対し、全知全能（Brainstorm x TDD x Reflexion x Red-Team）のアプローチで完遂します。

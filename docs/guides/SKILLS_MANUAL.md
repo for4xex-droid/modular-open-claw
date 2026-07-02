@@ -15,26 +15,29 @@
   - 「複雑な機能を追加したいけど、どこから手をつければいい？」と聞く。
   - 実装前に「既存のよく似たコードの構造をMermaidで図解して」と頼む。
 
-### 2. ⚙️ Backend Architecture Patterns (`backend-patterns.md`)
+### 2. ⚙️ Backend Architecture Patterns ([`backend-patterns.md`](../generic-patterns/backend-patterns.md))
 **【役割】堅牢なバックエンドの設計士**
 - **何をするか**: Rust Enterprise Templateに基づいた「クリーンアーキテクチャ」と「依存性逆転の原則」を徹底させます。
 - **活用シーン**: 
   - `libs/core` にビジネスロジックを追加する際の実装パターンの統一。
   - `infrastructure` 層でのデータベースや外部APIの抽象化実装。
+- **注記**: 汎用リファレンスのため `docs/guides/generic-patterns/` に移管済み。Aiome 固有規約は [`architecture-rules.md`](../../.agent/skills/architecture-rules.md) / [`docs-ui-ux-golden-rules.md`](../../.agent/skills/docs-ui-ux-golden-rules.md) を参照。
 
-### 3. 🎨 Frontend System Patterns (`frontend-patterns.md`)
+### 3. 🎨 Frontend System Patterns ([`frontend-patterns.md`](../generic-patterns/frontend-patterns.md))
 **【役割】プレミアムUIの魔術師**
 - **何をするか**: バニラCSSや最新のWebデザイン（グラスモーフィズム、ダークモード）を用い、一目で「プレミアム」と感じさせるUIを生成します。
 - **活用シーン**: 
   - 新しいダッシュボードウィジェットのデザイン。
   - アセットやアニメーションを含めたモダンなインターフェース構築。
+- **注記**: 汎用リファレンスのため `docs/guides/generic-patterns/` に移管済み。Aiome 固有規約は [`architecture-rules.md`](../../.agent/skills/architecture-rules.md) / [`docs-ui-ux-golden-rules.md`](../../.agent/skills/docs-ui-ux-golden-rules.md) を参照。
 
-### 4. 📏 Coding Standards & Iron Principles (`coding-standards.md`)
+### 4. 📏 Coding Standards & Iron Principles ([`coding-standards.md`](../generic-patterns/coding-standards.md))
 **【役割】品質の門番（鉄の掟）**
 - **何をするか**: 本番コードでの `unwrap()` 禁止（テストは可）、`Result`型強制、`tokio`による非同期処理など、Rustのエンタープライズ品質を担保します。
 - **活用シーン**: 
   - コード生成時の自動リント・セルフチェック。
   - 実行効率と安全性を両立したコードの記述。
+- **注記**: 汎用リファレンスのため `docs/guides/generic-patterns/` に移管済み。Aiome 固有規約は [`architecture-rules.md`](../../.agent/skills/architecture-rules.md) / [`docs-ui-ux-golden-rules.md`](../../.agent/skills/docs-ui-ux-golden-rules.md) を参照。
 
 ### 5. 🛡 Security Guardrails (`security-guardrails.md`)
 **【役割】防御のスペシャリスト**
@@ -42,6 +45,19 @@
 - **活用シーン**: 
   - APIエンドポイントの実装時のバリデーションチェック。
   - 環境変数や秘匿情報の取り扱いに関するガードレール。
+
+### 6. 📚 実績由来スキル群（2026-07-03 追加）
+
+過去の障害・教訓（memory/ Lessons）から抽出された、再発防止のためのスキルです。
+
+| スキル | 発動場面 |
+|---|---|
+| `api-route-wiring-check.md` | 新 API エンドポイント / トレイトメソッド追加時（router.rs 配線漏れ防止） |
+| `sqlx-migration-safety.md` | DB スキーマ変更時（SQLite/Postgres 二重同期・適用済み SQL 編集禁止） |
+| `stripe-mock-centralization.md` | Commerce モックの追加・変更時（一元定義・偽成功禁止） |
+| `playwright-e2e-stabilization.md` | E2E テストが Flaky・ハングするとき（JWT/Suspense/Tokio 枯渇の切り分け） |
+| `i18n-test-sync.md` | UI 文字列の t() 化・翻訳 JSON 変更時（テスト期待値のキー同期） |
+| `r3f-three-shader-patterns.md` | Biome UI（R3F/シェーダー）変更時（alpha/DPR/instanceColor/ダブルバッファ） |
 
 ---
 

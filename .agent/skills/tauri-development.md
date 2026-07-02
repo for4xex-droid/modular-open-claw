@@ -1,3 +1,8 @@
+---
+name: tauri-development
+description: src-tauri/・tauri.conf.json・サイドカー（api-server, key-proxy, nurture-api）・CSP・トレイ/メニューに触れるときに必読の Tauri v2 固有ルール（T-001〜T-007）。通常の React UI 変更のみでは不要。
+---
+
 # Aiome Tauri Desktop Application Development Rules
 
 Tauri v2 デスクトップアプリとしての Aiome 開発において、AIエージェントおよび開発者が遵守すべき追加の絶対的ルールです。

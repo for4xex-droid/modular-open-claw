@@ -1,3 +1,32 @@
+## 🔍 実績由来の新スキル6件の追加（スキル棚卸し「攻め」フェーズ） (2026-07-03)
+
+- **変更内容**:
+    - `.agent/skills/api-route-wiring-check.md` [NEW] / `sqlx-migration-safety.md` [NEW] / `stripe-mock-centralization.md` [NEW] / `playwright-e2e-stabilization.md` [NEW] / `i18n-test-sync.md` [NEW] / `r3f-three-shader-patterns.md` [NEW]: memory Lessons の反復教訓をスキル化（各46〜53行、frontmatter・Negative Test つき完了条件・出典つき）。
+    - `docs/guides/SKILLS_MANUAL.md` [MODIFY]: セクション6（実績由来スキル群）を追加。
+- **波及効果**:
+    - **参照整合性**: 全スキルの参照パス（router.rs, migrations/{sqlite,postgres}, mock.rs, auth-bypass.ts, i18n/*.json, BiomeCanvas.tsx 等17件）は作成時に実在確認済み。commercial/migrations/ の二系統構造もスキル本文へ反映。
+    - **発動の棲み分け**: sqlx-migration-safety は golden-rules B-003 の詳細版、stripe-mock-centralization は B-004 準拠、r3f-three-shader-patterns は U-005 併読を本文に明記し、重複発動時も矛盾しない。
+    - **Safety-Critical 連動**: stripe-mock-centralization に「commerce.rs / StripeCommerceEngine 本体はユーザー明示許可必須（AGENTS.md）」を明記。
+
+## 🔍 開発環境・エージェント運用のトークン最適化とメモリー台帳一元化 (2026-07-03)
+
+- **変更内容**:
+    - `AGENTS.md` [MODIFY]: ログイン検証手順の外部化、「なぜ」節の圧縮、OPEN.md 正本ルール追加（228行→180行）。
+    - `.cursorrules` [DELETE]: AGENTS.md へ一本化。
+    - `OPEN.md` [NEW]: 未解決タスクの単一台帳（OP-xxx ID 管理）。
+    - `docs/guides/LOCAL_LOGIN_VERIFICATION.md` [NEW]: ログイン検証の完全手順。
+    - `.agent/design-catalog/*.prompt-guide.md` [NEW x10] / `design-catalog.md` [MODIFY]: 軽量版 + オンデマンド full 参照方式。
+    - `docs/guides/generic-patterns/` [NEW]: 汎用 skills 3件の移管先（`.agent/skills/` から backend-patterns / frontend-patterns / coding-standards を移動）。
+    - `docs/roadmaps/implementation_plan.md` [MOVE]: `.agent/workflows/` からの誤配置是正。
+    - `.agent/workflows/archive/` [NEW]: VIBE_WORKFLOW.md / spec-mode.md をアーカイブ。
+    - `scripts/docs-sync-check.sh` [MODIFY]: Check 8（memory 形式検査）追加。
+    - `.agent/workflows/release-preflight.md` [MODIFY]: ステップ7.5（[Unreleased] 200行上限）追加。
+    - `MEMORY.md` / `.agent/skills/context-optimization.md` [MODIFY]: nurture_auditor 陳腐化記述と「skills 常駐」誤記の訂正。
+- **波及効果**:
+    - **常時コンテキスト**: AGENTS.md + .cursorrules で毎セッション約5.6KB削減。指示の二重定義による競合リスクを解消。
+    - **参照リンク**: HANDOVER.md / MASTER_BLUEPRINT.md / mission-control-principles.md / CURSOR_MIGRATION_GUIDE.md / SKILLS_MANUAL.md のパス参照を更新済み。旧パス残存なしを grep 検証済み。
+    - **運用**: 未解決タスクは OPEN.md が正本となり、日次 memory の Open は当日メモに役割変更。memory 形式違反は docs-sync-check.sh（CI 連動）で自動検知される。
+
 ## 🔍 Biome 背景グレーバグ、レイアウト崩れ、およびチュートリアル見切れの根本修正 (2026-07-01)
 
 - **変更内容**:

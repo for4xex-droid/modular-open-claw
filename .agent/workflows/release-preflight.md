@@ -69,6 +69,12 @@ GitHubリポジトリの About セクションに以下が設定されている�
 - Website: 公式サイトURL（あれば）
 - Topics: `ai`, `autonomous-agents`, `rust`, `agent-os`, `self-improving-ai` 等
 
+## ステップ 7.5: CHANGELOG [Unreleased] 肥大化チェック
+```bash
+awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md | wc -l
+```
+**200行を超えている場合**、リリース時に必ずバージョンセクション（`## [x.y.z] - YYYY-MM-DD`）へ切り出すこと。[Unreleased] の滞留はレビュー不能な変更履歴を生む。
+
 ## ステップ 8: LICENSE 整合性
 ```bash
 head -1 LICENSE && grep -o "Apache\|BUSL\|MIT\|GPL" LICENSE | head -1

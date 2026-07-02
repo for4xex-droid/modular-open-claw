@@ -1,8 +1,8 @@
 ---
-name: Mission Control Principles
+name: mission-control-principles
 description: |
-  巨大なリポジトリにおけるコンテキストの限界を突破するための4つの普遍的原則。
-  すべての大規模変更や計画策定の前に必ず適用すること。
+  複数クレート・複数層（UI/API/DB/Tauri）にまたがる大規模変更・リファクタ・新機能の計画前に必ず適用する4原則
+  （Deep Scan / Ripple 分析 / Red Teaming / Drop-Dead GC）。単一ファイルの小修正では不要。
 ---
 
 # Mission Control Principles
@@ -21,7 +21,7 @@ description: |
 ひとつの変更が引き起こすカスケード効果を多角的にトレースせよ。
 
 - **Action**: ある変更（例: CWD / カレントディレクトリの変更、依存クレートのバージョンアップなど）を行った際、UIのエンドポイント設定、Tauriのサンドボックス権限、Dockerのボリュームマウントなど「他の層（Layer）」にどう影響するかを分析する。
-- **Rule**: バックエンドの変更がフロントエンドにどう影響するか（またはその逆）を、必ず `grep_search` による実体検索と `RIPPLE_MAP.md` の両面から検証し、計画書 (`implementation_plan.md`) に明記すること。
+- **Rule**: バックエンドの変更がフロントエンドにどう影響するか（またはその逆）を、必ず `grep_search` による実体検索と `RIPPLE_MAP.md` の両面から検証し、計画書 (`docs/roadmaps/implementation_plan.md`) に明記すること。
 
 ## 3. 😈 Red Teaming (悪魔の弁護人)
 計画した解決策が実稼働環境でどうクラッシュするかを「攻撃者（あるいは最悪のシナリオ）視点」で検証せよ。

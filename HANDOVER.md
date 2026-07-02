@@ -20,11 +20,10 @@
 > ユーザーから「完成版のロゴ・音声素材」が提供されるまで、コードの変更を一切行ってはなりません。仮画像やプレースホルダーでの代用は厳禁です。
 
 ## ⏩ 次期リリースでのネクストアクション (P1 項目)
-最新の実行計画は **[implementation_plan.md](.agent/workflows/implementation_plan.md)** にて定義されています。
-- **P1-1: Stripe Customer Portal 統合**
-  - `libs/aiome-commerce/Cargo.toml` に `async-stripe-billing-portal` クレートを追加し、ポータル URL 生成エンドポイントを新設。ロゴ解凍後に Stripe Dashboard からブランディングをカスタマイズ。
-- **P1-4: `execute_autonomous_purchase` の封印解除**
-  - Nurture Ledger への Coin Charge Relay と連携し、`/api/v1/commerce/purchase` のスタブ解除と Nurture /internal/purchase へのプロキシを実装。
+最新の実行計画は **[implementation_plan.md](docs/roadmaps/implementation_plan.md)** にて定義されています。
+未解決タスクの一覧・進捗は **[OPEN.md](OPEN.md)** で一元管理しています。
+- **P1-1: Stripe Customer Portal 統合**（→ OPEN.md OP-010）
+- **P1-4: `execute_autonomous_purchase` の封印解除**（→ OPEN.md OP-011）
 
 ## 🛡️ 開発原則（AGENTS.md）
 - **Scope Lock 原則**: 各フェーズ（計画・設計・実装・検証）の境界を厳守すること。

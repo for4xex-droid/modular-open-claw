@@ -1,0 +1,259 @@
+{
+  "folders": [
+    {
+      "name": "Aiome",
+      "path": "."
+    },
+    {
+      "name": "Nurture",
+      "path": "commercial"
+    },
+    {
+      "name": "Console",
+      "path": "apps/management-console"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/target": true,
+      "**/node_modules": true,
+      "**/dist": true
+    },
+    "search.exclude": {
+      "**/target": true,
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/pkg": true
+    },
+    "files.watcherExclude": {
+      "**/target/**": true,
+      "**/node_modules/**": true
+    },
+    "rust-analyzer.cargo.buildScripts.enable": true,
+    "rust-analyzer.check.command": "check",
+    "rust-analyzer.check.workspace": true,
+    "rust-analyzer.cargo.allTargets": true,
+    "rust-analyzer.linkedProjects": [
+      "Cargo.toml"
+    ],
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2,
+    "[rust]": {
+      "editor.tabSize": 4,
+      "editor.defaultFormatter": "rust-lang.rust-analyzer"
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "vscode.typescript-language-features"
+    },
+    "[typescriptreact]": {
+      "editor.defaultFormatter": "vscode.typescript-language-features"
+    },
+    "typescript.tsdk": "${workspaceFolder:Console}/node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "terminal.integrated.cwd": "${workspaceFolder:Aiome}",
+    "terminal.integrated.env.osx": {},
+    "terminal.integrated.env.linux": {}
+  },
+  "extensions": {
+    "recommendations": [
+      "rust-lang.rust-analyzer",
+      "vadimcn.vscode-lldb",
+      "tauri-apps.tauri-vscode",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode"
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Rust: cargo check (workspace)",
+        "type": "shell",
+        "command": "cargo check --workspace",
+        "options": {
+          "cwd": "${workspaceFolder:Aiome}",
+          "envFile": "${workspaceFolder:Aiome}/.env"
+        },
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": ["$rustc"]
+      },
+      {
+        "label": "Rust: cargo test (workspace)",
+        "type": "shell",
+        "command": "cargo test --workspace",
+        "options": {
+          "cwd": "${workspaceFolder:Aiome}",
+          "envFile": "${workspaceFolder:Aiome}/.env"
+        },
+        "group": "test",
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated"
+        },
+        "problemMatcher": ["$rustc"]
+      },
+      {
+        "label": "Run: api-server",
+        "type": "shell",
+        "command": "cargo run -p api-server",
+        "options": {
+          "cwd": "${workspaceFolder:Aiome}",
+          "envFile": "${workspaceFolder:Aiome}/.env"
+        },
+        "isBackground": true,
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated"
+        },
+        "problemMatcher": ["$rustc"]
+      },
+      {
+        "label": "Run: nurture-api",
+        "type": "shell",
+        "command": "cargo run -p nurture-api --no-default-features --features desktop",
+        "options": {
+          "cwd": "${workspaceFolder:Aiome}",
+          "envFile": "${workspaceFolder:Aiome}/.env"
+        },
+        "isBackground": true,
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated"
+        },
+        "problemMatcher": ["$rustc"]
+      },
+      {
+        "label": "Run: api-server + nurture-api",
+        "dependsOn": [
+          "Run: api-server",
+          "Run: nurture-api"
+        ],
+        "dependsOrder": "parallel",
+        "group": "none",
+        "problemMatcher": []
+      },
+      {
+        "label": "Console: npm run dev",
+        "type": "shell",
+        "command": "npm run dev",
+        "options": {
+          "cwd": "${workspaceFolder:Console}",
+          "envFile": "${workspaceFolder:Aiome}/.env"
+        },
+        "isBackground": true,
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Console: tauri dev",
+        "type": "shell",
+        "command": "npm run tauri dev",
+        "options": {
+          "cwd": "${workspaceFolder:Console}",
+          "envFile": "${workspaceFolder:Aiome}/.env"
+        },
+        "isBackground": true,
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Docker: commercial stack",
+        "type": "shell",
+        "command": "docker compose -f docker-compose.commercial.yml up -d",
+        "options": {
+          "cwd": "${workspaceFolder:Aiome}"
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Docker: quickstart stack",
+        "type": "shell",
+        "command": "docker compose -f docker-compose.quickstart.yml up -d",
+        "options": {
+          "cwd": "${workspaceFolder:Aiome}"
+        },
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "Nurture: cargo test (commercial only)",
+        "type": "shell",
+        "command": "cargo test -p nurture-api -p nurture-core -p nurture-infra -p nurture-bridge -p commerce-protocol",
+        "options": {
+          "cwd": "${workspaceFolder:Aiome}",
+          "envFile": "${workspaceFolder:Aiome}/.env"
+        },
+        "group": "test",
+        "presentation": {
+          "reveal": "always",
+          "panel": "dedicated"
+        },
+        "problemMatcher": ["$rustc"]
+      }
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "lldb",
+        "request": "launch",
+        "name": "Debug api-server",
+        "cargo": {
+          "args": [
+            "build",
+            "--bin=api-server",
+            "--package=api-server"
+          ],
+          "filter": {
+            "name": "api-server",
+            "kind": "bin"
+          }
+        },
+        "cwd": "${workspaceFolder:Aiome}",
+        "envFile": "${workspaceFolder:Aiome}/.env"
+      },
+      {
+        "type": "lldb",
+        "request": "launch",
+        "name": "Debug nurture-api",
+        "cargo": {
+          "args": [
+            "build",
+            "--bin=nurture-api",
+            "--package=nurture-api",
+            "--no-default-features",
+            "--features",
+            "desktop"
+          ],
+          "filter": {
+            "name": "nurture-api",
+            "kind": "bin"
+          }
+        },
+        "cwd": "${workspaceFolder:Aiome}",
+        "envFile": "${workspaceFolder:Aiome}/.env"
+      }
+    ]
+  }
+}
