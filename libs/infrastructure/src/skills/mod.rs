@@ -1065,7 +1065,6 @@ impl WasmSkillManager {
                         .into());
                     }
 
-                    let client = reqwest::Client::new();
                     let req_method = match method.to_uppercase().as_str() {
                         "GET" => reqwest::Method::GET,
                         "POST" => reqwest::Method::POST,
