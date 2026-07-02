@@ -10,6 +10,7 @@ import { Sparkles, User, ShieldAlert, Loader2, Eye, EyeOff, BookOpen, Check } fr
 import { useTranslation } from '../i18n';
 import { API_BASE } from '../config';
 import { setAuthToken, authenticatedFetch } from '../lib/auth';
+import { reloadApp } from '../lib/navigation';
 
 interface SetupWizardProps {
     onComplete: () => void;
@@ -596,13 +597,13 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
 
                             <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
                                 <button
-                                    onClick={() => window.location.reload()}
+                                    onClick={() => reloadApp()}
                                     style={{ padding: '0.8rem 2rem', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', fontWeight: 700, cursor: 'pointer' }}
                                 >
                                     {t('setup.playbookSkip') || 'Skip'}
                                 </button>
                                 <button
-                                    onClick={() => window.location.reload()}
+                                    onClick={() => reloadApp()}
                                     style={{ padding: '0.8rem 2rem', background: 'var(--accent-cyan)', color: 'var(--text-inverse)', border: 'none', borderRadius: 'var(--radius-md)', fontWeight: 700, cursor: 'pointer' }}
                                 >
                                     {t('setup.playbookStart') || 'Start Aiome'}

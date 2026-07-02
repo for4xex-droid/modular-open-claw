@@ -14,3 +14,11 @@ export const redirect = (url: string): void => {
         window.location.assign(url);
     }
 };
+
+/**
+ * ページ全体のリロード。jsdom では window.location をモックできないため、
+ * テスト容易性のために独立した関数として定義しています。
+ */
+export function reloadApp(): void {
+    window.location.reload();
+}
