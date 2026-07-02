@@ -431,5 +431,15 @@ mod tests {
             // "keyboard.rs" は ".key" で ends_with しない
             assert!(!is_sensitive_path(Path::new("/project/src/keyboard.rs")));
         }
+
+        /// R-2 の前提: host_write が `is_sensitive_path` に統一された後、
+        /// 従来のインライン検査（.env/.git/security.json のみ）では素通りしていた
+        /// パターンもすべて遮断対象であることを固定する。
+        #[test]
+        fn test_host_write_blocks_all_sensitive_patterns() {
+            assert!(is_sensitive_path(Path::new("/workspace/.ssh/id_rsa")));
+            assert!(is_sensitive_path(Path::new("/workspace/certs/server.pem")));
+            assert!(is_sensitive_path(Path::new("/workspace/Cargo.toml")));
+        }
     }
 }
