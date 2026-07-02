@@ -159,37 +159,18 @@ impl std::fmt::Display for SkillMaturity {
     }
 }
 
-#[allow(clippy::empty_loop)]
-static DUMMY_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| regex::Regex::new("a^").unwrap_or_else(|_| loop {}));
-
-static LOG_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| match regex::Regex::new(r#"aiome\.log\((.*)\);"#) {
-        Ok(r) => r,
-        Err(_) => DUMMY_REGEX.clone(),
-    });
-static EXEC_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
-    match regex::Regex::new(r#"(?:const\s+(\w+)\s*=\s*(?:await\s+)?)?aiome\.exec\((.*)\);"#) {
-        Ok(r) => r,
-        Err(_) => DUMMY_REGEX.clone(),
-    }
+static LOG_REGEX: LazyLock<Option<regex::Regex>> =
+    LazyLock::new(|| regex::Regex::new(r#"aiome\.log\((.*)\);"#).ok());
+static EXEC_REGEX: LazyLock<Option<regex::Regex>> = LazyLock::new(|| {
+    regex::Regex::new(r#"(?:const\s+(\w+)\s*=\s*(?:await\s+)?)?aiome\.exec\((.*)\);"#).ok()
 });
-static WRITE_REGEX: LazyLock<regex::Regex> =
-    LazyLock::new(|| match regex::Regex::new(r#"aiome\.writeFile\((.*)\);"#) {
-        Ok(r) => r,
-        Err(_) => DUMMY_REGEX.clone(),
-    });
-static READ_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
-    match regex::Regex::new(r#"(?:const\s+(\w+)\s*=\s*(?:await\s+)?)?aiome\.readFile\((.*)\);"#) {
-        Ok(r) => r,
-        Err(_) => DUMMY_REGEX.clone(),
-    }
+static WRITE_REGEX: LazyLock<Option<regex::Regex>> =
+    LazyLock::new(|| regex::Regex::new(r#"aiome\.writeFile\((.*)\);"#).ok());
+static READ_REGEX: LazyLock<Option<regex::Regex>> = LazyLock::new(|| {
+    regex::Regex::new(r#"(?:const\s+(\w+)\s*=\s*(?:await\s+)?)?aiome\.readFile\((.*)\);"#).ok()
 });
-static FETCH_REGEX: LazyLock<regex::Regex> = LazyLock::new(|| {
-    match regex::Regex::new(r#"(?:const\s+(\w+)\s*=\s*(?:await\s+)?)?aiome\.fetch\((.*)\);"#) {
-        Ok(r) => r,
-        Err(_) => DUMMY_REGEX.clone(),
-    }
+static FETCH_REGEX: LazyLock<Option<regex::Regex>> = LazyLock::new(|| {
+    regex::Regex::new(r#"(?:const\s+(\w+)\s*=\s*(?:await\s+)?)?aiome\.fetch\((.*)\);"#).ok()
 });
 
 /// `WasmSkillManager` 構造体
@@ -924,7 +905,7 @@ impl WasmSkillManager {
             };
 
             // 1. aiome.log
-            if let Some(caps) = LOG_REGEX.captures(line) {
+            if let Some(caps) = LOG_REGEX.as_ref().and_then(|r| r.captures(line)) {
                 let inner = caps[1].trim();
                 let msg = resolve_token(inner, &variables);
                 info!("📝 [JS Log] {}", msg);
@@ -933,7 +914,7 @@ impl WasmSkillManager {
             }
 
             // 2. aiome.exec
-            if let Some(caps) = EXEC_REGEX.captures(line) {
+            if let Some(caps) = EXEC_REGEX.as_ref().and_then(|r| r.captures(line)) {
                 if !manifest.allow_shell_execution {
                     return Err("Security Violation: Shell execution is not permitted".into());
                 }
@@ -951,7 +932,7 @@ impl WasmSkillManager {
             }
 
             // 3. aiome.writeFile
-            if let Some(caps) = WRITE_REGEX.captures(line) {
+            if let Some(caps) = WRITE_REGEX.as_ref().and_then(|r| r.captures(line)) {
                 if !manifest.allow_filesystem_write {
                     return Err("Security Violation: Filesystem write is not permitted".into());
                 }
@@ -990,7 +971,7 @@ impl WasmSkillManager {
             }
 
             // 4. aiome.readFile
-            if let Some(caps) = READ_REGEX.captures(line) {
+            if let Some(caps) = READ_REGEX.as_ref().and_then(|r| r.captures(line)) {
                 let inner = caps[2].trim();
                 let relative_path = resolve_token(inner, &variables);
                 let full_path = canon_root.join(&relative_path);
@@ -1024,7 +1005,7 @@ impl WasmSkillManager {
             }
 
             // 5. aiome.fetch
-            if let Some(caps) = FETCH_REGEX.captures(line) {
+            if let Some(caps) = FETCH_REGEX.as_ref().and_then(|r| r.captures(line)) {
                 if !manifest.allow_network {
                     return Err("Security Violation: Network access is not permitted".into());
                 }
