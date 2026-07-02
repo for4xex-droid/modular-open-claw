@@ -33,12 +33,12 @@
 - [ ] **OP-027**: Stripe API 実装追加時の一元化モック拡充（2026-06-01）
 - [ ] **OP-028**: フロントエンド `as any` 型キャスト4箇所の解消（WorkflowBuilder.tsx ×3, workflowConverter.ts ×1）（2026-07-02）
 - [ ] **OP-029**: `biome-popup-entry.tsx` HEX カラー直書きの解消（U-002 違反、`var(--bg-primary)` へ置換）（2026-07-02）
-- [ ] **OP-050**: `skills/mod.rs`（1,134行）God Module の責務分解（2026-07-02）
+- [x] **OP-050**: `skills/mod.rs`（1,134行）God Module の責務分解 → 2026-07-03 完了（599行に縮小、code_mode.rs / host_fns.rs / types.rs へ分離。refactor/skills-god-module ブランチ）
 - [ ] **OP-051**: Error 型定義の統一（thiserror/anyhow 混在 10種類 → 3階層）（2026-07-02）
 - [ ] **OP-052**: `deep-scan.sh` CRATES 設定修正（廃止済み `apps/watchtower` の除外）（2026-07-02）
-- [ ] **OP-053**: `skills/mod.rs` L163 `unwrap_or_else(|_| loop {})` の安全なエラー伝搬への修正（Dim 10 違反）（2026-07-02）
+- [x] **OP-053**: `skills/mod.rs` L163 `unwrap_or_else(|_| loop {})` の安全なエラー伝搬への修正（Dim 10 違反） → 2026-07-03 完了（DUMMY_REGEX 削除、`LazyLock<Option<Regex>>` 化）
 - [ ] **OP-054**: JobQueue トレイトの API 乖離解消（補助メソッドのトレイト引き上げ or private 化）（2026-07-02）
-- [ ] **OP-055**: `immune_system.rs` 内 MockJQ（約700行）の `libs/test-utils` への共有化（2026-07-02）
+- [x] **OP-055**: `immune_system.rs` 内 MockJQ（約700行）の共有化 → 2026-07-03 完了（新クレートではなく `infrastructure::testing::mock_jq` クレート内モジュールとして抽出）
 
 ## 🔵 Upstream 待ち（scripts/watch_upstream_blockers.py で監視中）
 

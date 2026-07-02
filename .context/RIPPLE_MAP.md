@@ -1,3 +1,17 @@
+## 🔍 skills God Module 分解と MockJQ 共有化（OP-050/053/055） (2026-07-03)
+
+- **変更内容**:
+    - `libs/infrastructure/src/skills/mod.rs` [MODIFY]: 1,135行 → 599行。JS ブリッジ・ホスト関数・型定義を分離し、`pub use types::*` で外部パス維持。`host_write` の機密パス検査を `is_sensitive_path()` に統一（.ssh / id_rsa / Cargo.toml / *.pem / *.key の書込遮断を追加）。DUMMY_REGEX の `loop {}` を除去。
+    - `libs/infrastructure/src/skills/code_mode.rs` [NEW]: Code Mode JS ミニインタープリタ（正規表現5本は `LazyLock<Option<Regex>>` 化、expand_vars/unquote/resolve_token をモジュール関数に昇格）。
+    - `libs/infrastructure/src/skills/host_fns.rs` [NEW]: `build_host_exec_fn` / `build_host_write_fn` / `build_noop_host_fns`（B-1 Memory Safety Contract のコメントごと移動）。
+    - `libs/infrastructure/src/skills/types.rs` [NEW]: UnverifiedSkill / VerifiedSkill（TypeState）/ SkillMetadata / SkillMaturity。
+    - `libs/infrastructure/src/testing/mock_jq.rs` [NEW] + `lib.rs` [MODIFY]: immune_system.rs テスト内の MockJQ（14 トレイト実装）を `#[cfg(test)]` ゲートの共有モジュールへ抽出。
+    - `docs/roadmaps/refactor_skills_module_plan.md` [NEW]: 実行計画書（R-1〜R-7、1項目=1コミット）。
+- **波及効果**:
+    - **API 互換性**: `infrastructure::skills::` の公開パスは再エクスポートで不変。利用側（api-server 12ファイル、aiome-node 2ファイル、oss_orchestrator）の変更ゼロを `cargo check --workspace --tests` で確認済み。
+    - **挙動変更は1点のみ**: host_write の機密パス遮断が7パターン+拡張子2種に厳格化（意図的なセキュリティ修正）。他は全て等価変換で infrastructure 全657テスト PASS。
+    - **今後のテスト**: JobQueue 系のモックが必要なテストは `crate::testing::mock_jq::MockJQ` を再利用可能。
+
 ## 🔍 実績由来の新スキル6件の追加（スキル棚卸し「攻め」フェーズ） (2026-07-03)
 
 - **変更内容**:

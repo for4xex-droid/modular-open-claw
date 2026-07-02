@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### Changed (skills モジュールのリファクタリング OP-050/053/055 2026-07-03)
+- **God Module 分解（OP-050）**: `libs/infrastructure/src/skills/mod.rs` を 1,135行 → 599行に分解。Code Mode JS ブリッジ（正規表現5本＋インタープリタ約300行）を `code_mode.rs` へ、WASM ホスト関数ビルダー（host_exec/host_write/no-op スタブ）を `host_fns.rs` へ、型定義4種（UnverifiedSkill/VerifiedSkill/SkillMetadata/SkillMaturity）を `types.rs` へ分離。`pub use` 再エクスポートにより外部 API パスは完全維持（利用側 12 ファイルの変更ゼロ）。
+- **セキュリティ検査の統一（意図的な厳格化）**: `host_write` ホスト関数のインライン機密パス検査（.env/.git/security.json の3パターンのみ）を `is_sensitive_path()` に統一。従来素通りしていた `.ssh`・`id_rsa`・`Cargo.toml`・`*.pem`・`*.key` への WASM スキル書込を遮断。
+- **`loop {}` パニック回避策の除去（OP-053）**: `DUMMY_REGEX` の `unwrap_or_else(|_| loop {})`（評価時 CPU 100% ハング）を削除し、静的正規表現5本を `LazyLock<Option<Regex>>` 化（失敗時は「マッチしない」に安全縮退）。
+- **MockJQ 共有化（OP-055）**: `immune_system.rs` テスト内に埋没していた MockJQ（14 トレイト実装・約530行）を `infrastructure::testing::mock_jq`（`#[cfg(test)]` ゲート）へ抽出し再利用可能に。
+- その他: `run_code_mode_js` 内の未使用 `reqwest::Client::new()` 削除。計画書は `docs/roadmaps/refactor_skills_module_plan.md`。infrastructure 全 657 テスト PASS。
+
 ### Added (実績由来の新スキル6件 2026-07-03)
 - `.agent/skills/` に memory Lessons・CHANGELOG の実障害から抽出した再発防止スキルを新設（全て発動条件・良い例/悪い例・Negative Test つき完了条件・出典を含む）:
   - `api-route-wiring-check.md`: router.rs 配線漏れ防止の4点チェック（出典: memory/2026-04-24, 04-27）

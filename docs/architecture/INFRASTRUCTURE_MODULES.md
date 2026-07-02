@@ -60,7 +60,7 @@
 | `spec_provider` | `FsSpecProvider` を通じた動的ワークフロー仕様のファイルシステムへのエクスポート基盤。パストラバーサル防御、symlink拒否、正規表現によるシークレットサニタイズを実装。 | **Phase 4 完了** |
 | `prompt_registry` | Minijinjaベースのシステムプロンプト・テンプレートレンダリングエンジン。ゼロパニック対応の `NoopPromptRegistry` フォールバックを提供し、プロンプトのSSOTを確立。 | **Phase 4 完了** |
 | `score_tracker` | エージェントの成長やKarmaの停滞（Plateau）を日次で記録し、TimesFMによる時系列予測モジュールへデータを供給する。 | **Phase 3D 完了** |
-| `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase B** にて `ToolHook` と `HookChain` を導入し、実行前後のインターセプトと `ToolCallRouter` による一元的なセキュリティ評価基盤を構築。 | **Phase B 完了** |
+| `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase B** にて `ToolHook` と `HookChain` を導入し、実行前後のインターセプトと `ToolCallRouter` による一元的なセキュリティ評価基盤を構築。**2026-07** に God Module（mod.rs 1,135行）を `code_mode`（JS ブリッジ）/ `host_fns`（ホスト関数ビルダー）/ `types`（TypeState 型定義）へ分解し、機密パス検査を `is_sensitive_path` に統一。 | **リファクタ完了** |
 | `slo_engine` | サービスの可用性や応答時間の目標値を監視。 | 実装完了 |
 | `society_of_thought` | **ADR-032**: Dochkina (2026) の Endogeneity Paradox に基づく自己組織化熟議エンジン。Sequential マルチパス協調、自律ロール発明、Voluntary Self-Abstention、Capability-Aware Protocol Fallback を実装。Oracle `multi_review` と統合済。 | **ADR-032 完了** |
 | `soul_adapter` | 内部イベントから Experience へ変換、予測評価、および **Phase 37a** で L2.5 層 `WhisperMiddleware` を追加した Middleware Chain との連携。 | **Phase 37a 完了** |
@@ -72,6 +72,7 @@
 | `trend_sonar` | 外部トレンドの収集（Web/RSS/X）と LLM による評価・選別。マルチソース集約対応。**Phase 8.7** にて全体ストールを防ぐ `FuturesUnordered` + Timeout の並行アーキテクチャと依存性注入（DI）によるテスト分離パラダイムを確立。 | **Phase 8.7 完了** |
 | `user_learner` | ユーザーの好みや行動パターンを学習。 | 実装完了 |
 | `validator` | 入出力データの形式と安全性の検証。`ConstitutionalValidator` で `SlmBridge` の矛盾検知を強化。CLI依存を排除した `LocalMockSlm` によるフェイルセーフなTDD環境を構築済。 | **強化完了** |
+| `testing` | テスト専用の共有モック群（`#[cfg(test)]` ゲート）。`mock_jq` に JobQueue 系 14 トレイトのフル Mock 実装（MockJQ）を提供し、テスト間で再利用可能。リリースバイナリには含まれない。 | **2026-07 追加** |
 | `workspace_manager` | スキル生成時の一時ディレクトリやサンドボックス環境の管理。 | 実装完了 |
 | `x_signal_probe` | reqwest と X_BEARER_TOKEN を用いた超軽量な X API トレンド収集アダプタ。**Phase 8.7** にて、429 Retry-After 自律解析と、DashMap によるアンダーフロー無縁 (`saturating_sub`) な絶対安全レート制限機構へ到達。 | **Phase 8.7 完了** |
 | `autonomous_demo` | 自律経済のデモ・オーケストレーター。欲求生成から進化までのライフサイクルを管理。 | **Phase 25.5 完了** |
