@@ -322,14 +322,12 @@ impl WasmSkillManager {
         let vault_path_clone = self.vault_path.clone();
         let skills_dir_parent = self.skills_dir.parent().map(|p| p.to_path_buf());
 
-        // host_write の比較基準となる root は canonicalize 済みのものをビルダーに渡す
-        let allowed_root_for_write = match std::fs::canonicalize(&self.allowed_root) {
-            Ok(p) => p,
-            Err(e) => {
-                tracing::error!("🚨 [host_write] Failed to canonicalize allowed_root: {}", e);
-                return Err(format!("Security: Cannot resolve allowed_root: {}", e).into());
-            }
-        };
+        // host_write の比較基準となる root は canonicalize 済みのものをビルダーに渡す。
+        // 失敗はクロージャ内へ伝搬させ、従来どおり Aegis インシデント記録経路（res）を通す。
+        let allowed_root_for_write = std::fs::canonicalize(&self.allowed_root).map_err(|e| {
+            tracing::error!("🚨 [host_write] Failed to canonicalize allowed_root: {}", e);
+            format!("Security: Cannot resolve allowed_root: {}", e)
+        });
 
         let result = tokio::task::spawn_blocking(move || {
             // 1. Build Manifest (Inside closure)
@@ -371,6 +369,7 @@ impl WasmSkillManager {
             }
 
             // 2. Build Host Functions (メモリ安全性契約の詳細は host_fns.rs 参照)
+            let allowed_root_for_write = allowed_root_for_write?;
             let functions = vec![
                 host_fns::build_host_exec_fn(permissions.clone()),
                 host_fns::build_host_write_fn(
