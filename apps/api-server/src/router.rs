@@ -492,7 +492,15 @@ pub fn build_app(
                 .route("/:id/validate", post(routes::workflow::validate_workflow))
                 .route("/:id/fork", post(routes::workflow::fork_workflow))
                 .route("/:id/versions", get(routes::workflow::list_versions))
-                .route("/:id/executions", get(routes::workflow::list_executions)),
+                .route("/:id/executions", get(routes::workflow::list_executions))
+                .route("/:id/export", get(routes::workflow::export_workflow)),
+        )
+        .nest(
+            "/api/v1/playbooks",
+            Router::new()
+                .route("/", get(routes::playbook::list_playbooks))
+                .route("/import", post(routes::playbook::import_playbook))
+                .route("/:id/install", post(routes::playbook::install_playbook)),
         )
         .route(
             "/api/v1/settings",

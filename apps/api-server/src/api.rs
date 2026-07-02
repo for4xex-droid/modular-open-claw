@@ -23,6 +23,11 @@ use utoipa::OpenApi;
         crate::routes::skill::update_mcp_config,
         crate::routes::skill::get_mcp_config,
         crate::routes::general::get_health_status,
+        // Playbooks (F-1)
+        crate::routes::playbook::list_playbooks,
+        crate::routes::playbook::install_playbook,
+        crate::routes::playbook::import_playbook,
+        crate::routes::workflow::export_workflow,
         // Agent
         crate::routes::agent::trigger_agent_chat,
         crate::routes::agent::handle_karma_feedback,
@@ -140,6 +145,8 @@ use utoipa::OpenApi;
             crate::routes::settings::UpdateSettingsRequest,
             crate::routes::settings::TestConnectionRequest,
             crate::routes::settings::TestConnectionResponse,
+            crate::routes::playbook::PlaybookSummary,
+            crate::routes::playbook::PlaybookInstallResponse,
             crate::routes::commerce::ReleaseEscrowRequest,
             aiome_core_contracts::commerce::EscrowRecord,
             crate::routes::skill::SkillSummary,
