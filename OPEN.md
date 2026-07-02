@@ -39,6 +39,7 @@
 - [x] **OP-053**: `skills/mod.rs` L163 `unwrap_or_else(|_| loop {})` の安全なエラー伝搬への修正（Dim 10 違反） → 2026-07-03 完了（DUMMY_REGEX 削除、`LazyLock<Option<Regex>>` 化）
 - [ ] **OP-054**: JobQueue トレイトの API 乖離解消（補助メソッドのトレイト引き上げ or private 化）（2026-07-02）
 - [x] **OP-055**: `immune_system.rs` 内 MockJQ（約700行）の共有化 → 2026-07-03 完了（新クレートではなく `infrastructure::testing::mock_jq` クレート内モジュールとして抽出）
+- [ ] **OP-056**: フロント `useWorkflowApi` の `POST /api/v1/workflows/validate` とバックエンド `/api/v1/workflows/:id/validate` のパス不整合（F-1 実装時に発見、修正は未実施）（2026-07-03）
 
 ## 🔵 Upstream 待ち（scripts/watch_upstream_blockers.py で監視中）
 

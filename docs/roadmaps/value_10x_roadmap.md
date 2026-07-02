@@ -51,6 +51,8 @@ Horizon 3: プラットフォーム化（v2.0〜）
 
 ### F-1 Agent Playbooks — 業務テンプレートのワンクリック導入
 
+> **実装済み（2026-07-03）**: `docs/roadmaps/f1_agent_playbooks_implementation_plan.md` に基づき実装完了。
+
 - **何か**: 「SEO 運用」「SNS 運用」「競合リサーチ」「サポート一次対応」等の業務一式（ワークフロー定義＋必要スキル＋スケジュール＋承認ポリシー）を1つの Playbook としてパッケージ化し、SetupWizard 直後に選択導入できるようにする。
 - **10x への寄与**: 「空のエージェント」問題の解消。初日から成果が出るため継続率と口コミが変わる。
 - **既存資産（実在確認済み）**: `WorkflowBuilder.tsx` + `workflowConverter.ts`（GUI と変換器）、`routes/workflow.rs`（CRUD・`execute`・**`fork`・`validate`** 実装済み）、**`workflows` テーブルに `is_template` / `visibility`（community/marketplace）列が既に存在**（`libs/infrastructure/src/workflow/store.rs`）、`mcp/discovery.rs` の初回シード機構（`mcp_servers.json` 自動生成 — Playbook シードの参照パターン）、`routes/buzz`（SNS ドラフト）、`geo-optimizer`（SEO 監査）。

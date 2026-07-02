@@ -3,6 +3,9 @@
 ### Added (10x Value 成長ロードマップ 2026-07-03)
 - `docs/roadmaps/value_10x_roadmap.md` [NEW]: v1.0 リリース計画の次を定義する成長ロードマップ。3ホライズン・10機能（Playbooks / Outcome Ledger / Skill Marketplace α / MCP Provider / Soul Sync / Proof of Agent Work / リモート承認 / Multi-Tenant / 開放経済圏 / Voice Interface）を、各機能ごとの受け入れ基準（Negative Test 含む）・既存資産マッピング・依存関係・効果×リスク優先順位つきで策定。既存計画（implementation_plan.md / OPEN.md）との重複なしを棚卸しで確認済み。
 
+### Added (F-1 Agent Playbooks 2026-07-03)
+- **F-1 Agent Playbooks**: 公式業務テンプレート4本（seo-operations / sns-operations / competitor-research / support-triage）を `apps/api-server/assets/playbooks/` に同梱（`include_str!`）。`libs/infrastructure/src/workflow/playbook.rs` に PlaybookManifest v1 型と構造バリデーションを追加。認証必須の `GET /api/v1/playbooks`・`POST /api/v1/playbooks/:id/install`・`POST /api/v1/playbooks/import`（依存欠落は 422 で `missing_skills` / `missing_mcp_servers` を返却、途中失敗はロールバック）と `GET /api/v1/workflows/:id/export` を実装（`routes/playbook.rs`・`routes/workflow.rs`・`router.rs`・OpenAPI 登録）。SetupWizard に Playbook 選択ステップ（step 6、初期化成功後に表示・スキップ可）を追加し、reload を `reloadApp()` 経由に変更。i18n `setup.playbook*` キーを ja/en に追加。統合テスト7本（`api_integration_tests/playbook.rs`）。
+
 ### Changed (skills モジュールのリファクタリング OP-050/053/055 2026-07-03)
 - **God Module 分解（OP-050）**: `libs/infrastructure/src/skills/mod.rs` を 1,135行 → 599行に分解。Code Mode JS ブリッジ（正規表現5本＋インタープリタ約300行）を `code_mode.rs` へ、WASM ホスト関数ビルダー（host_exec/host_write/no-op スタブ）を `host_fns.rs` へ、型定義4種（UnverifiedSkill/VerifiedSkill/SkillMetadata/SkillMaturity）を `types.rs` へ分離。`pub use` 再エクスポートにより外部 API パスは完全維持（利用側 12 ファイルの変更ゼロ）。
 - **セキュリティ検査の統一（意図的な厳格化）**: `host_write` ホスト関数のインライン機密パス検査（.env/.git/security.json の3パターンのみ）を `is_sensitive_path()` に統一。従来素通りしていた `.ssh`・`id_rsa`・`Cargo.toml`・`*.pem`・`*.key` への WASM スキル書込を遮断。
