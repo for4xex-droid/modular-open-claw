@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Added (10x Value 成長ロードマップ 2026-07-03)
+- `docs/roadmaps/value_10x_roadmap.md` [NEW]: v1.0 リリース計画の次を定義する成長ロードマップ。3ホライズン・10機能（Playbooks / Outcome Ledger / Skill Marketplace α / MCP Provider / Soul Sync / Proof of Agent Work / リモート承認 / Multi-Tenant / 開放経済圏 / Voice Interface）を、各機能ごとの受け入れ基準（Negative Test 含む）・既存資産マッピング・依存関係・効果×リスク優先順位つきで策定。既存計画（implementation_plan.md / OPEN.md）との重複なしを棚卸しで確認済み。
+
 ### Changed (skills モジュールのリファクタリング OP-050/053/055 2026-07-03)
 - **God Module 分解（OP-050）**: `libs/infrastructure/src/skills/mod.rs` を 1,135行 → 599行に分解。Code Mode JS ブリッジ（正規表現5本＋インタープリタ約300行）を `code_mode.rs` へ、WASM ホスト関数ビルダー（host_exec/host_write/no-op スタブ）を `host_fns.rs` へ、型定義4種（UnverifiedSkill/VerifiedSkill/SkillMetadata/SkillMaturity）を `types.rs` へ分離。`pub use` 再エクスポートにより外部 API パスは完全維持（利用側 12 ファイルの変更ゼロ）。
 - **セキュリティ検査の統一（意図的な厳格化）**: `host_write` ホスト関数のインライン機密パス検査（.env/.git/security.json の3パターンのみ）を `is_sensitive_path()` に統一。従来素通りしていた `.ssh`・`id_rsa`・`Cargo.toml`・`*.pem`・`*.key` への WASM スキル書込を遮断。
