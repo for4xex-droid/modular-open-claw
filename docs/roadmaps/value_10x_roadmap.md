@@ -1,8 +1,9 @@
 # Aiome 10x Value Roadmap — 価値を桁で変える機能ロードマップ
 
-**作成日**: 2026-07-03
+**作成日**: 2026-07-03（同日 /perfect-plan 検証済み・実在確認反映）
 **位置づけ**: `implementation_plan.md`（v1.0.0 リリースロードマップ = 品質・安定化）の**次**を定義する成長ロードマップ。v1.0 の完成を置き換えるものではなく、その上に積む。
 **前提となる既存計画**: Phase 3.5（Infra Remediation）→ Phase 4（Biome Reputation）→ Phase 5（Cognitive Observability）→ Release Preflight は本ロードマップの共通前提。OP-xxx 番号は `OPEN.md` を正本とする。
+**検証状態**: 全10機能の「既存資産」記載は 2026-07-03 に rg による実在確認済み。各機能の「実在確認済み資産」「新規（既存なし）」の区別は本文に反映済み。
 
 ---
 
@@ -28,6 +29,7 @@ Horizon 1: 価値の可視化と導入の崖の解消（v1.1〜v1.2）
   F-2 Outcome Ledger（ROI ダッシュボード）
   F-3 Skill Marketplace α（署名付きスキル配布）
 Horizon 2: ネットワーク効果の起動（v1.3〜v1.5）
+  F-0 Secure Remote Access（F-4/F-7 の共通前提: リモート到達の公式手順）
   F-4 Aiome as MCP Provider（外部エージェントへの能力開放）
   F-5 Soul Sync（クロスデバイス人格同期）
   F-6 Proof of Agent Work（検証可能な作業証明）
@@ -38,7 +40,10 @@ Horizon 3: プラットフォーム化（v2.0〜）
   F-10 Voice Interface（音声対話 → Voice Commerce 助走）
 ```
 
-依存関係: F-3 → F-9、F-2 → F-6、F-4 → F-9、F-5 は Federation スコープ決定（implementation_plan.md Open Question）の (A) 採択が前提。F-7・F-10 は独立。
+依存関係: F-3 → F-9、F-2 → F-6、F-4 → F-9、F-5 は Federation スコープ決定（implementation_plan.md Open Question）の (A) 採択が前提。F-10 は独立。
+
+> [!IMPORTANT]
+> **共通前提（/perfect-plan Gate 4 で摘出）**: api-server は現在 localhost ファースト設計である。**F-4（外部 MCP クライアント）と F-7（外出先からの承認）は「セルフホストサーバーへのセキュアなリモート到達」を暗黙の前提としており、これ自体が未実装**。H2 着手前に TLS 終端＋トンネル/リバースプロキシの公式手順（推奨構成のドキュメント化と E2E テスト）を先行タスク **F-0: Secure Remote Access** として切り出すこと。これを飛ばすと F-4/F-7 は「LAN 内でしか使えない機能」になり価値が半減する。
 
 ---
 
@@ -48,8 +53,9 @@ Horizon 3: プラットフォーム化（v2.0〜）
 
 - **何か**: 「SEO 運用」「SNS 運用」「競合リサーチ」「サポート一次対応」等の業務一式（ワークフロー定義＋必要スキル＋スケジュール＋承認ポリシー）を1つの Playbook としてパッケージ化し、SetupWizard 直後に選択導入できるようにする。
 - **10x への寄与**: 「空のエージェント」問題の解消。初日から成果が出るため継続率と口コミが変わる。
-- **既存資産**: `WorkflowBuilder`（GUI と変換器は実装済み）、`routes/workflow`、`routes/buzz`（SNS ドラフト）、`geo-optimizer`（SEO 監査）、`FsSpecProvider`（ワークフロー仕様の FS エクスポート基盤）。
-- **主な作業**: Playbook マニフェスト形式（JSON、スキル依存・スケジュール・必要 MCP を宣言）の策定 / インポート・エクスポート API / SetupWizard への選択 UI / 公式 Playbook 4本の同梱。
+- **既存資産（実在確認済み）**: `WorkflowBuilder.tsx` + `workflowConverter.ts`（GUI と変換器）、`routes/workflow.rs`（CRUD・`execute`・**`fork`・`validate`** 実装済み）、**`workflows` テーブルに `is_template` / `visibility`（community/marketplace）列が既に存在**（`libs/infrastructure/src/workflow/store.rs`）、`mcp/discovery.rs` の初回シード機構（`mcp_servers.json` 自動生成 — Playbook シードの参照パターン）、`routes/buzz`（SNS ドラフト）、`geo-optimizer`（SEO 監査）。
+- **新規（既存なし）**: ワークフロー import/export エンドポイント、Playbook マニフェスト形式、SetupWizard の Playbook 選択ステップ（現状の SetupWizard は認証・SOUL 初期化のみでコンテンツ投入なし）。
+- **主な作業**: Playbook マニフェスト形式（JSON、スキル依存・スケジュール・必要 MCP を宣言）の策定 / **`is_template` + `fork` を核にした**インポート・エクスポート API / SetupWizard への選択 UI / 公式 Playbook 4本の同梱（シードは `mcp/discovery.rs` パターンを踏襲）。
 - **受け入れ基準**:
   1. クリーンインストール後、SetupWizard から Playbook「SEO 運用」を選択し、**5分以内**（モデル DL 除く）に最初のジョブが JobQueue に投入される。
   2. Playbook のインポートは依存スキル・MCP が欠けている場合に**具体的な欠落一覧を返して失敗**する（サイレント部分適用禁止）。
@@ -61,8 +67,9 @@ Horizon 3: プラットフォーム化（v2.0〜）
 
 - **何か**: エージェントが完了した仕事を「節約時間・生成収益・処理件数」に換算し、ホーム画面に「今月の成果」として常設表示する。タスク種別ごとの換算係数はユーザーが設定可能。
 - **10x への寄与**: 価値の証明。個人には継続動機、法人（Agency モード）には請求根拠を与える。全マネタイズ機能の説得力の土台。
-- **既存資産**: `trajectory_store`（job_id/tool_name/reward_signal 記録済み）、`routes/karma`、`prompt-stats`（LLM 統計画面）、`score_tracker`（日次記録基盤）。
-- **主な作業**: trajectory → 成果イベントの集計ビュー（SQL）/ 換算係数の Settings 項目 / HomePage ウィジェット / 月次サマリの export（CSV）。
+- **既存資産（実在確認済み）**: `job_queue/trajectory_store.rs`（`trajectory_steps` に job_id/tool_name/reward_signal カラム）、`skill_arena.rs` の **`record_outcome()`（スキル成功/失敗・latency・karma_delta 記録済み）**、`routes/audit.rs` の `prompt-stats` / `diagnostics/summary`（集計 API の参照実装）、`score_tracker`（日次スナップショット）。
+- **新規（既存なし）**: 成果台帳（Outcome Ledger）専用の集約 API と換算レイヤ。集計エンジンは新造せず上記3ソースの集約ビューとして実装。
+- **主な作業**: trajectory + skill_arena outcome → 成果イベントの集計ビュー（SQL）/ 換算係数の Settings 項目 / HomePage ウィジェット / 月次サマリの export（CSV）。
 - **受け入れ基準**:
   1. ジョブ完了時に成果イベントが記録され、`GET /api/outcomes/summary?period=month` が種別別の件数・換算値を返す（統合テストで検証）。
   2. HomePage に「今月: タスク N 件 / 節約 X 時間 / 相当額 ¥Y」ウィジェットが表示され、換算係数を Settings で変更すると**リロードなしで**再計算される。
@@ -74,15 +81,16 @@ Horizon 3: プラットフォーム化（v2.0〜）
 
 - **何か**: ユーザーが作成した WASM スキル（＋メタデータ＋dry-run 用テストペイロード）を署名付きパッケージとして export/import できるようにし、Nurture マーケットプレイス基盤に「スキル」商品タイプを追加する。α版は公式キュレーション制（誰でも出品ではなく審査付き）。
 - **10x への寄与**: ネットワーク効果の起点。スキルが増えるほど OS の価値が増え、作者に収益が還る循環を作る。
-- **既存資産**: `skills/forge.rs`（スキル生成）、`cleanroom.rs`（AI 監査）、`dry_run_skill`（Layer 3 隔離検証）、TypeState（`UnverifiedSkill`→`VerifiedSkill`）、`commercial/libs/nurture-infra`（マーケットプレイス・エスクロー・DRM）、`skill_maturity` テーブル。
-- **主な作業**: スキルパッケージ形式（.wasm + meta.json + Ed25519 署名）/ 署名検証つき import（検証失敗は即拒否）/ Nurture 側の商品タイプ追加 / SkillVault 画面に「マーケット」タブ。
+- **既存資産（実在確認済み）**: import 側パイプラインは完備 — `POST /api/skills/import`（URL import、SSRF 検証→`Cleanroom::process_import`→Forge）、`importer.rs`（.md/.yaml/OpenAPI の3層マニフェスト）、`actions_importer.rs`（GitHub Actions 変換）、`dry_run_skill`（Layer 3 隔離）、TypeState、`skill_maturity` テーブル（migration 20260423000000）。**商品タイプ enum `CommodityKind` に `WasmSkill` が既に定義済み**（`commercial/libs/commerce-protocol/src/commodity.rs`）。Ed25519 署名は samsara-hub / JWT / OxiLean で3実装が存在（流用元は `libs/shared/src/auth.rs` 系を推奨）。
+- **新規（既存なし）**: export/download/share エンドポイント（import の対称 API として `SkillImporter` の逆方向シリアライズで実装）、パッケージ署名形式、SkillVault の「マーケット」タブ。
+- **主な作業**: スキルパッケージ形式（.wasm + meta.json + Ed25519 署名）/ 署名検証つき import（検証失敗は即拒否）/ **`CommodityKind::WasmSkill` の販売フロー結線**（enum 追加は不要）/ SkillVault 画面に「マーケット」タブ。
 - **受け入れ基準**:
   1. `aiome skill package` 相当の API でパッケージを生成し、別インスタンスで import すると**必ず Quarantined 状態で登録**され、dry-run 通過まで実行不可（TypeState が維持されている）。
   2. 署名が改ざんされたパッケージの import は検証エラーで拒否され、Aegis 監査ログに記録される（Negative Test 必須）。
   3. 購入フローは既存エスクロー経由で完結し、Mock Commerce モードでも全経路がテスト可能。
   4. `is_sensitive_path` 等のホスト防御をバイパスするスキルを意図的に作成して import し、実行時にブロックされる敵対テストが CI に存在する。
 - **リスク**: 悪意あるスキルの流通 = 最大のブランドリスク。→ α版はキュレーション制、cleanroom AI 監査 + dry-run + 署名の3層を出荷条件とし、1層でも欠けたら公開しない。
-- **依存**: OP-027（Stripe モック一元化）を先に消化。Safety-Critical Zone（commerce.rs）に触れる部分は人間レビュー必須。
+- **依存**: OP-027（Stripe モック一元化）を先に消化。Safety-Critical Zone（commerce.rs）に触れる部分は人間レビュー必須。**法務前提**: 有償販売の開始には特商法表記ページと資金決済法対応（`REMAINING_TASKS.md` §3 の Nurture 側タスク）が先行完了していること。未完了の間は無償配布のみ。
 
 ---
 
@@ -92,8 +100,9 @@ Horizon 3: プラットフォーム化（v2.0〜）
 
 - **何か**: 既存の MCP サーバー実装を「外部公開可能」な品質に引き上げ、Cursor/Claude 等の外部 AI クライアントから Aiome のスキル実行・Cortex 検索・ワークフロー起動を安全に利用できるようにする。認証はスコープ付き API トークン。
 - **10x への寄与**: Aiome が「他のエージェントの道具箱」になる。単体アプリからインフラへの転換点であり、導入経路が npm/デスクトップ以外に広がる。
-- **既存資産**: `apps/api-server/src/mcp/server.rs`、`aiome-node/src/mcp_server.rs`、MCP 品質監視（ツール15超警告・description 監査は実装済み）、JWT AuthManager。
-- **主な作業**: スコープ付きトークン発行 UI（Settings）/ ツールごとの許可リスト / レート制限の外部クライアント適用 / 公開用ドキュメント。
+- **既存資産（実在確認済み）**: `mcp/server.rs`（`transcribe`・`cortex_search` + ホワイトリスト WASM スキル公開済み、認証は JWT Bearer）、`libs/shared/src/auth.rs` の `JwtAuthManager` + `Permission` enum（**RBAC/ABAC の `has_permission()` 実装済み**）、`routes/auth.rs` の OAuth 2.1 PKCE フロー（**`AuthorizeRequest.scope` フィールドは受理するが JWT claims に未反映** — ここが結線ポイント）。
+- **新規（既存なし）**: PAT（Personal Access Token）の発行・失効・永続化レイヤ、scope → claims 反映、トークン管理 UI。認証基盤そのものは新造しない。
+- **主な作業**: PAT 発行/失効 API + Settings UI / OAuth scope の claims 反映 / ツールごとの許可リスト / レート制限の外部クライアント適用 / 公開用ドキュメント。
 - **受け入れ基準**:
   1. 外部 MCP クライアントから read スコープのトークンで Cortex 検索が成功し、**同じトークンでスキル実行を試みると 403** になる（スコープ分離の統合テスト）。
   2. トークン失効後のリクエストが即時拒否される。
@@ -118,7 +127,7 @@ Horizon 3: プラットフォーム化（v2.0〜）
 
 - **何か**: Karma ハッシュチェーン＋OxiLean 形式検証を使い、「このエージェントがこの作業をこの品質で行った」ことを第三者が検証できる証明書（JSON + 署名）として export する。F-2 の Outcome Ledger と連動。
 - **10x への寄与**: B2B の扉。AI の作業を外部に請求・納品する際の信頼インフラは競合に存在しない差別化。
-- **既存資産**: Karma チェーン（改ざん困難ログ）、`OxiLeanProofCertificate`（Nurture 連携で署名インフラ実装済み）、`shadow-worker`。
+- **既存資産（実在確認済み）**: Karma チェーン（改ざん困難ログ）、`OxiLeanProofCertificate`（`libs/aiome-core-contracts/src/oxilean.rs`、Nurture 連携で署名インフラ実装済み）、`shadow-worker`、`POST /api/skills/verify-proof` エンドポイント（検証系の参照実装）。
 - **主な作業**: 証明書スキーマ策定 / export API / 独立した検証 CLI（`aiome-verify`、チェーン整合と署名を検証）。
 - **受け入れ基準**:
   1. 任意の完了ジョブについて証明書を export し、`aiome-verify` が別マシン（DB アクセスなし）で PASS を返す。
@@ -130,8 +139,9 @@ Horizon 3: プラットフォーム化（v2.0〜）
 
 - **何か**: `TaskApprovalOverlay`（高リスク操作の人間承認）を PWA + Web Push でスマホから行えるようにする。外出中も自律運転が止まらない。
 - **10x への寄与**: 現状、承認待ちでエージェントが止まる = 自律性の実質上限。承認のレイテンシが分単位になると、任せられる仕事の範囲が質的に変わる。
-- **既存資産**: `TaskApprovalOverlay`、Governed Execution、`routes/jobs` の承認フロー、management-console（PWA 化のベース）。
-- **主な作業**: 承認専用の軽量 PWA ビュー / Web Push 通知（VAPID）/ 承認トークンの短命化・単回性。
+- **既存資産（実在確認済み）**: `TaskApprovalOverlay.tsx`、`routes/jobs.rs` の承認 API（`GET /api/v1/jobs/awaiting-input`、`POST /api/v1/jobs/:id/review` — `status=approved` で再キュー）。
+- **新規（既存なし）**: **PWA / Service Worker / Web Push は現状ゼロ**（manifest.webmanifest・sw.js・VAPID の実装なし）。本機能は10機能中で唯一フロント基盤を新設する項目であり、見積りは他より厚めに取ること。
+- **主な作業**: PWA 化（manifest + Service Worker）/ 承認専用の軽量ビュー / Web Push 通知（VAPID）/ 承認トークンの短命化・単回性。
 - **受け入れ基準**:
   1. 高リスクジョブ発生から 10 秒以内にプッシュ通知が届き、スマホから Approve すると元のジョブが再開する（E2E テスト）。
   2. 承認リンクは**単回・有効期限 15 分**で、再利用・期限切れは 401（Negative Test）。
@@ -146,8 +156,9 @@ Horizon 3: プラットフォーム化（v2.0〜）
 
 - **何か**: Cell-Based Architecture（1プロセス1セル）を活かし、1台のサーバーで複数クライアント分のエージェントを分離運用する管理機能（セルの作成/停止/課金メータリング/横断ダッシュボード）を提供する。`AiaaOnboardingWizard` の実体化。
 - **10x への寄与**: 「代理店が顧客ごとにエージェントを運用する」B2B2C モデルの解禁。1ユーザー→1事業者×N顧客に単価構造が変わる。
-- **既存資産**: Cell Isolation Guard、`AiaaOnboardingWizard`（UI 骨格）、`routes/admin`、Nurture サブスク基盤。
-- **主な作業**: セルのライフサイクル管理 API / セル横断の読み取り専用ダッシュボード / セル単位の使用量メータリング（LLM トークン・ジョブ数）。
+- **既存資産（実在確認済み）**: Cell Isolation Guard、`AiaaOnboardingWizard.tsx`（UI 骨格）、`routes/admin`、Nurture サブスク基盤。メータリングの素材は部分実装あり — LLM は `llm/evaluation_logger.rs`（`prompt_evaluation_log`）+ `GET /api/v1/audit/prompt-stats`、ジョブ数は `job_queue/core_ops.rs` の `get_job_count_since` / `get_pending_job_count`。
+- **新規（既存なし）**: セルのライフサイクル管理 API、**セル単位に統合されたメータリング API**（素材の集約レイヤ）、セル横断ダッシュボード。
+- **主な作業**: セルのライフサイクル管理 API / セル横断の読み取り専用ダッシュボード / 既存カウンタを集約したセル単位使用量メータリング。
 - **受け入れ基準**:
   1. セル A の管理者トークンでセル B のあらゆる API にアクセスすると 403（クロスセル遮断の網羅テスト）。
   2. セル作成→Playbook 導入→初回ジョブ完了が管理 API のみで完結する（ヘッドレス統合テスト）。
@@ -159,8 +170,9 @@ Horizon 3: プラットフォーム化（v2.0〜）
 
 - **何か**: 現在インスタンス内に閉じている Gig マーケット（AI 同士のタスク発注）と LoRA マーケットを、フェデレーションノード間で相互接続する。エージェントが他所のエージェントに仕事を発注し、エスクローで決済する。
 - **10x への寄与**: MASTER_BLUEPRINT L3（Syndicate/Escrow Court）の実体化。エージェント経済圏そのものがプロダクトになる。
-- **既存資産**: `routes/gig`、`routes/lora_market`、エスクロー、Cross-Service OXP Trust（署名付き経済ミューテーション）、Biome Reputation（Phase 4 完了後）。
-- **主な作業**: ノード間 Gig プロトコル（発注→受託→納品→検収→エスクロー解放）/ 相手ノードの信頼スコア連動（Phase 4 の KarmaForge を利用）/ 紛争時の自動返金ポリシー。
+- **既存資産（実在確認済み）**: **Gig の状態機械はほぼ完成** — `libs/aiome-core-contracts/src/gig.rs`（`GigIntent`/`GigOrderStatus`/`AcceptanceCriteria`/`GigEngine` trait: 入札→エスクロー→納品→検証→決済）、`aiome-node` の `UniversalGigEngine` + `SecureGigGateway` + MCP ツール（`gig/publish`・`gig/capabilities`・`gig/status`）、`routes/commerce.rs` のエスクロー API、Cross-Service OXP Trust。
+- **新規（既存なし）**: **samsara-hub 側には Gig・決済メッセージ型が存在しない**（Karma 連合と Arena マッチングのみ）。よって作業の本体は「新規プロトコル発明」ではなく「既存 GigEngine ⇄ samsara-hub federation ハンドラの橋渡し」。
+- **主な作業**: samsara-hub への Gig メッセージ中継ハンドラ追加 / 相手ノードの信頼スコア連動（Phase 4 の KarmaForge を利用）/ 紛争時の自動返金ポリシー。
 - **受け入れ基準**:
   1. 2ノード構成の統合テストで、ノード A のエージェントが発注した Gig をノード B が納品し、検収後にエスクローが解放される全経路が Mock Commerce で完走する。
   2. 納品期限超過時に自動返金される（タイムアウト Negative Test）。
@@ -172,8 +184,9 @@ Horizon 3: プラットフォーム化（v2.0〜）
 
 - **何か**: 既存 TTS（SSE ストリーミング・Viseme 対応）に音声入力（ローカル STT サイドカー）を加え、デスクトップで「話しかけて頼む→アバターが答える」体験を完成させる。Blueprint L2 の Voice Commerce への助走。
 - **10x への寄与**: アバター（VRM/Inochi2D）と TTS という既存投資が「見た目」から「インターフェース」に昇格する。デモ映え＝獲得コスト低下の効果も大きい。
-- **既存資産**: `libs/infrastructure` TTS（Phase 14 完了）、`ExpressionPipeline`、`avatar-engine`（リップシンク）、`VoiceStore`、サイドカー管理基盤（timesfm 等で確立済み）。
-- **主な作業**: STT サイドカー（whisper.cpp 等、完全ローカル）/ プッシュトゥトーク UI / 音声→AgentConsole パイプライン接続。
+- **既存資産（実在確認済み）**: **STT エンジンは既に実装済み** — `libs/infrastructure/src/whisper_transcription.rs`（`WhisperTranscriptionAdapter`、insanely-fast-whisper CLI を `RuntimeJail` 経由で実行、`TranscriptionEngine` trait + bootstrap DI 済み）、MCP ツール `transcribe`。TTS は `tts.rs` + `routes/voice.rs`（`?stream=true` で SSE）、Viseme は trait レベルで定義済み（OpenAI TTS は非対応、Mock は対応）。`ExpressionPipeline`・avatar-engine リップシンク。
+- **新規（既存なし）**: STT の REST 公開層と管理コンソールのプッシュトゥトーク UI のみ。**Whisper エンジンの再構築・新サイドカー追加は不要**（当初想定より大幅に小さい）。
+- **主な作業**: `TranscriptionEngine` の REST ラッパー / プッシュトゥトーク UI / 音声→AgentConsole パイプライン接続 / ローカル TTS プロバイダの Viseme 対応確認。
 - **受け入れ基準**:
   1. プッシュトゥトークで日本語の指示を与え、テキスト起こし→エージェント応答→TTS 再生＋リップシンクまでが**エンドツーエンドでローカル完結**する（ネットワーク遮断状態のテストで確認）。
   2. 応答開始まで 3 秒以内（M シリーズ Mac 基準、ベンチマークを CI 外の手動チェックリストに記録）。
@@ -190,13 +203,14 @@ Horizon 3: プラットフォーム化（v2.0〜）
 | F-1 Playbooks | 高（継続率） | 低 | 高 | 1 |
 | F-2 Outcome Ledger | 高（全機能の土台） | 低 | 高 | 2 |
 | F-3 Skill Market α | 最高（ネットワーク効果） | 中〜高（セキュリティ） | 中 | 3 |
-| F-4 MCP Provider | 高（導入経路） | 中 | 高 | 4 |
-| F-7 リモート承認 | 中〜高（自律性上限の解除） | 低〜中 | 中 | 5 |
-| F-6 Proof of Work | 中（B2B 差別化） | 低 | 高 | 6 |
-| F-10 Voice | 中（体験・獲得） | 中 | 中 | 7 |
-| F-5 Soul Sync | 高（moat） | 高（未決の設計判断） | 中 | 8（スコープ決定待ち） |
-| F-8 Multi-Tenant | 高（単価構造） | 高 | 中 | 9 |
-| F-9 開放経済圏 | 最高（長期） | 最高 | 低〜中 | 10 |
+| F-0 Secure Remote Access | —（F-4/F-7 の前提） | 中 | 低 | 4 |
+| F-4 MCP Provider | 高（導入経路） | 中 | 高 | 5 |
+| F-7 リモート承認 | 中〜高（自律性上限の解除） | 中（PWA 基盤新設） | 低 | 6 |
+| F-6 Proof of Work | 中（B2B 差別化） | 低 | 高 | 7 |
+| F-10 Voice | 中（体験・獲得） | 低〜中（STT エンジン実装済み） | 高 | 8（前倒し可） |
+| F-5 Soul Sync | 高（moat） | 高（未決の設計判断） | 中 | 9（スコープ決定待ち） |
+| F-8 Multi-Tenant | 高（単価構造） | 高 | 中 | 10 |
+| F-9 開放経済圏 | 最高（長期） | 最高（ただし GigEngine 状態機械は実装済み） | 中 | 11 |
 
 ---
 
