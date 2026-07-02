@@ -74,6 +74,9 @@ API_SERVER_SECRET="my_super_secret_key_123456" cargo run --bin api-server # gitl
 
 > **Commerce 機能について**:
 > `STRIPE_API_KEY` を `.env` に設定しない場合、システムはこれを検知して自動的に `MockCommerceEngine` にフォールバックします。課金やギグの発注など、OS内のAIエコノミー機能は何も設定することなくフェイク残高を用いてすぐに体験可能です。
+> 
+> **公式 X (Twitter) 連携について**:
+> `X_TWITTER_CLIENT_ID` および `X_TWITTER_CLIENT_SECRET` を `.env` に設定することで、公式 X MCP サーバー経由でツイート投稿や検索などのソーシャルメディア自動運用を行うことができます。
 
 ---
 

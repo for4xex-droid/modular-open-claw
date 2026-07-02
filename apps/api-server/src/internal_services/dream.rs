@@ -54,6 +54,8 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
         dream_state = dream_state.with_biome_engine(biome.clone());
     }
 
+    let mcp_manager = state.mcp_manager.get_inner().clone();
+
     // 2. Queue / AgentLevel 情報へのアクセス
     let job_queue = job_queue_inner;
     let llm_provider = state.provider.0.clone();
@@ -69,6 +71,9 @@ pub async fn run(state: AppState) -> anyhow::Result<()> {
         let trend_sonar = infrastructure::trend_sonar::build_active_trend_sonar(
             job_queue.as_ref(),
             llm_provider.clone(),
+            vec![std::sync::Arc::new(
+                crate::internal_services::x_mcp_trend::XMcpTrendAdapter::new(mcp_manager.clone()),
+            )],
         )
         .await;
 

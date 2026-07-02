@@ -4389,3 +4389,17 @@ graph TD
     - アプリ内での PDF 解析ライブラリによるスタックオーバーフロー脆弱性（RUSTSEC-2026-0187）が根本解決され、不正な PDF をインジェストされた場合にメインサーバがクラッシュする DoS リスクが解消。
     - `pdftotext` は非特権かつネットワーク・書き込み禁止の Strict サンドボックス内で実行されるため、コマンド自体の未知の脆弱性を狙ったエクスプロイトに対しても二重隔離が適用される。
     - 子プロセス起動のため、GPLコピーレフトライセンスのソースコードへのリンク影響を完全に回避。
+
+## Phase: X (Twitter) Official MCP Server & Trend Integration
+- **変更内容**:
+    - `apps/api-server/src/mcp/discovery.rs` [MODIFY]: サードパーティ製 `x-mcp-server` から公式 X MCP (`api.x.com/mcp`) への stdio 接続と `xurl` ブリッジの連携テンプレートに更新し、デフォルトで有効化 (`disabled: false`)。
+    - `apps/api-server/src/routes/buzz.rs` [MODIFY]: `post_tweet` ツール名のハードコードを定数化・柔軟化し、公式 X MCP が提供する `create_post` およびサードパーティの `post_tweet` の両方を自動検知してフォールバック実行するようロジックを改善。
+    - `apps/api-server/src/internal_services/x_mcp_trend.rs` [NEW]: `TrendAdapter` トレイトを実装した `XMcpTrendAdapter` を新規追加。`McpProcessManager` を経由して公式 X MCP の `search_posts` / `search_tweets` ツールを動的呼び出し可能にし、トレンド収集と MCP のシナジーを確立。
+    - `libs/infrastructure/src/trend_sonar.rs` [MODIFY]: `build_active_trend_sonar()` ファクトリのシグネチャを拡張し、クレート境界を越えた依存性注入 (`extra_adapters`) に対応。
+    - `apps/api-server/src/routes/general.rs` [MODIFY], `apps/api-server/src/internal_services/dream.rs` [MODIFY]: `build_active_trend_sonar()` の呼び出し元で `XMcpTrendAdapter` を注入するように修正。
+    - `apps/api-server/src/mcp/client.rs` [MODIFY]: `McpProcessManager` の `clients` と `registry` フィールドを `pub(crate)` に公開度を変更し、別モジュールのテスト内からモッククライアントを直接挿入可能に。
+    - `.env.example` [MODIFY]: 公式 X MCP 起動用の OAuth2 鍵設定 `X_TWITTER_CLIENT_ID` / `X_TWITTER_CLIENT_SECRET` を追加。
+- **波及効果**:
+    - X API への接続方式が公式 MCP と `xurl` ブリッジに統一されたことで、認証管理が `xurl` のローカル認証情報ストアに一任され、AIOME サーバー側での不要な OAuth トークン管理・流出リスクが解消。
+    - `TrendSonar` モジュールが MCP の検索ツールを利用できるようになったことで、外部 reqwest 接続による X API 直接コールに加えて、MCP 経由のトレンド取得が透過的に統合された。
+

@@ -1,5 +1,44 @@
 ## [Unreleased]
 
+### Added
+- **MCP Patterns 論文知見 (arXiv:2606.30317) に基づくツール総数・説明文の品質監視機能**:
+  - `apps/api-server/src/mcp/client.rs` [MODIFY]: 統一型 `McpEndpoint` enum に、Stdio/HTTP トランスポート共通でサーバーIDを取得できる `pub fn id(&self) -> &str` メソッドを追加。また、ツール総数監視定数 `MCP_TOOL_BUDGET_WARN = 15` を追加。
+  - `apps/api-server/src/mcp/client.rs` [MODIFY]: `discover_mcp_tools` 関数において、接続されている MCP サーバーからのツール総数を集計し、15個を超える場合に `[MCP][BudgetCheck]` 警告ログを出力する機能を追加。また、`description` が空または20文字未満の低品質なツールを一括検知し、`[MCP][DescriptionCheck]` 警告ログとして要約出力する品質監査ロジックを実装。
+  - `apps/api-server/src/mcp/client.rs` [MODIFY]: 上記の ID 取得、警告ログおよび品質監査機能を wiremock の MockServer を用いてメモリ上で網羅検証する単体テストを追加。
+  - `apps/api-server/src/mcp/server.rs` [MODIFY]: 長時間かかる非同期操作のツール設計において、タイムアウトを回避するための「同期開始（Job ID返却）＋進捗ポーリング（poll_job）」設計ガイドライン（Anti-Pattern V-C 対策）をドキュメントコメントとして追加。
+
+- **公式 X (Twitter) MCP サーバーへの移行と統合 (Phase 3/4)**:
+  - `apps/api-server/src/mcp/discovery.rs` [MODIFY]: サードパーティ製 `x-mcp-server` から公式 X MCP (`api.x.com/mcp`) への stdio 接続と `xurl` ブリッジの連携テンプレートに更新し、デフォルトで有効化 (`disabled: false`)。
+  - `apps/api-server/src/routes/buzz.rs` [MODIFY]: `post_tweet` ツール名のハードコードを定数化・柔軟化し、公式 X MCP が提供する `create_post` およびサードパーティの `post_tweet` の両方を自動検知してフォールバック実行するようロジックを改善。
+  - `apps/api-server/src/internal_services/x_mcp_trend.rs` [NEW]: `TrendAdapter` トレイトを実装した `XMcpTrendAdapter` を新規追加。`McpProcessManager` を経由して公式 X MCP の `search_posts` / `search_tweets` ツールを動的呼び出し可能にし、トレンド収集と MCP のシナジーを確立。
+  - `libs/infrastructure/src/trend_sonar.rs` [MODIFY]: `build_active_trend_sonar()` ファクトリのシグネチャを拡張し、クレート境界を越えた依存性注入 (`extra_adapters`) に対応。
+  - `apps/api-server/src/routes/general.rs` [MODIFY], `apps/api-server/src/internal_services/dream.rs` [MODIFY]: `build_active_trend_sonar()` の呼び出し元で `XMcpTrendAdapter` を注入するように修正。
+  - `.env.example` [MODIFY]: 公式 X MCP 起動用の OAuth2 鍵設定 `X_TWITTER_CLIENT_ID` / `X_TWITTER_CLIENT_SECRET` を追加。
+
+### Refactoring & Code Quality (Reflexion Phase)
+- **統合技術的負債監査の実施 (v10.0)**:
+  - `TECH_DEBT_AUDIT.md` [MODIFY]: `cargo audit` や `deep-scan.sh --ci` 等を用いた最新コードベースのスキャンに基づき、`quick-xml` 脆弱性、廃止された `apps/watchtower` スキャン設定の残存、`biome-popup-entry.tsx` におけるインラインカラーハードコード（U-002 違反）のほか、`skills/mod.rs` におけるパニック検出を回避するための意図的な無限ループ（unwrap_or_else(|_| loop {}) による CPU 100% DoS リスク）を特定し、監査レポートおよびメトリクス推移を v10.0 へ更新。
+
+- **`key-proxy` のクォータロード処理の改善**:
+  - `apps/key-proxy/src/main.rs` [MODIFY]: `load_quota_state` 内の `match` のネストを早期リターンを用いてフラット化し、コードの可読性を大幅に向上。
+- **`ArtifactVault` フロントエンド警告とトークンの是正**:
+  - `apps/management-console/src/components/ArtifactVault.tsx` [MODIFY]: `typeof process` の型チェック警告を回避する `@ts-ignore` を、型安全な `@ts-expect-error` に置き換え。
+  - `apps/management-console/src/components/ArtifactVault.tsx` [MODIFY]: 空表示説明テキストのフォントサイズに指定されていた `0.9rem` 生値ハードコードを、デザイントークン `var(--font-sm)` に置換。
+
+### Security & Robustness (Reflexion TDD)
+- **`key-proxy` (Safety-Critical Zone) のセキュリティ強化**:
+  - `apps/key-proxy/src/main.rs` [MODIFY]: `build_auth_manager` のすべてのエラーおよびフォールバック（プレースホルダー検出や鍵非設定など）終了パスにおいて、JWT秘密鍵の環境変数 `JWT_PRIVATE_KEY_B64` が残存しないよう確実にスクラブするよう修正。また、テスト環境向けに `unsafe_code` 属性の拒否をテスト時のみオプトアウトするよう `cfg_attr` を追加。
+  - `apps/key-proxy/src/main.rs` [MODIFY]: クォータファイル (`key_proxy_state.json`) のロードにおいて、ファイル破損（不正な JSON 形式など）時にクラッシュせず警告ログを出力した上で安全に `QuotaState::default()` へフォールバックするよう `load_quota_state` ヘルパー関数にロジックを抽出。また、`AppDataResolver` の二重初期化を排除し、起動時のインスタンスを再利用するよう最適化。
+  - `apps/key-proxy/src/tests.rs` [MODIFY]: JWT環境変数スクラブ、プレースホルダー使用時、クォータファイル破損などの異常系・境界値テストを追加。
+- **`watchtower` WebSocket およびチャット処理の堅牢化**:
+  - `apps/api-server/src/routes/watchtower.rs` [MODIFY]: ブロードキャストチャネルからのメッセージ受信ループにおいて、`RecvError::Lagged`（受信遅延エラー）が発生した際にタスクがサイレント終了してメッセージ転送が恒久遮断される問題を解決。ラグ検知時は警告ログを出力して転送ループを継続するようにエラーハンドリングを追加。
+  - `apps/api-server/src/routes/watchtower.rs` [MODIFY]: `channel_id` パース処理において、パースエラー（数値以外が渡された場合）にサイレントフォールバックせず警告ログを出力した上で安全に `0` にフォールバックするよう修正。また、これらの異常系エラーハンドリングを検証するテスト `test_watchtower_invalid_channel_id_fallback` を追加。
+- **`MemoryCrystallizer` 品質ゲート警告ログの追加**:
+  - `libs/infrastructure/src/memory_crystallizer.rs` [MODIFY]: `judge`（CortexSynth 品質判定エンジン）が `None` の場合に品質評価をバイパスしていることを明示するインフォメーションログを追加。また、未使用の `FactCategory` enum によるコンパイラ警告を抑制するため `#[allow(dead_code)]` を付与。
+- **`ArtifactVault.tsx` ポストメッセージ検証と UX 向上**:
+  - `apps/management-console/src/components/ArtifactVault.tsx` [MODIFY]: サンドボックス化された HTML プレビュー iframe（`allow-same-origin` なし）からのポストメッセージに対し、送信元 `e.origin === "null"` であることを厳密に検証するチェックを追加し、他オリジンからの偽装ポストメッセージによる XSS/インジェクションリスクを排除。
+  - `apps/management-console/src/components/ArtifactVault.tsx` [MODIFY]: アーティファクトの一覧が空の場合にダッシュボードに空白が表示される現象を防ぐため、適切な Empty State 表示（空メッセージと説明文）を追加。
+
 ### Fixed
 - **依存パッケージのセキュリティ脆弱性修正**:
   - `libs/infrastructure/Cargo.toml` [MODIFY], `libs/core/Cargo.toml` [MODIFY]: `ammonia` パッケージの脆弱性（RUSTSEC-2026-0193: mXSS in ammonia via MathML `annotation-xml` encoding strip）に対処するため、バージョンを安全な `4.1.3` にアップデート。

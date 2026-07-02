@@ -222,6 +222,11 @@ pub async fn get_trends(
     let trend_sonar = infrastructure::trend_sonar::build_active_trend_sonar(
         &**_state.job_queue.get_inner(),
         _state.provider.0.clone(),
+        vec![std::sync::Arc::new(
+            crate::internal_services::x_mcp_trend::XMcpTrendAdapter::new(
+                _state.mcp_manager.get_inner().clone(),
+            ),
+        )],
     )
     .await;
 

@@ -11,6 +11,7 @@ pub mod watchtower;
 
 pub mod commune_ws;
 pub mod oxilean_poller;
+pub mod x_mcp_trend;
 
 use crate::AppState;
 use tracing::info;

@@ -491,3 +491,35 @@ fn test_build_auth_manager_none_falls_back_to_mock() {
     #[cfg(not(debug_assertions))]
     assert!(result.is_err());
 }
+
+#[test]
+fn test_build_auth_manager_scrubs_jwt_key_on_placeholder() {
+    unsafe { std::env::set_var("JWT_PRIVATE_KEY_B64", "<YOUR_KEY_HERE>") };
+    assert!(std::env::var("JWT_PRIVATE_KEY_B64").is_ok());
+    let _ = crate::build_auth_manager(Some("<YOUR_KEY_HERE>".to_string()));
+    assert!(
+        std::env::var("JWT_PRIVATE_KEY_B64").is_err(),
+        "JWT_PRIVATE_KEY_B64 must be scrubbed even if placeholder is used"
+    );
+}
+
+#[test]
+fn test_build_auth_manager_scrubs_jwt_key_on_none_if_set() {
+    unsafe { std::env::set_var("JWT_PRIVATE_KEY_B64", "some_secret_key") };
+    assert!(std::env::var("JWT_PRIVATE_KEY_B64").is_ok());
+    let _ = crate::build_auth_manager(None);
+    assert!(
+        std::env::var("JWT_PRIVATE_KEY_B64").is_err(),
+        "JWT_PRIVATE_KEY_B64 must be scrubbed when build_auth_manager is called with None"
+    );
+}
+
+#[test]
+fn test_load_quota_state_handles_corruption_gracefully() {
+    let temp_dir = std::env::temp_dir();
+    let temp_file = temp_dir.join("corrupted_quota.json");
+    std::fs::write(&temp_file, "{invalid json").unwrap();
+    let state = crate::load_quota_state(&temp_file);
+    assert_eq!(state.total_calls, 0); // should default
+    let _ = std::fs::remove_file(temp_file);
+}

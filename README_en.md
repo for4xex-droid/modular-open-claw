@@ -74,6 +74,10 @@ API_SERVER_SECRET="my_super_secret_key_123456" cargo run --bin api-server # gitl
 
 > **About Commerce Features**:
 > If `STRIPE_API_KEY` is not set in `.env`, the system detects this and automatically falls back to `MockCommerceEngine`. You can immediately experience the AI ecosystem features like billing, escrows, and gig orders seamlessly using a fake balance, without any configuration.
+> 
+> **About Official X (Twitter) Integration**:
+> By setting `X_TWITTER_CLIENT_ID` and `X_TWITTER_CLIENT_SECRET` in `.env`, you can enable automated social media management such as tweet posting and search functionality via the official X MCP server.
+
 
 ---
 

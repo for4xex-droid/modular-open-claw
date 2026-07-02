@@ -1,7 +1,7 @@
 # Aiome × Project NURTURE 統合仕様書
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-06-26
+> **最終更新**: 2026-07-02
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -1154,6 +1154,9 @@ gantt
 | **視覚認識 (7-6)** | 画面の内容を理解した上でのコンテキスト購入推薦 → NURTURE の購買体験が飛躍的に向上 |
 | **開発オンボーディング (docs/)** | Samsara 人格データフローや Nurture 連携（S2S EdDSA認証、OxiLean証明書保護、`/internal/deduct`決済プロトコル）の Mermaid シーケンス図を完全網羅し、オンボーディングを迅速化（詳細は [DEVELOPER_ONBOARDING.md](file:///Users/motista/Desktop/antigravity/aiome/docs/DEVELOPER_ONBOARDING.md) を参照） |
 | **開発者向けテンプレート (templates/)** | WASM Skill、Node.js 経済連携（`use_escrow`等）、Python MCP サーバーの 3 テンプレートを提供し、他エコシステム（Dify等）からの移行や NURTURE 経済連携の実装を支援 |
+| **MCP 品質ゲート監査** | MCP サーバーからロードされるツールの総数バジェット（警告上限15）および説明文品質（20文字未満）を自動的に監査。低品質なツールや過剰なMCPサーバー接続からくるエージェントのパフォーマンス低下や競合リスクを未然に防止。 |
+| **公式 X (Twitter) MCP 統合** | 公式 X MCP クライアントとの stdio 連携テンプレート、および `TrendSonar` の adapter 連動を整備。自律トレンド収集の精度と速度を大幅に向上。 |
+
 
 ---
 

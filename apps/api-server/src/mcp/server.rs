@@ -88,6 +88,21 @@ pub async fn message_handler(
     Ok(StatusCode::ACCEPTED)
 }
 
+/// MCP リクエストの JSON-RPC ディスパッチャー。
+///
+/// # 長時間操作の設計ガイドライン (arXiv:2606.30317 Anti-Pattern V-C)
+///
+/// MCP には組み込みの非同期コールバック機構がないため、
+/// 5秒以上かかる操作（ファイル変換、大規模データ処理等）を
+/// ツールとして追加する場合は、以下のパターンを使用すること：
+///
+/// 1. `start_<operation>` ツール: ジョブ ID を即座に返却（同期）
+/// 2. `poll_job` ツール: ジョブ ID で進捗/完了を問い合わせ
+///
+/// ```json
+/// // start_export → { "job_id": "abc123", "status": "running" }
+/// // poll_job(id: "abc123") → { "status": "completed", "result": {...} }
+/// ```
 async fn handle_mcp_request(req: JsonRpcRequest, state: &AppState) -> JsonRpcResponse {
     let id = req.id.unwrap_or(serde_json::Value::Null);
 

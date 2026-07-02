@@ -269,9 +269,18 @@ pub async fn publish(
         // will return an error from the X API if the content is truly too long.
     }
 
-    // Discover the MCP client that provides `post_tweet`
-    let active_clients = state.mcp_manager.active_client_ids().await;
+    // Discover the MCP client that provides a post tool.
+    // Restrict search to X-related client IDs to prevent accidental calls to unrelated MCP servers.
+    let mut active_clients = vec!["x_twitter".to_string()];
+    for cid in state.mcp_manager.active_client_ids().await {
+        let normalized = cid.to_lowercase();
+        if (normalized.contains("x") || normalized.contains("twitter")) && cid != "x_twitter" {
+            active_clients.push(cid);
+        }
+    }
     let mut tweet_id: Option<String> = None;
+
+    const X_POST_TOOL_NAMES: &[&str] = &["create_post", "post_tweet"];
 
     for cid in &active_clients {
         let client = match state.mcp_manager.get_client(cid).await {
@@ -294,29 +303,34 @@ pub async fn publish(
                 }
             };
 
-        if !tools.iter().any(|t| t.name == "post_tweet") {
-            continue;
-        }
+        let tool_name = tools
+            .iter()
+            .find_map(|t| X_POST_TOOL_NAMES.iter().find(|&&n| n == t.name).copied());
 
-        tracing::info!(mcp_client = %cid, "Found post_tweet tool, invoking");
+        let tool_name = match tool_name {
+            Some(name) => name,
+            None => continue,
+        };
+
+        tracing::info!(mcp_client = %cid, tool = %tool_name, "Found compatible X post tool, invoking");
         let args = serde_json::json!({ "text": content });
 
         let result = match tokio::time::timeout(
             tokio::time::Duration::from_secs(30),
-            client.call_tool("post_tweet", args),
+            client.call_tool(tool_name, args),
         )
         .await
         {
             Ok(Ok(r)) => r,
             Ok(Err(e)) => {
-                tracing::error!(mcp_client = %cid, error = %e, "post_tweet call failed");
+                tracing::error!(mcp_client = %cid, tool = %tool_name, error = %e, "call_tool failed");
                 return Err(AiomeError::Infrastructure {
-                    reason: format!("MCP post_tweet failed: {}", e),
+                    reason: format!("MCP {} failed: {}", tool_name, e),
                 });
             }
             Err(_) => {
                 return Err(AiomeError::Infrastructure {
-                    reason: "MCP post_tweet timed out after 30s".into(),
+                    reason: format!("MCP {} timed out after 30s", tool_name),
                 });
             }
         };
@@ -333,9 +347,9 @@ pub async fn publish(
                     }
                 })
                 .collect();
-            tracing::error!(buzz_id = %id, error = %error_text, "post_tweet returned error");
+            tracing::error!(buzz_id = %id, tool = %tool_name, error = %error_text, "tool returned error");
             return Err(AiomeError::Infrastructure {
-                reason: format!("X post failed: {}", error_text),
+                reason: format!("X post failed ({}): {}", tool_name, error_text),
             });
         }
 
@@ -350,10 +364,10 @@ pub async fn publish(
     }
 
     let tid = tweet_id.ok_or_else(|| {
-        tracing::error!(buzz_id = %id, "No MCP client provides post_tweet tool");
+        tracing::error!(buzz_id = %id, "No MCP client provides a compatible X post tool");
         AiomeError::Infrastructure {
             reason:
-                "No MCP client with post_tweet tool available. Ensure @iflow-mcp/ is configured."
+                format!("No MCP client with a compatible tool ({:?}) available. Ensure x_twitter is configured.", X_POST_TOOL_NAMES)
                     .into(),
         }
     })?;

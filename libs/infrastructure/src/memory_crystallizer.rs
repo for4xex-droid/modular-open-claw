@@ -17,6 +17,7 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 /// LLM が生成するファクトのカテゴリ分類。
 /// 現在はプロンプト出力のパース用に定義されており、
@@ -157,6 +158,11 @@ impl MemoryCrystallizer {
                                     }
                                     _ => {}
                                 }
+                            } else {
+                                info!(
+                                    "ℹ️ [MemoryCrystallizer] Quality Gate (CortexSynth Judge) is None. Bypassing quality evaluation for skill: {}",
+                                    skill
+                                );
                             }
 
                             // Belief Consistency Gate: 結晶化内容が魂の信念と矛盾しないか検証

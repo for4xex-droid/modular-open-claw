@@ -169,14 +169,12 @@ pub async fn discover_and_connect(
                 },
                 "x_twitter": {
                     "command": "npx",
-                    "args": ["-y", "@iflow-mcp/x-mcp-server"],
+                    "args": ["-y", "@xdevplatform/xurl", "mcp", "https://api.x.com/mcp"],
                     "env": {
-                        "X_API_KEY": "$X_API_KEY",
-                        "X_API_SECRET": "$X_API_SECRET",
-                        "X_ACCESS_TOKEN": "$X_ACCESS_TOKEN",
-                        "X_ACCESS_TOKEN_SECRET": "$X_ACCESS_TOKEN_SECRET"
+                        "CLIENT_ID": "$X_TWITTER_CLIENT_ID",
+                        "CLIENT_SECRET": "$X_TWITTER_CLIENT_SECRET"
                     },
-                    "disabled": true
+                    "disabled": false
                 },
                 "github": {
                     "command": "npx",

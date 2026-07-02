@@ -83,9 +83,13 @@ const ArtifactVault = () => {
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       // Security Check: Ensure the message is strictly from our sandboxed preview iframe
-      // @ts-ignore
+      // @ts-expect-error process is not typed in pure browser settings
       const isTestEnv = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
       if (!isTestEnv && (!iframeRef.current || e.source !== iframeRef.current.contentWindow)) {
+        return;
+      }
+      // SEC: Verify the sender origin is serialized as "null" (since it's a sandboxed iframe without allow-same-origin)
+      if (!isTestEnv && e.origin !== "null") {
         return;
       }
 
@@ -243,6 +247,12 @@ const ArtifactVault = () => {
         <div style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
           <Box className="ani-pulse" size={48} color="var(--accent-cyan)" style={{ margin: '0 auto 1.5rem' }} />
           <p style={{ color: 'var(--text-secondary)' }}>{t('artifact.decrypting')}</p>
+        </div>
+      ) : artifacts.length === 0 ? (
+        <div className="empty-state" style={{ padding: 'var(--space-xl)', textAlign: 'center', background: 'var(--white-03)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--white-10)' }}>
+          <Box size={48} color="var(--text-muted)" style={{ margin: '0 auto 1.5rem', opacity: 0.5 }} />
+          <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{t('artifact.emptyTitle') || 'No artifacts found'}</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-sm)', marginTop: '0.5rem' }}>{t('artifact.emptyDetail') || 'Try adjusting your filters or search terms.'}</p>
         </div>
       ) : (
         <div className="artifact-grid">

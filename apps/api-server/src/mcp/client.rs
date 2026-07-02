@@ -302,9 +302,17 @@ impl McpEndpoint {
             Self::Http(_c) => std::time::Instant::now(), // HTTP is stateless mostly, but we could track it
         }
     }
+
+    pub fn id(&self) -> &str {
+        match self {
+            Self::Stdio(c) => &c.id,
+            Self::Http(c) => &c.id,
+        }
+    }
 }
 
 const MAX_MCP_PROCESSES: usize = 10;
+const MCP_TOOL_BUDGET_WARN: usize = 15;
 
 #[derive(Clone, Debug)]
 pub struct McpRegistryEntry {
@@ -314,8 +322,8 @@ pub struct McpRegistryEntry {
 }
 
 pub struct McpProcessManager {
-    clients: Arc<Mutex<HashMap<String, Arc<McpEndpoint>>>>,
-    registry: Arc<Mutex<HashMap<String, McpRegistryEntry>>>,
+    pub(crate) clients: Arc<Mutex<HashMap<String, Arc<McpEndpoint>>>>,
+    pub(crate) registry: Arc<Mutex<HashMap<String, McpRegistryEntry>>>,
 }
 
 impl McpProcessManager {
@@ -469,10 +477,20 @@ impl aiome_core_contracts::traits::McpToolSource for McpProcessManager {
         };
 
         let mut all_tools = Vec::new();
+        let mut per_server_counts = Vec::new();
+        let mut poor_description_tools = Vec::new();
+
         for client in clients {
             match client.list_tools().await {
                 Ok(tools) => {
+                    per_server_counts.push((client.id().to_string(), tools.len()));
                     for tool in tools {
+                        // [MCP][DescriptionCheck] Check tool description quality (arXiv:2606.30317 Anti-Pattern V-D)
+                        let desc = tool.description.as_deref().unwrap_or("").trim();
+                        if desc.is_empty() || desc.chars().count() < 20 {
+                            poor_description_tools.push(tool.name.clone());
+                        }
+
                         all_tools.push(serde_json::json!({
                             "name": tool.name,
                             "description": tool.description.clone().unwrap_or_default(),
@@ -489,6 +507,34 @@ impl aiome_core_contracts::traits::McpToolSource for McpProcessManager {
                     );
                 }
             }
+        }
+
+        // [MCP][BudgetCheck] Tool count monitoring (arXiv:2606.30317 §VI-C)
+        let total = all_tools.len();
+        tracing::info!(
+            "📊 [MCP][BudgetCheck] Tool census: {} total tools from {} servers {:?}",
+            total,
+            per_server_counts.len(),
+            per_server_counts
+        );
+        if total > MCP_TOOL_BUDGET_WARN {
+            tracing::warn!(
+                "⚠️ [MCP][BudgetCheck] Tool count ({}) exceeds recommended budget ({}). \
+                 LLM tool selection accuracy may degrade below 90%. \
+                 Consider scoping tools per-context via suggest_tools(). \
+                 Ref: arXiv:2606.30317 §VI-C",
+                total,
+                MCP_TOOL_BUDGET_WARN
+            );
+        }
+
+        // [MCP][DescriptionCheck] Tool description quality warning summary
+        if !poor_description_tools.is_empty() {
+            tracing::warn!(
+                "⚠️ [MCP][DescriptionCheck] Discovered {} tools with missing or very short descriptions: {:?}. \
+                 LLM might fail to select these tools correctly. Ref: arXiv:2606.30317 Anti-Pattern V-D",
+                poor_description_tools.len(), poor_description_tools
+            );
         }
 
         Ok(all_tools)
@@ -974,5 +1020,64 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[tokio::test]
+    async fn test_mcp_tool_budget_and_description_warnings() {
+        use wiremock::matchers::{body_partial_json, method};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let _server = MockServer::start().await;
+        let manager = McpProcessManager::new();
+
+        // Register 16 tools:
+        // - 14 tools with good descriptions (len >= 20)
+        // - 1 tool with empty description
+        // - 1 tool with short description (len < 20)
+        let mut tools = Vec::new();
+        for i in 0..14 {
+            tools.push(serde_json::json!({
+                "name": format!("good_tool_{}", i),
+                "description": "This is a sufficiently long description that satisfies the quality check.",
+                "inputSchema": { "type": "object" }
+            }));
+        }
+        tools.push(serde_json::json!({
+            "name": "empty_desc_tool",
+            "description": "",
+            "inputSchema": { "type": "object" }
+        }));
+        tools.push(serde_json::json!({
+            "name": "short_desc_tool",
+            "description": "Too short",
+            "inputSchema": { "type": "object" }
+        }));
+
+        Mock::given(method("POST"))
+            .and(body_partial_json(
+                serde_json::json!({"method": "tools/list"}),
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": {
+                    "tools": tools
+                }
+            })))
+            .mount(&_server)
+            .await;
+
+        let endpoint = manager
+            .connect_http_server("test_server".to_string(), _server.uri(), HashMap::new())
+            .await
+            .unwrap();
+
+        // 1. Verify id() method compiles and works
+        assert_eq!(endpoint.id(), "test_server");
+
+        // 2. Trigger discovery and ensure tool census is correct
+        use aiome_core_contracts::traits::McpToolSource;
+        let discovered = manager.discover_mcp_tools().await.unwrap();
+        assert_eq!(discovered.len(), 16);
     }
 }

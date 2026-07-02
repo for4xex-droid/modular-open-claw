@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 #![cfg_attr(test, allow(clippy::unwrap_used))]
-#![deny(unsafe_code)]
+#![cfg_attr(not(test), deny(unsafe_code))]
 #![allow(clippy::collapsible_if)]
 
 use axum::{
@@ -153,7 +153,6 @@ async fn main() -> anyhow::Result<()> {
     quotas.insert("api-server".to_string(), 50000);
     quotas.insert("aiome-agent".to_string(), 10000);
 
-    let resolver = shared::app_data::AppDataResolver::new().map_err(|e| anyhow::anyhow!(e))?;
     let persistence_path = env::var("QUOTA_DB_PATH")
         .map(PathBuf::from)
         .unwrap_or_else(|_| resolver.resolve("config/key_proxy_state.json"));
@@ -162,12 +161,7 @@ async fn main() -> anyhow::Result<()> {
         let _ = std::fs::create_dir_all(parent);
     }
 
-    let quota_state = if persistence_path.exists() {
-        let data = std::fs::read_to_string(&persistence_path).unwrap_or_default();
-        serde_json::from_str(&data).unwrap_or_default()
-    } else {
-        QuotaState::default()
-    };
+    let quota_state = load_quota_state(&persistence_path);
 
     let gemini_model = env::var("GEMINI_MODEL").unwrap_or_else(|_| "gemini-2.0-flash".to_string());
     let gemini_embed_model =
@@ -305,6 +299,7 @@ pub(crate) fn build_auth_manager(
             }
         }
         _ => {
+            shared::security::scrub_env("JWT_PRIVATE_KEY_B64");
             #[cfg(debug_assertions)]
             {
                 warn!(
@@ -318,6 +313,34 @@ pub(crate) fn build_auth_manager(
                     "JWT_PRIVATE_KEY_B64 must be set in production!"
                 ))
             }
+        }
+    }
+}
+
+pub(crate) fn load_quota_state(persistence_path: &std::path::Path) -> QuotaState {
+    if !persistence_path.exists() {
+        return QuotaState::default();
+    }
+
+    let data = match std::fs::read_to_string(persistence_path) {
+        Ok(d) => d,
+        Err(e) => {
+            warn!(
+                "⚠️ [KeyProxy] Failed to read quota state file: {}, using default",
+                e
+            );
+            return QuotaState::default();
+        }
+    };
+
+    match serde_json::from_str::<QuotaState>(&data) {
+        Ok(state) => state,
+        Err(e) => {
+            warn!(
+                "⚠️ [KeyProxy] Corrupted quota state file, resetting to default: {}",
+                e
+            );
+            QuotaState::default()
         }
     }
 }

@@ -78,9 +78,22 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
     // Task 1: Relay CoreEvents from Broadcast to WS
     let mut relay_task = tokio::spawn(async move {
-        while let Ok(event) = broadcast_rx.recv().await {
-            if let Ok(json) = serde_json::to_string(&event) {
-                if sender.send(Message::Text(json)).await.is_err() {
+        loop {
+            match broadcast_rx.recv().await {
+                Ok(event) => {
+                    if let Ok(json) = serde_json::to_string(&event) {
+                        if sender.send(Message::Text(json)).await.is_err() {
+                            break;
+                        }
+                    }
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                    warn!(
+                        "🛡️ [WatchtowerWS] Client lagged by {} messages. Continuing relay.",
+                        n
+                    );
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
                     break;
                 }
             }
@@ -168,7 +181,16 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
     use tokio::time::timeout;
 
     let channel_id = payload.channel_id.unwrap_or_else(|| "0".to_string());
-    let channel_id_u64: u64 = channel_id.parse().unwrap_or(0);
+    let channel_id_u64: u64 = match channel_id.parse() {
+        Ok(id) => id,
+        Err(_) => {
+            warn!(
+                "⚠️ [WatchtowerWS] Invalid channel_id '{}', defaulting to 0",
+                channel_id
+            );
+            0
+        }
+    };
 
     // 1. Guardrails
     if let shared::guardrails::ValidationResult::Blocked(reason) =
@@ -318,5 +340,33 @@ mod tests {
         let is_over_limit =
             state.ws_active_connections.load(Ordering::SeqCst) >= MAX_WS_CONNECTIONS;
         assert!(is_over_limit);
+    }
+
+    #[tokio::test]
+    async fn test_watchtower_invalid_channel_id_fallback() {
+        let mut state = AppState::default();
+        let (tx, mut rx) = tokio::sync::broadcast::channel(10);
+        state.event_sender = crate::app_state::Component::new(tx);
+
+        let payload = AgentChatRequest {
+            prompt: "".to_string(), // triggers Empty input guardrail block
+            history: vec![],
+            channel_id: Some("invalid_numeric_channel".to_string()),
+        };
+
+        let result = handle_chat_command(state, payload).await;
+        assert!(result.is_ok());
+
+        if let Ok(CoreEvent::ChatResponse {
+            response,
+            channel_id,
+            resource_path: _,
+        }) = rx.recv().await
+        {
+            assert!(response.contains("GUARDRAIL BLOCK"));
+            assert_eq!(channel_id, 0); // should fallback to 0
+        } else {
+            panic!("Expected CoreEvent::ChatResponse");
+        }
     }
 }
