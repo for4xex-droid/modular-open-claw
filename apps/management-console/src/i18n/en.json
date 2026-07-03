@@ -305,7 +305,16 @@
     "failed": "Setup failed",
     "noToken": "Server did not return an access token",
     "networkError": "Unable to reach the server. Please check your connection and try again.",
-    "unknownError": "Unknown error"
+    "unknownError": "Unknown error",
+    "playbookTitle": "Choose a Playbook",
+    "playbookDesc": "Install ready-made business workflows so your agent can start working today. You can skip this and add them later.",
+    "playbookInstall": "Install",
+    "playbookInstalling": "Installing...",
+    "playbookInstalled": "Installed",
+    "playbookSkip": "Skip",
+    "playbookStart": "Start Aiome",
+    "playbookError": "Installation failed",
+    "playbookMissingDeps": "Missing dependencies"
   },
   "onboarding": {
     "welcome": "Welcome to Aiome",

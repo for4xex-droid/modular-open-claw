@@ -20,10 +20,10 @@ describe('Hero Component', () => {
     render(<Hero />);
     
     // Test the specific copy we defined in our plan
-    expect(screen.getByText('Build AI that heals itself.')).toBeInTheDocument();
+    expect(screen.getByText('The sovereign OS for autonomous AI.')).toBeInTheDocument();
     
     // Subtitle should contain key phrases
-    const subtitleText = screen.getByText(/The autonomous operating system for AI agents/i);
+    const subtitleText = screen.getByText(/Put an autonomous AI team for SEO/i);
     expect(subtitleText).toBeInTheDocument();
   });
 

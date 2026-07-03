@@ -1,0 +1,89 @@
+{
+  "playbook_version": 1,
+  "id": "support-triage",
+  "name": "サポート一次対応",
+  "description": "問い合わせ内容を分類し、エスカレーション要否に応じて担当者承認または定型回答を生成する一次対応ワークフローです。",
+  "tags": ["support"],
+  "required_skills": [],
+  "required_mcp_servers": [],
+  "workflows": [
+    {
+      "id": "2e9d1c0b-3a4f-4b5c-9d8e-7f6a5b4c3d2e",
+      "name": "問い合わせ分類と一次回答",
+      "description": "問い合わせを分類し、エスカレーションが必要な場合は担当者確認、不要な場合は定型回答を生成するワークフローです。",
+      "version": 1,
+      "nodes": [
+        {
+          "id": "start",
+          "node_type": { "Start": { "trigger": "Manual" } },
+          "label": "手動開始",
+          "config": {},
+          "position": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "llm-classify",
+          "node_type": { "LlmPrompt": { "model": null, "temperature": null } },
+          "label": "問い合わせ内容の分類",
+          "config": {
+            "prompt": "以下の問い合わせ内容 {{inquiry_text}} を読み、カテゴリ（請求・技術障害・機能要望・契約・その他）、緊急度（高・中・低）、感情トーン（怒り・不安・中立）を判定し、判定理由を簡潔に日本語で出力してください。"
+          },
+          "position": { "x": 250, "y": 0 }
+        },
+        {
+          "id": "condition-escalation",
+          "node_type": { "Condition": { "expression": "requires_escalation", "mode": "LlmJudge" } },
+          "label": "エスカレーション要否の判定",
+          "config": {},
+          "position": { "x": 500, "y": 0 }
+        },
+        {
+          "id": "human-escalation",
+          "node_type": { "HumanApproval": { "prompt_message": "エスカレーションが必要と判定されました。内容を確認してください", "timeout_seconds": null } },
+          "label": "エスカレーション確認",
+          "config": {},
+          "position": { "x": 750, "y": 150 }
+        },
+        {
+          "id": "llm-standard-reply",
+          "node_type": { "LlmPrompt": { "model": null, "temperature": null } },
+          "label": "定型回答の生成",
+          "config": {
+            "prompt": "分類結果に基づき、問い合わせ {{inquiry_text}} に対する丁寧で具体的な一次回答文を日本語で作成してください。謝罪が必要な場合は先に謝罪し、次のステップと想定回答時間を明示してください。"
+          },
+          "position": { "x": 750, "y": 0 }
+        }
+      ],
+      "edges": [
+        {
+          "source": "start",
+          "target": "llm-classify",
+          "source_handle": null,
+          "target_handle": null
+        },
+        {
+          "source": "llm-classify",
+          "target": "condition-escalation",
+          "source_handle": null,
+          "target_handle": null
+        },
+        {
+          "source": "condition-escalation",
+          "target": "human-escalation",
+          "source_handle": "true",
+          "target_handle": null
+        },
+        {
+          "source": "condition-escalation",
+          "target": "llm-standard-reply",
+          "source_handle": "false",
+          "target_handle": null
+        }
+      ],
+      "variables": {
+        "inquiry_text": ""
+      },
+      "created_at": "2026-07-03T00:00:00Z",
+      "updated_at": "2026-07-03T00:00:00Z"
+    }
+  ]
+}

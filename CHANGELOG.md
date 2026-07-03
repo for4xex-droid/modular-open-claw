@@ -1,5 +1,32 @@
 ## [Unreleased]
 
+### Added (ハイブリッド価格 OP-059 バックエンド 2026-07-03)
+- **月次 KC 含み枠の付与**: Pro サブスクの `invoice.paid` Webhook 成功時に、`pro_monthly_kc_allowance` 設定値（system_settings、0=無効、上限 1,000,000 KC クランプ）を Nurture コイン残高へ付与。`{event_id}-allowance` の冪等キーにより二重付与を防止。`customer.subscription.updated` では付与しない（重複発火防止）。設定キーを Settings API の `ALLOWED_KEYS` に追加。単体テスト3件＋既存 Webhook 統合テスト PASS。
+
+### Added (PR品質改善計画 2026-07-03)
+- `docs/marketing/MESSAGING.md` [NEW]: 対外メッセージング正本。タグライン・3本柱（Sovereign / Governed / Earning）・価値の階段・FAQ・GitHub メタ案・ショットリスト・課金導線を集約。
+- `commercial/README.md` [NEW]: Nurture 経済エンジンの対外説明（Aiome OS との2層構造・B2A/A2A/A2C・手数料15%）。
+- **LP UseCases / FAQ**: `docs/landing/` に Playbook 4本（seo-operations / sns-operations / competitor-research / support-triage）のユースケースセクションと反論処理 FAQ を新規追加。LiveDemo を Hero 直下へ移動。i18n ja/en コピーを Hero・ProofBar・Features・Economy・Pricing で全面刷新。LP テスト53件 PASS。
+- **`OPEN.md`**: OP-057（LP 決済と Pro 有効化の接続ギャップ）・OP-058（ProUpgradeModal 未マウント）を起票。
+
+### Changed (PR品質改善計画 2026-07-03)
+- **プラットフォーム手数料 15% 統一（M-1 決定）**: 旧 25%/10% 表記を廃止。README・LP・commercial 説明を 15% に揃え。
+- **`README.md` / `README_en.md`**: 便益ファースト再構成。3つの約束テーブル・Nurture 2層図解・FAQ・料金テーブルを追加。開発者向け自己言及（行数・テスト数）を利用者便益へ置換。
+- **`docs/roadmaps/pr_quality_improvement_plan.md`**: PR-1〜PR-9・M-1〜M-2 の実装完了に伴い計画を反映。
+
+### Added (10x Value 成長ロードマップ 2026-07-03)
+- `docs/roadmaps/value_10x_roadmap.md` [NEW]: v1.0 リリース計画の次を定義する成長ロードマップ。3ホライズン・10機能（Playbooks / Outcome Ledger / Skill Marketplace α / MCP Provider / Soul Sync / Proof of Agent Work / リモート承認 / Multi-Tenant / 開放経済圏 / Voice Interface）を、各機能ごとの受け入れ基準（Negative Test 含む）・既存資産マッピング・依存関係・効果×リスク優先順位つきで策定。既存計画（implementation_plan.md / OPEN.md）との重複なしを棚卸しで確認済み。
+
+### Added (F-1 Agent Playbooks 2026-07-03)
+- **F-1 Agent Playbooks**: 公式業務テンプレート4本（seo-operations / sns-operations / competitor-research / support-triage）を `apps/api-server/assets/playbooks/` に同梱（`include_str!`）。`libs/infrastructure/src/workflow/playbook.rs` に PlaybookManifest v1 型と構造バリデーションを追加。認証必須の `GET /api/v1/playbooks`・`POST /api/v1/playbooks/:id/install`・`POST /api/v1/playbooks/import`（依存欠落は 422 で `missing_skills` / `missing_mcp_servers` を返却、途中失敗はロールバック）と `GET /api/v1/workflows/:id/export` を実装（`routes/playbook.rs`・`routes/workflow.rs`・`router.rs`・OpenAPI 登録）。SetupWizard に Playbook 選択ステップ（step 6、初期化成功後に表示・スキップ可）を追加し、reload を `reloadApp()` 経由に変更。i18n `setup.playbook*` キーを ja/en に追加。統合テスト7本（`api_integration_tests/playbook.rs`）。
+
+### Changed (skills モジュールのリファクタリング OP-050/053/055 2026-07-03)
+- **God Module 分解（OP-050）**: `libs/infrastructure/src/skills/mod.rs` を 1,135行 → 599行に分解。Code Mode JS ブリッジ（正規表現5本＋インタープリタ約300行）を `code_mode.rs` へ、WASM ホスト関数ビルダー（host_exec/host_write/no-op スタブ）を `host_fns.rs` へ、型定義4種（UnverifiedSkill/VerifiedSkill/SkillMetadata/SkillMaturity）を `types.rs` へ分離。`pub use` 再エクスポートにより外部 API パスは完全維持（利用側 12 ファイルの変更ゼロ）。
+- **セキュリティ検査の統一（意図的な厳格化）**: `host_write` ホスト関数のインライン機密パス検査（.env/.git/security.json の3パターンのみ）を `is_sensitive_path()` に統一。従来素通りしていた `.ssh`・`id_rsa`・`Cargo.toml`・`*.pem`・`*.key` への WASM スキル書込を遮断。
+- **`loop {}` パニック回避策の除去（OP-053）**: `DUMMY_REGEX` の `unwrap_or_else(|_| loop {})`（評価時 CPU 100% ハング）を削除し、静的正規表現5本を `LazyLock<Option<Regex>>` 化（失敗時は「マッチしない」に安全縮退）。
+- **MockJQ 共有化（OP-055）**: `immune_system.rs` テスト内に埋没していた MockJQ（14 トレイト実装・約530行）を `infrastructure::testing::mock_jq`（`#[cfg(test)]` ゲート）へ抽出し再利用可能に。
+- その他: `run_code_mode_js` 内の未使用 `reqwest::Client::new()` 削除。計画書は `docs/roadmaps/refactor_skills_module_plan.md`。infrastructure 全 657 テスト PASS。
+
 ### Added (実績由来の新スキル6件 2026-07-03)
 - `.agent/skills/` に memory Lessons・CHANGELOG の実障害から抽出した再発防止スキルを新設（全て発動条件・良い例/悪い例・Negative Test つき完了条件・出典を含む）:
   - `api-route-wiring-check.md`: router.rs 配線漏れ防止の4点チェック（出典: memory/2026-04-24, 04-27）

@@ -18,6 +18,7 @@ pub mod compliance;
 pub mod heartbeat;
 pub mod jobs;
 pub mod mcp;
+pub mod playbook;
 pub mod setup;
 pub mod system;
 pub mod vault;

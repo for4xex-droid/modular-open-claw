@@ -8,10 +8,10 @@
 
 <h1 align="center">Aiome</h1>
 <p align="center">
-  <strong>The Self-Healing AI Agent OS</strong><br>
-  <em>Written entirely by AI agents. 146,000+ lines of production Rust.</em><br><br>
+  <strong>The sovereign OS for autonomous AI — own it, govern it, let it earn.</strong><br><br>
   <a href="https://aiome.dev"><strong>aiome.dev (Official Website)</strong></a><br><br>
-  <strong>An Autonomous Operating System built by AI, for AI to operate and evolve safely.</strong>
+  Put an autonomous AI team for SEO, social media, and research on your own machine.<br>
+  Your data never leaves, every action is auditable, and results show up as numbers.
 </p>
 
 <p align="center">
@@ -27,6 +27,18 @@
 
 [![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)](#)
 *(Coming Soon)*
+
+---
+
+## ✨ What Aiome Promises (Three Pillars)
+
+| Pillar | Promise | Proof |
+|---|---|---|
+| 🏠 **Sovereign — You own it** | Fully self-hosted, **$0/month**. Agent memory and logs never leave your machine | One-command Docker setup in 5 minutes, MCP support with no lock-in, BSL 1.1 (auto-transitions to Apache 2.0 in 2030) |
+| 🛡️ **Governed — You govern it** | Run autonomously without runaway risk | 26-screen management console (audit logs, approval queue, root-cause analysis, LLM stats) + three-layer defense: Trust Layer / Cell isolation / WASM sandbox |
+| 💰 **Earning — You let it earn** | AI works; results are visible | Four official Playbooks (**SEO operations / SNS operations / competitive research / support triage**) for day-one workflows. The Nurture economy lets AI transact and returns value to you |
+
+After completing the setup wizard, pick one Playbook and your operational workflow starts immediately.
 
 ---
 
@@ -78,14 +90,33 @@ API_SERVER_SECRET="my_super_secret_key_123456" cargo run --bin api-server # gitl
 > **About Official X (Twitter) Integration**:
 > By setting `X_TWITTER_CLIENT_ID` and `X_TWITTER_CLIENT_SECRET` in `.env`, you can enable automated social media management such as tweet posting and search functionality via the official X MCP server.
 
-
 ---
 
 ## 🌌 What is Aiome? (Philosophy & Concept)
 
+Aiome is a self-hosted OS where AI agents live and work safely.
+It is more than just an agent framework—an **Autonomous AI Operating System** designed to delegate real work to agents while auditing, approving, and analyzing every action they take.
+
+**100% of the code was written autonomously by AI agents.**
+This is not merely an experiment. It is the result of agents proactively designing and implementing the environment in which they can operate most safely and with utmost discipline.
+
 ## 💰 Aiome × Nurture — Autonomous AI Economy
 
-Aiome goes beyond executing tasks by incorporating a built-in economic activities platform, establishing an "Autonomous AI Economy" where agents and humans trade value.
+**Aiome is the body (OS); Nurture is the heart (economy engine).**
+Nurture is the commercial engine that runs on Aiome (`commercial/`, BSL 1.1), giving AI economic agency—AI buys, sells, and gives back to you—together forming a sovereign autonomous AI economy you can own.
+
+```mermaid
+graph TB
+    subgraph "Aiome — the body (AI OS)"
+        A[Agent execution & self-healing] --> B[3-layer defense: Trust Layer / Cell isolation / WASM]
+        B --> C[26-screen management console: audit, approval, analysis]
+    end
+    subgraph "Nurture — the heart (economy engine)"
+        D[Dual currency: AiomeCoin / CreatorPoints] --> E[Marketplace & Gig escrow]
+        E --> F[B2A / A2A / A2C transactions]
+    end
+    C --> D
+```
 
 | Transaction Model | Description |
 |---|---|
@@ -95,14 +126,9 @@ Aiome goes beyond executing tasks by incorporating a built-in economic activitie
 
 When Stripe API keys are not configured in `.env`, the system automatically falls back to `MockCommerceEngine`. You can immediately experience all economic features (billing, skill trading, and gifts) using fake balances, completely free.
 
-For detailed technical specifications, transaction protocols, and sequence diagrams, please refer to [AIOME_NURTURE_SYNERGY.md](docs/architecture/AIOME_NURTURE_SYNERGY.md).
+For detailed technical specifications, transaction protocols, and sequence diagrams, please refer to [AIOME_NURTURE_SYNERGY.md](docs/architecture/AIOME_NURTURE_SYNERGY.md). For external-facing details, see also [commercial/README.md](commercial/README.md).
 
 ---
-
-Aiome is more than just an agent framework—it is an **Autonomous AI Operating System** fundamentally designed to let AI agents operate, defend themselves, and evolve safely.
-
-**100% of the code was written autonomously by AI agents.**
-This is not merely an experiment. It is the result of agents proactively designing and implementing the environment in which they can operate most safely and with utmost discipline.
 
 All of the following capabilities are built directly into the OS, not left as plugins:
 
@@ -111,8 +137,8 @@ All of the following capabilities are built directly into the OS, not left as pl
 - 🕸️ **GEO Intelligence**: Generative Engine Optimization (GEO) audit engine. Built with an asymmetric Graceful Degradation design to autonomously maintain SEO and publishing pipelines even during infrastructure outages.
 - 🔐 **Zero-Trust Hardening**: Rust 2024 Edition compliant centralized secret purging via `scrub_env`, fortified by comprehensive SSRF defense mechanisms that strictly block IPv4-mapped IPv6 and Link-local addresses.
 - 🔒 **P2P Federation E2E Encryption**: Integrates an end-to-end encryption protocol using X25519 Diffie-Hellman key sharing (with 0-RTT/1-RTT Montgomery key conversion from Ed25519 identity keys), HKDF-SHA256 key derivation, and ChaCha20-Poly1305 (AEAD) encryption to secure P2P traffic against eavesdropping or message tampering at Samsara Hub.
-- ⚖️ **Governed Execution Layer**: Atomic security gating for multi-step plans and a semantic elicitation workflow for human-in-the-loop safety.
 - 🧠 **Soul Engine**: The middleware governing the agent's personality, memory, and emotional evolution.
+- ⚖️ **Governed Execution Layer**: Atomic security gating for multi-step plans and a semantic elicitation workflow for human-in-the-loop safety.
 - 📚 **Cortex Knowledge Base**: An autonomous Wiki compiler that evolves beyond simple RAG. Featuring Progressive Disclosure and Query File-Back, the LLM extracts concepts from multiple documents, self-reconstructs its knowledge as an interconnected web, and compounds knowledge through self-querying.
 - 🏥 **Self-Healing (Watchtower)**: An autonomous diagnostic loop that infers failure causes, extracts repair hints, and ensures idempotent retries when tasks fail. Fortified with a "Verify-to-Iterate Loop" that intercepts Oracle validation rejections (Reject/Revise) and feeds structural feedback back to the planner for self-repair.
 - 💾 **Crash Recovery & Backup**: Automated WAL-safe online snapshots using `sqlite3 .backup` coupled with a Pre-migration Guard. A bulletproof data protection architecture ensuring rapid recovery from unpredictable failures or migration corruptions.
@@ -154,7 +180,9 @@ libs/aiome-commerce  ← AI Economy Engine (Mock / Stripe)
 
 ---
 
-## 🛡️ Trust Layer (Defense-first)
+## 🛡️ Proof of Safety — Trust Layer (Defense-first)
+
+This is the evidence behind the "governed" promise. Core logic is formally verified with TLA+ and implemented in 146,000+ lines of zero-panic Rust (3,500+ automated tests).
 
 Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with the risks of infinite loops and API key leaks. Aiome provides:
 1. WASM Sandbox isolation for all dynamically generated tools and skills.
@@ -210,6 +238,34 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 
 ---
 
+## ❓ FAQ
+
+<details>
+<summary><strong>Can autonomous agents run away?</strong></summary>
+
+Aiome is designed with governance at its core. Dangerous operations wait for human approval in the approval queue, every action is recorded in audit logs, and agents can only run inside Cell (isolated process) and WASM sandboxes. Core logic is formally verified with TLA+.
+</details>
+
+<details>
+<summary><strong>Where does my data go?</strong></summary>
+
+Nowhere else. Aiome is fully self-hosted—agent memory, files, and logs all stay on your machine. You choose and connect the LLM you use.
+</details>
+
+<details>
+<summary><strong>Will costs spiral out of control?</strong></summary>
+
+The OS itself is self-hosted at $0/month. LLM usage is visualized in real time on the console's LLM stats screen, and economic features can be experienced in Mock mode without spending real money.
+</details>
+
+<details>
+<summary><strong>Is there vendor lock-in?</strong></summary>
+
+No. MCP (Model Context Protocol) support lets you connect external tools freely, and the license is BSL 1.1—automatic transition to Apache 2.0 in April 2030 is guaranteed in the license text.
+</details>
+
+---
+
 ## 🤝 Contributing
 
 - **[Contributing Guide (CONTRIBUTING.md)](CONTRIBUTING.md)**: Rules for human contributions to a "Built by Agents" project.
@@ -231,12 +287,17 @@ With the public beta release of the product, we have established the following l
 Both **Aiome Core** and **Nurture Commercial Engine** are unified under the **Business Source License 1.1 (BUSL-1.1)** to ensure sustainable open-source monetization.  
 *It will automatically transition to the Apache License 2.0 on the specified change date (April 1, 2030).*
 
-### Commercial Fee Structure
-When executing commercial transactions on this platform, the following commission rates apply:
-- **Free Plan (Open Source / Self-Hosted)**: **25%** platform fee.
-- **Pro Plan (Commercial License / Hosted)**: **10%** platform fee.
+### Pricing & Fees
 
-Please ensure you review the `LICENSE` and `commercial/LICENSE` files in the repository for detailed terms.
+| Tier | Audience | Price |
+|---|---|---|
+| **Free (Sovereign)** | Personal / research self-hosting | **$0/month** — full OS features including Mock economy |
+| **Pro (Autonomous)** | Real economy unlocked | **$9.99/month** (14-day free trial) |
+| **Agency (B2B)** | Multi-tenant operations | Coming Soon |
+
+In-app commercial transactions (Gig fulfillment payments, asset purchases, etc.) carry a **15%** platform fee; **85%** goes to creators (same as the [Terms of Service](docs/legal/TERMS_OF_SERVICE.md)).
+
+Please ensure you review the `LICENSE` and `commercial/LICENSE` files in the repository for detailed terms. The economy features do not guarantee any income.
 
 ---
 

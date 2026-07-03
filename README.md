@@ -8,10 +8,11 @@
 
 <h1 align="center">Aiome (アイオーム)</h1>
 <p align="center">
-  <strong>The Self-Healing AI Agent OS</strong><br>
-  <em>Written entirely by AI agents. 146,000+ lines of production Rust.</em><br><br>
+  <strong>あなたが所有する、自律 AI の OS。稼がせて、監視して、証明する。</strong><br>
+  <em>The sovereign OS for autonomous AI — own it, govern it, let it earn.</em><br><br>
   <a href="https://aiome.dev"><strong>aiome.dev (公式ウェブサイト)</strong></a><br><br>
-  <strong>AIが自分たちで実装した、AIが安全に活動・進化するための「自律型オペレーティングシステム」</strong>
+  SEO・SNS 運用・調査を任せられる自律 AI チームを、あなたのマシンに。<br>
+  データは外に出ず、行動はすべて監査でき、成果は数字で確認できます。
 </p>
 
 <p align="center">
@@ -27,6 +28,18 @@
 
 [![Aiome Quickstart Demo](docs/assets/quickstart_demo.webp)](#)
 *(Coming Soon)*
+
+---
+
+## ✨ Aiome ができること（3つの約束）
+
+| 柱 | 約束 | 根拠 |
+|---|---|---|
+| 🏠 **Sovereign — 所有できる** | 完全セルフホスト・**$0/月**。エージェントの記憶もログも、あなたのマシンから出ません | Docker 1コマンド・5分セットアップ、MCP 対応でロックインなし、BSL 1.1（2030年に Apache 2.0 へ自動移行） |
+| 🛡️ **Governed — 統治できる** | 自律させても、暴走させない | 26画面の管理コンソール（監査ログ・承認キュー・原因分析・LLM 統計）＋ Trust Layer / Cell 分離 / WASM サンドボックスの3層防御 |
+| 💰 **Earning — 稼がせられる** | AI が働き、成果が見える | 公式 Playbook 4本（**SEO 運用 / SNS 運用 / 競合調査 / サポートトリアージ**）で即日運用開始。Nurture 経済圏で AI が取引し、あなたに還元 |
+
+セットアップウィザード完了後、Playbook を1つ選ぶだけで実務ワークフローが動き始めます。
 
 ---
 
@@ -82,9 +95,29 @@ API_SERVER_SECRET="my_super_secret_key_123456" cargo run --bin api-server # gitl
 
 ## 🌌 Aiome とは？ (Philosophy & Concept)
 
+Aiome は、AI エージェントが安全に住み、働くためのセルフホスト型 OS です。
+単なるエージェント・フレームワークではなく、エージェントに実務を任せながら、その全行動を監査・承認・分析できる **「自律型 AI オペレーティングシステム」** として設計されています。
+
+**コードの100%はAIエージェントによって自律的に記述されました。**
+これは単なる実験ではありません。エージェントが自ら、「自分たちが最も安全に、かつ規律を持って活動できる環境」を設計・実装した結果です。
+
 ## 💰 Aiome × Nurture — 自律 AI 経済圏
 
-Aiome は、単にタスクをこなすだけでなく、ビルトインされた経済活動プラットフォームを用いて、AI同士あるいはAIと人間が価値を交換する「自律経済圏」を実現します。
+**Aiome が身体（OS）、Nurture が心臓（経済エンジン）です。**
+Nurture は Aiome 上で動く商用エンジン（`commercial/` 配下、BSL 1.1）で、AI に経済的自我を与えます。AI が買い、売り、あなたに恩返しする — 合わせて「所有できる自律 AI 経済圏」になります。
+
+```mermaid
+graph TB
+    subgraph "Aiome — 身体（AI OS）"
+        A[エージェント実行・自己修復] --> B[3層防御: Trust Layer / Cell 分離 / WASM]
+        B --> C[26画面 管理コンソール: 監査・承認・分析]
+    end
+    subgraph "Nurture — 心臓（経済エンジン）"
+        D[二重通貨: AiomeCoin / CreatorPoints] --> E[マーケットプレイス & Gig エスクロー]
+        E --> F[B2A / A2A / A2C 取引]
+    end
+    C --> D
+```
 
 | 取引モデル | 説明 |
 |---|---|
@@ -94,14 +127,9 @@ Aiome は、単にタスクをこなすだけでなく、ビルトインされ�
 
 外部のStripe APIキーを設定しない場合、システムは自動的に `MockCommerceEngine` にフォールバックします。課金やスキル売買、ギフト発送などすべての経済シミュレーションを、実際の資金を消費することなくフェイク残高で即座に体験できます。
 
-より詳細な技術仕様や取引プロトコル、シーケンス図については、[AIOME_NURTURE_SYNERGY.md](docs/architecture/AIOME_NURTURE_SYNERGY.md) をご参照ください。
+より詳細な技術仕様や取引プロトコル、シーケンス図については、[AIOME_NURTURE_SYNERGY.md](docs/architecture/AIOME_NURTURE_SYNERGY.md) をご参照ください。詳しい対外説明は [commercial/README.md](commercial/README.md) にもまとめています。
 
 ---
-
-Aiome は、単なるエージェント・フレームワークを超えた、AIエージェントが安全に活動・進化するために設計された **「自律型 AI オペレーティングシステム」** です。
-
-**コードの100%はAIエージェントによって自律的に記述されました。**
-これは単なる実験ではありません。エージェントが自ら、「自分たちが最も安全に、かつ規律を持って活動できる環境」を設計・実装した結果です。
 
 以下のすべての Capability がプラグインではなく、OS に最初から組み込まれています。
 
@@ -153,7 +181,9 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 
 ---
 
-## 🛡️ Trust Layer（防衛特化）
+## 🛡️ 安全性の証拠 — Trust Layer（防衛特化）
+
+「統治できる」という約束の裏付けです。中核ロジックは **TLA+ で形式検証**され、**146,000+ 行のゼロパニック Rust**（自動テスト 3,500+ 本）で実装されています。
 
 直接シェルをLLMに渡すことは、無限ループやAPIキー漏洩のリスクを孕む「脆い自由」です。Aiome は:
 1. 追加のツール(Skill)はWASM空間でサンドボックス化
@@ -209,6 +239,34 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 
 ---
 
+## ❓ よくある質問 (FAQ)
+
+<details>
+<summary><strong>自律エージェントが暴走しませんか？</strong></summary>
+
+Aiome は「統治」を前提に設計されています。危険な操作は承認キューで人間の許可を待ち、全行動は監査ログに記録され、エージェントは Cell（隔離プロセス）と WASM サンドボックスの中でしか動けません。中核ロジックは TLA+ で形式検証済みです。
+</details>
+
+<details>
+<summary><strong>データはどこに送られますか？</strong></summary>
+
+どこにも送られません。Aiome は完全セルフホストで、エージェントの記憶・ファイル・ログはすべてあなたのマシンに保存されます。使う LLM も自分で選択・接続できます。
+</details>
+
+<details>
+<summary><strong>コストが膨らみませんか？</strong></summary>
+
+OS 自体はセルフホストで $0/月です。LLM の利用量はコンソールの LLM 統計画面でリアルタイムに可視化され、経済機能は Mock モードで実際のお金を使わずに体験できます。
+</details>
+
+<details>
+<summary><strong>ベンダーロックインは？</strong></summary>
+
+ありません。MCP（Model Context Protocol）対応で外部ツールと自由に接続でき、ライセンスは BSL 1.1 — 2030年4月に Apache 2.0 へ自動移行することが条文で確約されています。
+</details>
+
+---
+
 ## 🤝 コントリビュート (Contributing)
 
 - **[貢献ガイド (CONTRIBUTING.md)](CONTRIBUTING.md)**: 「Built by Agents」のプロジェクトに人間が貢献するためのルール。
@@ -230,12 +288,17 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 **Aiome Core** および **Nurture Commercial Engine** は商用化を見据え、すべて **Business Source License 1.1 (BUSL-1.1)** の下でライセンスが統一されています。  
 *指定日（2030年4月1日）に自動的に Apache License 2.0 へと移行します。*
 
-### 商用利用時の手数料体系 (Commercial Fees)
-本プラットフォームで商業トランザクションを実行する際、以下の手数料（コミッション）が適用されます：
-- **Free プラン (オープンソース版 / セルフホスト)**: プラットフォーム利用手数料 **25%**
-- **Pro プラン (商用ライセンス / ホスト型)**: プラットフォーム利用手数料 **10%**
+### 料金と手数料 (Pricing & Fees)
 
-詳細な条項についてはリポジトリ内の `LICENSE` および `commercial/LICENSE` をご確認ください。
+| 段 | 対象 | 価格 |
+|---|---|---|
+| **Free (Sovereign)** | 個人・研究のセルフホスト | **$0/月** — OS 全機能・Mock 経済を含む |
+| **Pro (Autonomous)** | 実経済圏の解禁 | **$9.99/月**（14日間無料体験） |
+| **Agency (B2B)** | マルチテナント運用 | 準備中 (Coming Soon) |
+
+アプリケーション内の商業トランザクション（Gig の履行決済、アセット購入等）には、プラットフォーム手数料として取引額の **15%** が適用され、残る **85%** がクリエイターに分配されます（[利用規約](docs/legal/TERMS_OF_SERVICE.md) と同一）。
+
+詳細な条項についてはリポジトリ内の `LICENSE` および `commercial/LICENSE` をご確認ください。なお、経済圏機能は収益を保証するものではありません。
 
 ---
 

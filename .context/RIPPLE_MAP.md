@@ -1,3 +1,17 @@
+## 🔍 skills God Module 分解と MockJQ 共有化（OP-050/053/055） (2026-07-03)
+
+- **変更内容**:
+    - `libs/infrastructure/src/skills/mod.rs` [MODIFY]: 1,135行 → 599行。JS ブリッジ・ホスト関数・型定義を分離し、`pub use types::*` で外部パス維持。`host_write` の機密パス検査を `is_sensitive_path()` に統一（.ssh / id_rsa / Cargo.toml / *.pem / *.key の書込遮断を追加）。DUMMY_REGEX の `loop {}` を除去。
+    - `libs/infrastructure/src/skills/code_mode.rs` [NEW]: Code Mode JS ミニインタープリタ（正規表現5本は `LazyLock<Option<Regex>>` 化、expand_vars/unquote/resolve_token をモジュール関数に昇格）。
+    - `libs/infrastructure/src/skills/host_fns.rs` [NEW]: `build_host_exec_fn` / `build_host_write_fn` / `build_noop_host_fns`（B-1 Memory Safety Contract のコメントごと移動）。
+    - `libs/infrastructure/src/skills/types.rs` [NEW]: UnverifiedSkill / VerifiedSkill（TypeState）/ SkillMetadata / SkillMaturity。
+    - `libs/infrastructure/src/testing/mock_jq.rs` [NEW] + `lib.rs` [MODIFY]: immune_system.rs テスト内の MockJQ（14 トレイト実装）を `#[cfg(test)]` ゲートの共有モジュールへ抽出。
+    - `docs/roadmaps/refactor_skills_module_plan.md` [NEW]: 実行計画書（R-1〜R-7、1項目=1コミット）。
+- **波及効果**:
+    - **API 互換性**: `infrastructure::skills::` の公開パスは再エクスポートで不変。利用側（api-server 12ファイル、aiome-node 2ファイル、oss_orchestrator）の変更ゼロを `cargo check --workspace --tests` で確認済み。
+    - **挙動変更は1点のみ**: host_write の機密パス遮断が7パターン+拡張子2種に厳格化（意図的なセキュリティ修正）。他は全て等価変換で infrastructure 全657テスト PASS。
+    - **今後のテスト**: JobQueue 系のモックが必要なテストは `crate::testing::mock_jq::MockJQ` を再利用可能。
+
 ## 🔍 実績由来の新スキル6件の追加（スキル棚卸し「攻め」フェーズ） (2026-07-03)
 
 - **変更内容**:
@@ -4460,4 +4474,21 @@ graph TD
 ## Phase: `/docs-sync` (2026-07-03)
 - **同期対象**: `.env.example`, `commercial/.env.example`, `OPERATIONS_MANUAL.md`, `SECURITY_DESIGN.md`, `SECURITY_WHITEPAPER.md`, `INFRASTRUCTURE_MODULES.md`, `AIOME_NURTURE_SYNERGY.md` (§5.4.4), `README.md` / `README_en.md`, `ERROR_BUDGET_AND_RESILIENCE.md`, `CHANGELOG.md`
 - **内容**: 改善計画 P0–P3 および検証フェーズ修正を運用・セキュリティ・アーキテクチャ文書へ反映
+
+## 📘 F-1 Agent Playbooks 実装 (2026-07-03)
+
+- **変更内容**:
+    - `libs/infrastructure/src/workflow/playbook.rs` [NEW]: PlaybookManifest v1 型＋構造バリデーション
+    - `apps/api-server/assets/playbooks/` [NEW]: 公式 Playbook 4本（seo-operations / sns-operations / competitor-research / support-triage、`include_str!` 同梱）
+    - `apps/api-server/src/routes/playbook.rs` [NEW]: list / install / import ハンドラ（依存欠落は 422 で `missing_skills` / `missing_mcp_servers`、途中失敗はロールバック）
+    - `apps/api-server/src/api_integration_tests/playbook.rs` [NEW]: 統合テスト7本
+    - `apps/api-server/src/routes/workflow.rs` [MODIFY]: `GET /api/v1/workflows/:id/export` 追加
+    - `apps/api-server/src/router.rs` [MODIFY]: `/api/v1/playbooks` 系3ルート配線
+    - `apps/api-server/src/api.rs` [MODIFY]: OpenAPI 4パス＋2スキーマ登録
+    - `apps/management-console/src/components/SetupWizard.tsx` [MODIFY]: Playbook 選択ステップ（step 6、初期化成功後表示・スキップ可）
+    - `apps/management-console/src/lib/navigation.ts` [MODIFY]: `reloadApp()` 追加
+    - i18n（ja/en） [MODIFY]: `setup.playbook*` キー追加
+- **波及効果**:
+    - **workflows テーブル**: Playbook install/import による書込が増加（テンプレートワークフローの一括投入）
+    - **SetupWizard 完了フロー**: 初期化成功後の reload が Playbook 選択ステップ（step 6）経由に変更（スキップ可）
 

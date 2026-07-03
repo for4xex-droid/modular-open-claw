@@ -33,12 +33,16 @@
 - [ ] **OP-027**: Stripe API 実装追加時の一元化モック拡充（2026-06-01）
 - [ ] **OP-028**: フロントエンド `as any` 型キャスト4箇所の解消（WorkflowBuilder.tsx ×3, workflowConverter.ts ×1）（2026-07-02）
 - [ ] **OP-029**: `biome-popup-entry.tsx` HEX カラー直書きの解消（U-002 違反、`var(--bg-primary)` へ置換）（2026-07-02）
-- [ ] **OP-050**: `skills/mod.rs`（1,134行）God Module の責務分解（2026-07-02）
+- [x] **OP-050**: `skills/mod.rs`（1,134行）God Module の責務分解 → 2026-07-03 完了（599行に縮小、code_mode.rs / host_fns.rs / types.rs へ分離。refactor/skills-god-module ブランチ）
 - [ ] **OP-051**: Error 型定義の統一（thiserror/anyhow 混在 10種類 → 3階層）（2026-07-02）
 - [ ] **OP-052**: `deep-scan.sh` CRATES 設定修正（廃止済み `apps/watchtower` の除外）（2026-07-02）
-- [ ] **OP-053**: `skills/mod.rs` L163 `unwrap_or_else(|_| loop {})` の安全なエラー伝搬への修正（Dim 10 違反）（2026-07-02）
+- [x] **OP-053**: `skills/mod.rs` L163 `unwrap_or_else(|_| loop {})` の安全なエラー伝搬への修正（Dim 10 違反） → 2026-07-03 完了（DUMMY_REGEX 削除、`LazyLock<Option<Regex>>` 化）
 - [ ] **OP-054**: JobQueue トレイトの API 乖離解消（補助メソッドのトレイト引き上げ or private 化）（2026-07-02）
-- [ ] **OP-055**: `immune_system.rs` 内 MockJQ（約700行）の `libs/test-utils` への共有化（2026-07-02）
+- [x] **OP-055**: `immune_system.rs` 内 MockJQ（約700行）の共有化 → 2026-07-03 完了（新クレートではなく `infrastructure::testing::mock_jq` クレート内モジュールとして抽出）
+- [ ] **OP-056**: フロント `useWorkflowApi` の `POST /api/v1/workflows/validate` とバックエンド `/api/v1/workflows/:id/validate` のパス不整合（F-1 実装時に発見、修正は未実施）（2026-07-03）
+- [ ] **OP-057**: LP Stripe Payment Link（$9.99 Pro）決済とセルフホスト環境の Pro 有効化が自動接続されていない。ライセンスキー配布 or Customer Portal 連携の設計が必要（PR品質改善 M-2 で発見）（2026-07-03）
+- [ ] **OP-058**: `ProUpgradeModal`（402→アップグレード導線）が実装・テスト済みだが App.tsx 未マウントでコンバージョン機会を損失。commerce 系 Safety-Critical Zone のため人間許可後にマウント（2026-07-03）
+- [ ] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠: `invoice.paid` Webhook で `pro_monthly_kc_allowance` 設定値（system_settings、上限 1M クランプ）を Nurture へ冪等付与（`{event_id}-allowance`）。超過チャージは既存 Recharge UI で対応済み。⬜ 残: 月間支出上限（現状は `nurture_wallets.daily_limit` の日次のみ）と Settings UI への入力欄追加。人間レビュー必須（commerce 系）。含み枠の対外訴求は本番検証まで禁止
 
 ## 🔵 Upstream 待ち（scripts/watch_upstream_blockers.py で監視中）
 

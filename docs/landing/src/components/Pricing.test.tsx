@@ -17,8 +17,8 @@ describe('Pricing Component', () => {
     render(<Pricing />);
     
     // Header check
-    expect(screen.getByText('Flexible Pricing Plans')).toBeInTheDocument();
-    expect(screen.getByText('Choose the plan that fits your evolutionary speed.')).toBeInTheDocument();
+    expect(screen.getByText('Owning is free. Go Pro to unlock the economy.')).toBeInTheDocument();
+    expect(screen.getByText('Free is for owning your AI OS. Pro is for letting your AI actually earn. Cancel anytime.')).toBeInTheDocument();
 
     // Plan Names
     expect(screen.getByText('Sovereign Free')).toBeInTheDocument();
@@ -39,13 +39,13 @@ describe('Pricing Component', () => {
 
     // Free features
     expect(screen.getByText('Self-Healing AI Agent with Soul System')).toBeInTheDocument();
-    expect(screen.getByText('AI Chat — natural conversation with your agent')).toBeInTheDocument();
-    expect(screen.getByText('WASM Skill Ecosystem')).toBeInTheDocument();
+    expect(screen.getByText('AI Chat + VRM Avatar (Inochi2D Live Expression)')).toBeInTheDocument();
+    expect(screen.getByText('WASM Skill Ecosystem + mock economy mode')).toBeInTheDocument();
 
     // Pro features
     expect(screen.getByText('Everything in Free, plus:')).toBeInTheDocument();
-    expect(screen.getByText('Autonomous Economy — AI earns and invests 24/7')).toBeInTheDocument();
-    expect(screen.getByText('Creator Marketplace — sell LoRA, VRM, Voice assets')).toBeInTheDocument();
+    expect(screen.getByText('Real economy unlocked — AI earns and invests 24/7')).toBeInTheDocument();
+    expect(screen.getByText('Creator Marketplace — sell LoRA, VRM, Voice assets (85% goes to you)')).toBeInTheDocument();
   });
 
   it('switches content to Japanese when language changes', async () => {
@@ -56,8 +56,8 @@ describe('Pricing Component', () => {
     });
 
     // Header check
-    expect(screen.getByText('柔軟な料金プラン')).toBeInTheDocument();
-    expect(screen.getByText('あなたの進化の速度に合わせた最適なプランをお選びください。')).toBeInTheDocument();
+    expect(screen.getByText('所有は無料。経済圏の解禁はプロで。')).toBeInTheDocument();
+    expect(screen.getByText('Free は「AI OS を所有する」プラン、Pro は「AI に実際に稼がせる」プラン。いつでも解約できます。')).toBeInTheDocument();
 
     // Plan Names
     expect(screen.getByText('ソブリン無料')).toBeInTheDocument();

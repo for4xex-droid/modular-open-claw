@@ -9,14 +9,16 @@ import { useTranslation } from 'react-i18next';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { SocialProof } from './components/SocialProof';
+import { LiveDemo } from './components/LiveDemo';
 import { Features } from './components/Features';
+import { UseCases } from './components/UseCases';
 import { HowItWorks } from './components/HowItWorks';
 import { Economy } from './components/Economy';
 import { CodePreview } from './components/CodePreview';
-import { LiveDemo } from './components/LiveDemo';
 import { Architecture } from './components/Architecture';
 import { Showcase } from './components/Showcase';
 import { Pricing } from './components/Pricing';
+import { Faq } from './components/Faq';
 import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
 import { PrivacyPage, TermsPage, TokushohoPage } from './components/LegalPages';
@@ -49,14 +51,16 @@ function App() {
       <main id="main-content">
         <Hero />
         <SocialProof />
+        <LiveDemo />
         <Features />
+        <UseCases />
         <HowItWorks />
         <Economy />
         <CodePreview />
-        <LiveDemo />
         <Architecture />
         <Showcase />
         <Pricing />
+        <Faq />
         <CTA />
       </main>
       <Footer />

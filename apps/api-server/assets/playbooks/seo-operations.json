@@ -1,0 +1,76 @@
+{
+  "playbook_version": 1,
+  "id": "seo-operations",
+  "name": "SEO 運用",
+  "description": "対象 URL の HTML を取得し、SEO 監査観点の洗い出しから具体的な改善提案までを一連のワークフローで実行します。",
+  "tags": ["seo"],
+  "required_skills": [],
+  "required_mcp_servers": [],
+  "workflows": [
+    {
+      "id": "7a3f2e1d-4b8c-4d9e-8f1a-2b3c4d5e6f7a",
+      "name": "SEO 監査と改善提案",
+      "description": "監査観点の生成、ページ取得、HTML に基づく改善提案を順に実行する SEO 運用ワークフローです。",
+      "version": 1,
+      "nodes": [
+        {
+          "id": "start",
+          "node_type": { "Start": { "trigger": "Manual" } },
+          "label": "手動開始",
+          "config": {},
+          "position": { "x": 0, "y": 0 }
+        },
+        {
+          "id": "llm-audit-points",
+          "node_type": { "LlmPrompt": { "model": null, "temperature": null } },
+          "label": "SEO 監査観点の生成",
+          "config": {
+            "prompt": "対象 URL {{target_url}} について、タイトルタグ・メタディスクリプション・見出し構造・内部リンク・構造化データ・モバイル対応・ページ速度の観点から、優先度付きの SEO 監査チェックリストを日本語で作成してください。"
+          },
+          "position": { "x": 250, "y": 0 }
+        },
+        {
+          "id": "http-fetch",
+          "node_type": { "HttpRequest": { "method": "GET", "url_template": "{{target_url}}" } },
+          "label": "対象ページの HTML 取得",
+          "config": {},
+          "position": { "x": 500, "y": 0 }
+        },
+        {
+          "id": "llm-improvements",
+          "node_type": { "LlmPrompt": { "model": null, "temperature": null } },
+          "label": "HTML に基づく改善提案",
+          "config": {
+            "prompt": "取得した HTML と先に生成した監査観点を照合し、具体的な問題点と優先度の高い改善アクション（修正例を含む）を日本語で提案してください。"
+          },
+          "position": { "x": 750, "y": 0 }
+        }
+      ],
+      "edges": [
+        {
+          "source": "start",
+          "target": "llm-audit-points",
+          "source_handle": null,
+          "target_handle": null
+        },
+        {
+          "source": "llm-audit-points",
+          "target": "http-fetch",
+          "source_handle": null,
+          "target_handle": null
+        },
+        {
+          "source": "http-fetch",
+          "target": "llm-improvements",
+          "source_handle": null,
+          "target_handle": null
+        }
+      ],
+      "variables": {
+        "target_url": "https://example.com"
+      },
+      "created_at": "2026-07-03T00:00:00Z",
+      "updated_at": "2026-07-03T00:00:00Z"
+    }
+  ]
+}

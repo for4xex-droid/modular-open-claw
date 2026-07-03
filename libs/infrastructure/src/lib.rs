@@ -206,4 +206,6 @@ mod soul_store_tests;
 pub mod support;
 #[cfg(any(test, debug_assertions))]
 pub mod test_utils;
+#[cfg(test)]
+pub(crate) mod testing;
 mod workspace_manager_tests;

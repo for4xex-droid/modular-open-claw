@@ -321,6 +321,48 @@ pub async fn stripe_webhook(
     )
     .await;
 
+    // 6b. OP-059: ハイブリッド価格 — Pro サブスク請求成功時に月次 KC 含み枠を付与。
+    // `invoice.paid` は請求サイクルごとに1回のみ発火し、event_id ベースの冪等性
+    // (stripe_webhook_events + Nurture 側 idempotency_key) により二重付与は発生しない。
+    // `customer.subscription.updated` では付与しない（ステータス変更のたびに発火するため）。
+    if event_type == "invoice.paid" {
+        if let Some(ref agent_id_str) = pending_unlock_agent {
+            let allowance = super::invoice::parse_monthly_allowance(
+                job_queue
+                    .get_setting_value("pro_monthly_kc_allowance")
+                    .await
+                    .unwrap_or(None),
+            );
+            if allowance > 0 {
+                match uuid::Uuid::parse_str(agent_id_str) {
+                    Ok(agent_uuid) => {
+                        info!(
+                            "🎁 [StripeWebhook] Granting monthly KC allowance of {} to Pro agent {} (OP-059)",
+                            allowance, agent_uuid
+                        );
+                        let http_client = state.http_client.get_inner().clone();
+                        enqueue_coin_charge_to_nurture(
+                            http_client,
+                            state.db_pool.get_inner().clone(),
+                            state.nurture_url.clone(),
+                            state.nurture_internal_secret.clone(),
+                            agent_uuid,
+                            allowance,
+                            format!("{}-allowance", event_id),
+                        )
+                        .await;
+                    }
+                    Err(e) => {
+                        error!(
+                            "❌ [StripeWebhook] Invalid agent UUID '{}' for KC allowance grant: {}",
+                            agent_id_str, e
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     // 📢 Broadcast invoice events to SSE
     if let Some(agent_id_str) = pending_unlock_agent {
         match uuid::Uuid::parse_str(&agent_id_str) {

@@ -4,6 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+pub mod playbook;
 pub mod schema;
 pub mod store;
 pub mod transpiler;
