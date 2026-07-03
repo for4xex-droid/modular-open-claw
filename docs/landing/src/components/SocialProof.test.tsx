@@ -13,17 +13,17 @@ describe('SocialProof Component', () => {
     render(<SocialProof />);
     
     // Check metric values
-    expect(screen.getByText('146,000+')).toBeInTheDocument();
+    expect(screen.getByText('5 min')).toBeInTheDocument();
     expect(screen.getByText('3,500+')).toBeInTheDocument();
-    expect(screen.getByText('0')).toBeInTheDocument();
+    expect(screen.getByText('$0')).toBeInTheDocument();
   });
 
   it('renders the metric labels', () => {
     render(<SocialProof />);
     
     // Check labels
-    expect(screen.getByText('lines of production Rust')).toBeInTheDocument();
+    expect(screen.getByText('to full setup')).toBeInTheDocument();
     expect(screen.getByText('automated tests passing')).toBeInTheDocument();
-    expect(screen.getByText('runtime panics in production')).toBeInTheDocument();
+    expect(screen.getByText('per month, self-hosted')).toBeInTheDocument();
   });
 });

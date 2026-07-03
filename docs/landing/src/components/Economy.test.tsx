@@ -11,7 +11,7 @@ import '../i18n/config';
 describe('Economy Component', () => {
   it('renders section title and description', () => {
     render(<Economy />);
-    expect(screen.getByText('The AI Economy, Explained.')).toBeInTheDocument();
+    expect(screen.getByText('Nurture — the heart that gives AI an economic self')).toBeInTheDocument();
   });
 
   it('renders the three economic model cards', () => {

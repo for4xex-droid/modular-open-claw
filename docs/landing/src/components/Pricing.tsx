@@ -121,6 +121,10 @@ export function Pricing() {
             </a>
           </motion.div>
         </div>
+
+        <p className="text-xs text-gray-500 text-center mt-8 max-w-3xl mx-auto">
+          {t('pricing.disclaimer')}
+        </p>
       </div>
     </section>
   );
