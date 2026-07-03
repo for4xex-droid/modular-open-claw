@@ -42,7 +42,7 @@
 - [ ] **OP-056**: フロント `useWorkflowApi` の `POST /api/v1/workflows/validate` とバックエンド `/api/v1/workflows/:id/validate` のパス不整合（F-1 実装時に発見、修正は未実施）（2026-07-03）
 - [ ] **OP-057**: LP Stripe Payment Link（$9.99 Pro）決済とセルフホスト環境の Pro 有効化が自動接続されていない。ライセンスキー配布 or Customer Portal 連携の設計が必要（PR品質改善 M-2 で発見）（2026-07-03）
 - [ ] **OP-058**: `ProUpgradeModal`（402→アップグレード導線）が実装・テスト済みだが App.tsx 未マウントでコンバージョン機会を損失。commerce 系 Safety-Critical Zone のため人間許可後にマウント（2026-07-03）
-- [ ] **OP-059**: ハイブリッド価格（Pro $9.99＋KC 月次含み枠＋超過チャージ＋支出上限設定）のバックエンド実装。ユーザー採用決定済み（2026-07-03）。commerce 系 Safety-Critical Zone のため人間レビュー必須。実装完了まで LP/README に含み枠数値を記載しない
+- [ ] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠: `invoice.paid` Webhook で `pro_monthly_kc_allowance` 設定値（system_settings、上限 1M クランプ）を Nurture へ冪等付与（`{event_id}-allowance`）。超過チャージは既存 Recharge UI で対応済み。⬜ 残: 月間支出上限（現状は `nurture_wallets.daily_limit` の日次のみ）と Settings UI への入力欄追加。人間レビュー必須（commerce 系）。含み枠の対外訴求は本番検証まで禁止
 
 ## 🔵 Upstream 待ち（scripts/watch_upstream_blockers.py で監視中）
 

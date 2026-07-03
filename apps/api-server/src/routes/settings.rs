@@ -100,6 +100,7 @@ pub const ALLOWED_KEYS: &[&str] = &[
     "llm_api_url",
     "ENABLE_TOOL_REVIEWER",
     "last_notified_version",
+    "pro_monthly_kc_allowance",
 ];
 
 pub const ALLOWED_CATEGORIES: &[&str] = &[

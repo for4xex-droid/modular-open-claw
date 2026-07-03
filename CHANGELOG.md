@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Added (ハイブリッド価格 OP-059 バックエンド 2026-07-03)
+- **月次 KC 含み枠の付与**: Pro サブスクの `invoice.paid` Webhook 成功時に、`pro_monthly_kc_allowance` 設定値（system_settings、0=無効、上限 1,000,000 KC クランプ）を Nurture コイン残高へ付与。`{event_id}-allowance` の冪等キーにより二重付与を防止。`customer.subscription.updated` では付与しない（重複発火防止）。設定キーを Settings API の `ALLOWED_KEYS` に追加。単体テスト3件＋既存 Webhook 統合テスト PASS。
+
 ### Added (PR品質改善計画 2026-07-03)
 - `docs/marketing/MESSAGING.md` [NEW]: 対外メッセージング正本。タグライン・3本柱（Sovereign / Governed / Earning）・価値の階段・FAQ・GitHub メタ案・ショットリスト・課金導線を集約。
 - `commercial/README.md` [NEW]: Nurture 経済エンジンの対外説明（Aiome OS との2層構造・B2A/A2A/A2C・手数料15%）。

@@ -92,6 +92,45 @@ pub async fn handle_invoice_payment_failed<'a>(
     }
 }
 
+/// OP-059: `pro_monthly_kc_allowance` 設定値を解釈する。
+/// 未設定・非数値・0 は「付与なし」。上限 1,000,000 KC でクランプ（設定ミスによる過剰付与防止）。
+// auth-exempt: Helper function (Not an endpoint)
+pub fn parse_monthly_allowance(setting: Option<String>) -> u64 {
+    const MAX_ALLOWANCE: u64 = 1_000_000;
+    setting
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .unwrap_or(0)
+        .min(MAX_ALLOWANCE)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_monthly_allowance;
+
+    #[test]
+    fn test_parse_monthly_allowance_valid() {
+        assert_eq!(parse_monthly_allowance(Some("1000".to_string())), 1000);
+        assert_eq!(parse_monthly_allowance(Some(" 250 ".to_string())), 250);
+    }
+
+    #[test]
+    fn test_parse_monthly_allowance_unset_or_invalid_is_zero() {
+        assert_eq!(parse_monthly_allowance(None), 0);
+        assert_eq!(parse_monthly_allowance(Some("".to_string())), 0);
+        assert_eq!(parse_monthly_allowance(Some("abc".to_string())), 0);
+        assert_eq!(parse_monthly_allowance(Some("-5".to_string())), 0);
+        assert_eq!(parse_monthly_allowance(Some("1.5".to_string())), 0);
+    }
+
+    #[test]
+    fn test_parse_monthly_allowance_clamped_to_max() {
+        assert_eq!(
+            parse_monthly_allowance(Some("999999999999".to_string())),
+            1_000_000
+        );
+    }
+}
+
 // auth-exempt: Helper function (Not an endpoint)
 pub async fn apply_pending_agent_states(
     job_queue: &std::sync::Arc<dyn aiome_core::traits::JobQueue>,
