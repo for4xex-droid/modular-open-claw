@@ -40,6 +40,8 @@
 - [ ] **OP-054**: JobQueue トレイトの API 乖離解消（補助メソッドのトレイト引き上げ or private 化）（2026-07-02）
 - [x] **OP-055**: `immune_system.rs` 内 MockJQ（約700行）の共有化 → 2026-07-03 完了（新クレートではなく `infrastructure::testing::mock_jq` クレート内モジュールとして抽出）
 - [ ] **OP-056**: フロント `useWorkflowApi` の `POST /api/v1/workflows/validate` とバックエンド `/api/v1/workflows/:id/validate` のパス不整合（F-1 実装時に発見、修正は未実施）（2026-07-03）
+- [ ] **OP-057**: LP Stripe Payment Link（$9.99 Pro）決済とセルフホスト環境の Pro 有効化が自動接続されていない。ライセンスキー配布 or Customer Portal 連携の設計が必要（PR品質改善 M-2 で発見）（2026-07-03）
+- [ ] **OP-058**: `ProUpgradeModal`（402→アップグレード導線）が実装・テスト済みだが App.tsx 未マウントでコンバージョン機会を損失。commerce 系 Safety-Critical Zone のため人間許可後にマウント（2026-07-03）
 
 ## 🔵 Upstream 待ち（scripts/watch_upstream_blockers.py で監視中）
 
