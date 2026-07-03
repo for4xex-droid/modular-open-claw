@@ -2,7 +2,7 @@
 
 ### Fixed (CI インフラ修繕 2026-07-04)
 - **Gitleaks**: 組織リポジトリで `GITLEAKS_LICENSE` 必須の `gitleaks-action@v2` を廃止し、ライセンス不要の OSS CLI（v8.24.3 直接実行）へ切替。
-- **Formal Verification**: `get.extism.org/cli` の `-b` オプション廃止に追従し、pip 配布の `extism-cli` へ切替。
+- **Formal Verification**: `get.extism.org/cli` の `-b` オプション廃止に追従し、`-y -o /usr/local/bin` 形式の公式インストールスクリプトへ切替（pip 版 `extism-cli` は PyPI 未登録のため不可）。
 - **Anti-Pattern Enforcer**: CI が参照する `.aiome/anti-patterns.yml` が `.gitignore` により未追跡だった問題を修正（`!` 例外で追跡化）。
 - **Forbid Unsafe Code Check**: 削除済み `apps/watchtower` への参照を除去。`#![cfg_attr(not(test), deny(unsafe_code))]` 形式（key-proxy）も許容するよう正規表現を拡張。
 - **License Header Check**: `vendor/` を検査対象外に。`x_mcp_trend.rs` に BSL-1.1 ヘッダーを追加。

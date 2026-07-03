@@ -21,8 +21,8 @@ jobs:
         
     - name: Enable extism support
       run: |
-        # get.extism.org/cli が -b オプションを廃止したため pip 配布版を使用 (CI修繕 2026-07-04)
-        pip install extism-cli
+        # get.extism.org/cli の -b オプション廃止に追従。pip パッケージ extism-cli は存在しない (CI修繕 2026-07-04)
+        curl -sL https://get.extism.org/cli | sh -s -- -y -o /usr/local/bin
         sudo env "PATH=$PATH" extism lib install --prefix /usr/local
         
     - name: Download TLC Tools
