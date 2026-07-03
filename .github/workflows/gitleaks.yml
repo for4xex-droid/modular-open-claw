@@ -14,7 +14,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: gitleaks-action
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # gitleaks-action v2 は組織リポジトリで GITLEAKS_LICENSE が必須のため、
+      # ライセンス不要の OSS CLI を直接実行する (CI修繕 2026-07-04)
+      - name: Run gitleaks CLI
+        run: |
+          GITLEAKS_VERSION=8.24.3
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
+          ./gitleaks detect --source . --redact --verbose

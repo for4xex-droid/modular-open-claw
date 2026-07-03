@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+### Fixed (CI インフラ修繕 2026-07-04)
+- **Gitleaks**: 組織リポジトリで `GITLEAKS_LICENSE` 必須の `gitleaks-action@v2` を廃止し、ライセンス不要の OSS CLI（v8.24.3 直接実行）へ切替。
+- **Formal Verification**: `get.extism.org/cli` の `-b` オプション廃止に追従し、pip 配布の `extism-cli` へ切替。
+- **Anti-Pattern Enforcer**: CI が参照する `.aiome/anti-patterns.yml` が `.gitignore` により未追跡だった問題を修正（`!` 例外で追跡化）。
+- **Forbid Unsafe Code Check**: 削除済み `apps/watchtower` への参照を除去。`#![cfg_attr(not(test), deny(unsafe_code))]` 形式（key-proxy）も許容するよう正規表現を拡張。
+- **License Header Check**: `vendor/` を検査対象外に。`x_mcp_trend.rs` に BSL-1.1 ヘッダーを追加。
+- **Conventional Commits**: GitHub 自動生成の merge commit（`Merge ...`）を検証対象外に。
+- **Test & Lint**: `docker-compose` → `docker compose`（v2）へ更新、`libglib2.0-dev` を追加インストール。
+- **Generate Wiki**: PR 実行時に detached HEAD で `git push` が失敗するため main への push 時のみ実行に変更（`contents: write` 権限を明示）。
+- **Industrial Security Audit (Bastion)**: `deny.toml` を整備 — html2md（GPL-3.0+）の SPDX 表現を clarify＋クレート単位例外に登録（置換は OP-060）、unmaintained 勧告は workspace 直接依存のみ検査、上流メジャー更新待ちの 21 advisory を理由付きで ignore（OP-061、OP-030〜034 と同根）。`anyhow` を 1.0.103 へ更新。ローカルで `cargo deny check` 全項目 PASS を確認。
+- **Frontend Lint & Build / Docker Build / Playwright E2E**: `apps/management-console` の既存 TypeScript エラー（`setupTests.ts` の `global`、`useBiomeEngine.ts` の自己 import、`biome.worker.ts` の `postMessage` オーバーロード、`BiomePostEffects.tsx` の不正 prop）を修正し、連鎖失敗を解消。
+
 ### Added (ハイブリッド価格 OP-059 バックエンド 2026-07-03)
 - **月次 KC 含み枠の付与**: Pro サブスクの `invoice.paid` Webhook 成功時に、`pro_monthly_kc_allowance` 設定値（system_settings、0=無効、上限 1,000,000 KC クランプ）を Nurture コイン残高へ付与。`{event_id}-allowance` の冪等キーにより二重付与を防止。`customer.subscription.updated` では付与しない（重複発火防止）。設定キーを Settings API の `ALLOWED_KEYS` に追加。単体テスト3件＋既存 Webhook 統合テスト PASS。
 

@@ -70,11 +70,33 @@ feature-depth = 1
 # A list of advisory IDs to ignore. Note that ignored advisories will still
 # output a note when they are encountered.
 ignore = [
-    #"RUSTSEC-0000-0000",
-    #{ id = "RUSTSEC-0000-0000", reason = "you can specify a reason the advisory is ignored" },
-    #"a-crate-that-is-yanked@0.1.1", # you can also ignore yanked crate versions if you wish
-    #{ crate = "a-crate-that-is-yanked@0.1.1", reason = "you can specify why you are ignoring the yanked crate" },
+    # 以下はすべて間接依存の旧メジャーバージョン起因で、semver 互換の cargo update では
+    # 修正不能（上流クレートのメジャー更新が必要）。OPEN.md OP-061 で追跡 (CI修繕 2026-07-04)
+    { id = "RUSTSEC-2024-0421", reason = "idna 0.4 (trust-dns 経由の間接依存)。修正は idna >=1.0" },
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.39 (間接依存)。修正は次期メジャー" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.39 (間接依存)。修正は次期メジャー" },
+    { id = "RUSTSEC-2026-0097", reason = "rand 0.8 (間接依存)。カスタムロガー未使用のため影響限定" },
+    { id = "RUSTSEC-2026-0049", reason = "rustls-webpki 旧版 (間接依存)。修正はメジャー更新" },
+    { id = "RUSTSEC-2026-0098", reason = "rustls-webpki 旧版 (間接依存)。修正はメジャー更新" },
+    { id = "RUSTSEC-2026-0099", reason = "rustls-webpki 旧版 (間接依存)。修正はメジャー更新" },
+    { id = "RUSTSEC-2026-0104", reason = "rustls-webpki 旧版 (間接依存)。修正はメジャー更新" },
+    { id = "RUSTSEC-2026-0085", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-061)" },
+    { id = "RUSTSEC-2026-0086", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-061)" },
+    { id = "RUSTSEC-2026-0087", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-061)" },
+    { id = "RUSTSEC-2026-0088", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-061)" },
+    { id = "RUSTSEC-2026-0089", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-061)" },
+    { id = "RUSTSEC-2026-0091", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-061)" },
+    { id = "RUSTSEC-2026-0092", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-061)" },
+    { id = "RUSTSEC-2026-0093", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-061)" },
+    { id = "RUSTSEC-2026-0094", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-061)" },
+    { id = "RUSTSEC-2026-0095", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-061)" },
+    { id = "RUSTSEC-2026-0096", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-061)" },
+    { id = "RUSTSEC-2026-0114", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-061)" },
+    { id = "RUSTSEC-2026-0188", reason = "wasmtime-wasi 44.x。修正は 45+ へのメジャー更新 (OP-061)" },
 ]
+# unmaintained 勧告は間接依存（Tauri の GTK3 バインディング等、上流更新待ち）が大半のため、
+# ワークスペース直接依存のみを検査対象とする (CI修繕 2026-07-04)
+unmaintained = "workspace"
 # If this is true, then cargo deny will use the git executable to fetch advisory database.
 # If this is false, then it uses a built-in git library.
 # Setting this to true can be helpful if you have special authentication requirements that cargo-deny does not support.
@@ -116,7 +138,16 @@ exceptions = [
     # Each entry is the crate and version constraint, and its specific allow
     # list
     #{ allow = ["Zlib"], crate = "adler32" },
+    # html2md は GPL-3.0+。MIT 代替（htmd 等）への置換を OPEN.md OP-060 で追跡中 (CI修繕 2026-07-04)
+    { allow = ["GPL-3.0-or-later"], crate = "html2md" },
 ]
+
+# html2md は非推奨 SPDX 識別子 "GPL-3.0+" を宣言しており parse-error になるため、
+# 現行の等価表現に読み替える (CI修繕 2026-07-04)
+[[licenses.clarify]]
+crate = "html2md"
+expression = "GPL-3.0-or-later"
+license-files = []
 
 # Some crates don't have (easily) machine readable licensing information,
 # adding a clarification entry for it allows you to manually specify the

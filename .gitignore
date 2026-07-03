@@ -22,7 +22,10 @@ logs/
 *.bak
 
 # Aiome runtime config
-.aiome/
+# CI (pattern-enforcer.sh) が参照する anti-patterns.yml のみ追跡対象 (CI修繕 2026-07-04)
+# ディレクトリごと無視 (.aiome/) では否定パターンが効かないため /* 形式にする
+.aiome/*
+!.aiome/anti-patterns.yml
 *.db
 *.db-journal
 *.db-shm

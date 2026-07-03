@@ -21,8 +21,9 @@ jobs:
         
     - name: Enable extism support
       run: |
-        curl -sL https://get.extism.org/cli | sh -s -- -b /usr/local/bin
-        extism lib install
+        # get.extism.org/cli が -b オプションを廃止したため pip 配布版を使用 (CI修繕 2026-07-04)
+        pip install extism-cli
+        sudo env "PATH=$PATH" extism lib install --prefix /usr/local
         
     - name: Download TLC Tools
       run: curl -L -o tla2tools.jar https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar

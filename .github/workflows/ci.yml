@@ -52,6 +52,10 @@ jobs:
       - name: Install Poppler Utils
         run: sudo apt-get install -y poppler-utils
 
+      # glib-sys (GTK 系依存) のビルドに必要 (CI修繕 2026-07-04)
+      - name: Install GLib Dev Headers
+        run: sudo apt-get install -y libglib2.0-dev pkg-config
+
       - name: Check Formatting
         run: cargo fmt --all -- --check
 
@@ -62,7 +66,7 @@ jobs:
 
       - name: Start Test Database
         run: |
-          docker-compose -f docker-compose.test.yml up -d
+          docker compose -f docker-compose.test.yml up -d
           echo "Waiting for PostgreSQL to be ready..."
           sleep 10
           
@@ -91,7 +95,7 @@ jobs:
 
       - name: Stop Test Database
         if: always()
-        run: docker-compose -f docker-compose.test.yml down
+        run: docker compose -f docker-compose.test.yml down
 
       - name: Code Coverage
         run: |
@@ -202,6 +206,10 @@ jobs:
   docs:
     name: Generate Wiki
     runs-on: ubuntu-latest
+    # PR では detached HEAD となり push できないため main への push 時のみ実行 (CI修繕 2026-07-04)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       
@@ -283,7 +291,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check license headers (BSL-1.1 or Apache-2.0)
         run: |
-          MISSING=$(find . -name "*.rs" -not -path "*/target/*" -not -path "./apps/samsara-hub/src/hub_ws_tests.rs" \
+          MISSING=$(find . -name "*.rs" -not -path "*/target/*" -not -path "./vendor/*" -not -path "./apps/samsara-hub/src/hub_ws_tests.rs" \
             -exec sh -c 'grep -q "Licensed under the Business Source License" "$1" || grep -q "Licensed under the Apache License" "$1" || echo "$1"' _ {} \;)
           if [ -n "$MISSING" ]; then
             echo "❌ Missing license header in:"
@@ -298,8 +306,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Ensure #![forbid(unsafe_code)] or #![deny(unsafe_code)] in main.rs/lib.rs
         run: |
-          for file in apps/api-server/src/main.rs apps/samsara-hub/src/main.rs apps/watchtower/src/main.rs apps/key-proxy/src/main.rs libs/core/src/lib.rs libs/shared/src/lib.rs libs/infrastructure/src/lib.rs; do
-            if ! grep -qE "#!\[(forbid|deny)\(unsafe_code\)\]" "$file"; then
+          for file in apps/api-server/src/main.rs apps/samsara-hub/src/main.rs apps/key-proxy/src/main.rs libs/core/src/lib.rs libs/shared/src/lib.rs libs/infrastructure/src/lib.rs; do
+            # cfg_attr 経由の指定（例: #![cfg_attr(not(test), deny(unsafe_code))]）も許容 (CI修繕 2026-07-04)
+            if ! grep -qE "#!\[(forbid|deny)\(unsafe_code\)\]|#!\[cfg_attr\([^)]*\)?, *(forbid|deny)\(unsafe_code\)\)\]" "$file"; then
               echo "❌ Critical: $file is missing safety annotations (![forbid/deny(unsafe_code)])"
               exit 1
             fi
@@ -372,6 +381,8 @@ jobs:
           fi
           while IFS= read -r msg; do
             [[ -z "$msg" ]] && continue
+            # GitHub 自動生成の merge commit は検証対象外 (CI修繕 2026-07-04)
+            [[ "$msg" == Merge\ * ]] && continue
             if ! bash scripts/check-commit-msg.sh "$msg" 2>/dev/null; then
               ERRORS=$((ERRORS + 1))
             fi

@@ -24,7 +24,7 @@ class MockWorker {
   private generation = 0;
 
   constructor(public url: string, public options?: any) {
-    (global as any).lastWorkerInstance = this;
+    (globalThis as any).lastWorkerInstance = this;
   }
 
   private handleIncomingMessage(message: any) {
@@ -101,7 +101,7 @@ class MockWorker {
   }
 }
 
-global.Worker = MockWorker as any;
+globalThis.Worker = MockWorker as any;
 
 // Global mock for ?worker syntax
 jest.mock('./hooks/biome.worker?worker', () => {

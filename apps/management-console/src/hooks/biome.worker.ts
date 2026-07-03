@@ -137,6 +137,6 @@ function sendStateUpdate() {
       renderView,
       frozenCells,
     },
-    [renderView.buffer, frozenCells.buffer]
+    { transfer: [renderView.buffer, frozenCells.buffer] }
   );
 }

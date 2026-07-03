@@ -65,7 +65,7 @@ export function BiomePostEffects({
   }
 
   return (
-    <EffectComposer disableNormalPass>
+    <EffectComposer enableNormalPass={false}>
       {passes}
     </EffectComposer>
   );

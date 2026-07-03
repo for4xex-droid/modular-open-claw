@@ -5,8 +5,26 @@
  * Licensed under the Business Source License 1.1.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { RarityProgress, BiomeEvent } from './useBiomeEngine';
 import BiomeWorker from './biome.worker?worker';
+
+/** biome-engine `RarityProgress` (libs/biome-engine/src/rarity.rs) の TS 表現 */
+export interface RarityProgress {
+  rarity: number;
+  active_cells: number;
+  morphology_count: number;
+  has_homeostasis: boolean;
+  diversity_index: number;
+  condition_active_500: boolean;
+  condition_morph_3: boolean;
+  condition_morph_4: boolean;
+  condition_active_1000: boolean;
+}
+
+/** biome-engine `BiomeEvent` (libs/biome-engine/src/lib.rs) の TS 表現 */
+export type BiomeEvent =
+  | { type: 'MorphologyChanged'; from: number; to: number }
+  | { type: 'MassExtinction'; lost_ratio: number }
+  | { type: 'NewReactionDiscovered'; reaction_id: number };
 
 // IndexedDB Helper Functions
 let dbInstance: IDBDatabase | null = null;
