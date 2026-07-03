@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Added (PR品質改善計画 2026-07-03)
+- `docs/marketing/MESSAGING.md` [NEW]: 対外メッセージング正本。タグライン・3本柱（Sovereign / Governed / Earning）・価値の階段・FAQ・GitHub メタ案・ショットリスト・課金導線を集約。
+- `commercial/README.md` [NEW]: Nurture 経済エンジンの対外説明（Aiome OS との2層構造・B2A/A2A/A2C・手数料15%）。
+- **LP UseCases / FAQ**: `docs/landing/` に Playbook 4本（seo-operations / sns-operations / competitor-research / support-triage）のユースケースセクションと反論処理 FAQ を新規追加。LiveDemo を Hero 直下へ移動。i18n ja/en コピーを Hero・ProofBar・Features・Economy・Pricing で全面刷新。LP テスト53件 PASS。
+- **`OPEN.md`**: OP-057（LP 決済と Pro 有効化の接続ギャップ）・OP-058（ProUpgradeModal 未マウント）を起票。
+
+### Changed (PR品質改善計画 2026-07-03)
+- **プラットフォーム手数料 15% 統一（M-1 決定）**: 旧 25%/10% 表記を廃止。README・LP・commercial 説明を 15% に揃え。
+- **`README.md` / `README_en.md`**: 便益ファースト再構成。3つの約束テーブル・Nurture 2層図解・FAQ・料金テーブルを追加。開発者向け自己言及（行数・テスト数）を利用者便益へ置換。
+- **`docs/roadmaps/pr_quality_improvement_plan.md`**: PR-1〜PR-9・M-1〜M-2 の実装完了に伴い計画を反映。
+
 ### Added (10x Value 成長ロードマップ 2026-07-03)
 - `docs/roadmaps/value_10x_roadmap.md` [NEW]: v1.0 リリース計画の次を定義する成長ロードマップ。3ホライズン・10機能（Playbooks / Outcome Ledger / Skill Marketplace α / MCP Provider / Soul Sync / Proof of Agent Work / リモート承認 / Multi-Tenant / 開放経済圏 / Voice Interface）を、各機能ごとの受け入れ基準（Negative Test 含む）・既存資産マッピング・依存関係・効果×リスク優先順位つきで策定。既存計画（implementation_plan.md / OPEN.md）との重複なしを棚卸しで確認済み。
 
