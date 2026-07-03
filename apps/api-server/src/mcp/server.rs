@@ -399,7 +399,8 @@ fn is_skill_whitelisted(name: &str) -> bool {
         | "exa_search" | "exa_contents"
         | "browser_navigate" | "browser_screenshot" | "browser_click"
         | "resolve_library_id" | "get_library_docs" // Context7
-        | "freee_api_get" | "freee_api_post" | "freee_authenticate" => true,
+        | "freee_api_get" | "freee_api_post" | "freee_authenticate"
+        | "marketplace_search" | "market_search" | "wallet_balance" => true,
 
         "terminal_exec" | "fs_writer" | "forge_publish" => false, // Protected internal tools
         _ => false,

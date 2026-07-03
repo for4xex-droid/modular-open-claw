@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Added (Aiome × Nurture シナジー最大化 2026-07-04)
+- **W-1 coin-charge OXP**: `OxiLeanProofCertificate::generate_header()` を `aiome-core-contracts` に追加。Stripe/Polar Webhook → Nurture `/internal/coin-charge` relay が Bearer + OXP 証明書を送信（本番 403 障害修正）。
+- **W-2 統合テスト**: mock Nurture が本番同等の二重認証を検証。OXP=0 の Negative テスト追加。
+- **W-3 NurturePlugin in-process**: `NURTURE_IN_PROCESS=true` + `--features nurture` で `plugin_registry.register()`。ADR-012（Hook 発火経路一本化）追加。
+- **W-4 MCP ツール統一**: `marketplace_search` / `marketplace_buy` / `wallet_balance` / `marketplace_upload` を tools/list 公開。旧名後方互換維持。
+- **W-5 MCP プロキシ**: `/api/v1/nurture-mcp/sse` + `/message` 素通しプロキシ。discovery seed に nurture HTTP エントリ追加。whitelist に経済読取ツール追加。
+- **W-6 SurpriseEngine**: TLA+ `minted` 変数追加。`EconomyPolicy.max_daily_surprise_bonus`・`sum_today()`・buy 成功後の SurpriseBonus 記帳を配線。
+- **W-7 コンソール**: NurtureDashboard に KC 残高カード追加。`ProUpgradeModal` を App.tsx にマウント（OP-058 解消）。
+- **SYN-1〜5 PR 訴求**: MESSAGING §2.5、README シナジー図、LP moat 4カード、Proof Bar TLA+ 訴求、commercial/README Architecture Guarantees。LP 54 テスト PASS。
+- **SYN-6 GitHub topics**: `formal-verification` / `agent-marketplace` をリポジトリに追加（2026-07-04 手動反映済み）。
+
 ### Fixed (CI インフラ修繕 2026-07-04)
 - **Gitleaks**: 組織リポジトリで `GITLEAKS_LICENSE` 必須の `gitleaks-action@v2` を廃止し、ライセンス不要の OSS CLI（v8.24.3 直接実行）へ切替。
 - **Formal Verification**: `get.extism.org/cli` の `-b` オプション廃止に追従し、`-y -o /usr/local/bin` 形式の公式インストールスクリプトへ切替（pip 版 `extism-cli` は PyPI 未登録のため不可）。

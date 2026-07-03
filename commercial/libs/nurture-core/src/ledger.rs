@@ -65,4 +65,6 @@ pub trait EconomyLedger: Send + Sync {
         &self,
         transaction_id: &Uuid,
     ) -> Result<Vec<LedgerEntry>, NurtureError>;
+    /// 当日（UTC）の指定 EntryType の coin_amount 合計
+    async fn sum_today(&self, entry_type: EntryType) -> Result<u64, NurtureError>;
 }

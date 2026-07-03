@@ -3088,6 +3088,108 @@
         ]
       }
     },
+    "/api/v1/playbooks": {
+      "get": {
+        "tags": [
+          "crate::routes::playbook"
+        ],
+        "summary": "[GET] /api/v1/playbooks — 同梱 Playbook の一覧",
+        "operationId": "list_playbooks",
+        "responses": {
+          "200": {
+            "description": "List bundled official playbooks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlaybookSummary"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/playbooks/import": {
+      "post": {
+        "tags": [
+          "crate::routes::playbook"
+        ],
+        "summary": "[POST] /api/v1/playbooks/import — 任意マニフェストの導入",
+        "operationId": "import_playbook",
+        "responses": {
+          "200": {
+            "description": "Playbook imported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybookInstallResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Manifest structure violation"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Missing dependencies (skills / MCP servers)"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/playbooks/{id}/install": {
+      "post": {
+        "tags": [
+          "crate::routes::playbook"
+        ],
+        "summary": "[POST] /api/v1/playbooks/:id/install — 同梱 Playbook の導入",
+        "operationId": "install_playbook",
+        "responses": {
+          "200": {
+            "description": "Playbook installed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaybookInstallResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Unknown playbook id"
+          },
+          "422": {
+            "description": "Missing dependencies (skills / MCP servers)"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/quality-gate/history": {
       "get": {
         "tags": [
@@ -3653,6 +3755,34 @@
         "responses": {
           "200": {
             "description": "List of voice assets"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/workflows/{id}/export": {
+      "get": {
+        "tags": [
+          "crate::routes::workflow"
+        ],
+        "summary": "[GET] /api/v1/workflows/:id/export — 単一ワークフローを Playbook マニフェスト v1 として出力",
+        "operationId": "export_workflow",
+        "responses": {
+          "200": {
+            "description": "Workflow exported as playbook manifest v1"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Access denied"
+          },
+          "404": {
+            "description": "Workflow not found"
           }
         },
         "security": [
@@ -5408,6 +5538,71 @@
           },
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "PlaybookInstallResponse": {
+        "type": "object",
+        "description": "install / import 成功時のレスポンス",
+        "required": [
+          "playbook_id",
+          "created_workflow_ids"
+        ],
+        "properties": {
+          "created_workflow_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "playbook_id": {
+            "type": "string"
+          }
+        }
+      },
+      "PlaybookSummary": {
+        "type": "object",
+        "description": "Playbook 一覧の1要素",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "tags",
+          "workflow_count",
+          "required_skills",
+          "required_mcp_servers"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "required_mcp_servers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "required_skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "workflow_count": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },

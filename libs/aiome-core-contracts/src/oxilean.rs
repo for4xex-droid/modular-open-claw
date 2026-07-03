@@ -59,6 +59,15 @@ impl OxiLeanProofCertificate {
 
         mac.verify_slice(&sig_bytes).is_ok()
     }
+
+    /// 証明書を生成し、`X-OxiLean-Proof-Certificate` ヘッダ値（Base64 JSON）に直列化する
+    pub fn generate_header(node_id: &str, oxp: u32, secret: &str) -> Option<String> {
+        let ts = chrono::Utc::now().to_rfc3339();
+        let cert = Self::generate(node_id.to_string(), oxp, ts, secret);
+        let cert_json = serde_json::to_string(&cert).ok()?;
+        use base64::Engine;
+        Some(base64::engine::general_purpose::STANDARD.encode(cert_json))
+    }
 }
 
 #[cfg(test)]
@@ -85,5 +94,21 @@ mod tests {
 
         // Wrong secret should fail
         assert!(!cert.verify("wrong_secret"));
+    }
+
+    #[test]
+    fn test_generate_header_roundtrip() {
+        let secret = "super_secret_nurture_key";
+        let header = OxiLeanProofCertificate::generate_header("aiome-edge-node", 950, secret)
+            .expect("header generation should succeed");
+        use base64::Engine;
+        let decoded = base64::engine::general_purpose::STANDARD
+            .decode(&header)
+            .expect("header should be valid base64");
+        let cert: OxiLeanProofCertificate =
+            serde_json::from_slice(&decoded).expect("header should be valid JSON");
+        assert_eq!(cert.subject_id, "aiome-edge-node");
+        assert_eq!(cert.oxp_score, 950);
+        assert!(cert.verify(secret));
     }
 }

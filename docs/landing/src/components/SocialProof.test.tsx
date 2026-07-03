@@ -14,7 +14,7 @@ describe('SocialProof Component', () => {
     
     // Check metric values
     expect(screen.getByText('5 min')).toBeInTheDocument();
-    expect(screen.getByText('3,500+')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
     expect(screen.getByText('$0')).toBeInTheDocument();
   });
 
@@ -23,7 +23,7 @@ describe('SocialProof Component', () => {
     
     // Check labels
     expect(screen.getByText('to full setup')).toBeInTheDocument();
-    expect(screen.getByText('automated tests passing')).toBeInTheDocument();
+    expect(screen.getByText('TLA+ specs, model-checked')).toBeInTheDocument();
     expect(screen.getByText('per month, self-hosted')).toBeInTheDocument();
   });
 });

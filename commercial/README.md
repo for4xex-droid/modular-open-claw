@@ -44,6 +44,16 @@ commercial/libs/nurture-core  ← ドメインロジック（通貨・分配ポ�
 commercial/libs/nurture-infra ← Stripe Webhook・経済ブリッジ実装
 ```
 
+## アーキテクチャ保証（Architecture Guarantees）
+
+| 保証 | 実装 |
+|---|---|
+| 経済の保存則を数学で検証 | [NurtureEconomyProtocol.tla](specs/NurtureEconomyProtocol.tla)（TLA+ / `CoinsConserved` 不変条件） |
+| 全取引の改竄不能な監査 | [merkle.rs](libs/nurture-infra/src/economy/merkle.rs)（SHA-256 Merkle チェーン台帳） |
+| OS↔経済間の Zero-Trust 通信 | [internal/mod.rs](apps/nurture-api/src/routes/internal/mod.rs)（Bearer + OxiLean 証明書の二重認証） |
+| 暴走購入の実行時防壁 | [interceptor.rs](libs/nurture-infra/src/economy/interceptor.rs)（購入前プリフライト・日次上限） |
+| Aiome 本体との接点は 1 ゲートウェイのみ | [ADR-011](docs/decisions/011-nurture-bridge-isolation.md)（nurture-bridge 分離） |
+
 ## さらに詳しく
 
 - 技術仕様・プロトコル: [TECHNICAL_WHITEPAPER.md](docs/TECHNICAL_WHITEPAPER.md)

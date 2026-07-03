@@ -25,4 +25,11 @@ describe('Economy Component', () => {
     render(<Economy />);
     expect(screen.getByText(/Mock mode runs the full economy simulation/i)).toBeInTheDocument();
   });
+
+  it('renders the moat section with four guarantees', () => {
+    render(<Economy />);
+    expect(screen.getByText(/can.t be copied/i)).toBeInTheDocument();
+    expect(screen.getByText('Verified by math')).toBeInTheDocument();
+    expect(screen.getByText('Guarded at runtime')).toBeInTheDocument();
+  });
 });

@@ -349,6 +349,7 @@ pub async fn stripe_webhook(
                             agent_uuid,
                             allowance,
                             format!("{}-allowance", event_id),
+                            state.oxilean_power.clone(),
                         )
                         .await;
                     }
@@ -449,6 +450,7 @@ pub async fn stripe_webhook(
             agent_uuid,
             amount,
             ev_id.clone(),
+            state.oxilean_power.clone(),
         )
         .await;
 

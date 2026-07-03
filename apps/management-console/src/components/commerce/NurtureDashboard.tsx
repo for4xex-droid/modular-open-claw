@@ -44,6 +44,7 @@ export default function NurtureDashboard() {
   // useTranslation is available if needed
   // const { t } = useTranslation();
   const [balance, setBalance] = useState<PointsBalance | null>(null);
+  const [coinBalance, setCoinBalance] = useState<number | null>(null);
   const [history, setHistory] = useState<TransactionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,9 +73,10 @@ export default function NurtureDashboard() {
     setIsLoading(true);
     setError(null);
     try {
-      const [ptsRes, histRes] = await Promise.all([
+      const [ptsRes, histRes, kcRes] = await Promise.all([
         authenticatedFetch(`${API_BASE}/api/v1/commerce/points/${agentId}`, { signal }),
-        authenticatedFetch(`${API_BASE}/api/v1/commerce/history/${agentId}`, { signal })
+        authenticatedFetch(`${API_BASE}/api/v1/commerce/history/${agentId}`, { signal }),
+        authenticatedFetch(`${API_BASE}/api/v1/commerce/balance/${agentId}`, { signal }),
       ]);
 
       if (ptsRes.ok) {
@@ -89,6 +91,13 @@ export default function NurtureDashboard() {
         setHistory(await histRes.json());
       } else if (histRes.status !== 403) {
         throw new Error("Failed to load transaction history.");
+      }
+
+      if (kcRes.ok) {
+        const kcData = await kcRes.json();
+        setCoinBalance(typeof kcData.balance === "number" ? kcData.balance : 0);
+      } else if (kcRes.status !== 403) {
+        setCoinBalance(null);
       }
     } catch (e: unknown) {
       if (e instanceof Error) {
@@ -184,6 +193,21 @@ export default function NurtureDashboard() {
       </AnimatePresence>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.05 }}
+          className="config-card"
+          style={{ background: "linear-gradient(145deg, var(--black-30), var(--black-50))", border: "1px solid var(--accent-emerald-30)" }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem", color: "var(--text-secondary)" }}>
+            <Wallet size={20} color="var(--accent-emerald)" />
+            <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase" }}>AiomeCoin (KC)</span>
+          </div>
+          <div style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--accent-emerald)" }}>
+            {isLoading ? "..." : (coinBalance ?? 0).toLocaleString()} <span style={{ fontSize: "1.2rem" }}>KC</span>
+          </div>
+        </motion.div>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}

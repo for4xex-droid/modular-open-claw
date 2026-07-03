@@ -8356,6 +8356,7 @@ dependencies = [
  "nurture-bridge",
  "nurture-core",
  "nurture-infra",
+ "rand 0.8.5",
  "secrecy",
  "serde",
  "serde_json",

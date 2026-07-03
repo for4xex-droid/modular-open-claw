@@ -150,7 +150,7 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: SharedState) -> JsonRpcR
             });
 
             tools.push(McpTool {
-                name: "market_search".to_string(),
+                name: "marketplace_search".to_string(),
                 description: Some(
                     "Search the marketplace for AI assets, plugins, and souls.".to_string(),
                 ),
@@ -165,7 +165,7 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: SharedState) -> JsonRpcR
             });
 
             tools.push(McpTool {
-                name: "buy".to_string(),
+                name: "marketplace_buy".to_string(),
                 description: Some(
                     "Buy an asset from the marketplace and acquire a DRM license.".to_string(),
                 ),
@@ -177,6 +177,38 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: SharedState) -> JsonRpcR
                         "idempotency_key": {"type": "string"}
                     },
                     "required": ["item_id", "buyer"]
+                }),
+            });
+
+            tools.push(McpTool {
+                name: "wallet_balance".to_string(),
+                description: Some("Get the AiomeCoin balance for an agent.".to_string()),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "agent_id": {"type": "string"}
+                    },
+                    "required": ["agent_id"]
+                }),
+            });
+
+            tools.push(McpTool {
+                name: "marketplace_upload".to_string(),
+                description: Some(
+                    "Upload an asset to the marketplace (CSAM-scanned, DRM-ready).".to_string(),
+                ),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "creator_id": {"type": "string"},
+                        "kind": {"type": "string"},
+                        "name": {"type": "string"},
+                        "description": {"type": "string"},
+                        "price_coins": {"type": "number"},
+                        "content": {"type": "string"},
+                        "idempotency_key": {"type": "string"}
+                    },
+                    "required": ["creator_id", "kind", "name", "price_coins", "content", "idempotency_key"]
                 }),
             });
 
@@ -275,7 +307,7 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: SharedState) -> JsonRpcR
                         },
                     }
                 }
-                "market_search" => {
+                "marketplace_search" | "market_search" => {
                     let req: Result<commerce_protocol::mcp_commerce::MarketSearchRequest, _> =
                         serde_json::from_value(arguments);
                     match req {
@@ -322,7 +354,7 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: SharedState) -> JsonRpcR
                         },
                     }
                 }
-                "buy" => {
+                "marketplace_buy" | "buy" => {
                     let req: Result<commerce_protocol::mcp_commerce::BuyRequest, _> =
                         serde_json::from_value(arguments);
                     match req {
@@ -352,6 +384,103 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: SharedState) -> JsonRpcR
                                 }),
                             },
                         },
+                        Err(e) => JsonRpcResponse {
+                            jsonrpc: "2.0".into(),
+                            id,
+                            result: None,
+                            error: Some(JsonRpcError {
+                                code: -32602,
+                                message: format!("Invalid arguments: {}", e),
+                                data: None,
+                            }),
+                        },
+                    }
+                }
+                "wallet_balance" => {
+                    let agent_id_str = arguments
+                        .get("agent_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    match uuid::Uuid::parse_str(agent_id_str) {
+                        Ok(agent_uuid) => {
+                            match crate::mcp_tools::handle_get_balance(
+                                state,
+                                commerce_protocol::identity::ActorId(agent_uuid),
+                            )
+                            .await
+                            {
+                                Ok(res) => JsonRpcResponse {
+                                    jsonrpc: "2.0".into(),
+                                    id,
+                                    result: Some(
+                                        serde_json::to_value(CallToolResult {
+                                            content: vec![McpContent::Text {
+                                                text: serde_json::to_string(&res)
+                                                    .unwrap_or_default(),
+                                            }],
+                                            is_error: false,
+                                        })
+                                        .unwrap_or_default(),
+                                    ),
+                                    error: None,
+                                },
+                                Err(e) => JsonRpcResponse {
+                                    jsonrpc: "2.0".into(),
+                                    id,
+                                    result: None,
+                                    error: Some(JsonRpcError {
+                                        code: -32603,
+                                        message: e.to_string(),
+                                        data: None,
+                                    }),
+                                },
+                            }
+                        }
+                        Err(e) => JsonRpcResponse {
+                            jsonrpc: "2.0".into(),
+                            id,
+                            result: None,
+                            error: Some(JsonRpcError {
+                                code: -32602,
+                                message: format!("Invalid agent_id: {}", e),
+                                data: None,
+                            }),
+                        },
+                    }
+                }
+                "marketplace_upload" => {
+                    let req: Result<crate::mcp_tools::UploadRequest, _> =
+                        serde_json::from_value(arguments);
+                    match req {
+                        Ok(upload_req) => {
+                            match crate::mcp_tools::handle_upload(state, upload_req).await {
+                                Ok(res) => JsonRpcResponse {
+                                    jsonrpc: "2.0".into(),
+                                    id,
+                                    result: Some(
+                                        serde_json::to_value(CallToolResult {
+                                            content: vec![McpContent::Text {
+                                                text: serde_json::to_string(&res)
+                                                    .unwrap_or_default(),
+                                            }],
+                                            is_error: false,
+                                        })
+                                        .unwrap_or_default(),
+                                    ),
+                                    error: None,
+                                },
+                                Err(e) => JsonRpcResponse {
+                                    jsonrpc: "2.0".into(),
+                                    id,
+                                    result: None,
+                                    error: Some(JsonRpcError {
+                                        code: -32603,
+                                        message: e.to_string(),
+                                        data: None,
+                                    }),
+                                },
+                            }
+                        }
                         Err(e) => JsonRpcResponse {
                             jsonrpc: "2.0".into(),
                             id,

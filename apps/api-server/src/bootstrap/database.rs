@@ -22,7 +22,6 @@ use aiome_core::traits::JobQueue;
 pub async fn init_database(preflight: &PreflightResult) -> anyhow::Result<DatabaseResult> {
     let config = &preflight.config;
     let resolver = &preflight.resolver;
-    let plugin_registry = &preflight.plugin_registry;
 
     // === 🏗️ STAGE 2/7: Database ===
     let ts_pool = if config.db_path.starts_with("postgres://")
@@ -127,13 +126,8 @@ pub async fn init_database(preflight: &PreflightResult) -> anyhow::Result<Databa
     // Register Hermes LoopDetectorHook
     let loop_detector = infrastructure::security::LoopDetectorHook::default();
     hook_manager.add_hook(Arc::new(loop_detector));
-    // NOTE: Plugin agent hooks are registered here.
-    // Plugins MUST be registered via `plugin_registry.register()` BEFORE this point
-    // for their hooks to be included. Currently Nurture connects OOP via API,
-    // so this will be empty until in-process plugin loading is implemented.
-    for hook in plugin_registry.get_agent_hooks() {
-        hook_manager.add_hook(hook);
-    }
+    // NOTE: Plugin agent hooks are attached AFTER in-process plugin registration
+    // in boot_sequence() via attach_plugin_hooks(). See plugins.rs (W-3).
     let hook_manager = Arc::new(hook_manager);
 
     Ok(DatabaseResult {

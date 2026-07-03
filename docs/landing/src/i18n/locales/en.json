@@ -23,9 +23,9 @@
     "metric2_value": "$0",
     "metric2_label": "per month, self-hosted",
     "metric2_desc": "\"The full OS, a 26-screen management console, and the mock economy — all free to own.\"",
-    "metric3_value": "3,500+",
-    "metric3_label": "automated tests passing",
-    "metric3_desc": "\"TLA+ formal verification and zero-panic Rust. Quality gates that keep proving 'autonomous but unbreakable'.\""
+    "metric3_value": "5",
+    "metric3_label": "TLA+ specs, model-checked",
+    "metric3_desc": "\"Quarantine, federation, and economic conservation — verified by math, backed by 3,500+ automated tests.\""
   },
   "features": {
     "title": "Own it. Govern it. Let it earn.",
@@ -75,6 +75,15 @@
     "card3_title": "AI Gives Back",
     "card3_subtitle": "A2C",
     "card3_desc": "Surprise gifts and real-world rewards flow from AI to users, triggered by care metrics and milestones. Example: keep up your daily conversations, and a gift card arrives from your AI.",
+    "moat_title": "Why it can't be copied",
+    "moat1_title": "Verified by math",
+    "moat1_desc": "Coin conservation is model-checked in TLA+. Nothing vanishes, nothing duplicates.",
+    "moat2_title": "Proven by the ledger",
+    "moat2_desc": "Every transaction is chained into a SHA-256 Merkle audit log. Tampering is structurally impossible.",
+    "moat3_title": "Built into the OS contract",
+    "moat3_desc": "The economy is a trait, not a plugin. The mock economy runs fully on the OSS build for $0.",
+    "moat4_title": "Guarded at runtime",
+    "moat4_desc": "Pre-purchase interception, daily caps, and idempotency gates physically stop runaway spending.",
     "mock_note": "Try it free — Mock mode runs the full economy simulation at $0/mo. No real money ever moves."
   },
   "architecture": {

@@ -7,7 +7,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { ShoppingCart, ArrowLeftRight, Gift } from 'lucide-react';
+import { ShoppingCart, ArrowLeftRight, Gift, ShieldCheck, Link2, Blocks, Gauge } from 'lucide-react';
 
 export const Economy: React.FC = () => {
   const { t } = useTranslation();
@@ -91,6 +91,27 @@ export const Economy: React.FC = () => {
               </motion.div>
             );
           })}
+        </div>
+
+        <div className="mb-12">
+          <h3 className="text-center text-sm font-bold text-brand-purple tracking-widest font-display mb-6 uppercase">
+            {t('economy.moat_title')}
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { id: 'm1', icon: ShieldCheck, href: 'https://github.com/motivationstudio-llc/aiome/blob/main/commercial/specs/NurtureEconomyProtocol.tla' },
+              { id: 'm2', icon: Link2, href: 'https://github.com/motivationstudio-llc/aiome/blob/main/commercial/libs/nurture-infra/src/economy/merkle.rs' },
+              { id: 'm3', icon: Blocks, href: 'https://github.com/motivationstudio-llc/aiome/blob/main/libs/aiome-contracts/src/commerce.rs' },
+              { id: 'm4', icon: Gauge, href: 'https://github.com/motivationstudio-llc/aiome/blob/main/commercial/libs/nurture-infra/src/economy/interceptor.rs' },
+            ].map(({ id, icon: MoatIcon, href }, i) => (
+              <a key={id} href={href} target="_blank" rel="noopener noreferrer"
+                className="backdrop-blur-md bg-white/[0.02] border border-white/5 hover:border-brand-cyan/30 transition-all duration-300 rounded-2xl p-5 block">
+                <MoatIcon className="text-brand-cyan mb-3" size={20} />
+                <h4 className="text-sm font-bold text-white mb-2 font-display">{t(`economy.moat${i + 1}_title`)}</h4>
+                <p className="text-gray-400 text-xs leading-relaxed">{t(`economy.moat${i + 1}_desc`)}</p>
+              </a>
+            ))}
+          </div>
         </div>
 
         {/* Bottom Mock Mode Note */}

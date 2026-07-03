@@ -17,6 +17,7 @@ pub async fn enqueue_coin_charge_to_nurture(
     agent_uuid: Uuid,
     amount: u64,
     ev_id: String,
+    oxilean_power: std::sync::Arc<std::sync::atomic::AtomicU32>,
 ) {
     if let (Some(url), Some(secret)) = (nurture_url, nurture_secret) {
         let coin_charge_span =
@@ -35,13 +36,21 @@ pub async fn enqueue_coin_charge_to_nurture(
                 let mut retry_count = 0;
                 let mut delay = std::time::Duration::from_secs(1);
                 loop {
-                    match http_client
+                    let mut req = http_client
                         .post(&req_url)
                         .header("Authorization", format!("Bearer {}", secret))
                         .timeout(std::time::Duration::from_secs(30))
-                        .json(&payload)
-                        .send()
-                        .await
+                        .json(&payload);
+                    if let Some(cert) =
+                        aiome_core_contracts::oxilean::OxiLeanProofCertificate::generate_header(
+                            "aiome-edge-node",
+                            oxilean_power.load(std::sync::atomic::Ordering::Relaxed),
+                            &secret,
+                        )
+                    {
+                        req = req.header("X-OxiLean-Proof-Certificate", cert);
+                    }
+                    match req.send().await
                     {
                         Ok(res) if res.status().is_success() => {
                             info!(

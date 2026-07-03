@@ -84,6 +84,7 @@ pub(crate) async fn build_system_instructions(
              獲得したコインで新しいスキル（LoRA、MCP ツールなど）を購入したり、\n\
              ギグ経済プラットフォーム（Marketplace / Gig Market）を通じて他の AI へタスクを発注できます。\n\
              また、自身が SkillForge で構築した WASM スキルを出品して収益を獲得することも可能です。\n\
+             利用可能ツール: marketplace_search（市場検索）, wallet_balance（残高確認）\n\
              残高が不足している場合は、自らのスキルを利用して稼ぐことを検討してください。\n",
             ctx.balance, ctx.spent_today, ctx.daily_limit
         )

@@ -421,6 +421,40 @@ impl EconomyLedger for DatabaseEconomyLedger {
 
         Ok(entries)
     }
+
+    async fn sum_today(&self, entry_type: EntryType) -> Result<u64, NurtureError> {
+        let today_start = Utc::now()
+            .date_naive()
+            .and_hms_opt(0, 0, 0)
+            .map(|t| t.and_utc())
+            .ok_or_else(|| NurtureError::Ledger {
+                reason: "Failed to calculate today's start time".into(),
+            })?;
+        let entry_type_json =
+            serde_json::to_string(&entry_type).map_err(|e| NurtureError::Ledger {
+                reason: format!("EntryType serialize error: {e}"),
+            })?;
+
+        let res: Result<Option<i64>, AiomeError> = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: "SELECT COALESCE(SUM(coin_amount), 0) AS total FROM nurture_ledger WHERE entry_type = ? AND created_at >= ?",
+            |row| {
+                let total: i64 = row.get("total");
+                Ok::<i64, AiomeError>(total)
+            },
+            pg: "SELECT COALESCE(SUM(coin_amount), 0) AS total FROM nurture_ledger WHERE entry_type = $1 AND created_at >= $2",
+            |row| {
+                let total: i64 = row.get("total");
+                Ok::<i64, AiomeError>(total)
+            },
+            entry_type_json,
+            today_start
+        );
+        let total = res.map_err(|e: AiomeError| NurtureError::Ledger {
+            reason: e.to_string(),
+        })?;
+        Ok(safe_u64(total.unwrap_or(0)))
+    }
 }
 impl DatabaseEconomyLedger {
     /// 内部利用・トランザクション(UoW)用の記帳ロジック

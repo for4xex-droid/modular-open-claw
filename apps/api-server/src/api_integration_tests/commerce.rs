@@ -7,6 +7,7 @@
 
 use super::common::*;
 use axum::http::StatusCode;
+use axum::response::IntoResponse;
 use serde_json::json;
 use serial_test::serial;
 
@@ -616,10 +617,42 @@ async fn test_stripe_webhook_checkout_session_completed_syncs_to_nurture_ledger(
 
     let mock_nurture_app = axum::Router::new().route(
         "/internal/coin-charge",
-        axum::routing::post(move |_req: axum::extract::Request| async move {
-            counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            axum::response::Json(serde_json::json!({"status": "success"}))
-        }),
+        axum::routing::post(
+            move |headers: axum::http::HeaderMap, _req: axum::extract::Request| async move {
+                let bearer_ok = headers
+                    .get("authorization")
+                    .and_then(|h| h.to_str().ok())
+                    .map(|v| v == "Bearer mock_secret")
+                    .unwrap_or(false);
+                let cert_ok = headers
+                    .get("x-oxilean-proof-certificate")
+                    .and_then(|h| h.to_str().ok())
+                    .map(|b64| {
+                        use base64::Engine;
+                        base64::engine::general_purpose::STANDARD
+                            .decode(b64)
+                            .ok()
+                            .and_then(|j| {
+                                serde_json::from_slice::<
+                                    aiome_core_contracts::oxilean::OxiLeanProofCertificate,
+                                >(&j)
+                                .ok()
+                            })
+                            .map(|c| c.verify("mock_secret") && c.oxp_score >= 900)
+                            .unwrap_or(false)
+                    })
+                    .unwrap_or(false);
+                if !(bearer_ok && cert_ok) {
+                    return (
+                        axum::http::StatusCode::FORBIDDEN,
+                        axum::response::Json(serde_json::json!({"error": "forbidden"})),
+                    )
+                        .into_response();
+                }
+                counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                axum::response::Json(serde_json::json!({"status": "success"})).into_response()
+            },
+        ),
     );
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -635,6 +668,11 @@ async fn test_stripe_webhook_checkout_session_completed_syncs_to_nurture_ledger(
     std::env::set_var("NURTURE_INTERNAL_SECRET", "mock_secret");
 
     let (server, state, _tmp) = create_test_server().await;
+
+    // OXP ≥ 900 required by mock nurture internal auth
+    state
+        .oxilean_power
+        .store(950, std::sync::atomic::Ordering::Relaxed);
 
     // Create customers and events table for the sqlite DB
     let pool = state.db_pool.get_sqlite_pool().unwrap();
@@ -763,6 +801,154 @@ async fn test_stripe_webhook_checkout_session_completed_syncs_to_nurture_ledger(
         }
         _ => panic!("Expected CommerceEvent event, got another event"),
     }
+}
+
+#[serial]
+#[tokio::test]
+async fn test_stripe_webhook_coin_charge_rejected_without_oxp() {
+    let sync_counter = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counter_clone = sync_counter.clone();
+
+    let mock_nurture_app = axum::Router::new().route(
+        "/internal/coin-charge",
+        axum::routing::post(
+            move |headers: axum::http::HeaderMap, _req: axum::extract::Request| async move {
+                let bearer_ok = headers
+                    .get("authorization")
+                    .and_then(|h| h.to_str().ok())
+                    .map(|v| v == "Bearer mock_secret")
+                    .unwrap_or(false);
+                let cert_ok = headers
+                    .get("x-oxilean-proof-certificate")
+                    .and_then(|h| h.to_str().ok())
+                    .map(|b64| {
+                        use base64::Engine;
+                        base64::engine::general_purpose::STANDARD
+                            .decode(b64)
+                            .ok()
+                            .and_then(|j| {
+                                serde_json::from_slice::<
+                                    aiome_core_contracts::oxilean::OxiLeanProofCertificate,
+                                >(&j)
+                                .ok()
+                            })
+                            .map(|c| c.verify("mock_secret") && c.oxp_score >= 900)
+                            .unwrap_or(false)
+                    })
+                    .unwrap_or(false);
+                if !(bearer_ok && cert_ok) {
+                    return (
+                        axum::http::StatusCode::FORBIDDEN,
+                        axum::response::Json(serde_json::json!({"error": "forbidden"})),
+                    )
+                        .into_response();
+                }
+                counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                axum::response::Json(serde_json::json!({"status": "success"})).into_response()
+            },
+        ),
+    );
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let nurture_url = format!("http://127.0.0.1:{}", port);
+
+    tokio::spawn(async move {
+        axum::serve(listener, mock_nurture_app).await.unwrap();
+    });
+
+    std::env::set_var("NURTURE_API_URL", &nurture_url);
+    std::env::set_var("NURTURE_INTERNAL_SECRET", "mock_secret");
+
+    let (server, state, _tmp) = create_test_server().await;
+
+    // OXP=0 (default) — relay should fail auth and not increment counter
+    state
+        .oxilean_power
+        .store(0, std::sync::atomic::Ordering::Relaxed);
+
+    let pool = state.db_pool.get_sqlite_pool().unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let asset_manifest = infrastructure::registry::AssetManifest {
+        id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap(),
+        creator_id: uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000003").unwrap(),
+        asset_type: infrastructure::registry::AssetType::LoRA,
+        name: "Mock Asset".to_string(),
+        description: "desc".to_string(),
+        price_coins: 5000,
+        safety_level: aiome_core_contracts::contracts::ToolSafetyLevel::Safe,
+        metadata: None,
+    };
+
+    let pool = state.db_pool.get_sqlite_pool().unwrap();
+    let _ = sqlx::query(
+        "CREATE TABLE IF NOT EXISTS asset_registry (id TEXT PRIMARY KEY, creator_id TEXT NOT NULL, asset_type TEXT NOT NULL, name TEXT NOT NULL, description TEXT, price_coins INTEGER NOT NULL DEFAULT 0, safety_level TEXT NOT NULL DEFAULT 'safe', metadata TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    )
+    .execute(pool)
+    .await;
+
+    state
+        .registry
+        .get_inner()
+        .register_asset(asset_manifest)
+        .await
+        .unwrap();
+
+    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_mock_secret");
+
+    let payload = json!({
+        "id": "evt_mock_no_oxp",
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "id": "cs_mock_no_oxp",
+                "customer": "cus_mock123",
+                "amount_total": 5000,
+                "currency": "jpy",
+                "payment_status": "paid",
+                "metadata": {
+                    "agent_id": "00000000-0000-0000-0000-000000000001",
+                    "asset_id": "00000000-0000-0000-0000-000000000002"
+                }
+            }
+        }
+    });
+
+    let payload_str = payload.to_string();
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+    let mut mac = Hmac::<Sha256>::new_from_slice(b"whsec_mock_secret").unwrap();
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let signed_payload = format!("{}.{}", timestamp, payload_str);
+    mac.update(signed_payload.as_bytes());
+    let sig_hash = hex::encode(mac.finalize().into_bytes());
+    let sig_header = format!("t={},v1={}", timestamp, sig_hash);
+
+    let response = server
+        .post("/api/v1/commerce/webhook")
+        .add_header("stripe-signature", sig_header)
+        .json(&payload)
+        .await;
+
+    response.assert_status(axum::http::StatusCode::OK);
+
+    // Wait for background relay retries to exhaust (3 retries with backoff)
+    tokio::time::sleep(std::time::Duration::from_secs(4)).await;
+
+    let sync_count = sync_counter.load(std::sync::atomic::Ordering::SeqCst);
+    assert_eq!(
+        sync_count, 0,
+        "Coin charge should be rejected when OXP < 900"
+    );
 }
 
 #[serial]

@@ -106,17 +106,21 @@ This is not merely an experiment. It is the result of agents proactively designi
 Nurture is the commercial engine that runs on Aiome (`commercial/`, BSL 1.1), giving AI economic agency—AI buys, sells, and gives back to you—together forming a sovereign autonomous AI economy you can own.
 
 ```mermaid
-graph TB
-    subgraph "Aiome — the body (AI OS)"
-        A[Agent execution & self-healing] --> B[3-layer defense: Trust Layer / Cell isolation / WASM]
-        B --> C[26-screen management console: audit, approval, analysis]
+graph LR
+    subgraph OSS["Aiome — OS layer (OSS)"]
+        OS["Agent execution · 3-layer defense · audit"] --> CT["Contract layer<br/>CommerceEngine / AiomePlugin / JobQueue"]
     end
-    subgraph "Nurture — the heart (economy engine)"
-        D[Dual currency: AiomeCoin / CreatorPoints] --> E[Marketplace & Gig escrow]
-        E --> F[B2A / A2A / A2C transactions]
+    subgraph COM["Nurture — economy layer (commercial/)"]
+        EC["Dual currency · Merkle ledger · marketplace"] --> NB["nurture-bridge (sole integration point)"]
     end
-    C --> D
+    NB -- "implements traits (one-way dependency)" --> CT
 ```
+
+### Why the economy can't be bolted on
+
+Other products bolt the economy on as a plugin. In Aiome, the economy interface (`CommerceEngine`) is defined in the OSS contract layer from day one, and the commercial Nurture engine implements it with a **one-way dependency**. That means the mock economy runs fully on the OSS build, coin conservation is verified by TLA+ (`CoinsConserved`), and every transaction is chained into a Merkle audit log.
+
+**Deep Dive**: [Integration design](docs/architecture/AIOME_NURTURE_SYNERGY.md) · [Economy TLA+ spec](commercial/specs/NurtureEconomyProtocol.tla) · [ADR-011 Bridge isolation](commercial/docs/decisions/011-nurture-bridge-isolation.md)
 
 | Transaction Model | Description |
 |---|---|

@@ -272,6 +272,9 @@ mod tests {
                 "Not implemented in mock".into(),
             ))
         }
+        async fn sum_today(&self, _entry_type: EntryType) -> Result<u64, NurtureError> {
+            Ok(0)
+        }
     }
 
     struct MockCustomerStore;

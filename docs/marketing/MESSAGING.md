@@ -26,6 +26,33 @@
 
 **語り順は必ず Sovereign → Governed → Earning**（市場の購買基準順）。TLA+・Rust・行数は柱2の「証拠」としてのみ言及し、見出しに使わない。
 
+## 2.5 Aiome × Nurture シナジー — 構造的差別化（エビデンス付き）
+
+> 対外文書で「他製品に真似できない理由」を語るときは、必ず本節の S 番号と対応するエビデンスパスの範囲内で記述すること。
+
+| # | 主張 | エビデンス（リポジトリ内実在パス） |
+|---|---|---|
+| S1 | 経済は OS の契約層に最初から刻まれている（OSS が `CommerceEngine` trait を定義し、商用 Nurture が実装。依存は NURTURE→Aiome の単方向のみ。Mock モードで $0 完全動作） | `libs/aiome-contracts/src/commerce.rs` / `libs/aiome-commerce/src/factory.rs` |
+| S2 | TLA+ 形式仕様5本が OS 検疫・Karma 連邦・Federation・ContextEngine・経済保存則をカバーし、Rust テストへトレース | `specs/*.tla`（4本）+ `commercial/specs/NurtureEconomyProtocol.tla` / `specs/TRACE_MAP.md` / `libs/infrastructure/tests/mbt_quarantine.rs` |
+| S3 | 全取引が SHA-256 Merkle チェーンで連鎖記帳される二重通貨（AiomeCoin / CreatorPoints） | `commercial/libs/nurture-infra/src/economy/merkle.rs` |
+| S4 | OS↔経済間の内部通信は Bearer＋OxiLean 証明書（OXP≥900・5分TTL）の Zero-Trust 二重認証 | `commercial/apps/nurture-api/src/routes/internal/mod.rs` |
+| S5 | TLA+ 検疫を通過した WASM スキルがそのまま商品（`CommodityKind::WasmSkill`）として流通 | `commercial/libs/commerce-protocol/src/commodity.rs` |
+| S6 | 暴走防壁実装済み: 購入前プリフライト（EconomyInterceptor）・日次上限・冪等ゲート | `commercial/libs/nurture-infra/src/economy/interceptor.rs` |
+| S7 | デプロイ時に Mock（$0）/ local / cloud を切替可能（Tauri 3モード） | `apps/management-console/src-tauri/src/lib.rs` |
+| S8 | OSS OS と商用経済エンジンが単一 Cargo workspace で共存し、接点は `nurture-bridge` 1ゲートウェイに集約（ADR-011） | `commercial/docs/decisions/011-nurture-bridge-isolation.md` |
+
+### 訴求ストーリー（対外コピーの型・ja/en）
+
+1. **経済は後付けできない / Economy isn't a plugin** — 「他製品の経済機能はプラグイン。Aiome は OS の契約層に経済が最初から刻まれており、OSS 単体でも Mock 経済が完全動作します。」 / "Other products bolt the economy on. In Aiome, the economy is carved into the OS contract layer itself — and the mock economy runs fully on the OSS build."
+2. **数学が保証する経済 / Verified by math** — 「コインが消えない・複製されないことを TLA+ の保存則で検証し、全取引を Merkle チェーンで監査します。」 / "Conservation laws in TLA+ prove coins can't vanish or duplicate; every transaction lands on a Merkle audit chain."
+3. **自律と安全は矛盾しない / Autonomy without runaway, economically too** — 「TLA+ 検疫を通ったスキルだけが経済圏で流通し、暴走購入はインターセプタが物理的に止めます。」 / "Only quarantine-verified WASM skills enter the market, and a runtime interceptor physically stops runaway purchases."
+4. **所有か、接続か、選べる / Own it, or connect it — your call** — 「Mock（$0）→ ローカル Nurture → クラウド Nurture の3段階。構造としてロックインがありません。」 / "Mock ($0) → local Nurture → cloud Nurture. Lock-in is structurally impossible."
+
+### 禁止（本節に関する）
+
+- `NurturePlugin` の in-process 登録は **`NURTURE_IN_PROCESS=true` かつ api-server を `--features nurture` でビルドした場合のみ**接続済み（2026-07-04 W-3）。Sidecar モードと同時起動は禁止（ADR-012）。
+- TLA+ 仕様数は 5 本（TTrace 生成物は数えない）。それ以外の数字を書かない。
+
 ## 3. Aiome / Nurture の公式説明
 
 ### 3行版

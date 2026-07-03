@@ -25,6 +25,12 @@ pub struct EconomyPolicy {
     pub min_item_price: u64,
     pub max_item_price: u64,
     pub min_transaction_interval_ms: u64,
+    #[serde(default = "default_max_daily_surprise_bonus")]
+    pub max_daily_surprise_bonus: u64,
+}
+
+fn default_max_daily_surprise_bonus() -> u64 {
+    500
 }
 
 pub type SharedPolicy = std::sync::Arc<tokio::sync::RwLock<EconomyPolicy>>;
@@ -41,6 +47,7 @@ impl Default for EconomyPolicy {
             min_item_price: 10,
             max_item_price: 100_000,
             min_transaction_interval_ms: 1000, // 高頻度取引防止 (1秒間隔)
+            max_daily_surprise_bonus: default_max_daily_surprise_bonus(),
         }
     }
 }

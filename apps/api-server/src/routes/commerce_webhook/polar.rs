@@ -238,6 +238,7 @@ pub async fn polar_webhook(
             agent_uuid,
             amount,
             ev_id.clone(),
+            state.oxilean_power.clone(),
         )
         .await;
 

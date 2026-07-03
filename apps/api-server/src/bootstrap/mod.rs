@@ -34,6 +34,9 @@ pub use helpers::*;
 pub mod core_services;
 pub use core_services::*;
 
+pub mod plugins;
+pub use plugins::*;
+
 use crate::mcp;
 
 use std::sync::Arc;
@@ -154,6 +157,7 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     let oxilean_power = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
 
     let preflight = init_env_and_preflight().await?;
+    let mut preflight = preflight;
     let db_result = init_database(&preflight).await?;
     let llm_result = init_llm_providers(
         &preflight.config,
@@ -163,6 +167,16 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
     .await?;
     let core_result =
         init_core_services(&preflight, &db_result, &llm_result, oxilean_power.clone()).await?;
+
+    register_in_process_plugins(
+        &mut preflight.plugin_registry,
+        preflight.cancel_token.clone(),
+        &preflight.secrets.nurture_secret,
+        &db_result,
+        &core_result,
+    )
+    .await?;
+    attach_plugin_hooks(&preflight.plugin_registry, &db_result.hook_manager);
 
     let state = assemble_app_state(
         &preflight,

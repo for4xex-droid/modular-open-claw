@@ -1,3 +1,19 @@
+## 🔍 Aiome × Nurture シナジー最大化 W-1〜W-8 + SYN PR（2026-07-04）
+
+- **変更内容**:
+    - `libs/aiome-core-contracts/src/oxilean.rs` [MODIFY]: `OxiLeanProofCertificate::generate_header()` 追加（W-1）。
+    - `apps/api-server/src/routes/commerce_webhook/relay.rs` [MODIFY]: coin-charge relay に OXP ヘッダ送信（W-1）。
+    - `apps/api-server/src/bootstrap/plugins.rs` [NEW]: in-process NurturePlugin 登録 + Hook 配線（W-3）。
+    - `apps/api-server/src/routes/nurture_mcp_proxy.rs` [NEW]: Nurture MCP SSE/message プロキシ（W-5）。
+    - `commercial/apps/nurture-api/src/mcp/server.rs` [MODIFY]: MCP ツール名称統一・wallet/upload 公開（W-4）。
+    - `commercial/apps/nurture-api/src/mcp_tools/buy.rs` [MODIFY]: SurpriseEngine 配線（W-6）。
+    - `commercial/specs/NurtureEconomyProtocol.tla` [MODIFY]: `minted` 変数 + SurpriseBonus アクション（W-6）。
+    - `docs/marketing/MESSAGING.md` / README / LP / `commercial/README.md` [MODIFY]: シナジー PR 訴求（SYN-1〜5）。
+- **波及効果**:
+    - Stripe/Polar 決済 → KC チャージが Nurture internal 403 から復旧（OXP 必須）。
+    - エージェントは api-server プロキシ経由で marketplace 読取ツールに到達可能（購買は whitelist で未解禁）。
+    - `NURTURE_IN_PROCESS=true` 時は sidecar と二重 Hook リスク — ADR-012 で排他を規定。
+
 ## 🔍 skills God Module 分解と MockJQ 共有化（OP-050/053/055） (2026-07-03)
 
 - **変更内容**:

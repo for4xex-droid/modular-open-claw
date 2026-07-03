@@ -228,6 +228,43 @@ async fn execute_purchase_core(
         })?);
     }
 
+    // A2C: サプライズボーナス評価（W-6）
+    {
+        use nurture_core::a2c::surprise::SurpriseEngine;
+        use nurture_core::ledger::{EntryType, LedgerEntry};
+
+        let policy = state.policy.read().await;
+        let max_daily = policy.max_daily_surprise_bonus;
+        drop(policy);
+
+        let today_issued = state
+            .ledger
+            .sum_today(EntryType::SurpriseBonus)
+            .await
+            .unwrap_or(u64::MAX);
+        let bonus = {
+            let mut rng = rand::thread_rng();
+            SurpriseEngine::evaluate_bonus(receipt.coin_debited, today_issued, max_daily, &mut rng)
+        };
+        if let Some(bonus) = bonus {
+            let bonus_entry = LedgerEntry {
+                id: uuid::Uuid::new_v4(),
+                transaction_id: receipt.transaction_id,
+                asset_id: Some(item.id),
+                debit_account: state.system_actor_id,
+                credit_account: buyer_id,
+                coin_amount: bonus,
+                points_amount: 0,
+                entry_type: EntryType::SurpriseBonus,
+                created_at: chrono::Utc::now(),
+                debit_account_version: None,
+            };
+            if let Err(e) = state.ledger.record_entry(&bonus_entry).await {
+                tracing::warn!("⚠️ [A2C] SurpriseBonus record failed (non-fatal): {}", e);
+            }
+        }
+    }
+
     Ok(BuyResponse {
         transaction_id: receipt.transaction_id,
         receipt,

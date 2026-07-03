@@ -323,6 +323,26 @@ mod tests {
                 .cloned()
                 .collect())
         }
+        async fn sum_today(&self, entry_type: EntryType) -> Result<u64, NurtureError> {
+            let today_start = chrono::Utc::now()
+                .date_naive()
+                .and_hms_opt(0, 0, 0)
+                .map(|t| t.and_utc());
+            let Some(today_start) = today_start else {
+                return Err(NurtureError::Ledger {
+                    reason: "Failed to calculate today's start time".into(),
+                });
+            };
+            let total: u64 = self
+                .entries
+                .lock()
+                .await
+                .iter()
+                .filter(|e| e.entry_type == entry_type && e.created_at >= today_start)
+                .map(|e| e.coin_amount)
+                .sum();
+            Ok(total)
+        }
     }
 
     #[tokio::test]

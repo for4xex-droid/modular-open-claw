@@ -60,6 +60,9 @@ const DemoView = React.lazy(() => import("./components/DemoView"));
 const CausalVisualizer = React.lazy(() => import("./components/CausalVisualizer"));
 const CortexView = React.lazy(() => import("./components/cortex/CortexView"));
 const NurtureDashboard = React.lazy(() => import("./components/commerce/NurtureDashboard"));
+const ProUpgradeModal = React.lazy(() =>
+  import("./components/commerce/ProUpgradeModal").then((m) => ({ default: m.ProUpgradeModal }))
+);
 const BuzzApproval = React.lazy(() => import("./components/BuzzApproval"));
 const WorkflowBuilder = React.lazy(() => import("./components/WorkflowBuilder"));
 import DioramaView from "./components/diorama/DioramaView";
@@ -76,7 +79,7 @@ import { AgentStats, VitalityUIEvent, Karma, SoTEvent, ImmuneAlertEvent, AegisSe
 import { useSystemVitality } from "./hooks/useSystemVitality";
 import { useViewMode } from "./hooks/useViewMode";
 import { useTokenHealth } from "./hooks/useTokenHealth";
-import { APP_VERSION, API_BASE } from "./config";
+import { APP_VERSION, API_BASE, STRIPE_PRICE_ID } from "./config";
 
 /** Valid boot mode states returned from the API normalization layer */
 type BootMode = 'Normal' | 'Setup';
@@ -776,6 +779,7 @@ function App() {
 
       <React.Suspense fallback={null}>
         <TaskApprovalOverlay />
+        <ProUpgradeModal priceId={STRIPE_PRICE_ID} />
       </React.Suspense>
       </>)}
     </div>

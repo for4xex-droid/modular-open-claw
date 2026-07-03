@@ -192,6 +192,27 @@ pub async fn discover_and_connect(
                 }
             }
         });
+        let api_host = std::env::var("AIOME_API_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+        let nurture_url = format!(
+            "http://{api_host}:{}/api/v1/nurture-mcp/sse",
+            aiome_config.api_server_port
+        );
+        if let Some(servers) = default_config
+            .get_mut("mcp_servers")
+            .and_then(|s| s.as_object_mut())
+        {
+            servers.insert(
+                "nurture".to_string(),
+                serde_json::json!({
+                    "transport": "http",
+                    "command": "",
+                    "args": [],
+                    "url": nurture_url,
+                    "headers": {},
+                    "disabled": false
+                }),
+            );
+        }
         if let Err(e) = std::fs::write(&config_path, serde_json::to_string_pretty(&default_config)?)
         {
             warn!(

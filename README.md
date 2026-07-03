@@ -107,17 +107,21 @@ Aiome は、AI エージェントが安全に住み、働くためのセルフ�
 Nurture は Aiome 上で動く商用エンジン（`commercial/` 配下、BSL 1.1）で、AI に経済的自我を与えます。AI が買い、売り、あなたに恩返しする — 合わせて「所有できる自律 AI 経済圏」になります。
 
 ```mermaid
-graph TB
-    subgraph "Aiome — 身体（AI OS）"
-        A[エージェント実行・自己修復] --> B[3層防御: Trust Layer / Cell 分離 / WASM]
-        B --> C[26画面 管理コンソール: 監査・承認・分析]
+graph LR
+    subgraph OSS["Aiome — OS 層（OSS）"]
+        OS["エージェント実行・3層防御・監査"] --> CT["契約層<br/>CommerceEngine / AiomePlugin / JobQueue"]
     end
-    subgraph "Nurture — 心臓（経済エンジン）"
-        D[二重通貨: AiomeCoin / CreatorPoints] --> E[マーケットプレイス & Gig エスクロー]
-        E --> F[B2A / A2A / A2C 取引]
+    subgraph COM["Nurture — 経済層（commercial/）"]
+        EC["二重通貨・Merkle 台帳・マーケット"] --> NB["nurture-bridge（唯一の接点）"]
     end
-    C --> D
+    NB -- "trait を実装（単方向依存）" --> CT
 ```
+
+### なぜ経済を「後付け」できないのか
+
+他製品の経済機能はプラグインですが、Aiome では経済のインターフェース（`CommerceEngine`）が OSS の契約層に最初から定義されており、商用エンジン Nurture がそれを**単方向依存**で実装します。だから OSS 単体でも Mock 経済が完全動作し、コインが消えない・複製されないことは TLA+ の保存則（`CoinsConserved`）で検証され、全取引は Merkle チェーンに連鎖記帳されます。
+
+**Deep Dive**: [統合設計](docs/architecture/AIOME_NURTURE_SYNERGY.md) ・ [経済の TLA+ 仕様](commercial/specs/NurtureEconomyProtocol.tla) ・ [ADR-011 Bridge 分離](commercial/docs/decisions/011-nurture-bridge-isolation.md)
 
 | 取引モデル | 説明 |
 |---|---|

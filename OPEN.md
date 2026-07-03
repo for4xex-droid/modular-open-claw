@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-03**
+**最終更新: 2026-07-04**
 
 ## 運用ルール
 
@@ -41,8 +41,11 @@
 - [x] **OP-055**: `immune_system.rs` 内 MockJQ（約700行）の共有化 → 2026-07-03 完了（新クレートではなく `infrastructure::testing::mock_jq` クレート内モジュールとして抽出）
 - [ ] **OP-056**: フロント `useWorkflowApi` の `POST /api/v1/workflows/validate` とバックエンド `/api/v1/workflows/:id/validate` のパス不整合（F-1 実装時に発見、修正は未実施）（2026-07-03）
 - [ ] **OP-057**: LP Stripe Payment Link（$9.99 Pro）決済とセルフホスト環境の Pro 有効化が自動接続されていない。ライセンスキー配布 or Customer Portal 連携の設計が必要（PR品質改善 M-2 で発見）（2026-07-03）
-- [ ] **OP-058**: `ProUpgradeModal`（402→アップグレード導線）が実装・テスト済みだが App.tsx 未マウントでコンバージョン機会を損失。commerce 系 Safety-Critical Zone のため人間許可後にマウント（2026-07-03）
-- [ ] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠: `invoice.paid` Webhook で `pro_monthly_kc_allowance` 設定値（system_settings、上限 1M クランプ）を Nurture へ冪等付与（`{event_id}-allowance`）。超過チャージは既存 Recharge UI で対応済み。⬜ 残: 月間支出上限（現状は `nurture_wallets.daily_limit` の日次のみ）と Settings UI への入力欄追加。人間レビュー必須（commerce 系）。含み枠の対外訴求は本番検証まで禁止
+- [x] **OP-058**: `ProUpgradeModal`（402→アップグレード導線）→ 2026-07-04 解消（`App.tsx` ルートマウント + `STRIPE_PRICE_ID`）
+- [ ] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠 + ✅ W-1 OXP relay 修正で本番到達性回復。⬜ 残: 月間支出上限（W-7d・DB マイグレーション要 ADR）と Settings UI 入力欄
+- [ ] **OP-060**: coin-charge DLQ（`outbox_dead_letters`）の自動再送機構 — 現状は手動再送のみ（2026-07-04）
+- [ ] **OP-061**: OXP ヘッダ生成の stripe/auth/relay 3箇所を `generate_header()` へ統一リファクタ（Safety-Critical、人間レビュー後）（2026-07-04）
+- [ ] **OP-062**: Tauri `NurtureMode::InProcess` variant — sidecar 起動と in-process の排他（ADR-012 残タスク）（2026-07-04）
 - [ ] **OP-060**: `html2md`（GPL-3.0+、infrastructure 経由）を MIT 系代替（htmd 等）へ置換。暫定で deny.toml に例外を登録済み（2026-07-04）
 - [ ] **OP-061**: deny.toml `[advisories].ignore` に登録した 21 件（wasmtime 41.x / rustls-webpki 旧版 / idna 0.4 / quick-xml 0.39 / rand 0.8）の解消。実体は OP-030〜OP-034 の Upstream 待ちと同根。上流更新後に ignore を削除すること（2026-07-04）
 
