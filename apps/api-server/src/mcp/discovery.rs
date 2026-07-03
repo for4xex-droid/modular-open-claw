@@ -46,7 +46,7 @@ pub async fn discover_and_connect(
                 );
             }
         }
-        let default_config = serde_json::json!({
+        let mut default_config = serde_json::json!({
             "mcp_servers": {
                 "fff-mcp": {
                     "command": "fff-mcp",

@@ -6,8 +6,6 @@
  */
 
 use super::*;
-use std::sync::Arc;
-use tracing::info;
 
 /// Plugin agent hooks を HookManager に追加する（register 後に呼ぶ）
 pub fn attach_plugin_hooks(

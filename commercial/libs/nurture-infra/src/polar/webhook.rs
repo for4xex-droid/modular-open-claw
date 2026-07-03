@@ -166,6 +166,7 @@ mod tests {
     use crate::economy::idempotency::IdempotencyResponse;
     use async_trait::async_trait;
     use nurture_core::coin::CoinWallet;
+    use nurture_core::ledger::EntryType;
     use nurture_core::ledger::LedgerEntry;
     use nurture_core::points::PointsAccount;
     use uuid::Uuid;
