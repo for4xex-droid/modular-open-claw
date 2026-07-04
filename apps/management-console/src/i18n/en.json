@@ -1038,6 +1038,20 @@
       "managed": "🔐 Managed in Abyss Vault"
     }
   },
+  "biome": {
+    "prismaticBorn": "Prismatic cell born! ({{x}},{{y}})",
+    "hud": {
+      "structure": "Structural Beauty",
+      "prismatic": "Prismatic Cells ×2",
+      "symmetry": "Symmetry Score",
+      "complexity": "Complexity Score"
+    },
+    "result": {
+      "symmetry": "Symmetry:",
+      "complexity": "Complexity:",
+      "prismatic": "Prismatic Cells:"
+    }
+  },
   "biomeConsole": {
     "dendouTitle": "🏛️ Hall of Fame Specimens",
     "noSpecimens": "No specimens saved yet.",

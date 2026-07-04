@@ -1,6 +1,6 @@
 # Aiome メッセージング SSOT (Single Source of Truth)
 
-> 作成: 2026-07-03 / 根拠: `docs/roadmaps/pr_quality_improvement_plan.md` §1.4–1.7
+> 作成: 2026-07-03 / **最終更新: 2026-07-05** / 根拠: `docs/roadmaps/pr_quality_improvement_plan.md` §1.4–1.7
 > LP・README・commercial/README・SNS 等、対外コピーはすべて本書から引用すること。
 > 本書にない主張（数字・実績・機能）を対外文書に書くことを禁止する。
 
@@ -11,10 +11,16 @@
 - **日本語**: あなたが所有する、自律 AI の OS。稼がせて、監視して、証明する。
 - **英語**: The sovereign OS for autonomous AI — own it, govern it, let it earn.
 
-### サブコピー（Hero 用）
+### サブコピー（Hero 用）— 2026-07-04 改定（A2C フック先行型）
 
-- **日本語**: SEO・SNS 運用・調査を任せられる自律 AI チームを、あなたのマシンに。データは外に出ず、行動はすべて監査でき、成果は数字で確認できます。
-- **英語**: Put an autonomous AI team for SEO, social media, and research on your own machine. Your data never leaves, every action is auditable, and results show up as numbers.
+- **日本語**: 毎日世話をした AI から、ある日ギフトが届く——AI が働き、稼ぎ、あなたに恩返しする自律 AI チームを、あなたのマシンに。データは外に出ず、行動はすべて監査でき、成果は数字で確認できます。
+- **英語**: Care for your AI every day, and one day a gift arrives — an autonomous AI team that works, earns, and gives back to you, on your own machine. Your data never leaves, every action is auditable, and results show up as numbers.
+
+> 改定理由: バイラル32原則評価（2026-07-04）。#19「誰も見たことがないもの」を満たす唯一の要素 A2C を hero 先頭へ。SEO/SNS のユースケース列挙は UseCases セクションに委譲。
+
+### Problem セクション（共感ファースト・LP hero 直下）
+
+3つの不安（原則 #21）: ①クラウドにデータを渡す不安 ②エージェント暴走の恐怖 ③成果が数字で見えない。ブリッジ文「Aiome は、この3つの不安への直球回答として設計されました。」で3本柱（Sovereign/Governed/Earning）へ接続する。
 
 ## 2. 独自性の3本柱とエビデンス
 
@@ -47,6 +53,16 @@
 2. **数学が保証する経済 / Verified by math** — 「コインが消えない・複製されないことを TLA+ の保存則で検証し、全取引を Merkle チェーンで監査します。」 / "Conservation laws in TLA+ prove coins can't vanish or duplicate; every transaction lands on a Merkle audit chain."
 3. **自律と安全は矛盾しない / Autonomy without runaway, economically too** — 「TLA+ 検疫を通ったスキルだけが経済圏で流通し、暴走購入はインターセプタが物理的に止めます。」 / "Only quarantine-verified WASM skills enter the market, and a runtime interceptor physically stops runaway purchases."
 4. **所有か、接続か、選べる / Own it, or connect it — your call** — 「Mock（$0）→ ローカル Nurture → クラウド Nurture の3段階。構造としてロックインがありません。」 / "Mock ($0) → local Nurture → cloud Nurture. Lock-in is structurally impossible."
+
+### カテゴリ比較表（LP Comparison セクション、2026-07-04 追加）
+
+原則 #31 対応。**個別製品名は挙げず、製品カテゴリ（クラウド型エージェント基盤／エージェントフレームワーク）との一般特性比較のみ**とする。比較軸は購買基準順: データの置き場所 / 暴走防壁 / 管理画面 / AI 経済活動 / 月額コスト / ロックイン。表末尾に「比較は製品カテゴリの一般的特性に基づく」の注記を必須とする。
+
+### LP セクション構成（2026-07-05、aiome.dev）
+
+Hero → **Problem** → SocialProof → LiveDemo → Features → UseCases → HowItWorks → Economy → CodePreview → Architecture → Showcase → **Comparison** → Pricing → Faq → CTA。ナビに **Pricing（#pricing）** を含む。最終 CTA は `#quickstart` の単一導線（waitlist フォーム廃止）。
+
+**デプロイ**: LP 変更は `main` への push で `deploy-landing.yml` 経由 GitHub Pages（aiome.dev）へ反映。ローカルで更新済みでも **push 前の本番は旧バンドルを配信し続ける**。
 
 ### 禁止（本節に関する）
 
@@ -82,12 +98,12 @@ Aiome（BSL 1.1、2030年に Apache 2.0 化）は、自律 AI エージェント
 | 段 | 対象 | 価格 | 得られるもの |
 |---|---|---|---|
 | 1. Free（Sovereign） | 個人・研究 | $0/月（セルフホスト） | OS 全機能・エージェント・コンソール・Mock 経済 |
-| 2. Pro（Autonomous） | パワーユーザー | $9.99/月（14日無料体験） | 実経済圏の解禁（自律購買・クリエイター市場・A2C）＋優先サポート |
+| 2. Pro（Autonomous） | パワーユーザー | $19.99/月（14日無料体験） | 実経済圏の解禁（自律購買・クリエイター市場・A2C）＋優先サポート |
 | 3. Agency（B2B） | 代理店・企業 | 準備中（Coming Soon） | マルチテナント運用（顧客ごとのセル分離・メータリング） |
 | 4. マーケットプレイス | クリエイター・開発者 | 取引額の **15%**（クリエイター取り分 85%） | スキル・LoRA・音声アセット・Gig の流通 |
 
 - プラットフォーム手数料の公式レートは **15%** のみ（M-1 決定、2026-07-03）。25%/10% という旧表記は使用禁止。
-- Pro の将来形はハイブリッド（基本料＋KC 含み枠＋超過チャージ）。**現行 LP では $9.99 のまま**とし、含み枠の具体値は価格改定判断（ユーザー専権）まで記載しない。
+- Pro の将来形はハイブリッド（基本料＋KC 含み枠＋超過チャージ）。**現行 LP では $19.99/月**とし、含み枠の具体値は OP-059 実装完了まで記載しない。
 - 「14日間無料体験・カード登録の摩擦低減文言（No hidden fees / いつでも解約可）」を CTA に添える。
 
 ## 6. FAQ 想定問答（LP・README 共通原稿）
@@ -128,12 +144,23 @@ A. ありません。MCP（Model Context Protocol）対応で外部ツールと�
 
 ### Pro 購入フローの公式説明（LP・サポート回答用）
 
-> Pro プラン（$9.99/月・14日間無料体験）のお支払いは、LP の「プロへアップグレード」ボタンから Stripe の安全な決済ページで行えます。セルフホスト環境で Pro 機能（実経済圏）を有効化するには、決済後に `docs/operations/stripe-setup.md` の手順に従って Stripe キーを設定してください（`STRIPE_API_KEY` 未設定時は Mock モードで動作します）。
+> Pro プラン（$19.99/月・14日間無料体験）のお支払いは、LP（https://aiome.dev/#pricing）の「プロへアップグレード」ボタンから Stripe の安全な決済ページで行えます。セルフホスト環境で Pro 機能（実経済圏）を有効化するには、決済後に `docs/operations/stripe-setup.md` の手順に従って Stripe キーを設定してください（`STRIPE_API_KEY` 未設定時は Mock モードで動作します）。
+
+### LP Stripe Payment Link（公式 URL、2026-07-05）
+
+| 項目 | 値 |
+|---|---|
+| **Payment Link URL** | `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03` |
+| **コード配置** | `docs/landing/src/components/Pricing.tsx`（Pro CTA `href`） |
+| **商品名（Checkout 表示）** | Aiome Autonomous Pro（最新） |
+| **価格** | $19.99/月（14日無料トライアル後） |
+| **税** | 日本からのアクセス時、Stripe Checkout に JCT 10% が加算され **$21.99/月** と表示される場合あり（LP 表記 $19.99 は税抜ベース） |
+| **旧 Link（無効）** | `https://buy.stripe.com/aFa9AS1Kc1l47mK3u5f7i01` — Stripe 側で **inactive**（「The link is no longer active.」）。本番 LP が旧 URL を配信している間は決済不可。**main push → Pages デプロイで解消**。 |
 
 ### 既知の導線ギャップ（OPEN.md 起票済み、実装は人間許可待ち）
 
-1. **OP-057**: LP Payment Link での決済とセルフホスト環境の Pro ライセンス有効化が自動接続されていない（手動設定が必要）。ライセンスキー配布または Customer Portal 連携の設計が必要。
-2. **OP-058**: `ProUpgradeModal`（402 エラー時のアップグレード導線）が実装・テスト済みにもかかわらず App.tsx に未マウントで、アプリ内のコンバージョン機会を取りこぼしている。**commerce 系は Safety-Critical Zone のため、マウント作業は人間の明示的許可後に実施**。
+1. **OP-057**: LP Payment Link での決済とセルフホスト環境の Pro ライセンス有効化が自動接続されていない（手動設定が必要）。Payment Link URL 差し替えは **2026-07-05 完了**。残: `VITE_STRIPE_PRICE_ID` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` を新 Price ID に合わせる、決済→ライセンス自動有効化の設計。
+2. ~~**OP-058**~~: **2026-07-04 解消** — `ProUpgradeModal` は `App.tsx` にマウント済み（`STRIPE_PRICE_ID` 連携）。
 
 ### ハイブリッド価格の再パッケージ案（価格改定はユーザー専権・未実施）
 
@@ -141,7 +168,7 @@ A. ありません。MCP（Model Context Protocol）対応で外部ツールと�
 
 | 要素 | 案 |
 |---|---|
-| 基本料 | Pro $9.99/月（現行維持） |
+| 基本料 | Pro $19.99/月（2026-07-05 改定） |
 | 含み枠 | KC（Karma Coins）を月次で一定量付与（例: 1,000 KC 相当）— bill shock 防止の予算上限を兼ねる |
 | 超過 | KC の追加チャージ（既存の Recharge UI をそのまま利用） |
 | 上限 | 月次支出上限を Settings で設定可能にする（既存 LLM 統計と連動） |

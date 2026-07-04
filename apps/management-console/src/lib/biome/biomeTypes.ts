@@ -25,10 +25,13 @@ export interface BiomeCanvasProps {
   onClick?: (coord: { x: number; y: number }) => void;
   onHover?: (coord: { x: number; y: number } | null) => void;
   bloomEnabled?: boolean;
+  structureBonus?: boolean;
   injectionMarks?: InjectionMark[];
+  /** ドラッグ中の連続塗り（環境ペン用）。種まきでは false 推奨（postMessage 氾濫防止）。 */
+  dragPaint?: boolean;
 }
 
-export const RENDER_STRIDE = 12;
+export const RENDER_STRIDE = 13;
 export const GRID_WIDTH = 128;
 export const GRID_HEIGHT = 128;
 export const CELL_COUNT = GRID_WIDTH * GRID_HEIGHT;

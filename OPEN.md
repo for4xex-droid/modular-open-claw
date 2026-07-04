@@ -40,7 +40,7 @@
 - [ ] **OP-054**: JobQueue トレイトの API 乖離解消（補助メソッドのトレイト引き上げ or private 化）（2026-07-02）
 - [x] **OP-055**: `immune_system.rs` 内 MockJQ（約700行）の共有化 → 2026-07-03 完了（新クレートではなく `infrastructure::testing::mock_jq` クレート内モジュールとして抽出）
 - [ ] **OP-056**: フロント `useWorkflowApi` の `POST /api/v1/workflows/validate` とバックエンド `/api/v1/workflows/:id/validate` のパス不整合（F-1 実装時に発見、修正は未実施）（2026-07-03）
-- [ ] **OP-057**: LP Stripe Payment Link（$9.99 Pro）決済とセルフホスト環境の Pro 有効化が自動接続されていない。ライセンスキー配布 or Customer Portal 連携の設計が必要（PR品質改善 M-2 で発見）（2026-07-03）
+- [ ] **OP-057**: LP Stripe Payment Link（$19.99 Pro）決済とセルフホスト環境の Pro 有効化が自動接続されていない。ライセンスキー配布 or Customer Portal 連携の設計が必要。✅ LP Payment Link URL 差し替え済み（`aFa00i9cEaVE4ay4y9f7i03`）。⬜ 残: `VITE_STRIPE_PRICE_ID` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` が新 Price ID と一致するか確認、決済→ライセンス自動有効化（PR品質改善 M-2 で発見）（2026-07-03）
 - [x] **OP-058**: `ProUpgradeModal`（402→アップグレード導線）→ 2026-07-04 解消（`App.tsx` ルートマウント + `STRIPE_PRICE_ID`）
 - [ ] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠 + ✅ W-1 OXP relay 修正で本番到達性回復。⬜ 残: 月間支出上限（W-7d・DB マイグレーション要 ADR）と Settings UI 入力欄
 - [ ] **OP-060**: coin-charge DLQ（`outbox_dead_letters`）の自動再送機構 — 現状は手動再送のみ（2026-07-04）
@@ -48,6 +48,9 @@
 - [ ] **OP-062**: Tauri `NurtureMode::InProcess` variant — sidecar 起動と in-process の排他（ADR-012 残タスク）（2026-07-04）
 - [ ] **OP-060**: `html2md`（GPL-3.0+、infrastructure 経由）を MIT 系代替（htmd 等）へ置換。暫定で deny.toml に例外を登録済み（2026-07-04）
 - [ ] **OP-061**: deny.toml `[advisories].ignore` に登録した 21 件（wasmtime 41.x / rustls-webpki 旧版 / idna 0.4 / quick-xml 0.39 / rand 0.8）の解消。実体は OP-030〜OP-034 の Upstream 待ちと同根。上流更新後に ignore を削除すること（2026-07-04）
+- [ ] **OP-063**: LP 用実プロダクト証拠ビジュアル撮影（MESSAGING §8 ショットリスト7点 + Quick Start GIF）。実データ・ダークテーマ・1920×1080 以上。バイラル32原則 #10 対応（ユーザー実施、2026-07-05）
+- [ ] **OP-064**: ベータユーザー 5〜10 人の獲得と実名テスティモニアル収集。launch（本格トラフィック獲得）の前提条件。バイラル32原則 #14/#29 対応（ユーザー実施、2026-07-05）
+- [x] **OP-065**: Pro 価格改定 $9.99 → **$19.99/月**（2026-07-05 ユーザー決定）。MESSAGING.md / LP i18n / README / ProUpgradeModal 表示 / stripe-setup.md / .env.example を同期。Stripe Payment Link・Price ID の実体差し替えは OP-057 に統合。
 
 ## 🔵 Upstream 待ち（scripts/watch_upstream_blockers.py で監視中）
 

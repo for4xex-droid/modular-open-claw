@@ -27,7 +27,7 @@ export function LegalLayout({ title, lastUpdated, children }: LegalLayoutProps) 
       {/* Background gradients for premium wow factor */}
       <div aria-hidden="true" className="absolute inset-0 z-0 flex justify-around items-center pointer-events-none">
         <div className="w-[600px] h-[600px] bg-brand-cyan/5 blur-[180px] rounded-full" />
-        <div className="w-[600px] h-[600px] bg-brand-purple/5 blur-[180px] rounded-full" />
+        <div className="w-[600px] h-[600px] bg-brand-cyan/5 blur-[180px] rounded-full" />
       </div>
 
       <div className="container mx-auto max-w-4xl relative z-10">

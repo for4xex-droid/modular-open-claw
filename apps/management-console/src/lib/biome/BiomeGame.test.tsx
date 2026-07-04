@@ -47,39 +47,62 @@ let mockElementBalanceVal = new Uint16Array([40, 30, 10, 20, 0, 0, 0, 0]);
 
 // useBiomeEngine フックのモック化（Worker や WASM の複雑な非同期処理をバイパス）
 jest.mock('../../hooks/useBiomeEngine', () => {
+  const stableRenderView = new Float32Array(16384 * 13);
+  const stableRarityProgress = {
+    rarity: 0,
+    active_cells: 100,
+    morphology_count: 0,
+    has_homeostasis: false,
+    diversity_index: 0.0,
+    condition_active_500: false,
+    condition_morph_3: false,
+    condition_morph_4: false,
+    condition_active_1000: false,
+    symmetry_score: 0.0,
+    complexity_score: 0.0,
+    cluster_count: 0,
+    prismatic_cells: 0,
+    condition_structure: false,
+    condition_prismatic: false,
+    mass: 0,
+    locomotion: 0,
+    longevity: 0,
+    species_hash: 0,
+  };
+  const stableFns = {
+    tick: jest.fn(),
+    rewind: jest.fn(),
+    getRenderView: jest.fn(() => stableRenderView),
+    getCellDetail: jest.fn(),
+    injectElement: jest.fn(),
+    injectBrush: jest.fn(),
+    applyCrisis: jest.fn(),
+    serializeGenome: jest.fn(() => '{}'),
+    getRarity: jest.fn(() => 0),
+    getActiveCellCount: jest.fn(() => mockActiveCellCountVal),
+    getElementBalance: jest.fn(() => mockElementBalanceVal),
+    rollSubstance: jest.fn(() => 0),
+    getMutationBoost: jest.fn(() => 1.0),
+    ticksSinceMutation: jest.fn(() => 0),
+    getRarityProgress: jest.fn(() => ({
+      ...stableRarityProgress,
+      active_cells: mockActiveCellCountVal,
+    })),
+    getLastTickEvents: jest.fn(() => []),
+    leniaMu: 0.15,
+    leniaSigma: 0.017,
+    setLeniaParams: jest.fn(),
+    getLeniaMu: jest.fn(() => 0.15),
+    getLeniaSigma: jest.fn(() => 0.017),
+  };
+
   return {
-    useBiomeEngine: jest.fn().mockImplementation(() => {
-      return {
-        loading: false,
-        error: null,
-        generation: mockGenerationVal,
-        tick: jest.fn(),
-        rewind: jest.fn(),
-        getRenderView: jest.fn(() => new Float32Array(16384 * 12)),
-        getCellDetail: jest.fn(),
-        injectElement: jest.fn(),
-        applyCrisis: jest.fn(),
-        getRarity: () => 0,
-        getActiveCellCount: () => mockActiveCellCountVal,
-        getElementBalance: () => mockElementBalanceVal,
-        rollSubstance: () => 0,
-        getMutationBoost: () => 1.0,
-        ticksSinceMutation: () => 0,
-        serializeGenome: () => '{}',
-        getRarityProgress: () => ({
-          rarity: 0,
-          active_cells: mockActiveCellCountVal,
-          morphology_count: 0,
-          has_homeostasis: false,
-          diversity_index: 0.0,
-          condition_active_500: false,
-          condition_morph_3: false,
-          condition_morph_4: false,
-          condition_active_1000: false,
-        }),
-        getLastTickEvents: () => [],
-      };
-    })
+    useBiomeEngine: jest.fn().mockImplementation(() => ({
+      loading: false,
+      error: null,
+      generation: mockGenerationVal,
+      ...stableFns,
+    }))
   };
 });
 
@@ -93,20 +116,19 @@ jest.mock('../../config', () => ({
 import { BiomeGame } from './BiomeGame';
 
 describe('BiomeGame Component', () => {
+  beforeEach(() => {
+    mockGenerationVal = 0;
+    mockActiveCellCountVal = 100;
+    mockElementBalanceVal = new Uint16Array([40, 30, 10, 20, 0, 0, 0, 0]);
+  });
+
   it('ロード完了後に HUD やコントローラー、キャンバスが描画されること', async () => {
     render(<BiomeGame seed={42} />);
 
-    // 初期状態は loading
-    expect(screen.getByText(/Loading/i)).toBeInTheDocument();
-
-    // ロード完了を待つ
     await waitFor(() => {
-      expect(screen.queryByText(/Loading/i)).not.toBeInTheDocument();
+      expect(screen.getByTestId('biome-generation')).toBeInTheDocument();
     });
-
-    // 各統合パーツが描画されていることを確認
-    expect(screen.getByTestId('biome-generation')).toBeInTheDocument();
-    expect(screen.getByText(/元素注入/i)).toBeInTheDocument();
+    expect(screen.getByTestId('control-seed-mode')).toBeInTheDocument();
     
     expect(screen.getByTestId('r3f-canvas')).toBeInTheDocument();
   });
@@ -115,10 +137,8 @@ describe('BiomeGame Component', () => {
     render(<BiomeGame />);
 
     await waitFor(() => {
-      expect(screen.queryByText(/Loading/i)).not.toBeInTheDocument();
+      expect(screen.getByTestId('biome-generation')).toBeInTheDocument();
     });
-
-    expect(screen.getByTestId('biome-generation')).toBeInTheDocument();
   });
 
   it('標本を保存した際に element_balance, active_cell_count が API 送信ペイロードに含まれ、世代が正しいこと', async () => {
@@ -130,7 +150,7 @@ describe('BiomeGame Component', () => {
     // Fetch API モック
     const mockFetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({})
+      json: async () => ([])
     });
     global.fetch = mockFetch;
 
@@ -148,25 +168,33 @@ describe('BiomeGame Component', () => {
     expect(screen.getByTestId('result-rarity')).toBeInTheDocument();
 
     // 💾 保存ボタンをクリック
-    const saveBtn = screen.getByRole('button', { name: /💾 標本を保存/i });
+    const saveBtn = screen.getByTestId('result-save');
     fireEvent.click(saveBtn);
 
-    // Fetch API が 2 回 (Run 保存と Specimen 保存) 呼ばれることを検証
+    // Fetch API が specimens 取得 + Run/Specimen 保存で呼ばれることを検証
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      const postCalls = mockFetch.mock.calls.filter((call) => call[1]?.method === 'POST');
+      expect(postCalls.length).toBeGreaterThanOrEqual(2);
     });
 
-    // 1 回目のリクエスト (runs 保存) の検証
-    const runCall = mockFetch.mock.calls[0];
-    const runPayload = JSON.parse(runCall[1].body);
-    expect(runPayload.generation).toBe(200); // ハードコード 200 ではなく実際の世代 (200)
+    // 1 回目のリクエスト (specimens 一覧取得) をスキップし、runs 保存を検証
+    const runCall = mockFetch.mock.calls.find((call) => String(call[0]).includes('/runs'));
+    expect(runCall).toBeDefined();
+    const runPayload = JSON.parse(runCall![1]!.body as string);
+    expect(runPayload.generation).toBe(200);
 
-    // 2 回目のリクエスト (specimens 保存) の検証
-    const specCall = mockFetch.mock.calls[1];
-    const specPayload = JSON.parse(specCall[1].body);
+    // specimens 保存の検証
+    const specCall = mockFetch.mock.calls.find(
+      (call) => String(call[0]).includes('/specimens') && call[1]?.method === 'POST'
+    );
+    expect(specCall).toBeDefined();
+    const specPayload = JSON.parse(specCall![1]!.body as string);
     
     // ペイロード検証
     expect(specPayload.active_cell_count).toBe(85);
+    const genome = JSON.parse(specPayload.genome_data);
+    expect(genome.mu).toBe(0.15);
+    expect(genome.sigma).toBe(0.017);
     expect(specPayload.element_balance).toBe(JSON.stringify({
       C: 10, N: 20, P: 30, H: 40,
       O: 0, S: 0, Fe: 0, Si: 0

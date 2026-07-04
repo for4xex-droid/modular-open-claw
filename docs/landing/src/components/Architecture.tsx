@@ -26,8 +26,8 @@ export const Architecture: React.FC = () => {
       title: t('architecture.l2_title'),
       desc: t('architecture.l2_desc'),
       icon: Box,
-      color: 'text-brand-purple',
-      bgColor: 'bg-brand-purple/10',
+      color: 'text-gray-300',
+      bgColor: 'bg-white/5',
     },
     {
       id: 'l3',

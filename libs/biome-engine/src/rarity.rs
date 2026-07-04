@@ -5,6 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 use crate::grid::BiomeGrid;
+use crate::pattern;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -21,102 +22,134 @@ pub enum BiomeRarity {
 pub struct RarityProgress {
     pub rarity: u8, // 0=Common 1=Uncommon 2=Rare 3=Epic 4=Legendary
     pub active_cells: u32,
-    pub morphology_count: u8,  // 共存する形態の種数 (0-5)
-    pub has_homeostasis: bool, // 全元素がバランス
-    pub diversity_index: f32,  // Shannon多様性指数
+    pub morphology_count: u8, // 共存する形態の種数 (0-5)
+    pub has_homeostasis: bool,
+    pub diversity_index: f32,
+    /// フィールド名は HUD 互換のため維持。Lenia では mass ベース。
     pub condition_active_500: bool,
     pub condition_morph_3: bool,
     pub condition_morph_4: bool,
     pub condition_active_1000: bool,
+    pub symmetry_score: f32,
+    pub complexity_score: f32,
+    pub cluster_count: u16,
+    pub prismatic_cells: u16,
+    pub condition_structure: bool,
+    pub condition_prismatic: bool,
+    /// Lenia 統計（Phase 3 追記）
+    pub mass: f32,
+    pub locomotion: f32,
+    pub longevity: u32,
+    pub species_hash: u64,
+}
+
+const FIELD_ACTIVE_THRESHOLD: f32 = 0.1;
+const STABLE_LONGEVITY: u32 = 10;
+const MASS_UNCOMMON: f32 = 50.0;
+const MASS_RARE: f32 = 150.0;
+const MASS_EPIC: f32 = 300.0;
+const MASS_LEGENDARY: f32 = 500.0;
+const LONGEVITY_RARE: u32 = 25;
+const LONGEVITY_EPIC: u32 = 80;
+const LONGEVITY_LEGENDARY: u32 = 200;
+const LOCOMOTION_EPIC: f32 = 0.25;
+const LOCOMOTION_LEGENDARY: f32 = 0.8;
+const SYMMETRY_RARE: f32 = 0.50;
+const SYMMETRY_EPIC: f32 = 0.65;
+const SYMMETRY_LEGENDARY: f32 = 0.85;
+/// 「生物的に局在している」と見なす外接矩形占有率の上限。
+/// これを超える（＝一面に広がったテクスチャ）個体は Rare 止まりにし、
+/// 放置で広がっただけの場が高レア化する穴（実機計測: 無操作 200 tick で Epic 到達）を塞ぐ。
+const LOCALIZED_BBOX_MAX: f32 = 0.5;
+
+/// Lenia 統計からレアリティ tier (0-4) を判定する。
+///
+/// `bbox_ratio` は活性領域の外接矩形占有率。Epic 以上は「局在した生物」であること
+/// （`bbox_ratio < LOCALIZED_BBOX_MAX`）を必須とし、加えて実際に動いている
+/// （locomotion）か強い対称/複雑性を持つことを要求する。
+pub fn lenia_rarity_tier(
+    mass: f32,
+    locomotion: f32,
+    longevity: u32,
+    symmetry: f32,
+    complexity: f32,
+    bbox_ratio: f32,
+) -> u8 {
+    let stable = longevity >= STABLE_LONGEVITY && mass >= 30.0;
+    // 局在＝散らばらず塊で存在する生物的な状態。広がったテクスチャを高レアから除外。
+    let localized = bbox_ratio > 0.0 && bbox_ratio < LOCALIZED_BBOX_MAX;
+
+    if stable
+        && localized
+        && mass >= MASS_LEGENDARY
+        && longevity >= LONGEVITY_LEGENDARY
+        && (symmetry >= SYMMETRY_LEGENDARY || locomotion >= LOCOMOTION_LEGENDARY)
+    {
+        4
+    } else if stable
+        && localized
+        && mass >= MASS_EPIC
+        && longevity >= LONGEVITY_EPIC
+        && (locomotion >= LOCOMOTION_EPIC || symmetry >= SYMMETRY_EPIC || complexity >= 0.70)
+    {
+        3
+    } else if stable
+        && mass >= MASS_RARE
+        && longevity >= LONGEVITY_RARE
+        && symmetry >= SYMMETRY_RARE
+    {
+        2
+    } else if stable && mass >= MASS_UNCOMMON {
+        1
+    } else {
+        0
+    }
 }
 
 /// グリッド全体の進化状態から詳細な進捗付きでレアリティを判定する
 pub fn determine_rarity_with_progress(grid: &BiomeGrid) -> RarityProgress {
-    use crate::evolution::{determine_morphology, CellMorphology};
-    use crate::grid::GRID_SIZE;
-    use std::collections::HashSet;
+    let lenia = grid.lenia();
+    let mass = lenia.mass;
+    let locomotion = lenia.locomotion;
+    let longevity = lenia.longevity_ticks;
+    let species_hash = lenia.species_hash();
 
-    let mut active_cells = 0;
-    let mut morphs = HashSet::new();
+    let ch0 = lenia.channel(0);
+    let pattern = pattern::measure_field(ch0, FIELD_ACTIVE_THRESHOLD);
 
-    let mut basic_count = 0;
-    let mut predator_count = 0;
-    let mut producer_count = 0;
-    let mut consumer_count = 0;
-    let mut decomposer_count = 0;
-
-    let mut element_totals = [0u64; 8];
-
-    for i in 0..GRID_SIZE {
-        let cell = &grid.current_cells()[i];
-        if cell.active {
+    let mut active_cells = 0u32;
+    for &v in ch0 {
+        if v > FIELD_ACTIVE_THRESHOLD {
             active_cells += 1;
-            let morph = determine_morphology(&cell.elements);
-            morphs.insert(morph as u8);
-
-            match morph {
-                CellMorphology::Basic => basic_count += 1,
-                CellMorphology::Predator => predator_count += 1,
-                CellMorphology::Producer => producer_count += 1,
-                CellMorphology::Consumer => consumer_count += 1,
-                CellMorphology::Decomposer => decomposer_count += 1,
-            }
-
-            for (e, &val) in cell.elements.iter().enumerate() {
-                element_totals[e] += val as u64;
-            }
         }
     }
 
-    let morphology_count = morphs.len() as u8;
+    let symmetry_score = pattern.symmetry_score;
+    let complexity_score = pattern.complexity_score;
+    let cluster_count = pattern.cluster_count;
 
-    // Shannon多様性指数
-    let mut diversity_index = 0.0;
-    if active_cells > 0 {
-        let counts = [
-            basic_count,
-            predator_count,
-            producer_count,
-            consumer_count,
-            decomposer_count,
-        ];
-        for &count in &counts {
-            if count > 0 {
-                let p = count as f32 / active_cells as f32;
-                diversity_index -= p * p.ln();
-            }
-        }
-    }
+    let rarity = lenia_rarity_tier(
+        mass,
+        locomotion,
+        longevity,
+        symmetry_score,
+        complexity_score,
+        pattern.bbox_ratio,
+    );
 
-    // Homeostasis (恒常性)
-    let total_elements: u64 = element_totals.iter().sum();
-    let has_homeostasis = if total_elements > 0 {
-        let avg = total_elements / 8;
-        let min_val = *element_totals.iter().min().unwrap_or(&0);
-        // 最小の元素が平均の20%以上であること
-        min_val >= avg / 5
-    } else {
-        false
-    };
-
-    // Legendary 条件
-    let condition_active_500 = active_cells >= 500;
-    let condition_morph_3 = morphology_count >= 3;
-    let condition_morph_4 = morphology_count >= 4;
-    let condition_active_1000 = active_cells >= 1000;
-
-    // レアリティ判定
-    let rarity = if condition_active_1000 && condition_morph_4 && has_homeostasis {
-        4 // Legendary
-    } else if condition_active_500 && condition_morph_3 {
-        3 // Epic
-    } else if active_cells >= 100 && morphology_count >= 2 {
-        2 // Rare
-    } else if active_cells >= 10 {
-        1 // Uncommon
-    } else {
-        0 // Common
-    };
+    // HUD 互換フィールド（Lenia 指標へマッピング）
+    let has_homeostasis = longevity >= STABLE_LONGEVITY && mass >= 30.0;
+    let diversity_index = locomotion;
+    let morphology_count = if has_homeostasis { 1 } else { 0 };
+    let condition_active_500 = mass >= MASS_EPIC;
+    let condition_morph_3 = longevity >= LONGEVITY_EPIC;
+    let condition_morph_4 = longevity >= LONGEVITY_LEGENDARY;
+    let condition_active_1000 = mass >= MASS_LEGENDARY;
+    let condition_structure = symmetry_score >= SYMMETRY_EPIC
+        || complexity_score >= 0.70
+        || locomotion >= LOCOMOTION_EPIC;
+    let prismatic_cells = 0u16;
+    let condition_prismatic = locomotion >= LOCOMOTION_LEGENDARY;
 
     RarityProgress {
         rarity,
@@ -128,6 +161,16 @@ pub fn determine_rarity_with_progress(grid: &BiomeGrid) -> RarityProgress {
         condition_morph_3,
         condition_morph_4,
         condition_active_1000,
+        symmetry_score,
+        complexity_score,
+        cluster_count,
+        prismatic_cells,
+        condition_structure,
+        condition_prismatic,
+        mass,
+        locomotion,
+        longevity,
+        species_hash,
     }
 }
 
@@ -151,121 +194,83 @@ mod tests {
     fn test_initial_grid_is_common() {
         let grid = BiomeGrid::new(42);
         let rarity = determine_rarity(&grid);
-        assert_eq!(rarity, BiomeRarity::Common);
-    }
-
-    #[test]
-    fn test_legendary_criteria() {
-        let mut grid = BiomeGrid::new(42);
-
-        // 新しいLegendary条件を満たすようにセルのセットアップ (1024セル)
-        for y in 0..32 {
-            for x in 0..32 {
-                let cell = grid.get_cell_mut(x, y);
-                cell.active = true;
-                cell.elements = [2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000];
-            }
-        }
-
-        // 4つの形態を作る
-        // Predator (C, N)
-        let c1 = grid.get_cell_mut(0, 0);
-        c1.elements[0] = 45000;
-        c1.elements[1] = 35000;
-
-        // Producer (H, O)
-        let c2 = grid.get_cell_mut(1, 1);
-        c2.elements[3] = 45000;
-        c2.elements[4] = 45000;
-
-        // Consumer (C, P)
-        let c3 = grid.get_cell_mut(2, 2);
-        c3.elements[0] = 35000;
-        c3.elements[2] = 25000;
-
-        // Decomposer (S, N)
-        let c4 = grid.get_cell_mut(3, 3);
-        c4.elements[5] = 35000;
-        c4.elements[1] = 25000;
-
-        let rarity = determine_rarity(&grid);
         assert_eq!(
             rarity,
-            BiomeRarity::Legendary,
-            "Grid with highly evolved cells and homeostasis should be Legendary"
+            BiomeRarity::Common,
+            "fresh seed has longevity=0 → Common"
         );
     }
 
     #[test]
-    fn test_determine_rarity_with_progress_initial() {
+    fn test_lenia_rarity_tier_legendary() {
+        // 局在（bbox=0.1）した高質量・高対称・高移動 → Legendary
+        assert_eq!(lenia_rarity_tier(600.0, 0.9, 250, 0.90, 0.5, 0.1), 4);
+    }
+
+    #[test]
+    fn test_lenia_rarity_tier_epic_via_locomotion() {
+        // 局在（bbox=0.15）した移動体 → Epic
+        assert_eq!(lenia_rarity_tier(350.0, 0.4, 100, 0.40, 0.5, 0.15), 3);
+    }
+
+    #[test]
+    fn test_lenia_rarity_tier_uncommon_only() {
+        assert_eq!(lenia_rarity_tier(80.0, 0.0, 15, 0.3, 0.2, 0.2), 1);
+    }
+
+    #[test]
+    fn test_collapsed_mass_is_common() {
+        assert_eq!(lenia_rarity_tier(0.0, 0.0, 0, 0.0, 0.0, 0.0), 0);
+        assert_eq!(lenia_rarity_tier(200.0, 0.5, 5, 0.8, 0.8, 0.1), 0);
+    }
+
+    #[test]
+    fn test_spread_texture_capped_at_rare() {
+        // Negative Test: Epic 相当の統計でも、一面に広がった（bbox=0.95）テクスチャは
+        // 局在条件を満たさず Epic/Legendary に上がれない（放置膨張の高レア化を防止）。
+        let spread = lenia_rarity_tier(600.0, 0.9, 250, 0.90, 0.9, 0.95);
+        assert!(
+            spread <= 2,
+            "spread-out texture must not reach Epic+, got tier {}",
+            spread
+        );
+        // 同じ統計でも局在していれば Legendary になる（局在性が効いている証明）
+        let localized = lenia_rarity_tier(600.0, 0.9, 250, 0.90, 0.9, 0.1);
+        assert_eq!(localized, 4, "localized version should be Legendary");
+    }
+
+    #[test]
+    fn test_negative_zero_diversity_all_common() {
+        let g1 = BiomeGrid::new(42);
+        let g2 = BiomeGrid::new(42);
+        let p1 = determine_rarity_with_progress(&g1);
+        let p2 = determine_rarity_with_progress(&g2);
+        assert_eq!(p1.rarity, 0);
+        assert_eq!(p2.rarity, 0);
+        assert_eq!(p1.species_hash, p2.species_hash);
+    }
+
+    #[test]
+    fn test_rarity_increases_with_ticks() {
+        let mut grid = BiomeGrid::new(42);
+        for _ in 0..100 {
+            grid.tick();
+        }
+        let progress = determine_rarity_with_progress(&grid);
+        assert!(progress.mass > 0.0, "Orbium ring should survive");
+        assert!(progress.longevity >= 10, "should accumulate longevity");
+        assert!(
+            progress.rarity >= 1,
+            "stable orbium should reach at least Uncommon, got {}",
+            progress.rarity
+        );
+    }
+
+    #[test]
+    fn test_determine_rarity_with_progress_has_lenia_fields() {
         let grid = BiomeGrid::new(42);
         let progress = determine_rarity_with_progress(&grid);
-        assert_eq!(progress.rarity, 0); // Common
-        assert_eq!(progress.active_cells, 0);
-        assert_eq!(progress.morphology_count, 0);
-    }
-
-    #[test]
-    fn test_determine_rarity_with_progress_legendary_full() {
-        let mut grid = BiomeGrid::new(42);
-        // 1000セル以上アクティブにする
-        for y in 0..32 {
-            for x in 0..32 {
-                let cell = grid.get_cell_mut(x, y);
-                cell.active = true;
-                // 全元素をバランス良く注入して homeostasis を満たす
-                cell.elements = [2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000];
-            }
-        }
-
-        // さまざまな形態のセルを作る
-        // Predator: C > 40000 && N > 30000
-        let p_cell = grid.get_cell_mut(0, 0);
-        p_cell.elements[0] = 45000;
-        p_cell.elements[1] = 35000;
-
-        // Producer: H > 40000 && O > 40000
-        let pr_cell = grid.get_cell_mut(1, 1);
-        pr_cell.elements[3] = 45000;
-        pr_cell.elements[4] = 45000;
-
-        // Consumer: C > 30000 && P > 20000
-        let c_cell = grid.get_cell_mut(2, 2);
-        c_cell.elements[0] = 35000;
-        c_cell.elements[2] = 25000;
-
-        // Decomposer: S > 30000 && N > 20000
-        let d_cell = grid.get_cell_mut(3, 3);
-        d_cell.elements[5] = 35000;
-        d_cell.elements[1] = 25000;
-
-        let progress = determine_rarity_with_progress(&grid);
-        // これらは実装後に満たされるはず
-        assert_eq!(progress.rarity, 4); // Legendary
-        assert!(progress.active_cells >= 1000);
-        assert_eq!(progress.morphology_count, 5); // Basic, Predator, Producer, Consumer, Decomposer
-        assert!(progress.has_homeostasis);
-        assert!(progress.condition_active_1000);
-        assert!(progress.condition_morph_4);
-    }
-
-    #[test]
-    fn test_determine_rarity_with_progress_diversity_calculation() {
-        let mut grid = BiomeGrid::new(42);
-
-        // 形態比率を設定して、シャノン多様性指数が正しく計算されるかを検証
-        // 2つの形態が同数存在する場合、多様性指数は -2 * (0.5 * ln(0.5)) = ln(2) = 0.693
-        let c1 = grid.get_cell_mut(0, 0);
-        c1.active = true;
-        c1.elements = [0, 0, 0, 0, 0, 0, 0, 0]; // Basic
-
-        let c2 = grid.get_cell_mut(1, 1);
-        c2.active = true;
-        c2.elements[0] = 45000; // Predator
-        c2.elements[1] = 35000;
-
-        let progress = determine_rarity_with_progress(&grid);
-        assert_eq!(progress.morphology_count, 2); // Basic + Predator
-        assert!((progress.diversity_index - 0.693).abs() < 0.01);
+        assert!(progress.mass >= 0.0);
+        assert!(progress.species_hash > 0);
     }
 }

@@ -13,15 +13,19 @@ describe('App Routing', () => {
 
   beforeAll(() => {
     // window.location の一部をモックできるようにする
-    delete (window as any).location;
-    window.location = {
-      ...originalLocation,
-      pathname: '/',
-    } as any;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      writable: true,
+      value: { ...originalLocation, pathname: '/' },
+    });
   });
 
   afterAll(() => {
-    (window as any).location = originalLocation;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      writable: true,
+      value: originalLocation,
+    });
   });
 
   it('renders landing page content on root path', () => {

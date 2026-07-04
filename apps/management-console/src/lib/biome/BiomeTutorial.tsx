@@ -24,35 +24,25 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
 
   const steps: Step[] = [
     {
-      title: '🧬 生命の進化を見守る',
-      desc: 'Biomeシミュレーションへお越しいただきありがとうございます！ここでは128x128のグリッド上で生命体が自律進化していきます。進化の成り行きを観察しましょう。',
-      targetSelector: 'canvas' // Highlight canvas
+      title: '🧬 Lenia 生命場を観察する',
+      desc: '128×128 の連続場上で、Orbium 系の生命パターンが自律的に動きます。世代が進むほど安定性・移動・対称性が評価されます。',
+      targetSelector: 'canvas',
     },
     {
-      title: '⏸ サイクル速度のコントロール',
-      desc: 'シミュレーションの進行を「停止」したり、1x、2x、5x、10x の速度に切り替えて、生命の誕生と滅亡を高速にシミュレートできます。',
-      targetSelector: '[data-testid="cycle-pause"]'
+      title: '🌱 種まきで新しい種を誕生させる',
+      desc: '右パネルの「種まき」を ON にして、キャンバスをタッチするとその地点に生命の種を撒けます。複数箇所に撒くと相互作用が起きます。',
+      targetSelector: '[data-testid="control-seed-mode"]',
     },
     {
-      title: '🌱 生命の種（元素）を注入する',
-      desc: 'C(炭素)・N(窒素)・O(酸素)・Fe(鉄) など8種類の元素を選択して、画面上の好きな場所をタッチ/ドラッグすると、その周辺に元素エネルギーを直接注入して新しい生命を誕生させられます！元素の組み合わせで化学反応が起き、進化が加速します。',
-      targetSelector: '[data-testid="inject-c"]'
+      title: '🎛 μ・σ で成長を調整する',
+      desc: 'μ（成長中心）と σ（成長幅）スライダーで Lenia パラメータをリアルタイム変更できます。安定域外にするとパターンは崩壊します。',
+      targetSelector: '[data-testid="control-lenia-mu"]',
     },
     {
-      title: '⚗️ 元素反応の連鎖',
-      desc: '注入した元素同士が近接セル内で混ざり合うと、元素反応が起こります（例：C+H→N、N+P→C+H、Fe+O→Siなど）。反応は質量を保存し、より上位の変異に必要な複雑な元素を生み出します。',
-      targetSelector: 'canvas'
+      title: '📖 種図鑑と Legendary を目指す',
+      desc: '200 世代で評価が確定します。質量・存続・移動・対称性が高いほどレア度が上がります。良い種は図鑑に保存しましょう！',
+      targetSelector: '[data-testid="biome-rarity"]',
     },
-    {
-      title: '☄️ 環境災害を引き起こす',
-      desc: '隕石落下(Meteor)や氷河期(IceAge)などの災害を選択して画面をタッチすると、その地点を中心に環境変化を引き起こし、進化の方向性を強制変異させることができます。',
-      targetSelector: '[data-testid="crisis-meteor"]'
-    },
-    {
-      title: '🔥 伝説の生命体 (Legendary) を目指す',
-      desc: 'シミュレーションが 200世代 に達すると、生命の多様性から最終的な評価ランク(Rarity)が決定されます。様々な変異や災害を試し、最高評価を目指しましょう！',
-      targetSelector: '[data-testid="biome-rarity"]'
-    }
   ];
 
   const handleNext = () => {

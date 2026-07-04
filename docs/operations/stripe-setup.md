@@ -2,6 +2,8 @@
 
 Aiomeの自律経済圏（Commerce）機能でStripeを利用するための設定手順です。
 
+**最終更新: 2026-07-05**
+
 ## 1. Stripeアカウントの準備とAPIキーの取得
 1. [Stripeダッシュボード](https://dashboard.stripe.com/)にログインします（開発時はテストモードを使用してください）。
 2. **「開発者」 > 「APIキー」** に移動します。
@@ -10,15 +12,32 @@ Aiomeの自律経済圏（Commerce）機能でStripeを利用するための設�
    - **シークレットキー (Secret key)**: `sk_test_...` (テスト用) または `sk_live_...` (本番用)
 
 ## 2. 商品と価格 (Price ID) の作成
-Proプラン（$9.99/月）の定期支払い用の価格IDを作成します。
+Proプラン（$19.99/月）の定期支払い用の価格IDを作成します。
 1. **「商品」 > 「商品を追加」** に移動します。
 2. 商品情報を入力します。
-   - **商品名**: `Aiome Pro` (任意の名称)
+   - **商品名**: `Aiome Autonomous Pro`（Checkout 表示名と揃える）
    - **料金体系**: 定期支払い
-   - **価格**: `9.99` (通貨: USD)
+   - **価格**: `19.99` (通貨: USD)
    - **請求周期**: 毎月
+   - **無料トライアル**: 14日（Payment Link 側で設定済みの場合は Dashboard 上も一致させる）
 3. 商品を保存すると、`price_` から始まる **価格ID (Price ID)** が生成されます（例: `price_1Pxxx...`）。
-4. このIDをコピーし、環境変数 `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` に設定します。
+4. このIDをコピーし、環境変数 `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` および管理コンソールの `VITE_STRIPE_PRICE_ID` に設定します。
+
+## 2.5 LP Payment Link（aiome.dev Pro CTA）
+
+LP の「プロへアップグレード」は Stripe Payment Link を直リンクしています（`docs/landing/src/components/Pricing.tsx`）。
+
+| 項目 | 値 |
+|---|---|
+| **現行 Payment Link** | `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03` |
+| **価格** | $19.99/月（14日無料トライアル） |
+| **旧 Link（参照禁止）** | `https://buy.stripe.com/aFa9AS1Kc1l47mK3u5f7i01` — Stripe 側 **inactive** |
+
+**本番反映**: コード変更後、`main` ブランチへ push すると `.github/workflows/deploy-landing.yml` が GitHub Pages（https://aiome.dev）へデプロイします。**push 前の本番 LP は旧 JS バンドルを配信し、無効 Link へ遷移するため決済できません。**
+
+**検証**: 新 Link をブラウザで開き、Checkout に「Aiome Autonomous Pro」「$19.99/month after 14 days free」が表示されることを確認。日本 IP では JCT 込み **$21.99/月** 表示の場合あり。
+
+**Price ID 整合**: Payment Link に紐づく Price ID と `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` / `VITE_STRIPE_PRICE_ID` が同一であることを Dashboard で確認（OP-057）。
 
 ## 3. Webhook の設定
 決済状態やサブスクリプションの更新イベントをリアルタイムに受け取るためのWebhookを設定します。
@@ -54,6 +73,6 @@ STRIPE_WEBHOOK_SECRET="whsec_your_secret_here"
 # テストモードの有効化 (true/false)
 STRIPE_TEST_MODE="true"
 
-# 毎月の定期購読用 Price ID
+# 毎月の定期購読用 Price ID（Payment Link / ProUpgradeModal と同一 Price を指定）
 STRIPE_PRICE_SUBSCRIPTION_MONTHLY="price_your_gold_monthly_id_here"
 ```

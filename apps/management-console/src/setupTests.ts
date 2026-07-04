@@ -57,13 +57,35 @@ class MockWorker {
           mutationBoost: 1.0,
           ticksSinceMutation: 0,
           rarityProgress: null,
+          leniaMu: 0.15,
+          leniaSigma: 0.017,
         }
       } as any);
       
       this.sendUpdate(message.savedState);
     } else if (message.type === 'tick') {
-      this.generation += 1;
+      const count = Math.max(1, Number(message.count) || 1);
+      this.generation += count;
       this.sendUpdate();
+    } else if (message.type === 'injectBrush') {
+      this.sendUpdate();
+    } else if (
+      message.type === 'paintEnv' ||
+      message.type === 'clearEnv' ||
+      message.type === 'seedEcosystem' ||
+      message.type === 'setLeniaParams' ||
+      message.type === 'setMutationBoost' ||
+      message.type === 'inject' ||
+      message.type === 'crisis'
+    ) {
+      this.sendUpdate();
+    } else if (message.type === 'requestSave') {
+      this.onmessage({
+        data: {
+          type: 'saved',
+          serialized: JSON.stringify({ generation: this.generation, seed: 42 }),
+        }
+      } as any);
     } else if (message.type === 'rewind') {
       if (message.generations <= this.generation) {
         this.generation -= message.generations;
@@ -80,7 +102,7 @@ class MockWorker {
     }
   }
 
-  private sendUpdate(savedState?: string | null) {
+  private sendUpdate(_savedState?: string | null) {
     if (!this.onmessage) return;
     this.onmessage({
       data: {
@@ -93,9 +115,9 @@ class MockWorker {
         ticksSinceMutation: 0,
         rarityProgress: null,
         lastEvents: [],
-        serialized: savedState || JSON.stringify({ generation: this.generation, seed: 42 }),
-        renderView: new Float32Array(16384 * 12),
-        frozenCells: new Uint8Array(16384),
+        leniaMu: 0.15,
+        leniaSigma: 0.017,
+        renderView: new Float32Array(16384 * 13),
       }
     } as any);
   }

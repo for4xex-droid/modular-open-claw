@@ -26,8 +26,8 @@ export const HowItWorks: React.FC = () => {
       title: t('how_it_works.step2_title'),
       desc: t('how_it_works.step2_desc'),
       icon: Brain,
-      color: 'text-brand-purple',
-      bgColor: 'bg-brand-purple/10',
+      color: 'text-gray-300',
+      bgColor: 'bg-white/5',
     },
     {
       id: 3,
@@ -58,7 +58,7 @@ export const HowItWorks: React.FC = () => {
         {/* Steps container */}
         <div className="relative">
           {/* Connector Line for Desktop */}
-          <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-brand-cyan/50 via-brand-purple/50 to-brand-cyan/50 -translate-y-1/2 hidden md:block z-0" />
+          <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-brand-cyan/20 via-brand-cyan/50 to-brand-cyan/20 -translate-y-1/2 hidden md:block z-0" />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10">
             {steps.map((step, index) => {

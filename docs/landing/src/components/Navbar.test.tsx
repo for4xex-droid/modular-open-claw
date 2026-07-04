@@ -16,7 +16,14 @@ describe('Navbar Component', () => {
   it('renders navigation links in english by default', () => {
     render(<Navbar />);
     expect(screen.getByText('Features')).toBeInTheDocument();
+    expect(screen.getByText('Pricing')).toBeInTheDocument();
     expect(screen.getByText('Quickstart')).toBeInTheDocument();
+  });
+
+  it('renders the pricing link with correct destination', () => {
+    render(<Navbar />);
+    const pricingLink = screen.getByText('Pricing').closest('a');
+    expect(pricingLink).toHaveAttribute('href', '#pricing');
   });
 
   it('renders the aiome icon logo', () => {
@@ -44,6 +51,7 @@ describe('Navbar Component', () => {
     fireEvent.click(langBtn);
     
     expect(await screen.findByText('機能')).toBeInTheDocument();
+    expect(await screen.findByText('料金')).toBeInTheDocument();
     expect(await screen.findByText('クイックスタート')).toBeInTheDocument();
   });
 

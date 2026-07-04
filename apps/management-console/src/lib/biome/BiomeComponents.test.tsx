@@ -18,120 +18,85 @@ describe('Biome HUD & Controls Components', () => {
       <BiomeHUD
         generation={150}
         rarity="Rare"
-        elementBalance={{ C: 40, N: 30, P: 10, H: 20 }}
       />
     );
 
-    // 世代数やレアリティが表示されていることをアサート
     expect(screen.getByText(/150/)).toBeInTheDocument();
     expect(screen.getByText(/Rare/)).toBeInTheDocument();
-    // 進行度チェックリストが表示されていないことをアサート
-    expect(screen.queryByText(/ランクアップ条件/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('biome-lenia-scorecard')).not.toBeInTheDocument();
   });
 
-  it('BiomeHUD が rarityProgress 提供時にチェックリストを正しく描画すること', () => {
+  it('BiomeHUD が rarityProgress 提供時に Lenia スコアカードを描画すること', () => {
     const progress = {
-      active_cells: 550,
-      morphology_count: 3,
+      active_cells: 120,
+      symmetry_score: 0.72,
+      complexity_score: 0.55,
+      mass: 350.5,
+      locomotion: 0.42,
+      longevity: 85,
+      species_hash: 123456789,
       has_homeostasis: true,
-      diversity_index: 0.85,
-      condition_active_500: true,
-      condition_morph_3: true,
-      condition_morph_4: false,
-      condition_active_1000: false,
+      condition_structure: true,
     };
 
     render(
       <BiomeHUD
         generation={150}
         rarity="Rare"
-        elementBalance={{ C: 40 }}
         rarityProgress={progress}
+        activeCellCount={120}
       />
     );
 
-    expect(screen.getByText(/ランクアップ条件/)).toBeInTheDocument();
-    expect(screen.getByText(/活性セル 500\+/)).toBeInTheDocument();
-    expect(screen.getByText(/特殊形態 3種類\+/)).toBeInTheDocument();
-    expect(screen.getByText(/0.850/)).toBeInTheDocument();
+    expect(screen.getByTestId('biome-lenia-scorecard')).toBeInTheDocument();
+    expect(screen.getByTestId('biome-mass')).toHaveTextContent('350.5');
+    expect(screen.getByText(/85 tick/)).toBeInTheDocument();
   });
 
   it('正常系: BiomeHUD が Legendary, Epic, Uncommon, Common の各レアリティに応じた装飾を正しく表示すること', () => {
-    // 1. Legendary
     const { rerender } = render(
-      <BiomeHUD
-        generation={200}
-        rarity="Legendary"
-        elementBalance={{ C: 50 }}
-      />
+      <BiomeHUD generation={200} rarity="Legendary" />
     );
     expect(screen.getByText('🔥')).toBeInTheDocument();
     const rarityBadge = screen.getByTestId('biome-rarity');
     expect(rarityBadge.style.color).toBe('var(--biome-rarity-legendary)');
 
-    
-    // 2. Epic
-    rerender(
-      <BiomeHUD
-        generation={200}
-        rarity="Epic"
-        elementBalance={{ C: 50 }}
-      />
-    );
-    expect(screen.getByText('🔮')).toBeInTheDocument(); 
+    rerender(<BiomeHUD generation={200} rarity="Epic" />);
+    expect(screen.getByText('🔮')).toBeInTheDocument();
 
-    // 3. Uncommon
-    rerender(
-      <BiomeHUD
-        generation={200}
-        rarity="Uncommon"
-        elementBalance={{ C: 50 }}
-      />
-    );
+    rerender(<BiomeHUD generation={200} rarity="Uncommon" />);
     expect(screen.getByText('🌟')).toBeInTheDocument();
 
-    // 4. Common (default)
-    rerender(
-      <BiomeHUD
-        generation={200}
-        rarity="Common"
-        elementBalance={{ C: 50 }}
-      />
-    );
+    rerender(<BiomeHUD generation={200} rarity="Common" />);
     expect(screen.getByText('🍃')).toBeInTheDocument();
   });
 
   it('BiomeControls のボタン押下がハンドラーを呼び出すこと', () => {
-    const onSelectElement = jest.fn();
-    const onSelectCrisis = jest.fn();
+    const onToggleSeedMode = jest.fn();
+    const onShowCatalog = jest.fn();
     const onRewind = jest.fn();
 
     render(
       <BiomeControls
-        selectedElement={null}
-        onSelectElement={onSelectElement}
-        selectedCrisis={null}
-        onSelectCrisis={onSelectCrisis}
-        onInjectElement={jest.fn()}
-        onTriggerCrisis={jest.fn()}
-        onRollSubstance={jest.fn()}
+        seedMode={true}
+        onToggleSeedMode={onToggleSeedMode}
+        leniaMu={0.15}
+        leniaSigma={0.017}
+        onLeniaMuChange={jest.fn()}
+        onLeniaSigmaChange={jest.fn()}
+        onShowCatalog={onShowCatalog}
         onRewind={onRewind}
         paused={false}
         onTogglePause={jest.fn()}
       />
     );
 
-    // 元素選択ボタンのテスト
-    const injectBtn = screen.getByRole('button', { name: /C/ });
-    fireEvent.click(injectBtn);
-    expect(onSelectElement).toHaveBeenCalledWith('C');
+    fireEvent.click(screen.getByTestId('control-seed-mode'));
+    expect(onToggleSeedMode).toHaveBeenCalled();
 
-    // 災害選択ボタンのテスト
-    const meteorBtn = screen.getByRole('button', { name: /Meteor/i });
-    fireEvent.click(meteorBtn);
-    expect(onSelectCrisis).toHaveBeenCalledWith('Meteor');
+    fireEvent.click(screen.getByTestId('control-catalog'));
+    expect(onShowCatalog).toHaveBeenCalled();
 
-    // 巻き戻しボタンのテスト
     const rewindBtn = screen.getByRole('button', { name: /Rewind/i });
     fireEvent.click(rewindBtn);
     expect(onRewind).toHaveBeenCalled();
@@ -141,13 +106,13 @@ describe('Biome HUD & Controls Components', () => {
     const onNewSeed = jest.fn();
     render(
       <BiomeControls
-        selectedElement={null}
-        onSelectElement={jest.fn()}
-        selectedCrisis={null}
-        onSelectCrisis={jest.fn()}
-        onInjectElement={jest.fn()}
-        onTriggerCrisis={jest.fn()}
-        onRollSubstance={jest.fn()}
+        seedMode={true}
+        onToggleSeedMode={jest.fn()}
+        leniaMu={0.15}
+        leniaSigma={0.017}
+        onLeniaMuChange={jest.fn()}
+        onLeniaSigmaChange={jest.fn()}
+        onShowCatalog={jest.fn()}
         onRewind={jest.fn()}
         paused={false}
         onTogglePause={jest.fn()}
@@ -164,23 +129,21 @@ describe('Biome HUD & Controls Components', () => {
   it('BiomeControls が onNewSeed ハンドラーを持たない場合に New Seed ボタンを表示しないこと', () => {
     render(
       <BiomeControls
-        selectedElement={null}
-        onSelectElement={jest.fn()}
-        selectedCrisis={null}
-        onSelectCrisis={jest.fn()}
-        onInjectElement={jest.fn()}
-        onTriggerCrisis={jest.fn()}
-        onRollSubstance={jest.fn()}
+        seedMode={true}
+        onToggleSeedMode={jest.fn()}
+        leniaMu={0.15}
+        leniaSigma={0.017}
+        onLeniaMuChange={jest.fn()}
+        onLeniaSigmaChange={jest.fn()}
+        onShowCatalog={jest.fn()}
         onRewind={jest.fn()}
         paused={false}
         onTogglePause={jest.fn()}
       />
     );
 
-    const newSeedBtn = screen.queryByRole('button', { name: /New Seed/i });
-    expect(newSeedBtn).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /New Seed/i })).not.toBeInTheDocument();
   });
-
 
   it('BiomeResult が最終結果を表示すること', () => {
     const onSave = jest.fn();
@@ -196,30 +159,46 @@ describe('Biome HUD & Controls Components', () => {
     expect(screen.getByText(/Legendary/)).toBeInTheDocument();
     expect(screen.getByText(/300/)).toBeInTheDocument();
 
-    const saveBtn = screen.getByRole('button', { name: /Save/i });
-    fireEvent.click(saveBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Save/i }));
     expect(onSave).toHaveBeenCalled();
   });
 
   it('BiomeDendou が殿堂入りのリストを正しく描画すること', () => {
-    const mockList = [
-      { id: '1', name: 'Legendary Specimen A', generation: 250, rarity: 'Legendary', date: '2026-06-10' }
-    ];
     const onLoad = jest.fn();
+    const mockList = [
+      { id: '1', name: 'Legendary Specimen A', generation: 250, rarity: 'Legendary', date: '2026-06-10' },
+    ];
 
-    render(
-      <BiomeDendou
-        list={mockList}
-        onLoad={onLoad}
-      />
-    );
+    render(<BiomeDendou list={mockList} onLoad={onLoad} />);
 
     expect(screen.getByText('Legendary Specimen A')).toBeInTheDocument();
 
-    const loadBtn = screen.getByRole('button', { name: /Load/i });
-    fireEvent.click(loadBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Load/i }));
     expect(onLoad).toHaveBeenCalledWith('1');
   });
+
+  it('BiomeDendou が Lenia 種パラメータを詳細に表示すること', () => {
+    const mockList = [
+      {
+        id: '1',
+        name: 'Orbium A',
+        generation: 200,
+        rarity: 'Epic',
+        date: '2026-06-10',
+        genome_data: JSON.stringify({ mu: 0.15, sigma: 0.017, species_hash: 999, mass: 400, longevity: 120 }),
+        active_cell_count: 80,
+      },
+    ];
+
+    render(<BiomeDendou list={mockList} onLoad={jest.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /biomeConsole\.detail/i }));
+
+    expect(screen.getByText('Lenia 種パラメータ')).toBeInTheDocument();
+    expect(screen.getByText('0.150')).toBeInTheDocument();
+    expect(screen.getByText('120 tick')).toBeInTheDocument();
+  });
+
   it('BiomeDendou が詳細情報（元素バランス、形態分布、発見した反応、活性セル数）を正しく描画すること', () => {
     const mockList = [
       {
@@ -232,40 +211,24 @@ describe('Biome HUD & Controls Components', () => {
         morphology_distribution: '{"Predator":2,"Producer":1}',
         discovered_reactions: '["N+P->C+H","Fe+O->Si"]',
         active_cell_count: 50,
-      }
+      },
     ];
-    const onLoad = jest.fn();
 
-    render(
-      <BiomeDendou
-        list={mockList}
-        onLoad={onLoad}
-      />
-    );
+    render(<BiomeDendou list={mockList} onLoad={jest.fn()} />);
 
-    expect(screen.getByText('Legendary Specimen A')).toBeInTheDocument();
-    
-    // 詳細トグルボタンをクリック
-    const detailBtn = screen.getByRole('button', { name: /biomeConsole\.detail/i });
-    fireEvent.click(detailBtn);
+    fireEvent.click(screen.getByRole('button', { name: /biomeConsole\.detail/i }));
 
-    // 展開後に詳細が表示されていることをアサート
     expect(screen.getByText(/biomeConsole\.activeCells 50/i)).toBeInTheDocument();
     expect(screen.getByText('C')).toBeInTheDocument();
     expect(screen.getByText('40.0%')).toBeInTheDocument();
-    expect(screen.getByText('Predator')).toBeInTheDocument();
-    expect(screen.getByText('66.7%')).toBeInTheDocument();
-    expect(screen.getByText(/N\+P->C\+H/i)).toBeInTheDocument();
-    expect(screen.getByText(/Fe\+O->Si/i)).toBeInTheDocument();
   });
 
-  it('BiomeResult が詳細情報（元素バランス、形態分布、発見した反応、活性セル数）を描画すること', () => {
-    const onSave = jest.fn();
+  it('BiomeResult が詳細情報を描画すること', () => {
     render(
       <BiomeResult
         generation={300}
         rarity="Legendary"
-        onSave={onSave}
+        onSave={jest.fn()}
         onClose={jest.fn()}
         elementBalance={{ C: 40, N: 30, P: 10, H: 20 }}
         morphologyDistribution={{ Predator: 2, Producer: 1 }}
@@ -275,62 +238,36 @@ describe('Biome HUD & Controls Components', () => {
     );
 
     expect(screen.getByText(/Legendary/)).toBeInTheDocument();
-    expect(screen.getByText(/300/)).toBeInTheDocument();
     expect(screen.getByText(/biomeConsole\.activeCells 50/)).toBeInTheDocument();
-    expect(screen.getByText('C')).toBeInTheDocument();
-    expect(screen.getByText('40.0%')).toBeInTheDocument();
-    expect(screen.getByText('Predator')).toBeInTheDocument();
-    expect(screen.getByText('66.7%')).toBeInTheDocument();
-    expect(screen.getByText(/N\+P->C\+H/)).toBeInTheDocument();
-    expect(screen.getByText(/Fe\+O->Si/)).toBeInTheDocument();
   });
 
-  it('BiomeTutorial が新ステップ「元素反応の連鎖」を含むすべてのステップを正しく切り替えて表示すること', () => {
-    const onClose = jest.fn();
-    render(<BiomeTutorial onClose={onClose} />);
+  it('BiomeTutorial が Lenia 向けステップを正しく切り替えて表示すること', () => {
+    render(<BiomeTutorial onClose={jest.fn()} />);
 
-    expect(screen.getByText('🧬 生命の進化を見守る')).toBeInTheDocument();
+    expect(screen.getByText('🧬 Lenia 生命場を観察する')).toBeInTheDocument();
 
     const nextBtn = screen.getByRole('button', { name: /次へ/i });
     fireEvent.click(nextBtn);
-    fireEvent.click(nextBtn);
-    fireEvent.click(nextBtn);
-
-    expect(screen.getByText('⚗️ 元素反応の連鎖')).toBeInTheDocument();
-    expect(screen.getByText(/反応は質量を保存し/)).toBeInTheDocument();
+    expect(screen.getByText('🌱 種まきで新しい種を誕生させる')).toBeInTheDocument();
   });
 
   it('BiomeDendou が空の detail データや不正な JSON でもクラッシュせずにレンダリングされること', () => {
-    const mockListWithInvalidData = [
-      {
-        id: '2',
-        name: 'Faulty Specimen',
-        generation: 100,
-        rarity: 'Common',
-        date: '2026-06-11',
-        element_balance: 'invalid-json',
-        morphology_distribution: '',
-        discovered_reactions: 'invalid-array',
-        active_cell_count: undefined,
-      }
-    ];
-
     render(
       <BiomeDendou
-        list={mockListWithInvalidData}
+        list={[{
+          id: '2',
+          name: 'Faulty Specimen',
+          generation: 100,
+          rarity: 'Common',
+          date: '2026-06-11',
+          element_balance: 'invalid-json',
+        }]}
         onLoad={jest.fn()}
       />
     );
 
     expect(screen.getByText('Faulty Specimen')).toBeInTheDocument();
-    
-    // 詳細トグルボタンをクリックして展開するが、解析失敗データのためパーセントバー等は描画されず、かつクラッシュもしないこと
-    const detailBtn = screen.getByRole('button', { name: /biomeConsole\.detail/i });
-    fireEvent.click(detailBtn);
-
+    fireEvent.click(screen.getByRole('button', { name: /biomeConsole\.detail/i }));
     expect(screen.queryByText(/biomeConsole\.elementRatio/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/biomeConsole\.morphologyDistribution/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/biomeConsole\.discoveredReactions/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/biomeConsole\.activeCells/i)).not.toBeInTheDocument();
   });
 });

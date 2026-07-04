@@ -28,7 +28,7 @@ export function Showcase() {
   return (
     <section id="showcase" className="py-24 relative overflow-hidden bg-brand-bg" aria-labelledby="showcase-title">
       <div className="absolute inset-0 z-0 flex justify-around items-center pointer-events-none" aria-hidden="true">
-        <div className="w-[500px] h-[500px] bg-brand-purple/5 blur-[150px] rounded-full" />
+        <div className="w-[500px] h-[500px] bg-brand-cyan/5 blur-[150px] rounded-full" />
       </div>
 
       <div className="container mx-auto px-4 relative z-10">

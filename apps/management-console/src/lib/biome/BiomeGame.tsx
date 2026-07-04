@@ -7,10 +7,12 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useBiomeEngine } from '../../hooks/useBiomeEngine';
+import { useTranslation } from '../../i18n';
 import { BiomeHUD } from './BiomeHUD';
 import { BiomeControls } from './BiomeControls';
 import { BiomeCanvas } from './BiomeCanvas';
 import type { InjectionMark } from './biomeTypes';
+import { CELL_COUNT, RENDER_STRIDE, MORPH_COUNT, MORPH_NAMES } from './biomeTypes';
 import { CycleSelect } from './CycleSelect';
 import { BiomeResult } from './BiomeResult';
 import { BiomeDendou, Specimen } from './BiomeDendou';
@@ -18,7 +20,6 @@ import { BiomeTutorial } from './BiomeTutorial';
 import { BiomeEventToast } from './BiomeEventToast';
 import { fetchBiomeSpecimens, saveBiomeRun, saveBiomeSpecimen } from './biomeApi';
 import { isAuthenticated } from '../../lib/auth';
-import ThemeBridge from './ThemeBridge';
 
 export interface BiomeGameProps {
   seed?: number;
@@ -26,6 +27,7 @@ export interface BiomeGameProps {
 }
 
 export function BiomeGame({ seed, standalone }: BiomeGameProps) {
+  const { t } = useTranslation();
   const [paused, setPaused] = useState(false);
   const [currentSeed, setCurrentSeed] = useState(() => seed ?? Math.floor(Math.random() * 1000000));
   const [speed, setSpeed] = useState(100); // ms (100 = 1x, 50 = 2x, 20 = 5x, 10 = 10x)
@@ -36,21 +38,20 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
   const [showTutorial, setShowTutorial] = useState(false);
 
   // インタラクション用 State
-  const [selectedElement, setSelectedElement] = useState<string | null>('C');
-  const [selectedCrisis, setSelectedCrisis] = useState<string | null>(null);
+  const [seedMode, setSeedMode] = useState(true);
   const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
   const [hoverData, setHoverData] = useState<any>(null);
 
-  const [shakeOffset, setShakeOffset] = useState({ x: 0, y: 0 });
+  const [clickPulse, setClickPulse] = useState(false);
   const [comboCount, setComboCount] = useState(0);
   const [activeEvents, setActiveEvents] = useState<any[]>([]);
   const [rarityProgress, setRarityProgress] = useState<any>(null);
   const lastInjectTimeRef = useRef(0);
 
   // エフェクト & Bloom用 State
-  const [effectType, setEffectType] = useState<'none' | 'higgs' | 'tachyon'>('none');
-  const [effectIntensity, setEffectIntensity] = useState(0.0);
-  const [effectCenter, setEffectCenter] = useState<[number, number]>([0.5, 0.5]);
+  const [effectType] = useState<'none' | 'higgs' | 'tachyon'>('none');
+  const [effectIntensity] = useState(0.0);
+  const [effectCenter] = useState<[number, number]>([0.5, 0.5]);
   const [bloomEnabled, setBloomEnabled] = useState(true);
   const [flash, setFlash] = useState(false);
 
@@ -92,19 +93,21 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
     rewind,
     getRenderView,
     getCellDetail,
-    injectElement,
-    applyCrisis,
+    injectBrush,
     getRarity,
     getActiveCellCount,
     getElementBalance,
-    rollSubstance,
-    getMutationBoost,
-    ticksSinceMutation,
-
-    serializeGenome,
     getRarityProgress,
     getLastTickEvents,
+    leniaMu,
+    leniaSigma,
+    setLeniaParams,
+    paintEnv,
+    clearEnv,
   } = useBiomeEngine({ seed: currentSeed, paused });
+
+  // 環境ペン: null=種まき, それ以外は地形を描く（1=壁 2=養分 3=毒）
+  const [envPen, setEnvPen] = useState<null | 1 | 2 | 3>(null);
 
   // 初回起動時のチュートリアル自動表示
   useEffect(() => {
@@ -137,22 +140,13 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
     }
   }, [seed]);
 
-  // 初期セルの生成および状態更新
+  // 新しいシードのときはリザルト表示などをリセット
   useEffect(() => {
     if (loading) return;
-
-    // テスト・デモ用に中央部に多様性のある初期配置（C/N/P 混合）
-    for (let y = 58; y <= 70; y++) {
-      for (let x = 58; x <= 70; x++) {
-        const elementIdx = (x + y) % 3; // C (0), N (1), P (2)
-        injectElement(x, y, elementIdx, 4000);
-      }
-    }
-    // 新しいシードのときはリザルト表示などをリセット
     setShowResult(false);
     setResultDismissed(false);
     setPaused(false);
-  }, [loading, currentSeed, injectElement]);
+  }, [loading, currentSeed]);
 
   // 世代マイルストーン演出 (50, 100, 150世代でフラッシュ)
   const prevGenerationRef = useRef(generation);
@@ -190,6 +184,9 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
             const toName = morphNames[e.to] || '未知の種';
             message = `細胞が ${toName} に進化しました！`;
             icon = '🧬';
+          } else if (e.type === 'PrismaticBorn') {
+            message = t('biome.prismaticBorn', { x: e.x, y: e.y });
+            icon = '✨';
           }
           return { type: e.type, message, icon };
         });
@@ -197,6 +194,23 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
       }
     }
   }, [generation, getRarityProgress, getLastTickEvents]);
+
+  const countMorphologyDistribution = useCallback((view: Float32Array): Record<string, number> => {
+    const counts: Record<string, number> = {};
+    for (let m = 0; m < MORPH_COUNT; m++) {
+      counts[MORPH_NAMES[m]] = 0;
+    }
+    for (let i = 0; i < CELL_COUNT; i++) {
+      const offset = i * RENDER_STRIDE;
+      const active = view[offset + 2];
+      if (active < 0.5) continue;
+      const morph = Math.floor(view[offset + 3]);
+      if (morph >= 0 && morph < MORPH_COUNT) {
+        counts[MORPH_NAMES[morph]]++;
+      }
+    }
+    return counts;
+  }, []);
 
   // 200 世代に達した時点で自動停止し、リザルトダイアログを表示
   useEffect(() => {
@@ -207,38 +221,20 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
   }, [generation, showResult, showDendou, resultDismissed]);
 
   // ゲームの自動進行タイマー
+  // 世代レート = 1000/speed を維持しつつ、interval は speed の整数倍で
+  // 50ms 以上に丸める（高速時 ~20Hz 更新でカクツキ軽減、postMessage 上限 20/s）
   useEffect(() => {
     if (loading || paused) return;
 
+    const intervalMs = speed * Math.max(1, Math.ceil(50 / speed));
+    const tickCount = Math.max(1, Math.round(intervalMs / speed));
+
     const interval = setInterval(() => {
-      tick();
-    }, speed);
+      tick(tickCount);
+    }, intervalMs);
 
     return () => clearInterval(interval);
   }, [loading, paused, speed, tick]);
-
-  const elementIndexMap: Record<string, number> = {
-    C: 0,
-    N: 1,
-    P: 2,
-    H: 3,
-    O: 4,
-    S: 5,
-    Fe: 6,
-    Si: 7,
-  };
-
-  // 元素に対応するカラー
-  const elementColorMap: Record<string, string> = {
-    C: ThemeBridge.getUiElementColor('c'),
-    N: ThemeBridge.getUiElementColor('n'),
-    P: ThemeBridge.getUiElementColor('p'),
-    H: ThemeBridge.getUiElementColor('h'),
-    O: ThemeBridge.getUiElementColor('o'),
-    S: ThemeBridge.getUiElementColor('s'),
-    Fe: ThemeBridge.getUiElementColor('fe'),
-    Si: ThemeBridge.getUiElementColor('si'),
-  };
 
   // 注入リップルアニメーションの起動
   const startInjectionRipple = useCallback((cx: number, cy: number, elementIdx: number) => {
@@ -345,80 +341,43 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
     return () => cancelAnimationFrame(animId);
   }, [particles.length > 0 || floatingTexts.length > 0]);
 
-  // キャンバスクリック時の元素注入または災害発生
+  // キャンバスクリック時の種まき
   const handleCanvasClick = useCallback((coord: { x: number; y: number }) => {
     if (loading) return;
-    if (selectedElement) {
-      const idx = elementIndexMap[selectedElement];
-      if (idx !== undefined) {
-        // 周囲5x5に大量注入（少量では全体比率に影響しないため、体感可能な量を投入）
-        for (let dy = -2; dy <= 2; dy++) {
-          for (let dx = -2; dx <= 2; dx++) {
-            const tx = coord.x + dx;
-            const ty = coord.y + dy;
-            if (tx >= 0 && tx < 128 && ty >= 0 && ty < 128) {
-              injectElement(tx, ty, idx, 15000);
-            }
-          }
-        }
 
-        // 注入後に数 tick 回して拡散・反応を即座に反映
-        // （一時停止中でも操作の効果が見えるようにする）
-        for (let i = 0; i < 5; i++) {
-          tick();
-        }
-
-        // 画面シェイク & コンボ判定
-        setShakeOffset({ x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 });
-        setTimeout(() => setShakeOffset({ x: 0, y: 0 }), 100);
-
-        const now = Date.now();
-        let nextCombo = 1;
-        if (now - lastInjectTimeRef.current < 800) {
-          nextCombo = comboCount + 1;
-        }
-        setComboCount(nextCombo);
-        lastInjectTimeRef.current = now;
-
-        // 注入フィードバック: リップル + パーティクル + テキスト
-        startInjectionRipple(coord.x, coord.y, idx);
-        const color = elementColorMap[selectedElement] || '#00f0ff';
-        spawnParticles(coord.x, coord.y, color);
-        const comboText = nextCombo > 1 ? ` COMBO x${nextCombo}!` : '';
-        spawnFloatingText(coord.x, coord.y, `+${selectedElement} ×25${comboText}`, color);
-      }
-    } else if (selectedCrisis) {
-      const type = selectedCrisis === 'Meteor' ? 'meteor' : 'ice_age';
-      applyCrisis(type, coord.x, coord.y);
-
-      // エフェクトトリガー
-      setEffectType(selectedCrisis === 'Meteor' ? 'higgs' : 'tachyon');
-      setEffectCenter([coord.x / 128, coord.y / 128]);
-
-      const maxIntensity = selectedCrisis === 'Meteor' ? 1.0 : 0.95;
-      setEffectIntensity(maxIntensity);
-
-      // 2秒間のフェードアウトアニメーション
-      let start: number | null = null;
-      const duration = 2000;
-      const animate = (timestamp: number) => {
-        if (!start) start = timestamp;
-        const progress = timestamp - start;
-        const remaining = Math.max(0, maxIntensity * (1 - progress / duration));
-        setEffectIntensity(remaining);
-        if (progress < duration) {
-          requestAnimationFrame(animate);
-        } else {
-          setEffectType('none');
-          setEffectIntensity(0);
-        }
-      };
-      requestAnimationFrame(animate);
-
-      // 災害は1発モノなので発動後リセット
-      setSelectedCrisis(null);
+    // 環境ペンが選択されていれば地形を描く（種まきではなく因果を与える操作）
+    if (envPen !== null) {
+      paintEnv(coord.x, coord.y, 4, envPen);
+      setClickPulse(true);
+      setTimeout(() => setClickPulse(false), 150);
+      const penColor = envPen === 1 ? '#8899aa' : envPen === 2 ? '#66ff99' : '#ff5566';
+      const penLabel = envPen === 1 ? '🧱 壁' : envPen === 2 ? '🌿 養分' : '☠️ 毒';
+      startInjectionRipple(coord.x, coord.y, 0);
+      spawnFloatingText(coord.x, coord.y, penLabel, penColor);
+      return;
     }
-  }, [loading, selectedElement, selectedCrisis, injectElement, applyCrisis, tick, getElementBalance, getActiveCellCount, startInjectionRipple, spawnParticles, spawnFloatingText]);
+
+    if (!seedMode) return;
+
+    injectBrush(coord.x, coord.y, 3, 0, 20000);
+
+    setClickPulse(true);
+    setTimeout(() => setClickPulse(false), 150);
+
+    const now = Date.now();
+    let nextCombo = 1;
+    if (now - lastInjectTimeRef.current < 800) {
+      nextCombo = comboCount + 1;
+    }
+    setComboCount(nextCombo);
+    lastInjectTimeRef.current = now;
+
+    startInjectionRipple(coord.x, coord.y, 0);
+    const color = '#00f0ff';
+    spawnParticles(coord.x, coord.y, color);
+    const comboText = nextCombo > 1 ? ` COMBO x${nextCombo}!` : '';
+    spawnFloatingText(coord.x, coord.y, `🌱 種まき${comboText}`, color);
+  }, [loading, seedMode, envPen, paintEnv, injectBrush, comboCount, startInjectionRipple, spawnParticles, spawnFloatingText]);
 
   // マウスホバーコールバック
   const handleHover = useCallback((coord: { x: number; y: number } | null) => {
@@ -431,57 +390,6 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
       setHoverData(null);
     }
   }, [loading, getCellDetail]);
-
-  const handleInjectElement = (el: string) => {
-    if (loading) return;
-    const idx = elementIndexMap[el];
-    if (idx !== undefined) {
-      for (let y = 60; y <= 68; y++) {
-        for (let x = 60; x <= 68; x++) {
-          injectElement(x, y, idx, 15000);
-        }
-      }
-      // 注入後に拡散を即座に実行
-      for (let i = 0; i < 5; i++) {
-        tick();
-      }
-
-      // 画面シェイク & コンボ判定
-      setShakeOffset({ x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 });
-      setTimeout(() => setShakeOffset({ x: 0, y: 0 }), 100);
-
-      const now = Date.now();
-      let nextCombo = 1;
-      if (now - lastInjectTimeRef.current < 800) {
-        nextCombo = comboCount + 1;
-      }
-      setComboCount(nextCombo);
-      lastInjectTimeRef.current = now;
-
-      // ボタン経由の注入にもフィードバック追加
-      const color = elementColorMap[el] || '#00f0ff';
-      startInjectionRipple(64, 64, idx);
-      spawnParticles(64, 64, color);
-      const comboText = nextCombo > 1 ? ` COMBO x${nextCombo}!` : '';
-      spawnFloatingText(64, 64, `+${el} ×81${comboText}`, color);
-    }
-  };
-
-  const handleTriggerCrisis = (crisis: string) => {
-    if (loading) return;
-    const type = crisis === 'Meteor' ? 'meteor' : 'ice_age';
-    applyCrisis(type, 64, 64);
-  };
-
-  // ランダム注入の処理
-  const handleRollSubstance = () => {
-    if (loading) return;
-    const rolled = rollSubstance();
-    // 特殊演出用にフラッシュをトリガー
-    setFlash(true);
-    setTimeout(() => setFlash(false), 100);
-    console.log("Rolled Substance: ", rolled);
-  };
 
   const handleSaveSpecimen = async () => {
     if (loading || !isAuthenticated()) return;
@@ -511,8 +419,19 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
 
       await saveBiomeRun(runPayload);
 
-      // 2. ゲノムデータを中央付近のセル(64,64)からシリアライズして取得
-      const genomeStr = serializeGenome(64, 64) || '{}';
+      // 2. Lenia 種パラメータを genome_data に格納
+      const progress = getRarityProgress();
+      const genomeStr = JSON.stringify({
+        mu: leniaMu,
+        sigma: leniaSigma,
+        species_hash: progress?.species_hash ?? 0,
+        mass: progress?.mass ?? 0,
+        locomotion: progress?.locomotion ?? 0,
+        longevity: progress?.longevity ?? 0,
+      });
+      const morphologyDistribution = countMorphologyDistribution(getRenderView());
+      const rarityLabels = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
+      const savedRarity = (rarityLabels[getRarity()] || 'Common').toLowerCase();
 
       // 3. Specimen 情報を送信
       const specimenPayload = {
@@ -520,8 +439,9 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
         run_id: runId,
         specimen_name: `Species_${currentSeed}`,
         genome_data: genomeStr,
-        rarity: rarity.toLowerCase(),
+        rarity: savedRarity,
         element_balance: JSON.stringify(balance),
+        morphology_distribution: JSON.stringify(morphologyDistribution),
         active_cell_count: getActiveCellCount(),
       };
 
@@ -596,7 +516,8 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
   const rarity = rarities[rarityIndex] || 'Common';
 
   const renderView = getRenderView();
-
+  const morphologyDistribution = countMorphologyDistribution(renderView);
+  const structureBonus = (rarityProgress?.symmetry_score ?? 0) >= 0.65;
 
   return (
     <div style={{
@@ -624,9 +545,6 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
         <BiomeHUD
           generation={generation}
           rarity={rarity}
-          elementBalance={elementBalance}
-          mutationBoost={getMutationBoost()}
-          ticksSinceMutation={ticksSinceMutation()}
           activeCellCount={getActiveCellCount()}
           rarityProgress={rarityProgress}
         />
@@ -652,8 +570,8 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
           height: '512px',
           position: 'relative',
           flexShrink: 0,
-          transform: `translate(${shakeOffset.x}px, ${shakeOffset.y}px)`,
-          transition: 'transform 0.05s ease-out'
+          boxShadow: clickPulse ? '0 0 24px 4px rgba(0, 240, 255, 0.6)' : '0 0 0 0 rgba(0, 240, 255, 0)',
+          transition: 'box-shadow 0.15s ease-out'
         }}>
           <BiomeCanvas
             width={512}
@@ -666,7 +584,9 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
             onClick={handleCanvasClick}
             onHover={handleHover}
             bloomEnabled={bloomEnabled}
+            structureBonus={structureBonus}
             injectionMarks={injectionMarks}
+            dragPaint={envPen !== null}
           />
           
           {/* マイルストーンフラッシュ */}
@@ -756,17 +676,10 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
               </div>
               {hoverData.active && (
                 <>
-                  <div>形態: {
-                    hoverData.morphology === 1 ? '🌲 生産者 (Producer)' :
-                    hoverData.morphology === 2 ? '🌊 消費者 (Consumer)' :
-                    hoverData.morphology === 3 ? '⚔️ 捕食者 (Predator)' : '🍂 分解者 (Basic)'
-                  }</div>
-                  <div>エネルギー: {hoverData.energy}</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginTop: '2px', fontSize: '0.75rem' }}>
-                    <span>C: {hoverData.elements[0]}</span>
-                    <span>N: {hoverData.elements[1]}</span>
-                    <span>P: {hoverData.elements[2]}</span>
-                    <span>H: {hoverData.elements[3]}</span>
+                  <div>
+                    場の強度: R {(hoverData.elements[0] / 655.35).toFixed(0)}% / G{' '}
+                    {(hoverData.elements[1] / 655.35).toFixed(0)}% / B{' '}
+                    {(hoverData.elements[2] / 655.35).toFixed(0)}%
                   </div>
                   {hoverData.is_frozen && (
                     <div style={{ color: '#00f0ff', fontSize: '0.75rem', marginTop: '2px' }}>❄️ 凍結状態</div>
@@ -787,19 +700,13 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
         flexShrink: 0
       }}>
         <BiomeControls
-          selectedElement={selectedElement}
-          onSelectElement={(el) => {
-            setSelectedElement(el);
-            setSelectedCrisis(null);
-          }}
-          selectedCrisis={selectedCrisis}
-          onSelectCrisis={(cr) => {
-            setSelectedCrisis(cr);
-            setSelectedElement(null);
-          }}
-          onInjectElement={handleInjectElement}
-          onTriggerCrisis={handleTriggerCrisis}
-          onRollSubstance={handleRollSubstance}
+          seedMode={seedMode}
+          onToggleSeedMode={() => setSeedMode(!seedMode)}
+          leniaMu={leniaMu}
+          leniaSigma={leniaSigma}
+          onLeniaMuChange={(v) => setLeniaParams(v, leniaSigma)}
+          onLeniaSigmaChange={(v) => setLeniaParams(leniaMu, v)}
+          onShowCatalog={() => setShowDendou(true)}
           onRewind={() => rewind(20)}
           paused={paused}
           onTogglePause={() => setPaused(!paused)}
@@ -809,6 +716,61 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
           }}
           onShowTutorial={() => setShowTutorial(true)}
         />
+
+        {/* 環境ペン: プレイヤーが地形を描いて生命の展開を変える */}
+        <div style={{
+          background: 'var(--white-05)',
+          border: '1px solid var(--white-10)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '10px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+        }}>
+          <div style={{ fontSize: '12px', color: 'var(--white-60)', marginBottom: '2px' }}>
+            🖐 環境ペン（地形を描く）
+          </div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {([
+              { key: null, label: '🌱 種まき', color: '#00f0ff' },
+              { key: 1 as const, label: '🧱 壁', color: '#8899aa' },
+              { key: 2 as const, label: '🌿 養分', color: '#66ff99' },
+              { key: 3 as const, label: '☠️ 毒', color: '#ff5566' },
+            ]).map((pen) => (
+              <button
+                key={String(pen.key)}
+                onClick={() => setEnvPen(pen.key)}
+                style={{
+                  flex: '1 1 40%',
+                  background: envPen === pen.key ? pen.color : 'var(--white-05)',
+                  border: `1px solid ${envPen === pen.key ? pen.color : 'var(--white-10)'}`,
+                  borderRadius: 'var(--radius-sm)',
+                  color: envPen === pen.key ? '#001018' : 'var(--white-100)',
+                  padding: '8px 4px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: envPen === pen.key ? 700 : 400,
+                }}
+              >
+                {pen.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => clearEnv()}
+            style={{
+              background: 'var(--white-05)',
+              border: '1px solid var(--white-10)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--white-60)',
+              padding: '6px',
+              cursor: 'pointer',
+              fontSize: '11px',
+            }}
+          >
+            地形をすべて消去
+          </button>
+        </div>
 
         {/* 別ウインドウで開くボタン */}
         {!standalone && (
@@ -870,6 +832,10 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
           }}
           elementBalance={elementBalance}
           activeCellCount={getActiveCellCount()}
+          symmetryScore={rarityProgress?.symmetry_score}
+          complexityScore={rarityProgress?.complexity_score}
+          prismaticCells={rarityProgress?.prismatic_cells}
+          morphologyDistribution={morphologyDistribution}
         />
       )}
 

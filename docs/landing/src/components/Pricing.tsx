@@ -16,7 +16,7 @@ export function Pricing() {
       {/* Background gradients */}
       <div className="absolute inset-0 z-0 flex justify-around items-center pointer-events-none" aria-hidden="true">
         <div className="w-[500px] h-[500px] bg-brand-cyan/10 blur-[150px] rounded-full" />
-        <div className="w-[500px] h-[500px] bg-brand-purple/10 blur-[150px] rounded-full" />
+        <div className="w-[500px] h-[500px] bg-brand-cyan/10 blur-[150px] rounded-full" />
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
@@ -112,7 +112,7 @@ export function Pricing() {
             </ul>
 
             <a
-              href="https://buy.stripe.com/aFa9AS1Kc1l47mK3u5f7i01"
+              href="https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03"
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full py-4 text-center bg-brand-cyan hover:bg-brand-cyan-hover text-black font-extrabold rounded-full transition-all duration-300 shadow-lg shadow-brand-cyan/20 hover:shadow-brand-cyan/40 transform hover:-translate-y-0.5"

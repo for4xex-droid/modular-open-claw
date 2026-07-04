@@ -17,6 +17,9 @@ export interface BiomeResultProps {
   morphologyDistribution?: Record<string, number>;
   discoveredReactions?: string[];
   activeCellCount?: number;
+  symmetryScore?: number;
+  complexityScore?: number;
+  prismaticCells?: number;
 }
 
 export function BiomeResult({ 
@@ -27,7 +30,10 @@ export function BiomeResult({
   elementBalance,
   morphologyDistribution,
   discoveredReactions,
-  activeCellCount
+  activeCellCount,
+  symmetryScore,
+  complexityScore,
+  prismaticCells,
 }: BiomeResultProps) {
   const { t } = useTranslation();
   const containerStyle: CSSProperties = {
@@ -100,6 +106,21 @@ export function BiomeResult({
         {activeCellCount !== undefined && (
           <div style={{ fontSize: 'var(--font-size-base)', fontWeight: '600' }}>
             {t('biomeConsole.activeCells')} {activeCellCount}
+          </div>
+        )}
+        {symmetryScore !== undefined && (
+          <div style={{ fontSize: 'var(--font-size-base)' }}>
+            {t('biome.result.symmetry')} {symmetryScore.toFixed(2)}
+          </div>
+        )}
+        {complexityScore !== undefined && (
+          <div style={{ fontSize: 'var(--font-size-base)' }}>
+            {t('biome.result.complexity')} {complexityScore.toFixed(2)}
+          </div>
+        )}
+        {prismaticCells !== undefined && (
+          <div style={{ fontSize: 'var(--font-size-base)' }}>
+            {t('biome.result.prismatic')} {prismaticCells}
           </div>
         )}
       </div>

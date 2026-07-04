@@ -14,6 +14,7 @@ interface BiomePostEffectsProps {
   effectIntensity?: number;
   effectCenter?: [number, number];
   bloomEnabled?: boolean;
+  structureBonus?: boolean;
 }
 
 export function BiomePostEffects({
@@ -21,6 +22,7 @@ export function BiomePostEffects({
   effectIntensity = 0.5,
   effectCenter = [0.5, 0.5],
   bloomEnabled = true,
+  structureBonus = false,
 }: BiomePostEffectsProps) {
   // カスタムエフェクトを useMemo で作成
   const tachyonEffect = useMemo(() => new TachyonEffect({ damp: 0.85 }), []);
@@ -46,12 +48,14 @@ export function BiomePostEffects({
     };
   }, [tachyonEffect, higgsEffect]);
 
+  const bloomIntensity = 1.2 * (structureBonus ? 1.3 : 1.0);
+
   const passes: any[] = [];
   if (bloomEnabled) {
     passes.push(
       <Bloom 
         key="bloom"
-        intensity={1.2} 
+        intensity={bloomIntensity} 
         luminanceThreshold={0.15} 
         luminanceSmoothing={0.2} 
         mipmapBlur

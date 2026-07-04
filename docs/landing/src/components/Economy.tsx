@@ -28,8 +28,8 @@ export const Economy: React.FC = () => {
       subtitle: t('economy.card2_subtitle'),
       desc: t('economy.card2_desc'),
       icon: ArrowLeftRight,
-      color: 'text-brand-purple',
-      bgColor: 'bg-brand-purple/10',
+      color: 'text-gray-300',
+      bgColor: 'bg-white/5',
     },
     {
       id: 'c3',
@@ -78,7 +78,7 @@ export const Economy: React.FC = () => {
                   <div className={`w-12 h-12 rounded-2xl ${card.bgColor} flex items-center justify-center`}>
                     <Icon className={card.color} size={24} aria-hidden="true" />
                   </div>
-                  <span className="text-sm font-bold text-brand-purple tracking-widest font-display px-3 py-1 rounded-full bg-brand-purple/5 border border-brand-purple/10">
+                  <span className="text-sm font-bold text-gray-400 tracking-widest font-display px-3 py-1 rounded-full bg-white/5 border border-white/10">
                     {card.subtitle}
                   </span>
                 </div>
@@ -94,7 +94,7 @@ export const Economy: React.FC = () => {
         </div>
 
         <div className="mb-12">
-          <h3 className="text-center text-sm font-bold text-brand-purple tracking-widest font-display mb-6 uppercase">
+          <h3 className="text-center text-sm font-bold text-gray-400 tracking-widest font-display mb-6 uppercase">
             {t('economy.moat_title')}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

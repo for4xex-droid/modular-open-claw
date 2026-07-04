@@ -1038,6 +1038,20 @@
       "managed": "🔐 Abyss Vault で管理中"
     }
   },
+  "biome": {
+    "prismaticBorn": "虹彩細胞が誕生！({{x}},{{y}})",
+    "hud": {
+      "structure": "構造美",
+      "prismatic": "虹彩細胞 ×2",
+      "symmetry": "対称性スコア",
+      "complexity": "複雑度スコア"
+    },
+    "result": {
+      "symmetry": "対称性:",
+      "complexity": "複雑度:",
+      "prismatic": "虹彩細胞数:"
+    }
+  },
   "biomeConsole": {
     "dendouTitle": "🏛️ 殿堂入り標本",
     "noSpecimens": "保存された標本はまだありません。",

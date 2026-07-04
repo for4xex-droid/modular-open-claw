@@ -96,7 +96,7 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({ priceId, agent
 
                     {/* Pricing & Trial Notice */}
                     <div style={styles.priceContainer}>
-                        <span style={styles.priceAmount}>$9.99</span>
+                        <span style={styles.priceAmount}>$19.99</span>
                         <span style={styles.pricePeriod}>/ month</span>
                         <div style={styles.trialBadge}>14-day Free Trial</div>
                     </div>

@@ -78,9 +78,9 @@ export function CodePreview() {
             <div className="p-6 overflow-x-auto">
               <pre className="text-sm font-mono text-gray-300 leading-relaxed">
                 <code>
-                  <span className="text-brand-rose">git</span> clone https://github.com/motivationstudio-llc/aiome
-                  <br /><span className="text-brand-rose">cd</span> aiome
-                  <br /><span className="text-brand-rose">docker compose</span> -f docker-compose.quickstart.yml up -d
+                  <span className="text-brand-cyan">git</span> clone https://github.com/motivationstudio-llc/aiome
+                  <br /><span className="text-brand-cyan">cd</span> aiome
+                  <br /><span className="text-brand-cyan">docker compose</span> -f docker-compose.quickstart.yml up -d
                 </code>
               </pre>
             </div>

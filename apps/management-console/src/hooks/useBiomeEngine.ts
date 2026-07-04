@@ -6,6 +6,10 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import BiomeWorker from './biome.worker?worker';
+import { GRID_WIDTH, RENDER_STRIDE } from '../lib/biome/biomeTypes';
+
+/** IndexedDB 自動保存のデバウンス間隔（ms） */
+const SAVE_DEBOUNCE_MS = 2000;
 
 /** biome-engine `RarityProgress` (libs/biome-engine/src/rarity.rs) の TS 表現 */
 export interface RarityProgress {
@@ -18,39 +22,60 @@ export interface RarityProgress {
   condition_morph_3: boolean;
   condition_morph_4: boolean;
   condition_active_1000: boolean;
+  symmetry_score: number;
+  complexity_score: number;
+  cluster_count: number;
+  prismatic_cells: number;
+  condition_structure: boolean;
+  condition_prismatic: boolean;
+  mass: number;
+  locomotion: number;
+  longevity: number;
+  species_hash: number;
 }
 
 /** biome-engine `BiomeEvent` (libs/biome-engine/src/lib.rs) の TS 表現 */
 export type BiomeEvent =
   | { type: 'MorphologyChanged'; from: number; to: number }
   | { type: 'MassExtinction'; lost_ratio: number }
-  | { type: 'NewReactionDiscovered'; reaction_id: number };
+  | { type: 'NewReactionDiscovered'; reaction_id: number }
+  | { type: 'PrismaticBorn'; x: number; y: number };
+
+/** IndexedDB スキーマバージョン（v1=元素モデル, v2=Lenia 場） */
+const BIOME_DB_VERSION = 2;
+const BIOME_DB_NAME = 'biome_db';
 
 // IndexedDB Helper Functions
 let dbInstance: IDBDatabase | null = null;
+let dbVersion: number | null = null;
 
 function openDatabase(): Promise<IDBDatabase> {
-  if (dbInstance) {
+  if (dbInstance && dbVersion === BIOME_DB_VERSION) {
     return Promise.resolve(dbInstance);
   }
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
       return reject(new Error('IndexedDB is not supported'));
     }
-    const request = indexedDB.open('biome_db', 1);
+    const request = indexedDB.open(BIOME_DB_NAME, BIOME_DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
-      if (!db.objectStoreNames.contains('engine_states')) {
-        db.createObjectStore('engine_states');
+      // v1→v2: Lenia 非互換のため旧セーブを破棄
+      if (db.objectStoreNames.contains('engine_states')) {
+        db.deleteObjectStore('engine_states');
       }
+      db.createObjectStore('engine_states');
     };
     request.onsuccess = () => {
       dbInstance = request.result;
+      dbVersion = BIOME_DB_VERSION;
       dbInstance.onclose = () => {
         dbInstance = null;
+        dbVersion = null;
       };
       dbInstance.onerror = () => {
         dbInstance = null;
+        dbVersion = null;
       };
       resolve(dbInstance);
     };
@@ -88,6 +113,12 @@ function saveState(key: string, data: string): Promise<void> {
   return nextPromise;
 }
 
+/** @internal Jest 用: IndexedDB モジュールキャッシュをクリア */
+export function resetBiomeDbCacheForTests(): void {
+  dbInstance = null;
+  dbVersion = null;
+}
+
 
 export interface UseBiomeEngineOptions {
   seed: number;
@@ -104,8 +135,9 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
 
   // 同期的なゲッターや参照をサポートするための ref 保持
   const renderViewRef = useRef<Float32Array>(new Float32Array(0));
-  const frozenCellsRef = useRef<Uint8Array>(new Uint8Array(0));
   const serializedRef = useRef<string>('');
+  const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const validatedSeedRef = useRef<number>(0);
 
   const rarityRef = useRef<number>(0);
   const activeCellCountRef = useRef<number>(0);
@@ -114,6 +146,12 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
   const ticksSinceMutationRef = useRef<number>(0);
   const rarityProgressRef = useRef<RarityProgress | null>(null);
   const lastTickEventsRef = useRef<BiomeEvent[]>([]);
+  const leniaMuRef = useRef<number>(0.15);
+  const leniaSigmaRef = useRef<number>(0.017);
+  const [leniaMu, setLeniaMu] = useState(0.15);
+  const [leniaSigma, setLeniaSigma] = useState(0.017);
+  // worker が処理中の tick バッチ数（バックプレッシャー制御）
+  const inflightTicksRef = useRef<number>(0);
 
   // paused の最新状態を保持
   useEffect(() => {
@@ -123,6 +161,7 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
   useEffect(() => {
     let active = true;
     const validatedSeed = Number.isFinite(seed) ? seed : 0;
+    validatedSeedRef.current = validatedSeed;
     setLoading(true);
     setError(null);
 
@@ -147,8 +186,13 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
         mutationBoostRef.current = msg.mutationBoost;
         ticksSinceMutationRef.current = msg.ticksSinceMutation;
         rarityProgressRef.current = msg.rarityProgress;
+        leniaMuRef.current = msg.leniaMu ?? 0.15;
+        leniaSigmaRef.current = msg.leniaSigma ?? 0.017;
+        setLeniaMu(leniaMuRef.current);
+        setLeniaSigma(leniaSigmaRef.current);
         setLoading(false);
       } else if (msg.type === 'updated') {
+        inflightTicksRef.current = Math.max(0, inflightTicksRef.current - 1);
         setGeneration(msg.generation);
         rarityRef.current = msg.rarity;
         activeCellCountRef.current = msg.activeCells;
@@ -157,16 +201,29 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
         ticksSinceMutationRef.current = msg.ticksSinceMutation;
         rarityProgressRef.current = msg.rarityProgress;
         lastTickEventsRef.current = msg.lastEvents || [];
-        serializedRef.current = msg.serialized;
+        if (msg.leniaMu !== undefined) {
+          leniaMuRef.current = msg.leniaMu;
+          setLeniaMu(msg.leniaMu);
+        }
+        if (msg.leniaSigma !== undefined) {
+          leniaSigmaRef.current = msg.leniaSigma;
+          setLeniaSigma(msg.leniaSigma);
+        }
 
         if (msg.renderView) {
           renderViewRef.current = msg.renderView;
         }
-        if (msg.frozenCells) {
-          frozenCellsRef.current = msg.frozenCells;
-        }
 
-        const key = `seed_${validatedSeed}`;
+        if (saveDebounceRef.current) {
+          clearTimeout(saveDebounceRef.current);
+        }
+        saveDebounceRef.current = setTimeout(() => {
+          saveDebounceRef.current = null;
+          worker.postMessage({ type: 'requestSave' });
+        }, SAVE_DEBOUNCE_MS);
+      } else if (msg.type === 'saved') {
+        serializedRef.current = msg.serialized;
+        const key = `seed_${validatedSeedRef.current}`;
         saveState(key, msg.serialized).catch((err) => {
           console.warn('Failed to auto-save state to IndexedDB', err);
         });
@@ -181,6 +238,7 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
           });
         }
       } else if (msg.type === 'error') {
+        inflightTicksRef.current = Math.max(0, inflightTicksRef.current - 1);
         setError(msg.message);
         setLoading(false);
       }
@@ -209,14 +267,22 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
 
     return () => {
       active = false;
+      if (saveDebounceRef.current) {
+        clearTimeout(saveDebounceRef.current);
+        saveDebounceRef.current = null;
+      }
       worker.terminate();
       workerRef.current = null;
     };
   }, [seed]);
 
-  const tick = useCallback(() => {
+  const tick = useCallback((count: number = 1) => {
     if (!workerRef.current) return;
-    workerRef.current.postMessage({ type: 'tick' });
+    // worker が遅延しているときは新規バッチを送らない（メッセージ滞留＝
+    // ラグ後のバースト再生によるカクツキを防止）。最大 2 バッチまで先行可。
+    if (inflightTicksRef.current >= 2) return;
+    inflightTicksRef.current += 1;
+    workerRef.current.postMessage({ type: 'tick', count });
   }, []);
 
   // バックグラウンド進化の制御
@@ -268,14 +334,14 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
 
   const getCellDetail = useCallback((x: number, y: number) => {
     if (!renderViewRef.current.length) return null;
-    const idx = y * 128 + x;
-    const offset = idx * 12;
+    const idx = y * GRID_WIDTH + x;
+    const offset = idx * RENDER_STRIDE;
 
-    if (offset + 12 > renderViewRef.current.length) return null;
+    if (offset + RENDER_STRIDE > renderViewRef.current.length) return null;
 
     const activeVal = renderViewRef.current[offset + 2] !== 0;
     const morphologyVal = renderViewRef.current[offset + 3];
-    const isFrozenVal = frozenCellsRef.current ? frozenCellsRef.current[idx] !== 0 : false;
+    const isFrozenVal = renderViewRef.current[offset + 12] !== 0;
 
     const elements = new Uint16Array(8);
     for (let i = 0; i < 8; i++) {
@@ -287,7 +353,7 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
       morphology: morphologyVal,
       elements,
       is_frozen: isFrozenVal,
-      energy: elements[0], // energy として C の値をマッピング
+      energy: elements[0],
     };
   }, []);
 
@@ -295,6 +361,14 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
     if (!workerRef.current) return;
     workerRef.current.postMessage({ type: 'inject', x, y, idx, amount });
   }, []);
+
+  const injectBrush = useCallback(
+    (x: number, y: number, radius: number, idx: number, amount: number) => {
+      if (!workerRef.current) return;
+      workerRef.current.postMessage({ type: 'injectBrush', x, y, radius, idx, amount });
+    },
+    []
+  );
 
   const applyCrisis = useCallback((crisisType: string, x: number, y: number) => {
     if (!workerRef.current) return;
@@ -354,6 +428,44 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
     return lastTickEventsRef.current;
   }, []);
 
+  const setLeniaParams = useCallback((mu: number, sigma: number) => {
+    if (!workerRef.current) return;
+    leniaMuRef.current = mu;
+    leniaSigmaRef.current = sigma;
+    setLeniaMu(mu);
+    setLeniaSigma(sigma);
+    workerRef.current.postMessage({ type: 'setLeniaParams', mu, sigma });
+  }, []);
+
+  const getLeniaMu = useCallback((): number => leniaMuRef.current, []);
+  const getLeniaSigma = useCallback((): number => leniaSigmaRef.current, []);
+
+  const paintEnv = useCallback(
+    (x: number, y: number, radius: number, kind: number) => {
+      if (!workerRef.current) return;
+      workerRef.current.postMessage({ type: 'paintEnv', x, y, radius, kind });
+    },
+    []
+  );
+
+  const clearEnv = useCallback(() => {
+    if (!workerRef.current) return;
+    workerRef.current.postMessage({ type: 'clearEnv' });
+  }, []);
+
+  const seedEcosystem = useCallback(
+    (speciesA: number, speciesB: number, competition: number) => {
+      if (!workerRef.current) return;
+      workerRef.current.postMessage({
+        type: 'seedEcosystem',
+        speciesA,
+        speciesB,
+        competition,
+      });
+    },
+    []
+  );
+
   return {
     loading,
     error,
@@ -363,6 +475,7 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
     getRenderView,
     getCellDetail,
     injectElement,
+    injectBrush,
     applyCrisis,
     getRarity,
     getActiveCellCount,
@@ -374,5 +487,13 @@ export function useBiomeEngine({ seed, paused = false }: UseBiomeEngineOptions) 
     ticksSinceMutation,
     getRarityProgress,
     getLastTickEvents,
+    leniaMu,
+    leniaSigma,
+    setLeniaParams,
+    getLeniaMu,
+    getLeniaSigma,
+    paintEnv,
+    clearEnv,
+    seedEcosystem,
   };
 }

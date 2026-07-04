@@ -111,7 +111,7 @@ describe('BiomeRenderer Component', () => {
   });
 
   it('グリッド用の3つのデータテクスチャが作成され、正しくテクスチャユニットにバインドされること', async () => {
-    const renderView = new Float32Array(128 * 128 * 12);
+    const renderView = new Float32Array(128 * 128 * 13);
     renderView[0] = 0.5; // x
     renderView[1] = 0.5; // y
     renderView[2] = 1.0; // active
@@ -129,7 +129,7 @@ describe('BiomeRenderer Component', () => {
   });
 
   it('正常系: 元素データ(C, N, P, HおよびO, S, Fe, Si)がパッキングされずに生値f32のままデータテクスチャに書き込まれること', async () => {
-    const renderView = new Float32Array(128 * 128 * 12);
+    const renderView = new Float32Array(128 * 128 * 13);
     renderView[0] = 1.2;  // x
     renderView[1] = 3.4;  // y
     renderView[2] = 1.0;  // active

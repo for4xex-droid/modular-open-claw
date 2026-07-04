@@ -2304,7 +2304,9 @@ version = "0.1.0"
 dependencies = [
  "getrandom 0.2.17",
  "js-sys",
+ "num-complex",
  "rand 0.8.5",
+ "rustfft",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",

@@ -21,6 +21,11 @@ export default defineConfig(async ({ mode }) => ({
   esbuild: {
     pure: mode === 'production' ? ['console.log', 'console.warn'] : [],
   },
+
+  worker: {
+    format: 'es',
+  },
+
   build: {
     rollupOptions: {
       input: {

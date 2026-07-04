@@ -45,7 +45,7 @@ jest.mock('postprocessing', () => ({
 }));
 
 describe('BiomeCanvas', () => {
-  const dummyRenderView = new Float32Array(128 * 128 * 12);
+  const dummyRenderView = new Float32Array(128 * 128 * 13);
 
   it('should render Canvas component', () => {
     render(

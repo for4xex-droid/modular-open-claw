@@ -8,7 +8,9 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
+import { Problem } from './components/Problem';
 import { SocialProof } from './components/SocialProof';
+import { Comparison } from './components/Comparison';
 import { LiveDemo } from './components/LiveDemo';
 import { Features } from './components/Features';
 import { UseCases } from './components/UseCases';
@@ -50,6 +52,7 @@ function App() {
       <Navbar />
       <main id="main-content">
         <Hero />
+        <Problem />
         <SocialProof />
         <LiveDemo />
         <Features />
@@ -59,6 +62,7 @@ function App() {
         <CodePreview />
         <Architecture />
         <Showcase />
+        <Comparison />
         <Pricing />
         <Faq />
         <CTA />

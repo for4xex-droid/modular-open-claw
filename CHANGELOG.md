@@ -1,5 +1,58 @@
 ## [Unreleased]
 
+### Changed (Pro 価格改定 2026-07-05)
+- **Pro $9.99 → $19.99/月**: バイラル32原則 #32（競合より高く）に基づくユーザー決定。対外コピー SSOT（`docs/marketing/MESSAGING.md` §5・§9）、LP i18n（`ja.json`/`en.json`）、`README.md`/`README_en.md`、`ProUpgradeModal` 表示、`docs/operations/stripe-setup.md`、`.env.example` コメントを同期。
+- **LP Payment Link 差し替え**: `Pricing.tsx` の Pro CTA を $19.99 用 Link `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03` に更新（旧 `aFa9AS1Kc1l47mK3u5f7i01` は Stripe 側 inactive）。配線回帰テスト `Pricing.link.test.tsx` 追加。
+- **本番デプロイ待ち**: 上記 LP 変更は **main 未 push** のため aiome.dev は旧 Link を配信し決済不可。**push → `deploy-landing.yml` で解消**。
+- **Stripe Price ID は未確認**: 管理コンソールの `VITE_STRIPE_PRICE_ID` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` が新 Price と一致するかは Stripe Dashboard で要確認（OP-057 残）。
+
+### Changed (LP バイラル32原則対応 2026-07-05)
+- **OG 画像修復**: `docs/landing/public/ogp.png` が 1024×1024 の JPEG（拡張子偽装）で meta 宣言（1200×630）と不一致だったため、完成版 `docs/assets/logo/Aiome(OGP画像）.png`（1200×630 PNG）に差し替え。SNS シェア時のサムネイル欠落を解消（原則 #5）。
+- **ヘッダーナビに「料金」追加**: `Navbar.tsx` の navLinks に `#pricing` を追加（原則 #16）。
+- **CTA 一本化**: `CTA.tsx` から Formspree waitlist メールフォーム・GDPR チェックボックスを撤去し、`#quickstart` への単一 CTA に統一。公開済み製品に「早期アクセス登録」が併存する矛盾を解消（原則 #22/#28）。i18n の email 系 5 キー削除。
+- **Hero を A2C フック先行に改定**: subtitle を「毎日世話をした AI から、ある日ギフトが届く——」で開始する文言に変更（ja/en、MESSAGING.md §1 同期済み）。SEO/SNS のユースケース列挙は UseCases セクションに委譲（原則 #18/#19/#20）。
+- **Problem セクション新設**: `Problem.tsx` を Hero 直下にマウント。3つの不安（データ・暴走・成果不可視）を共感ファーストで記述し3本柱へブリッジ（原則 #21）。
+- **カテゴリ比較表新設**: `Comparison.tsx` を Pricing 直前にマウント。クラウド型基盤/フレームワーク/Aiome の3列×6行（データ主権・暴走防壁・管理画面・経済圏・コスト・ロックイン）。個別製品名は挙げない方針を MESSAGING.md §2.5 に明文化（原則 #31）。
+- **アクセント色を cyan に集約**: Economy/Architecture/HowItWorks/LiveDemo/CodePreview/Showcase/Pricing/LegalLayout の brand-purple / brand-rose 装飾を cyan または無彩色に置換。購入ボタン1色の原則に整合（原則 #2）。
+
+### Docs (/docs-sync 2026-07-05)
+- **`docs/marketing/MESSAGING.md`**: 最終更新日・LP セクション構成・Payment Link 公式 URL（§9）・OP-058 解消反映・本番デプロイ要件を追記。
+- **`docs/operations/stripe-setup.md`**: §2.5 LP Payment Link 手順を現行 URL に更新、デプロイ・検証・JCT 注記を追加。
+- **`README.md` / `README_en.md`**: Pro 購入導線（aiome.dev/#pricing）と SSOT 参照リンクを追加。
+- **`docs/roadmaps/pr_quality_improvement_plan.md`**: 2026-07-05 追記バナー（MESSAGING SSOT へ誘導、$9.99 表記は履歴）。
+
+### Fixed (Biome Phase 5 追補: 環境ペン可視化・メモリ OOM 2026-07-05)
+- **環境ペンが表示されない不具合**: `env_mask` は `LeniaSimulator` 内部にのみ存在し render_buffer 未反映だったため、壁/養分/毒を塗っても不可視だった。`write_render_buffer` に `env_mask` を渡し、非活性セルの active スロットに負値（-1 壁/-2 養分/-3 毒）を書き込むよう変更（ストライドは 13 のまま）。`BiomeFieldRenderer` シェーダに地形カラーバンド（壁=青灰/養分=深緑/毒=暗紫）を追加。
+- **ドラッグで塗れない**: `BiomeCanvas` に `onPointerUp` とドラッグ塗り（`dragPaint`）を追加。環境ペン選択時のみセルをまたぐたびに連続描画（種まきモードでは無効化し postMessage 氾濫を防止）。
+- **メモリ過多によるタブ自動リロード（Safari OOM）**: `BiomeCanvas` の `preserveDrawingBuffer: true`（Playwright 用に常時有効だった）を `?e2e` クエリ時のみ有効化に変更。`dpr` を `[1,2]`→`1` に固定し、Retina で最大4倍だった描画バッファ／Bloom レンダーターゲットのメモリを削減。
+
+### Added (Biome Phase 5 面白さの核 2026-07-05)
+- **R1 異シード収束の解消**: `species_library.rs` — Chakazul/Lenia 正典5種（Orbium unicaudatus, Gyrorbium gyrans, Parorbium dividuus, Pentahelicium solidus, Pentascutium solidus）の RLE 静的テーブル + `decode_rle`（255段階・pqrstuvwxy、LeniaND.py 準拠）。`seed_from_rng` をリングスタンプから `select_species(seed)` による正典種配置へ変更。実測: 異シード8個→一意種5種（旧: 全て同一収束）。
+- **R2 動く生物の復活**: `stamp_pattern` でデコード済みソリトンをトロイダル配置。`seed_ecosystem(a,b,competition)` で2種を別 ch に配置し ch 間相互抑制（`LeniaGenome.interaction`）を tick に追加。実測: エコシステム active=1011（2種共存）、強競合で全滅テスト PASS。
+- **R3 クリック無意味の解消**: 環境マスク `env_mask`（0通常/1壁/2養分/3毒）+ `paint_env`/`clear_env`。tick で壁=成長禁止、養分=増幅、毒=減衰。FE 環境ペン UI（種まき/壁/養分/毒+地形消去）。実測: 壁で active 208→0。
+- **R4 レアリティ自動最大化の是正**: `PatternMetrics.bbox_ratio`（活性外接矩形占有率）追加。`lenia_rarity_tier` で Epic 以上に局在性（bbox_ratio<0.5）必須。実測: Orbium 放置200世代 Uncommon（旧: Epic）。
+- **UI ジッター除去**: クリック時 `setShakeOffset`+`transform:translate` を廃止し box-shadow パルスに置換。
+- **WASM/Worker 公開**: `seed_ecosystem`/`paint_env`/`clear_env`、`grid.sync_after_lenia_reseed()`。ADR-049 追加。
+- **検証**: Rust 75 + Jest 52 PASS、wasm-pack build 成功。相互作用ゼロ時は従来挙動同一。
+
+### Added (Biome Lenia 転換 2026-07-04)
+- **Phase 0 パフォーマンス**: `sendStateUpdate` から serialize/JSON.parse 除去、`RENDER_STRIDE` 13（frozen スロット）、IndexedDB 2秒デバウンス + `requestSave`、`inject_brush` でクリック1回 postMessage。
+- **Phase 1 Lenia エンジン**: `lenia.rs`（リングカーネル・Orbium リングシード・3ch 場）。`grid.tick` を Lenia 更新に置換。Rust 54 テスト PASS。
+- **Phase 2 描画**: `BiomeFieldRenderer`（128×128 DataTexture + GLSL カラーマップ）で InstancedMesh 16384 走査を置換。
+- **Phase 3 収集・レアリティ**: `pattern::measure_field`、`RarityProgress` に `mass`/`locomotion`/`longevity`/`species_hash` 追記。Lenia 統計ベースの tier 判定。`roll_substance` を高質量×安定存続トリガーに再定義。図鑑保存は `genome_data` に Lenia JSON。
+- **Phase 4 UI 簡素化**: 操作3つ（種まき / μ・σ スライダー / 図鑑）。`BiomeHUD` を Lenia スコアカード1枚に、`BiomeControls` から元素6+災害を廃止。`BiomeTutorial` を4ステップ Lenia 導線に更新。
+- **技術負債解消**: FFT 畳み込み接続、3ch 独立 tick、`LeniaSnapshot` ベース巻き戻し、serialize v2、IndexedDB v2。ADR-048 追加。
+- **種まき反映修正**: `BiomeFieldRenderer` を RGBA8+NearestFilter に変更（Safari 互換）。`seed_brush` をリング状スタンプ化、注入直後 tick なしで即時描画。
+- **描画 NaN・処理落ち修正**: シェーダを強度ベース配色に変更（Lenia 3ch 同値時の `atan(0,0)` NaN による黒画面を解消）。WebGL2 予約語 `active` を `fieldAlpha` にリネーム（シェーダコンパイル失敗修正）。`tick_n` バッチ化（100ms 固定 interval、postMessage 10Hz）、レアリティ世代キャッシュ、履歴 5 世代間引き（最大 40 件）、dead path 削除。Playwright 画素検証 e2e 追加。Rust 65 + Jest 52 PASS。
+- **カクツキ残存の追加修正**: Lenia 3ch 同値時の FFT 畳み込みを 1 回に共有（tick 3 倍高速化）。レアリティ再計算を 10 世代境界のみに間引き。tick interval を speed の整数倍（≥50ms）に適応化し 10x で 20Hz 更新。worker バックプレッシャー制御（先行 2 バッチ上限）でメッセージ滞留によるバースト再生を防止。api-server CSP ヘッダーに `'wasm-unsafe-eval'` を追加（Worker 内 WASM コンパイルが CSP で拒否され Chromium 系で世代が進まない問題を修正）。10x 実測: 100 世代/秒・フレーム 16.7ms 安定・long task ゼロ。
+
+### Added (Biome 収集体験改善 2026-07-04)
+- **差動・異方性拡散**: 元素別拡散率テーブル + ゲノム座 0–7（保持力）/ 12–15（N/E/S/W 方向重み）によるチューリング型パターン創発（`grid.rs`, `genome.rs`）。
+- **pattern.rs**: 対称性スコア・等周不等式複雑度・クラスタ数の構造美指標を新設。
+- **レアリティ再設計**: 上位ランクに構造美条件（symmetry/complexity）と Prismatic セル数を必須化。`RarityProgress` に 6 フィールド追加。
+- **Prismatic セル**: 極端変異（1/64）でゲノム座 31 マーカー化、render buffer active=2.0、虹彩 HSL 描画、`BiomeEvent::PrismaticBorn`。
+- **FE**: HUD 構造美/虹彩バッジ、Result メトリクス、標本保存に `morphology_distribution` 送信、structureBonus bloom、i18n 8 キー。Rust 50 + Jest 50 テスト PASS。
+
 ### Added (Aiome × Nurture シナジー最大化 2026-07-04)
 - **W-1 coin-charge OXP**: `OxiLeanProofCertificate::generate_header()` を `aiome-core-contracts` に追加。Stripe/Polar Webhook → Nurture `/internal/coin-charge` relay が Bearer + OXP 証明書を送信（本番 403 障害修正）。
 - **W-2 統合テスト**: mock Nurture が本番同等の二重認証を検証。OXP=0 の Negative テスト追加。

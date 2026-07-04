@@ -8,11 +8,11 @@ import { Canvas } from '@react-three/fiber';
 import { BiomeBackground } from './BiomeBackground';
 import { BiomeLighting } from './BiomeLighting';
 import { BiomeBorder } from './BiomeBorder';
-import { BiomeCellGrid } from './BiomeCellGrid';
+import { BiomeFieldRenderer } from './BiomeFieldRenderer';
 import { BiomeSparkles } from './BiomeSparkles';
 import { BiomePostEffects } from './BiomePostEffects';
 import { BiomeCanvasProps } from './biomeTypes';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 export function BiomeCanvas({
   width,
@@ -25,14 +25,27 @@ export function BiomeCanvas({
   onClick,
   onHover,
   bloomEnabled = true,
-  injectionMarks = [],
+  structureBonus = false,
+  injectionMarks: _injectionMarks = [],
+  dragPaint = false,
 }: BiomeCanvasProps) {
-  const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
+  void _injectionMarks;
+  const [, setHoverCell] = useState<{ x: number; y: number } | null>(null);
+  const isPaintingRef = useRef(false);
+  const lastPaintedRef = useRef<{ x: number; y: number } | null>(null);
 
   const handlePointerMove = useCallback((e: any) => {
     const x = Math.floor(e.point.x);
     const y = Math.floor(e.point.y);
     if (x >= 0 && x < 128 && y >= 0 && y < 128) {
+      // ドラッグ中はセルが変わるたびに塗る（環境ペン時のみ。種まきでの氾濫を防ぐ）
+      if (dragPaint && isPaintingRef.current && onClick) {
+        const last = lastPaintedRef.current;
+        if (!last || last.x !== x || last.y !== y) {
+          lastPaintedRef.current = { x, y };
+          onClick({ x, y });
+        }
+      }
       setHoverCell(prev => {
         if (prev && prev.x === x && prev.y === y) return prev;
         const coord = { x, y };
@@ -46,9 +59,11 @@ export function BiomeCanvas({
         return null;
       });
     }
-  }, [onHover]);
+  }, [onHover, onClick, dragPaint]);
 
   const handlePointerLeave = useCallback(() => {
+    isPaintingRef.current = false;
+    lastPaintedRef.current = null;
     setHoverCell(prev => {
       if (prev === null) return prev;
       if (onHover) onHover(null);
@@ -60,9 +75,16 @@ export function BiomeCanvas({
     const x = Math.floor(e.point.x);
     const y = Math.floor(e.point.y);
     if (x >= 0 && x < 128 && y >= 0 && y < 128) {
+      isPaintingRef.current = true;
+      lastPaintedRef.current = { x, y };
       if (onClick) onClick({ x, y });
     }
   }, [onClick]);
+
+  const handlePointerUp = useCallback(() => {
+    isPaintingRef.current = false;
+    lastPaintedRef.current = null;
+  }, []);
 
   return (
     <div style={{
@@ -72,8 +94,15 @@ export function BiomeCanvas({
       overflow: 'hidden',
     }}>
       <Canvas
-        gl={{ antialias: true, alpha: false }}
-        dpr={[1, 2]}
+        gl={{
+          antialias: true,
+          alpha: false,
+          // preserveDrawingBuffer は Safari で多量のメモリを保持し OOM（タブ再読込）を
+          // 誘発するため本番では無効。Playwright のピクセル読取時のみ ?e2e で有効化。
+          preserveDrawingBuffer:
+            typeof window !== 'undefined' && window.location.search.includes('e2e'),
+        }}
+        dpr={1}
         orthographic
         camera={{
           left: 0,
@@ -88,17 +117,13 @@ export function BiomeCanvas({
         <BiomeBackground />
         <BiomeLighting rarity={rarity} />
         <BiomeBorder />
-        <BiomeCellGrid
-          renderView={renderView}
-          rarity={rarity}
-          injectionMarks={injectionMarks}
-          hoverCell={hoverCell}
-        />
+        <BiomeFieldRenderer renderView={renderView} />
         {/* 入力判定Plane */}
         <mesh
           position={[64, 64, 1]}
           onPointerMove={handlePointerMove}
           onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
           onPointerOut={handlePointerLeave}
         >
           <planeGeometry args={[128, 128]} />
@@ -110,6 +135,7 @@ export function BiomeCanvas({
           effectIntensity={effectIntensity}
           effectCenter={effectCenter}
           bloomEnabled={bloomEnabled}
+          structureBonus={structureBonus}
         />
       </Canvas>
     </div>

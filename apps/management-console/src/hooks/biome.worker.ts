@@ -9,6 +9,9 @@ import type { BiomeEngine } from 'biome-engine';
 let engine: BiomeEngine | null = null;
 let wasmMemory: WebAssembly.Memory | null = null;
 
+/** 注入後の即時反映（follow-up tick なし — 種まきをクリック直後に表示） */
+const INJECT_FOLLOWUP_TICKS = 0;
+
 self.onmessage = async (e: MessageEvent) => {
   const data = e.data;
 
@@ -35,6 +38,8 @@ self.onmessage = async (e: MessageEvent) => {
       const mutationBoost = engine.get_mutation_boost();
       const ticksSinceMutation = engine.ticks_since_mutation();
       const rarityProgress = engine.get_rarity_progress();
+      const leniaMu = engine.get_lenia_mu();
+      const leniaSigma = engine.get_lenia_sigma();
 
       self.postMessage({
         type: 'initialized',
@@ -45,9 +50,10 @@ self.onmessage = async (e: MessageEvent) => {
         mutationBoost,
         ticksSinceMutation,
         rarityProgress,
+        leniaMu,
+        leniaSigma,
       });
 
-      // 初期化直後に最初の状態（renderViewなど）をメインスレッドに同期する
       sendStateUpdate();
       return;
     }
@@ -57,7 +63,8 @@ self.onmessage = async (e: MessageEvent) => {
     }
 
     if (data.type === 'tick') {
-      engine.tick();
+      const count = Math.max(1, Number(data.count) || 1);
+      engine.tick_n(count);
       sendStateUpdate();
     } else if (data.type === 'rewind') {
       const success = engine.apply_tachyon_rewind(data.generations);
@@ -69,19 +76,39 @@ self.onmessage = async (e: MessageEvent) => {
         generation,
         serialized,
       });
-      // 巻き戻し後も描画データを同期
       sendStateUpdate();
     } else if (data.type === 'inject') {
       engine.inject_element(data.x, data.y, data.idx, data.amount);
       sendStateUpdate();
+    } else if (data.type === 'injectBrush') {
+      engine.inject_brush(data.x, data.y, data.radius, data.idx, data.amount);
+      for (let i = 0; i < INJECT_FOLLOWUP_TICKS; i++) {
+        engine.tick_n(1);
+      }
+      sendStateUpdate();
+    } else if (data.type === 'requestSave') {
+      const serialized = engine.serialize();
+      self.postMessage({ type: 'saved', serialized });
     } else if (data.type === 'crisis') {
       engine.apply_crisis(data.crisisType, data.x, data.y);
       sendStateUpdate();
     } else if (data.type === 'setMutationBoost') {
       engine.set_mutation_boost(data.val);
       sendStateUpdate();
+    } else if (data.type === 'setLeniaParams') {
+      engine.set_lenia_params(data.mu, data.sigma);
+      sendStateUpdate();
+    } else if (data.type === 'paintEnv') {
+      engine.paint_env(data.x, data.y, data.radius, data.kind);
+      sendStateUpdate();
+    } else if (data.type === 'clearEnv') {
+      engine.clear_env();
+      sendStateUpdate();
+    } else if (data.type === 'seedEcosystem') {
+      engine.seed_ecosystem(data.speciesA, data.speciesB, data.competition);
+      sendStateUpdate();
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     self.postMessage({
       type: 'error',
       message: err instanceof Error ? err.message : String(err),
@@ -100,27 +127,13 @@ function sendStateUpdate() {
   const ticksSinceMutation = engine.ticks_since_mutation();
   const rarityProgress = engine.get_rarity_progress();
   const lastEvents = engine.get_last_tick_events() || [];
-  const serialized = engine.serialize();
+  const leniaMu = engine.get_lenia_mu();
+  const leniaSigma = engine.get_lenia_sigma();
 
-  // JSONをパースして is_frozen 状態を抽出 (Worker側でパースすることでメインスレッドへの負荷をゼロにする)
-  const frozenCells = new Uint8Array(128 * 128);
-  try {
-    const data = JSON.parse(serialized);
-    if (Array.isArray(data.cells)) {
-      const limit = Math.min(data.cells.length, frozenCells.length);
-      for (let i = 0; i < limit; i++) {
-        frozenCells[i] = data.cells[i]?.is_frozen ? 1 : 0;
-      }
-    }
-  } catch (e) {
-    console.warn('Failed to parse serialized state in worker', e);
-  }
-
-  // render_data のコピーを作成して Transferable として転送
   const ptr = engine.render_data_ptr();
   const len = engine.render_data_len();
   const wasmView = new Float32Array(wasmMemory.buffer, ptr, len);
-  const renderView = new Float32Array(wasmView); // コピー
+  const renderView = new Float32Array(wasmView);
 
   self.postMessage(
     {
@@ -133,10 +146,10 @@ function sendStateUpdate() {
       ticksSinceMutation,
       rarityProgress,
       lastEvents,
-      serialized,
+      leniaMu,
+      leniaSigma,
       renderView,
-      frozenCells,
     },
-    { transfer: [renderView.buffer, frozenCells.buffer] }
+    { transfer: [renderView.buffer] }
   );
 }

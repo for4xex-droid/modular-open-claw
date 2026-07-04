@@ -148,6 +148,7 @@ export function BiomeCellGrid({ renderView, rarity, injectionMarks, hoverCell }:
       const cy = Math.floor(i / GRID_WIDTH);
       const active = renderView[offset + 2];
       const morph = Math.floor(renderView[offset + 3]);
+      const isPrismatic = active > 1.5;
 
       if (active < 0.5 || morph < 0 || morph >= MORPH_COUNT) continue;
 
@@ -156,18 +157,28 @@ export function BiomeCellGrid({ renderView, rarity, injectionMarks, hoverCell }:
       const idx = counts[morph];
 
       dummy.position.set(cx + 0.5, cy + 0.5, 0);
-      if (rarity >= 3) {
+      if (isPrismatic) {
+        dummy.rotation.set(time * 1.2 + i * 0.02, time * 0.8 + i * 0.015, 0);
+      } else if (rarity >= 3) {
         dummy.rotation.set(time * 0.5 + i * 0.01, time * 0.3 + i * 0.007, 0);
       } else {
         dummy.rotation.set(0, 0, 0);
       }
-      const scale = 0.65 + rarity * 0.05;
+      const baseScale = 0.65 + rarity * 0.05;
+      const scale = isPrismatic
+        ? baseScale * (1.0 + 0.15 * Math.sin(time * 3 + i * 0.1))
+        : baseScale;
       dummy.scale.setScalar(scale);
       dummy.updateMatrix();
       mesh.setMatrixAt(idx, dummy.matrix);
 
-      // 色計算
-      computeElementColor(tempColor, renderView, offset);
+      // 色計算（Prismatic は虹彩 HSL で上書き）
+      if (isPrismatic) {
+        const hue = (time * 0.15 + i * 0.01) % 1.0;
+        tempColor.setHSL(hue, 0.95, 0.65);
+      } else {
+        computeElementColor(tempColor, renderView, offset);
+      }
 
       // 注入リップル
       for (const mark of injectionMarks) {

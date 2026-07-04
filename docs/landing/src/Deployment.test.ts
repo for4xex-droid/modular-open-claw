@@ -73,7 +73,7 @@ describe('Landing Page Deployment Assets', () => {
         const decoded = l.search.slice(1).split('&').map((s) => {
           return s.replace(/~and~/g, '&')
         }).join('?');
-        window.history.replaceState(null, null as any,
+        window.history.replaceState(null, '',
             l.pathname.slice(0, -1) + decoded + l.hash
         );
       }
@@ -83,7 +83,7 @@ describe('Landing Page Deployment Assets', () => {
 
     expect(replaceStateMock).toHaveBeenCalledWith(
       null,
-      null,
+      '',
       '/privacy?foo=bar#hash'
     )
 

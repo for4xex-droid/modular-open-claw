@@ -21,7 +21,7 @@ export function LiveDemo() {
     { icon: Cpu, label: t('live_demo.step4'), color: 'text-brand-cyan' },
     { icon: Search, label: t('live_demo.step5'), color: 'text-brand-cyan' },
     { icon: CheckCircle, label: t('live_demo.step6'), color: 'text-emerald-400' },
-    { icon: Award, label: t('live_demo.step7'), color: 'text-brand-purple' },
+    { icon: Award, label: t('live_demo.step7'), color: 'text-brand-cyan' },
     { icon: TrendingUp, label: t('live_demo.step8'), color: 'text-brand-cyan' },
   ];
 

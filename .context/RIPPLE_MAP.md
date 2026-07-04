@@ -1,3 +1,138 @@
+## 🔍 Pro 価格改定 $19.99/月（2026-07-05）
+
+- **変更内容**:
+    - `docs/marketing/MESSAGING.md` [MODIFY]: §5 価値の階段 Pro 行・§9 課金導線・ハイブリッド案の基本料を $19.99 に更新。
+    - `docs/landing/src/i18n/locales/{ja,en}.json` [MODIFY]: `pricing.pro_price` / `pro_trial` / `comparison.row5_aiome` を $19.99 に更新。
+    - `README.md` / `README_en.md` [MODIFY]: Pro 行を $19.99/月に更新。
+    - `apps/management-console/src/components/commerce/ProUpgradeModal.tsx` [MODIFY]: 表示価格 $19.99。
+    - `docs/operations/stripe-setup.md` / `.env.example` [MODIFY]: 手順・コメントの金額を $19.99 に更新。
+    - `docs/MASTER_BLUEPRINT.md` [MODIFY]: SaaS Pro 行を $19.99 に更新。
+- **波及効果**: LP `Pricing.tsx` の Payment Link URL は **`aFa00i9cEaVE4ay4y9f7i03`（$19.99）に差し替え済み**（旧 `aFa9AS...` は Stripe inactive）。残: `VITE_STRIPE_PRICE_ID` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` を新 Price ID に合わせる（OP-057）、**main push → Pages デプロイ**で本番 aiome.dev に反映。
+
+## 🔍 LP バイラル32原則対応（2026-07-05）
+
+- **変更内容**:
+    - `docs/landing/public/ogp.png` [REPLACE]: 1024×1024 JPEG（拡張子偽装）→ 完成版 `docs/assets/logo/Aiome(OGP画像）.png`（1200×630 PNG）のコピーに差し替え。
+    - `docs/landing/src/components/Problem.tsx` [NEW]: 共感ファーストの3不安セクション（i18n prefix `problem.*`）。Hero 直下にマウント。
+    - `docs/landing/src/components/Comparison.tsx` [NEW]: カテゴリ比較表 3列×6行（i18n prefix `comparison.*`）。Pricing 直前にマウント。
+    - `docs/landing/src/components/CTA.tsx` [MODIFY]: Formspree waitlist フォーム撤去、単一 CTA 化。`VITE_FORMSPREE_ID` 参照が消滅。
+    - `docs/landing/src/components/Navbar.tsx` [MODIFY]: navLinks に `#pricing` 追加。
+    - `docs/landing/src/App.tsx` [MODIFY]: Problem / Comparison マウント。
+    - `docs/landing/src/i18n/locales/{ja,en}.json` [MODIFY]: hero.subtitle A2C 化、`nav.pricing`/`problem.*`/`comparison.*` 追加、`cta.email_*` 等 5 キー削除、cta 文言更新。
+    - `docs/landing/src/components/{Economy,Architecture,HowItWorks,LiveDemo,CodePreview,Showcase,Pricing,LegalLayout}.tsx` [MODIFY]: brand-purple/brand-rose 装飾を cyan/無彩色へ集約。
+    - `docs/marketing/MESSAGING.md` [MODIFY]: §1 サブコピー改定（A2C フック）、Problem セクション原稿、カテゴリ比較表ルール（個別製品名の禁止）追加。
+- **波及効果**: 対外コピー SSOT（MESSAGING.md）と LP の同期を維持。`cta.email_*` キー削除により旧 CTA.test.tsx は要更新（同時に更新済み）。waitlist 廃止により `VITE_FORMSPREE_ID` 環境変数は不要化。**Payment Link**: 新 URL `aFa00i9cEaVE4ay4y9f7i03`（$19.99）— 旧 URL は Stripe inactive。**本番 aiome.dev は main push まで旧バンドル**（2026-07-05 検証）。ogp.png はデプロイワークフロー経由で aiome.dev に反映。
+
+## 🔍 Biome Phase 5 追補: 環境ペン可視化・メモリ OOM 修正（2026-07-05）
+
+- **変更内容**:
+    - `libs/biome-engine/src/grid.rs` [MODIFY]: `write_render_buffer(cells, env_mask)` に env 引数追加。非活性セルの active スロットに地形負値（-1 壁/-2 養分/-3 毒）を書込。全 4 呼出箇所（inject_brush/restore/sync_after_lenia_reseed/tick_n）が `lenia.env_mask()` を渡す。
+    - `apps/management-console/src/lib/biome/BiomeFieldRenderer.tsx` [MODIFY]: `encodeActiveAlpha` に地形バンド（60/90/120）追加、シェーダに地形カラー分岐追加。
+    - `apps/management-console/src/lib/biome/BiomeCanvas.tsx` [MODIFY]: `preserveDrawingBuffer` を `?e2e` 時のみ有効化（Safari OOM 対策）、`dpr` を 1 に固定、`onPointerUp`+ドラッグ塗り（`dragPaint`）追加。
+    - `apps/management-console/src/lib/biome/biomeTypes.ts` [MODIFY]: `BiomeCanvasProps.dragPaint` 追加。
+    - `apps/management-console/src/lib/biome/BiomeGame.tsx` [MODIFY]: `dragPaint={envPen !== null}` を BiomeCanvas に渡す。
+- **波及効果**: RENDER_STRIDE は 13 のまま（active スロットに負値を多重化）ため TS 側の stride 依存（biomeTypes/テスト mock）は無改修。`preserveDrawingBuffer` 変更は Playwright e2e が `?e2e` を付与する前提（付与しない場合 toDataURL 読取が空になりうる点に注意）。
+
+## 🔍 Biome Phase 5: 面白さの核（2026-07-05）
+
+- **変更内容**:
+    - `libs/biome-engine/src/species_library.rs` [NEW]: 正典5種 `SpeciesSeed` 静的テーブル、`decode_rle`（255段階・pqrstuvwxy、不正入力0フォールバック）、`select_species(seed)` 決定的選択。
+    - `libs/biome-engine/src/species/*.rle` [NEW]: Chakazul/Lenia animals.json 由来の正典パターン RLE（5ファイル）。
+    - `libs/biome-engine/src/lenia.rs` [MODIFY]: `seed_from_rng` を正典種配置へ変更、`LeniaGenome.interaction` 追加、`seed_ecosystem`/`env_mask`/`paint_env`/`clear_env`/`stamp_pattern` 追加、tick に ch 間相互作用・環境マスク項を追加。
+    - `libs/biome-engine/src/pattern.rs` [MODIFY]: `PatternMetrics.bbox_ratio` 追加、`measure`/`measure_field` で算出。
+    - `libs/biome-engine/src/rarity.rs` [MODIFY]: `lenia_rarity_tier` に `bbox_ratio` 引数、Epic 以上は局在性（bbox_ratio<0.5）必須。
+    - `libs/biome-engine/src/lib.rs` [MODIFY]: `species_library` モジュール登録、wasm-bindgen `seed_ecosystem`/`paint_env`/`clear_env` 公開。
+    - `libs/biome-engine/src/grid.rs` [MODIFY]: `sync_after_lenia_reseed()` 公開（場外部差替後のセル/render_buffer 同期）。
+    - `libs/biome-engine/src/particle.rs` [MODIFY]: 高品質 Lenia テスト seed 42→3（Pentahelicium）。
+    - `apps/management-console/src/hooks/biome.worker.ts` [MODIFY]: `paintEnv`/`clearEnv`/`seedEcosystem` メッセージハンドラ。
+    - `apps/management-console/src/hooks/useBiomeEngine.ts` [MODIFY]: `paintEnv`/`clearEnv`/`seedEcosystem` 公開関数。
+    - `apps/management-console/src/lib/biome/BiomeGame.tsx` [MODIFY]: shake 演出廃止→box-shadow パルス、環境ペン UI（種まき/壁/養分/毒+消去）。
+    - `apps/management-console/src/setupTests.ts` [MODIFY]: MockWorker に paintEnv/clearEnv/seedEcosystem/setLeniaParams 等追加。
+    - `docs/decisions/049-biome-phase5-fun-core.md` [NEW]: ADR-049。
+- **波及効果**:
+    - `LeniaGenome` に `interaction` フィールド追加 — serialize/deserialize は `#[serde(default)]` で後方互換（既定ゼロ=従来挙動）。
+    - consumer（`dream_state/biome.rs`）が呼ぶ API シグネチャ（`tick`/`get_rarity`/`set_mutation_boost`/`roll_substance`）は不変。
+    - serialize v2 / IndexedDB v2 スキーマ不変。`RarityProgress` に bbox_ratio は含めず tier 判定内部のみ。
+    - Rust 75 + Jest 52 PASS。`wasm-pack build` で pkg/ 再生成要。
+
+## 🔍 Biome カクツキ残存の追加修正（2026-07-04）
+
+- **変更内容**:
+    - `libs/biome-engine/src/lenia.rs` [MODIFY]: 3ch 同値（μ/σ/場が一致）時に FFT 畳み込みを共有し tick を約 3 倍高速化。
+    - `libs/biome-engine/src/lib.rs` [MODIFY]: `PROGRESS_REFRESH_INTERVAL=10` — レアリティ再計算を 10 世代境界のみに間引き。
+    - `apps/management-console/src/lib/biome/BiomeGame.tsx` [MODIFY]: tick interval を speed の整数倍（≥50ms）に適応化（10x で 50ms×5tick=20Hz 更新）。
+    - `apps/management-console/src/hooks/useBiomeEngine.ts` [MODIFY]: `inflightTicksRef` バックプレッシャー（先行 2 バッチ上限）でメッセージ滞留を防止。
+    - `apps/api-server/src/router.rs` [MODIFY]: CSP `script-src` に `'wasm-unsafe-eval'` を追加（Worker の CSP は HTTP 応答ヘッダー由来のため、HTML meta の許可だけでは Worker 内 WASM コンパイルが拒否される）。
+    - `apps/management-console/src/lib/biome/BiomeCanvas.tsx` [MODIFY]: `preserveDrawingBuffer: true`。
+- **波及効果**: CSP ヘッダー変更は全静的配信に適用（eval/new Function は引き続き禁止）。10x 実測 100 世代/秒・long task ゼロ。
+
+## 🔍 Biome 描画 NaN・処理落ち修正（2026-07-04）
+
+- **変更内容**:
+    - `apps/management-console/src/lib/biome/BiomeFieldRenderer.tsx` [MODIFY]: 強度ベース HSL 配色（`atan(0,0)` NaN 除去）、WebGL2 予約語 `active`→`fieldAlpha`。
+    - `apps/management-console/src/lib/biome/BiomeCanvas.tsx` [MODIFY]: `preserveDrawingBuffer: true`（E2E 画素読取）。
+    - `apps/management-console/src/lib/biome/BiomeGame.tsx` [MODIFY]: 100ms 固定 interval + `tick(count)` バッチ。
+    - `apps/management-console/src/hooks/biome.worker.ts` [MODIFY]: `{type:'tick', count}` → `engine.tick_n(count)`。
+    - `apps/management-console/src/hooks/useBiomeEngine.ts` [MODIFY]: `tick(count?)` postMessage 形状。
+    - `apps/management-console/src/setupTests.ts` [MODIFY]: MockWorker tick count 追随。
+    - `apps/management-console/e2e/biome_render.spec.ts` [NEW]: 画素輝度 Positive/Negative 検証。
+    - `libs/biome-engine/src/lib.rs` [MODIFY]: `cached_progress` 世代キャッシュ、`tick_n`、履歴 5 世代間引き・最近傍キーフレーム巻き戻し。
+    - `libs/biome-engine/src/grid.rs` [MODIFY]: `tick_n`（バッチ末尾 1 回 sync/render）、dead path 削除。
+- **波及効果**: WASM に `tick_n` 追加（`tick` は `tick_n(1)` 委譲）。postMessage 頻度 10Hz 固定。Rust 65 テスト PASS。
+
+## 🔍 Biome 種まき反映修正（2026-07-04）
+
+- **変更内容**:
+    - `apps/management-console/src/lib/biome/BiomeFieldRenderer.tsx` [MODIFY]: FloatType→RGBA8+NearestFilter（Safari `OES_texture_float_linear` 非対応回避）。
+    - `libs/biome-engine/src/lenia.rs` [MODIFY]: `seed_brush` をリング状スタンプ（`stamp_orbium_ring`）に変更。
+    - `apps/management-console/src/hooks/biome.worker.ts` [MODIFY]: `INJECT_FOLLOWUP_TICKS` 5→0（クリック直後に種を表示）。
+    - `apps/management-console/src/lib/biome/BiomeGame.tsx` [MODIFY]: ホバーツールチップを Lenia 場強度表示に更新。
+- **波及効果**: 描画パイプラインのみ。WASM API 不変。
+
+## 🔍 Biome Lenia 技術負債解消 — FFT/履歴/IDB v2（2026-07-04）
+
+- **変更内容**:
+    - `libs/biome-engine/src/lenia.rs` [MODIFY]: `convolve2d_fft` 本番接続、3ch 独立 tick、`LeniaSnapshot`。
+    - `libs/biome-engine/src/lib.rs` [MODIFY]: 場ベース `BiomeHistory`、serialize v2、巻き戻しテスト更新。
+    - `apps/management-console/src/hooks/useBiomeEngine.ts` [MODIFY]: IndexedDB `biome_db` v2（旧 v1 セーブ破棄）。
+    - `docs/decisions/048-biome-lenia-engine-overhaul.md` [NEW]: ADR-048。
+- **波及効果**:
+    - v1 IndexedDB / legacy JSON セーブは非互換（世代のみ復元可）。
+    - Rust 63 テスト PASS。
+
+## 🔍 Biome Lenia Phase 3–4 — 収集・UI 簡素化（2026-07-04）
+
+- **変更内容**:
+    - `libs/biome-engine/src/lenia.rs` [MODIFY]: `longevity_ticks`・`species_hash()` 追加。
+    - `libs/biome-engine/src/pattern.rs` [MODIFY]: `measure_field`（連続場向け構造美指標）。
+    - `libs/biome-engine/src/rarity.rs` [MODIFY]: Lenia 統計ベース tier 判定、`RarityProgress` に mass/locomotion/longevity/species_hash 追記。
+    - `libs/biome-engine/src/particle.rs` [MODIFY]: Fe 依存廃止 → 高質量×安定存続トリガー。
+    - `libs/biome-engine/src/lib.rs` [MODIFY]: `get_lenia_mu/sigma`・`set_lenia_params`・`serialize_lenia_species` WASM 公開。
+    - `apps/management-console/src/lib/biome/BiomeControls.tsx` / `BiomeHUD.tsx` / `BiomeGame.tsx` / `BiomeDendou.tsx` / `BiomeTutorial.tsx` [MODIFY]: 種まき+μσ+図鑑 UI、Lenia スコアカード、図鑑 Lenia パラメータ表示。
+    - `apps/management-console/src/hooks/biome.worker.ts` / `useBiomeEngine.ts` [MODIFY]: `setLeniaParams` Worker 経路。
+- **波及効果**:
+    - `RarityProgress` JSON に4フィールド追加（既存15フィールド維持、後方互換）。
+    - 標本 `genome_data` の意味が CellGenome JSON → Lenia 種 JSON に変更（DB スキーマ不変）。
+    - `dream_state/biome.rs` の `get_rarity()` / `roll_substance` API シグネチャ不変。
+    - Rust 57 + Jest 51 テスト PASS。
+
+## 🔍 Biome 収集体験改善 — 構造美レアリティ + Prismatic（2026-07-04）
+
+- **変更内容**:
+    - `libs/biome-engine/src/pattern.rs` [NEW]: 対称性・複雑度・クラスタ数の構造美指標。
+    - `libs/biome-engine/src/grid.rs` [MODIFY]: 元素別差動拡散 + ゲノム異方性 + Prismatic render=2.0。
+    - `libs/biome-engine/src/genome.rs` [MODIFY]: retention_factor / anisotropy / is_prismatic（座 12–15, 31）。
+    - `libs/biome-engine/src/rarity.rs` [MODIFY]: 構造美 + Prismatic 条件によるレアリティ再設計。
+    - `libs/biome-engine/src/lib.rs` [MODIFY]: `BiomeEvent::PrismaticBorn` 追加。
+    - `apps/management-console/src/lib/biome/BiomeCellGrid.tsx` [MODIFY]: 虹彩 HSL + スケールパルス描画。
+    - `apps/management-console/src/lib/biome/BiomeHUD.tsx` / `BiomeGame.tsx` / `BiomeResult.tsx` / `BiomePostEffects.tsx` [MODIFY]: 構造美 HUD、Prismatic Toast、標本 morphology_distribution、structureBonus bloom。
+    - `apps/management-console/src/hooks/useBiomeEngine.ts` [MODIFY]: RarityProgress 6 フィールド + PrismaticBorn イベント型。
+    - `docs/decisions/047-biome-structure-beauty-rarity.md` [NEW]: ADR。
+- **波及効果**:
+    - IndexedDB 既存セーブは serde 互換（struct 無変更、座 31 マーカー方式）。
+    - API/DB 変更なし。`dream_state/biome.rs` は `get_rarity()` 経由のみ（表示文字列のみ影響）。
+    - Rust 50 + Jest 50 テスト PASS。`wasm-pack build` で pkg/ 再生成済み。
+
 ## 🔍 Aiome × Nurture シナジー最大化 W-1〜W-8 + SYN PR（2026-07-04）
 
 - **変更内容**:

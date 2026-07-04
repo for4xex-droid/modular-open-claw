@@ -19,6 +19,13 @@ pub const ELEMENT_S: usize = 5;
 pub const ELEMENT_FE: usize = 6;
 pub const ELEMENT_SI: usize = 7;
 
+// ゲノム座の意味付け（0–7: 元素適応, 8: IceAge耐性 [crisis.rs], 12–15: 拡散方向重み）
+pub const LOCUS_ANISO_N: usize = 12;
+pub const LOCUS_ANISO_E: usize = 13;
+pub const LOCUS_ANISO_S: usize = 14;
+pub const LOCUS_ANISO_W: usize = 15;
+pub const LOCUS_PRISMATIC: usize = 31;
+
 #[wasm_bindgen]
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CellGenome {
@@ -43,6 +50,43 @@ impl CellGenome {
 
     pub fn set_value(&mut self, index: usize, val: u16) {
         self.values[index] = val;
+    }
+
+    /// 元素 e の実効拡散率変調 (0.5–1.5, 10000 が中立)
+    pub fn retention_factor(&self, e: usize) -> f32 {
+        if e >= 8 {
+            return 1.0;
+        }
+        let centered = (10000.0 - self.values[e] as f32) / 65535.0;
+        (1.0 + 0.5 * centered).clamp(0.5, 1.5)
+    }
+
+    /// 方向重み [N, E, S, W]（正規化済み、各 0.1 下限）
+    pub fn anisotropy(&self) -> [f32; 4] {
+        let raw = [
+            self.values[LOCUS_ANISO_N] as f32,
+            self.values[LOCUS_ANISO_E] as f32,
+            self.values[LOCUS_ANISO_S] as f32,
+            self.values[LOCUS_ANISO_W] as f32,
+        ];
+        let sum: f32 = raw.iter().sum();
+        if sum < 1.0 {
+            return [0.25, 0.25, 0.25, 0.25];
+        }
+        [
+            (raw[0] / sum).max(0.1),
+            (raw[1] / sum).max(0.1),
+            (raw[2] / sum).max(0.1),
+            (raw[3] / sum).max(0.1),
+        ]
+    }
+
+    pub fn is_prismatic(&self) -> bool {
+        self.values[LOCUS_PRISMATIC] >= 60000
+    }
+
+    pub fn set_prismatic(&mut self) {
+        self.values[LOCUS_PRISMATIC] = 65535;
     }
 
     /// 突然変異を実行する

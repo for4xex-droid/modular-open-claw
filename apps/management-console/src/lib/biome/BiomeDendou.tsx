@@ -16,10 +16,38 @@ export interface Specimen {
   generation: number;
   rarity: string;
   date: string;
-  element_balance?: string; // JSON String
-  morphology_distribution?: string; // JSON String
-  discovered_reactions?: string; // JSON String
+  genome_data?: string;
+  element_balance?: string;
+  morphology_distribution?: string;
+  discovered_reactions?: string;
   active_cell_count?: number;
+}
+
+function parseLeniaSpecies(genomeData?: string): {
+  mu?: number;
+  sigma?: number;
+  species_hash?: number;
+  mass?: number;
+  locomotion?: number;
+  longevity?: number;
+} | null {
+  if (!genomeData) return null;
+  try {
+    const parsed = JSON.parse(genomeData) as Record<string, unknown>;
+    if (typeof parsed.mu === 'number' || typeof parsed.sigma === 'number') {
+      return {
+        mu: typeof parsed.mu === 'number' ? parsed.mu : undefined,
+        sigma: typeof parsed.sigma === 'number' ? parsed.sigma : undefined,
+        species_hash: typeof parsed.species_hash === 'number' ? parsed.species_hash : undefined,
+        mass: typeof parsed.mass === 'number' ? parsed.mass : undefined,
+        locomotion: typeof parsed.locomotion === 'number' ? parsed.locomotion : undefined,
+        longevity: typeof parsed.longevity === 'number' ? parsed.longevity : undefined,
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 export interface BiomeDendouProps {
@@ -52,6 +80,7 @@ export function BiomeDendou({ list, onLoad }: BiomeDendouProps) {
             const isExpanded = expandedId === sp.id;
             const elements = getPercentageMap(sp.element_balance);
             const morphs = getPercentageMap(sp.morphology_distribution);
+            const leniaSpecies = parseLeniaSpecies(sp.genome_data);
             let reactions: string[] = [];
             try {
               if (sp.discovered_reactions) {
@@ -132,6 +161,21 @@ export function BiomeDendou({ list, onLoad }: BiomeDendouProps) {
                     {sp.active_cell_count !== undefined && (
                       <div style={{ fontWeight: 'bold', color: 'var(--white-90)' }}>
                         {t('biomeConsole.activeCells')} {sp.active_cell_count}
+                      </div>
+                    )}
+
+                    {leniaSpecies && (
+                      <div>
+                        <div style={{ fontWeight: 'bold', marginBottom: '6px', color: 'var(--white-70)' }}>Lenia 種パラメータ</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', fontSize: '0.8rem' }}>
+                          {leniaSpecies.mu !== undefined && (<><span>μ</span><span>{leniaSpecies.mu.toFixed(3)}</span></>)}
+                          {leniaSpecies.sigma !== undefined && (<><span>σ</span><span>{leniaSpecies.sigma.toFixed(4)}</span></>)}
+                          {leniaSpecies.mass !== undefined && (<><span>mass</span><span>{leniaSpecies.mass.toFixed(1)}</span></>)}
+                          {leniaSpecies.longevity !== undefined && (<><span>longevity</span><span>{leniaSpecies.longevity} tick</span></>)}
+                          {leniaSpecies.species_hash !== undefined && (
+                            <><span>種ID</span><span>{String(leniaSpecies.species_hash).slice(0, 8)}…</span></>
+                          )}
+                        </div>
                       </div>
                     )}
 

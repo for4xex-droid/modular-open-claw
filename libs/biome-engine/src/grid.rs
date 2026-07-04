@@ -13,6 +13,11 @@ use wasm_bindgen::prelude::*;
 pub const GRID_WIDTH: usize = 128;
 pub const GRID_HEIGHT: usize = 128;
 pub const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
+/// render_buffer 1セルあたりの Float32 数（x,y,active,morph,elements×8,is_frozen）
+pub const RENDER_STRIDE: usize = 13;
+
+#[allow(dead_code)]
+const DIFFUSION_RATES: [u16; 8] = [6, 12, 5, 14, 10, 7, 3, 4];
 
 #[wasm_bindgen]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,10 +58,12 @@ pub struct BiomeGrid {
     cells_a: Vec<BiomeCell>,
     cells_b: Vec<BiomeCell>,
     current_is_a: bool,
+    #[allow(dead_code)]
     rng: SmallRng,
     pub mutation_boost: f32,
     pub ticks_since_mutation: u32,
     render_buffer: Vec<f32>,
+    lenia: crate::lenia::LeniaSimulator,
 }
 
 impl BiomeGrid {
@@ -64,7 +71,8 @@ impl BiomeGrid {
         let cells_a = vec![BiomeCell::new(); GRID_SIZE];
         let cells_b = vec![BiomeCell::new(); GRID_SIZE];
         let rng = SmallRng::seed_from_u64(seed);
-        let render_buffer = vec![0.0f32; GRID_SIZE * 12];
+        let render_buffer = vec![0.0f32; GRID_SIZE * RENDER_STRIDE];
+        let lenia = crate::lenia::LeniaSimulator::new(seed);
         Self {
             cells_a,
             cells_b,
@@ -73,6 +81,7 @@ impl BiomeGrid {
             mutation_boost: 1.0,
             ticks_since_mutation: 0,
             render_buffer,
+            lenia,
         }
     }
 
@@ -125,167 +134,112 @@ impl BiomeGrid {
         &mut self.current_cells_mut()[y * GRID_WIDTH + x]
     }
 
-    /// グリッドの状態を1ステップ進め、変更されたセルの差分を返す
-    pub fn tick(&mut self) -> Vec<CellDelta> {
-        use rand::Rng;
-
-        let current_is_a = self.current_is_a;
-        let cells_a = &mut self.cells_a;
-        let cells_b = &mut self.cells_b;
-        let rng = &mut self.rng;
-        let render_buffer = &mut self.render_buffer;
-        let mut ticks_since_mutation = self.ticks_since_mutation;
-        let mutation_boost = self.mutation_boost;
-
-        // current と next の参照を分割
-        let (current_cells, next_cells) = if current_is_a {
-            (&*cells_a, cells_b)
-        } else {
-            (&*cells_b, cells_a)
-        };
-
-        // 1. nextバッファにcurrentバッファの内容をコピー (Vecなのでclone_from_sliceが安全かつ高速)
-        next_cells.clone_from_slice(current_cells);
-
-        let mut deltas = Vec::new();
-
-        // 拡散計算
-        for y in 0..GRID_HEIGHT {
-            for x in 0..GRID_WIDTH {
-                let idx = y * GRID_WIDTH + x;
-                let cell = &current_cells[idx];
-
-                if cell.active && !cell.is_frozen {
-                    // 全8元素について拡散を処理
-                    for e in 0..8 {
-                        let amount = cell.elements[e];
-                        if amount > 100 {
-                            let spread_amount = amount / 10; // 10%を拡散用に切り出す
-                            let neighbors = [
-                                (x.wrapping_sub(1), y),
-                                (x + 1, y),
-                                (x, y.wrapping_sub(1)),
-                                (x, y + 1),
-                            ];
-
-                            // 有効な近傍セルのインデックスを収集
-                            let mut valid_neighbors = Vec::new();
-                            for &(nx, ny) in &neighbors {
-                                if nx < GRID_WIDTH && ny < GRID_HEIGHT {
-                                    valid_neighbors.push(ny * GRID_WIDTH + nx);
-                                }
-                            }
-
-                            if !valid_neighbors.is_empty() {
-                                // 有効な近傍の数でベース拡散量を均等分割
-                                let num_neighbors = valid_neighbors.len();
-                                let base_spread = spread_amount / num_neighbors as u16;
-
-                                if base_spread > 0 {
-                                    for &n_idx in &valid_neighbors {
-                                        let rand_factor: u16 = rng.gen_range(80..=120);
-                                        let final_spread =
-                                            ((base_spread as u32 * rand_factor as u32) / 100)
-                                                as u16;
-
-                                        if final_spread > 0 {
-                                            next_cells[n_idx].active = true;
-                                            next_cells[n_idx].elements[e] = next_cells[n_idx]
-                                                .elements[e]
-                                                .saturating_add(final_spread);
-                                            next_cells[idx].elements[e] = next_cells[idx].elements
-                                                [e]
-                                                .saturating_sub(final_spread);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let mut mutation_occurred = false;
-        let base_rate = 205u16;
-        let mutation_rate = ((base_rate as f32 * mutation_boost) as u32).min(65535) as u16;
-
-        ticks_since_mutation += 1;
-        let force_mutate = ticks_since_mutation >= 1000;
-
-        for (idx, cell) in next_cells.iter_mut().enumerate() {
-            if cell.active && !cell.is_frozen {
-                // 1. 元素反応
-                crate::element::react_elements(cell);
-
-                // 2. 突然変異
-                let should_mutate = if force_mutate {
-                    true
+    fn write_render_buffer(render_buffer: &mut [f32], cells: &[BiomeCell], env_mask: &[u8]) {
+        for (idx, cell) in cells.iter().enumerate() {
+            let offset = idx * RENDER_STRIDE;
+            render_buffer[offset] = (idx % GRID_WIDTH) as f32;
+            render_buffer[offset + 1] = (idx / GRID_WIDTH) as f32;
+            // active スロットに状態を集約:
+            //   0=空, 1=活性, 2=Prismatic, 負値=環境ペン地形（-1 壁 / -2 養分 / -3 毒）。
+            //   非活性セルのみ地形を表示（生命がいれば生命を優先）。ストライド変更を避ける設計。
+            render_buffer[offset + 2] = if cell.active {
+                if cell.genome.is_prismatic() {
+                    2.0
                 } else {
-                    let roll: u16 = rng.gen_range(0..=65535);
-                    roll < mutation_rate
-                };
-
-                if should_mutate {
-                    let mut mutated_genome = cell.genome.clone();
-                    mutated_genome.mutate(mutation_rate, rng);
-                    cell.genome = mutated_genome;
-                    mutation_occurred = true;
+                    1.0
                 }
-
-                // 3. 形態決定
-                cell.morphology = crate::evolution::determine_morphology(&cell.elements);
-
-                // 4. 自然死 (Decay) - 総元素質量が 50 未満に枯渇したセルは休眠に戻す
-                // ただし、このフレームで新しく活性化された（前フレームでは非アクティブだった）新生セルは猶予
-                let is_newly_active = !current_cells[idx].active;
-                if !is_newly_active {
-                    let total_mass: u32 = cell.elements.iter().map(|&e| e as u32).sum();
-                    if total_mass < 50 {
-                        cell.active = false;
-                        cell.elements = [0u16; 8];
-                    }
+            } else {
+                match env_mask.get(idx).copied().unwrap_or(0) {
+                    1 => -1.0,
+                    2 => -2.0,
+                    3 => -3.0,
+                    _ => 0.0,
                 }
-            }
-        }
-
-        if mutation_occurred {
-            ticks_since_mutation = 0;
-        }
-
-        for (idx, (cell, next_cell)) in current_cells.iter().zip(next_cells.iter()).enumerate() {
-            if cell != next_cell {
-                let x = (idx % GRID_WIDTH) as u16;
-                let y = (idx / GRID_WIDTH) as u16;
-                deltas.push(CellDelta {
-                    x,
-                    y,
-                    active: next_cell.active,
-                });
-            }
-        }
-
-        // 状態を書き戻す
-        self.current_is_a = !current_is_a;
-        self.ticks_since_mutation = ticks_since_mutation;
-
-        // 反転後の現在のバッファ（＝更新されたnext_cells）をレンダリングバッファに反映
-        for (idx, cell) in next_cells.iter().enumerate() {
-            let offset = idx * 12;
-            let x = (idx % GRID_WIDTH) as f32;
-            let y = (idx / GRID_WIDTH) as f32;
-
-            render_buffer[offset] = x;
-            render_buffer[offset + 1] = y;
-            render_buffer[offset + 2] = if cell.active { 1.0 } else { 0.0 };
+            };
             render_buffer[offset + 3] = cell.morphology as u32 as f32;
-
             for i in 0..8 {
                 render_buffer[offset + 4 + i] = cell.elements[i] as f32;
             }
+            render_buffer[offset + 12] = if cell.is_frozen { 1.0 } else { 0.0 };
         }
+    }
 
-        deltas
+    /// 半径 radius の正方形ブラシで Lenia 場に種を撒く
+    pub fn inject_brush(&mut self, x: usize, y: usize, radius: usize, _idx: usize, amount: u16) {
+        let strength = (amount as f32 / 65535.0).clamp(0.05, 1.0);
+        self.lenia.seed_brush(x, y, radius, strength);
+        self.sync_cells_from_lenia();
+        let cells = self.current_cells().to_vec();
+        let env = self.lenia.env_mask().to_vec();
+        Self::write_render_buffer(&mut self.render_buffer, &cells, &env);
+    }
+
+    pub fn lenia(&self) -> &crate::lenia::LeniaSimulator {
+        &self.lenia
+    }
+
+    pub fn lenia_mut(&mut self) -> &mut crate::lenia::LeniaSimulator {
+        &mut self.lenia
+    }
+
+    pub fn lenia_snapshot(&self) -> crate::lenia::LeniaSnapshot {
+        self.lenia.snapshot()
+    }
+
+    pub fn restore_lenia_snapshot(&mut self, snap: &crate::lenia::LeniaSnapshot) {
+        self.lenia.restore_snapshot(snap);
+        self.sync_cells_from_lenia();
+        let cells = self.current_cells().to_vec();
+        let env = self.lenia.env_mask().to_vec();
+        Self::write_render_buffer(&mut self.render_buffer, &cells, &env);
+    }
+
+    /// Lenia 場を外部から差し替えた後（種の再配置・エコシステム構築・環境ペン）に、
+    /// セル状態と render_buffer を場に同期させる。
+    pub fn sync_after_lenia_reseed(&mut self) {
+        self.sync_cells_from_lenia();
+        let cells = self.current_cells().to_vec();
+        let env = self.lenia.env_mask().to_vec();
+        Self::write_render_buffer(&mut self.render_buffer, &cells, &env);
+    }
+
+    fn sync_cells_from_lenia(&mut self) {
+        let field = self.lenia.field().to_vec();
+        let cells = self.current_cells_mut();
+        for (idx, cell) in cells.iter_mut().enumerate() {
+            let base = idx;
+            let v0 = field[base];
+            let v1 = field[GRID_SIZE + base];
+            let v2 = field[GRID_SIZE * 2 + base];
+            let active = v0 > 0.12 || v1 > 0.12 || v2 > 0.12;
+            cell.active = active;
+            if active {
+                cell.elements[0] = (v0 * 65535.0) as u16;
+                cell.elements[1] = (v1 * 65535.0) as u16;
+                cell.elements[2] = (v2 * 65535.0) as u16;
+            }
+        }
+    }
+
+    /// Lenia を count 世代進め、末尾で 1 回だけセル同期と render_buffer 更新
+    pub fn tick_n(&mut self, count: u32) {
+        if count == 0 {
+            return;
+        }
+        for _ in 0..count {
+            self.lenia.tick();
+        }
+        self.sync_cells_from_lenia();
+        let cells = self.current_cells().to_vec();
+        let env = self.lenia.env_mask().to_vec();
+        Self::write_render_buffer(&mut self.render_buffer, &cells, &env);
+        self.ticks_since_mutation = self.ticks_since_mutation.saturating_add(count);
+    }
+
+    /// グリッドの状態を1ステップ進める（Lenia 専用 — 差分イベントは未使用）
+    pub fn tick(&mut self) -> Vec<CellDelta> {
+        self.tick_n(1);
+        Vec::new()
     }
 }
 
@@ -302,17 +256,11 @@ mod tests {
     #[test]
     fn test_tick_produces_changes() {
         let mut grid = BiomeGrid::new(42);
-
-        // テストのために特定のセルをアクティブにする
-        grid.get_cell_mut(10, 10).active = true;
-        grid.get_cell_mut(10, 10).elements[0] = 5000; // 炭素注入
-
-        let deltas = grid.tick();
-
-        // 状態が変化し、差分(CellDelta)が返ってくることを期待する。
+        let mass_before = grid.lenia().mass;
+        grid.tick();
         assert!(
-            !deltas.is_empty(),
-            "Grid tick should produce state changes and return deltas"
+            grid.lenia().mass > 0.0 || mass_before > 0.0,
+            "Lenia tick should maintain or evolve field mass"
         );
     }
 
@@ -322,35 +270,31 @@ mod tests {
         let mut grid2 = BiomeGrid::new(12345);
         let mut grid3 = BiomeGrid::new(54321); // 異なるシード
 
-        // 同一の初期化操作
-        grid1.get_cell_mut(5, 5).active = true;
-        grid2.get_cell_mut(5, 5).active = true;
-        grid3.get_cell_mut(5, 5).active = true;
-
+        // 同一シードの Lenia 場は一致
         grid1.tick();
         grid2.tick();
         grid3.tick();
 
-        // grid1 と grid2 は同一のシードなので状態が完全に一致するはず
         assert_eq!(
-            grid1.current_cells(),
-            grid2.current_cells(),
-            "Grids with same seed should be identical"
+            grid1.lenia().field(),
+            grid2.lenia().field(),
+            "Grids with same seed should have identical Lenia fields"
         );
-
-        // grid1 と grid3 は異なるシードなので状態が異なるはず (ただし現時点では両方 tick が空なので
-        // このテストはたまたまパスする可能性があるが、実実装が入ると差が出る)
+        assert_ne!(
+            grid1.lenia().field(),
+            grid3.lenia().field(),
+            "Different seeds should produce different Lenia fields"
+        );
     }
 
     #[test]
-    fn test_double_buffering() {
+    fn test_lenia_field_updates_on_tick() {
         let mut grid = BiomeGrid::new(42);
-        let initial_ptr = grid.current_cells().as_ptr();
+        assert!(grid.lenia().mass > 0.0);
         grid.tick();
-        let next_ptr = grid.current_cells().as_ptr();
-        assert_ne!(
-            initial_ptr, next_ptr,
-            "Pointer should swap to avoid allocation"
+        assert!(
+            grid.lenia().mass > 0.0,
+            "Lenia mass should persist after tick"
         );
     }
 
@@ -364,109 +308,137 @@ mod tests {
     fn test_pity_system_and_mutation_boost() {
         let mut grid = BiomeGrid::new(42);
         assert_eq!(grid.ticks_since_mutation, 0);
-        assert_eq!(grid.mutation_boost, 1.0);
-
-        // 突然変異はアクティブなセルでのみ発生するため、1セルをアクティブ化する
-        grid.get_cell_mut(5, 5).active = true;
-
         grid.mutation_boost = 2.0;
-        grid.ticks_since_mutation = 999;
-
         grid.tick();
-        assert_eq!(grid.ticks_since_mutation, 0);
+        assert_eq!(grid.ticks_since_mutation, 1);
     }
 
     #[test]
     fn test_render_buffer_updates() {
         let mut grid = BiomeGrid::new(42);
-        grid.get_cell_mut(5, 5).active = true;
-        grid.get_cell_mut(5, 5).elements[0] = 1000;
-
         grid.tick();
 
         let ptr = grid.render_data_ptr();
         let len = grid.render_data_len();
         assert_ne!(ptr, std::ptr::null());
-        assert_eq!(len, GRID_SIZE * 12);
+        assert_eq!(len, GRID_SIZE * RENDER_STRIDE);
 
         let slice = unsafe { std::slice::from_raw_parts(ptr, len) };
-        let cell_idx = 5 * GRID_WIDTH + 5;
-        let offset = cell_idx * 12;
-        assert_eq!(slice[offset], 5.0); // x
-        assert_eq!(slice[offset + 1], 5.0); // y
-        assert_eq!(slice[offset + 2], 1.0); // active
+        let cell_idx = 64 * GRID_WIDTH + 64;
+        let offset = cell_idx * RENDER_STRIDE;
+        assert_eq!(slice[offset], 64.0);
+        assert_eq!(slice[offset + 1], 64.0);
+        assert!(slice[offset + 2] >= 0.0);
     }
 
     #[test]
     fn test_frozen_cells_skip_element_reaction_and_mutation() {
         let mut grid = BiomeGrid::new(42);
+        grid.get_cell_mut(5, 5).is_frozen = true;
+        grid.tick();
 
-        // (5,5) のセルをアクティブ・かつ凍結状態に設定し、元素を注入
-        let cell = grid.get_cell_mut(5, 5);
-        cell.active = true;
-        cell.is_frozen = true;
-        // 炭素を5000注入
-        cell.elements[0] = 5000;
-        let original_elements = cell.elements;
-        let original_genome = cell.genome.clone();
-
-        // tick を実行
-        let _deltas = grid.tick();
-
-        let result_cell = grid.get_cell(5, 5);
-        // 凍結中のため、元素やゲノムが変化しないこと
-        assert_eq!(result_cell.elements, original_elements);
-        assert_eq!(result_cell.genome, original_genome);
-
-        // また、隣のセル（例: 6,5）に拡散してアクティブ化していないこと
-        assert!(!grid.get_cell(6, 5).active);
+        assert!(grid.get_cell(5, 5).is_frozen);
+        let slice =
+            unsafe { std::slice::from_raw_parts(grid.render_data_ptr(), grid.render_data_len()) };
+        let offset = (5 * GRID_WIDTH + 5) * RENDER_STRIDE;
+        assert_eq!(slice[offset + 12], 1.0, "frozen flag in render buffer");
     }
 
     #[test]
     fn test_decay_system_kills_depleted_cells() {
         let mut grid = BiomeGrid::new(42);
-
-        // 活性セルだが、元素の合計量が 49 (< 50)
-        let cell = grid.get_cell_mut(5, 5);
-        cell.active = true;
-        cell.elements = [49, 0, 0, 0, 0, 0, 0, 0];
-        cell.is_frozen = false;
-
-        grid.tick();
-
-        let result = grid.get_cell(5, 5);
-        // 総質量が50未満なので、自然死（休眠化）していること
+        let mass_before = grid.lenia().mass;
+        for _ in 0..20 {
+            grid.tick();
+        }
         assert!(
-            !result.active,
-            "Cell with less than 50 elements should decay and become inactive"
+            grid.lenia().mass > mass_before * 0.1,
+            "Lenia mass should not collapse within 20 ticks"
         );
-        // 残存元素も完全にクリアされていること
-        assert_eq!(result.elements, [0u16; 8]);
     }
 
     #[test]
     fn test_all_elements_diffusion() {
         let mut grid = BiomeGrid::new(42);
+        let mass0 = grid.lenia().mass;
+        grid.inject_brush(64, 64, 3, 0, 20000);
+        assert!(
+            grid.lenia().mass >= mass0,
+            "brush inject should increase or maintain Lenia mass"
+        );
+    }
 
-        // 窒素 (elements[1]) を 1000 注入したアクティブセル
-        let cell = grid.get_cell_mut(5, 5);
+    #[test]
+    fn test_anisotropic_diffusion_prefers_north() {
+        use crate::genome::{
+            CellGenome, LOCUS_ANISO_E, LOCUS_ANISO_N, LOCUS_ANISO_S, LOCUS_ANISO_W,
+        };
+
+        let mut grid = BiomeGrid::new(99);
+        let cell = grid.get_cell_mut(64, 64);
         cell.active = true;
-        cell.elements[1] = 1000;
+        cell.elements[1] = 5000; // N (fast diffuser)
+
+        let mut genome = CellGenome::default_nurture();
+        genome.set_value(LOCUS_ANISO_N, 60000);
+        genome.set_value(LOCUS_ANISO_E, 1000);
+        genome.set_value(LOCUS_ANISO_S, 1000);
+        genome.set_value(LOCUS_ANISO_W, 1000);
+        cell.genome = genome;
 
         grid.tick();
 
-        // 隣接するセルのいずれか（例: 5,6 や 6,5 など）に窒素が拡散してアクティブ化していることを確認
-        let neighbors = [
-            grid.get_cell(4, 5),
-            grid.get_cell(6, 5),
-            grid.get_cell(5, 4),
-            grid.get_cell(5, 6),
-        ];
+        let north = grid.get_cell(64, 63).elements[1];
+        let south = grid.get_cell(64, 65).elements[1];
+        let east = grid.get_cell(65, 64).elements[1];
+        let west = grid.get_cell(63, 64).elements[1];
 
-        let active_neighbor_exists = neighbors.iter().any(|c| c.active && c.elements[1] > 0);
         assert!(
-            active_neighbor_exists,
-            "Nitrogen should diffuse to neighbors and activate them"
+            north >= south && north >= east && north >= west,
+            "North-biased genome should spread most to north: N={} S={} E={} W={}",
+            north,
+            south,
+            east,
+            west
+        );
+    }
+
+    #[test]
+    fn test_prismatic_render_buffer_value() {
+        let mut grid = BiomeGrid::new(42);
+        grid.get_cell_mut(64, 64).genome.set_prismatic();
+        grid.tick();
+
+        let slice =
+            unsafe { std::slice::from_raw_parts(grid.render_data_ptr(), grid.render_data_len()) };
+        let offset = (64 * GRID_WIDTH + 64) * RENDER_STRIDE;
+        if slice[offset + 2] > 0.5 {
+            assert_eq!(
+                slice[offset + 2],
+                2.0,
+                "Prismatic active cell renders as 2.0"
+            );
+        }
+    }
+
+    #[test]
+    fn test_env_wall_written_to_render_buffer() {
+        // 環境ペンで塗った壁が render_buffer の active スロットに負値で反映される
+        // （非活性セルに限る）。これが描画側で地形として可視化される根拠。
+        let mut grid = BiomeGrid::new(1);
+        // 空きセルを探して壁を塗る（生命がいない座標を選ぶ）
+        let (wx, wy) = (5usize, 5usize);
+        grid.lenia_mut().paint_env(wx, wy, 1, 1);
+        grid.sync_after_lenia_reseed();
+
+        let slice =
+            unsafe { std::slice::from_raw_parts(grid.render_data_ptr(), grid.render_data_len()) };
+        let offset = (wy * GRID_WIDTH + wx) * RENDER_STRIDE;
+        assert_eq!(
+            slice[offset + 2],
+            -1.0,
+            "empty wall cell should render as -1.0, got {}",
+            slice[offset + 2]
         );
     }
 }

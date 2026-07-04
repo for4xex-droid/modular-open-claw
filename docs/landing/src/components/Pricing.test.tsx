@@ -26,7 +26,7 @@ describe('Pricing Component', () => {
 
     // Prices & Billing
     expect(screen.getByText('Free')).toBeInTheDocument();
-    expect(screen.getByText('$9.99')).toBeInTheDocument();
+    expect(screen.getByText('$19.99')).toBeInTheDocument();
     expect(screen.getAllByText('/month').length).toBeGreaterThanOrEqual(1);
 
     // Call to Action Buttons
@@ -65,7 +65,7 @@ describe('Pricing Component', () => {
 
     // Prices
     expect(screen.getByText('無料')).toBeInTheDocument();
-    expect(screen.getAllByText('$9.99').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('$19.99').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('/月').length).toBeGreaterThanOrEqual(1);
 
     // Buttons
