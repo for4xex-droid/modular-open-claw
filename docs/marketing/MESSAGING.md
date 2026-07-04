@@ -151,6 +151,8 @@ A. ありません。MCP（Model Context Protocol）対応で外部ツールと�
 | 項目 | 値 |
 |---|---|
 | **Payment Link URL** | `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03` |
+| **Payment Link ID** | `plink_1TpXHCBcUTwo5TwLnO1BJneY` |
+| **Price ID** | `price_1TpXFpBcUTwo5TwLmK9SQbKL` |
 | **コード配置** | `docs/landing/src/components/Pricing.tsx`（Pro CTA `href`） |
 | **商品名（Checkout 表示）** | Aiome Autonomous Pro（最新） |
 | **価格** | $19.99/月（14日無料トライアル後） |
@@ -159,7 +161,7 @@ A. ありません。MCP（Model Context Protocol）対応で外部ツールと�
 
 ### 既知の導線ギャップ（OPEN.md 起票済み、実装は人間許可待ち）
 
-1. **OP-057**: LP Payment Link での決済とセルフホスト環境の Pro ライセンス有効化が自動接続されていない（手動設定が必要）。Payment Link URL 差し替えは **2026-07-05 完了**。残: `VITE_STRIPE_PRICE_ID` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` を新 Price ID に合わせる、決済→ライセンス自動有効化の設計。
+1. **OP-057**: LP Payment Link での決済とセルフホスト環境の Pro ライセンス有効化が自動接続されていない（手動設定が必要）。✅ Payment Link URL 差替（2026-07-05）。✅ Price ID 確定・ローカル env 反映（`price_1TpXFpBcUTwo5TwLmK9SQbKL` / `plink_1TpXHCBcUTwo5TwLnO1BJneY`）。⬜ 残: 本番ホスト env 反映、決済→ライセンス自動有効化の設計。
 2. ~~**OP-058**~~: **2026-07-04 解消** — `ProUpgradeModal` は `App.tsx` にマウント済み（`STRIPE_PRICE_ID` 連携）。
 
 ### ハイブリッド価格の再パッケージ案（価格改定はユーザー専権・未実施）

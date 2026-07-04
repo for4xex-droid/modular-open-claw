@@ -40,7 +40,7 @@
 - [ ] **OP-054**: JobQueue トレイトの API 乖離解消（補助メソッドのトレイト引き上げ or private 化）（2026-07-02）
 - [x] **OP-055**: `immune_system.rs` 内 MockJQ（約700行）の共有化 → 2026-07-03 完了（新クレートではなく `infrastructure::testing::mock_jq` クレート内モジュールとして抽出）
 - [ ] **OP-056**: フロント `useWorkflowApi` の `POST /api/v1/workflows/validate` とバックエンド `/api/v1/workflows/:id/validate` のパス不整合（F-1 実装時に発見、修正は未実施）（2026-07-03）
-- [ ] **OP-057**: LP Stripe Payment Link（$19.99 Pro）決済とセルフホスト環境の Pro 有効化が自動接続されていない。ライセンスキー配布 or Customer Portal 連携の設計が必要。✅ LP Payment Link URL 差し替え済み（`aFa00i9cEaVE4ay4y9f7i03`）。⬜ 残: `VITE_STRIPE_PRICE_ID` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` が新 Price ID と一致するか確認、決済→ライセンス自動有効化（PR品質改善 M-2 で発見）（2026-07-03）
+- [ ] **OP-057**: LP Stripe Payment Link（$19.99 Pro）決済とセルフホスト環境の Pro 有効化が自動接続されていない。ライセンスキー配布 or Customer Portal 連携の設計が必要。✅ LP Payment Link URL 差替済み（`aFa00i9cEaVE4ay4y9f7i03` / `plink_1TpXHCBcUTwo5TwLnO1BJneY`）。✅ Price ID 確定・ローカル `.env` 反映（`price_1TpXFpBcUTwo5TwLmK9SQbKL`）。⬜ 残: 本番ホストへの env 反映、決済→ライセンス自動有効化（2026-07-03）
 - [x] **OP-058**: `ProUpgradeModal`（402→アップグレード導線）→ 2026-07-04 解消（`App.tsx` ルートマウント + `STRIPE_PRICE_ID`）
 - [ ] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠 + ✅ W-1 OXP relay 修正で本番到達性回復。⬜ 残: 月間支出上限（W-7d・DB マイグレーション要 ADR）と Settings UI 入力欄
 - [ ] **OP-060**: coin-charge DLQ（`outbox_dead_letters`）の自動再送機構 — 現状は手動再送のみ（2026-07-04）

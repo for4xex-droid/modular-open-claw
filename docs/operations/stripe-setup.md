@@ -30,6 +30,8 @@ LP の「プロへアップグレード」は Stripe Payment Link を直リン�
 | 項目 | 値 |
 |---|---|
 | **現行 Payment Link** | `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03` |
+| **Payment Link ID** | `plink_1TpXHCBcUTwo5TwLnO1BJneY` |
+| **Price ID（Pro $19.99/月）** | `price_1TpXFpBcUTwo5TwLmK9SQbKL` |
 | **価格** | $19.99/月（14日無料トライアル） |
 | **旧 Link（参照禁止）** | `https://buy.stripe.com/aFa9AS1Kc1l47mK3u5f7i01` — Stripe 側 **inactive** |
 
@@ -37,7 +39,12 @@ LP の「プロへアップグレード」は Stripe Payment Link を直リン�
 
 **検証**: 新 Link をブラウザで開き、Checkout に「Aiome Autonomous Pro」「$19.99/month after 14 days free」が表示されることを確認。日本 IP では JCT 込み **$21.99/月** 表示の場合あり。
 
-**Price ID 整合**: Payment Link に紐づく Price ID と `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` / `VITE_STRIPE_PRICE_ID` が同一であることを Dashboard で確認（OP-057）。
+**Price ID 整合（2026-07-05 確定）**: 上記 Payment Link に紐づく Price ID は **`price_1TpXFpBcUTwo5TwLmK9SQbKL`**。以下に同一値を設定すること（OP-057）。
+
+| 環境変数 | 設定先 |
+|---|---|
+| `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` | api-server `.env` |
+| `VITE_STRIPE_PRICE_ID` | management-console ビルド時（`.env` または CI secrets） |
 
 ## 3. Webhook の設定
 決済状態やサブスクリプションの更新イベントをリアルタイムに受け取るためのWebhookを設定します。
