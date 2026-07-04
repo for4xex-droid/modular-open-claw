@@ -4,7 +4,7 @@
 - **Pro $9.99 → $19.99/月**: バイラル32原則 #32（競合より高く）に基づくユーザー決定。対外コピー SSOT（`docs/marketing/MESSAGING.md` §5・§9）、LP i18n（`ja.json`/`en.json`）、`README.md`/`README_en.md`、`ProUpgradeModal` 表示、`docs/operations/stripe-setup.md`、`.env.example` コメントを同期。
 - **LP Payment Link 差し替え**: `Pricing.tsx` の Pro CTA を $19.99 用 Link `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03` に更新（旧 `aFa9AS1Kc1l47mK3u5f7i01` は Stripe 側 inactive）。配線回帰テスト `Pricing.link.test.tsx` 追加。
 - **本番デプロイ**: LP 変更は **2026-07-05 main push 済み**（`deploy-landing.yml` → aiome.dev）。
-- **Stripe Price ID 確定（2026-07-05）**: Pro $19.99/月 → `price_1TpXFpBcUTwo5TwLmK9SQbKL`（Payment Link `plink_1TpXHCBcUTwo5TwLnO1BJneY`）。ローカル `.env` / `apps/management-console/.env` に反映。本番ホスト env 反映と決済→ライセンス自動有効化は OP-057 残。
+- **Stripe Price ID 確定（2026-07-05）**: Pro $19.99/月 → `price_1TpXFpBcUTwo5TwLmK9SQbKL`（Payment Link `plink_1TpXHCBcUTwo5TwLnO1BJneY`）。ローカル `.env` 反映済み。**OP-057-R（本番 env・決済→Pro 自動有効化）は Biome ブラッシュアップと同一バッチで後回し**（2026-07-05 ユーザー決定）。
 
 ### Changed (LP バイラル32原則対応 2026-07-05)
 - **OG 画像修復**: `docs/landing/public/ogp.png` が 1024×1024 の JPEG（拡張子偽装）で meta 宣言（1200×630）と不一致だったため、完成版 `docs/assets/logo/Aiome(OGP画像）.png`（1200×630 PNG）に差し替え。SNS シェア時のサムネイル欠落を解消（原則 #5）。

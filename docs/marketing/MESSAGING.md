@@ -159,10 +159,11 @@ A. ありません。MCP（Model Context Protocol）対応で外部ツールと�
 | **税** | 日本からのアクセス時、Stripe Checkout に JCT 10% が加算され **$21.99/月** と表示される場合あり（LP 表記 $19.99 は税抜ベース） |
 | **旧 Link（無効）** | `https://buy.stripe.com/aFa9AS1Kc1l47mK3u5f7i01` — Stripe 側で **inactive**（「The link is no longer active.」）。本番 LP が旧 URL を配信している間は決済不可。**main push → Pages デプロイで解消**。 |
 
-### 既知の導線ギャップ（OPEN.md 起票済み、実装は人間許可待ち）
+### 既知の導線ギャップ（OPEN.md 起票済み）
 
-1. **OP-057**: LP Payment Link での決済とセルフホスト環境の Pro ライセンス有効化が自動接続されていない（手動設定が必要）。✅ Payment Link URL 差替（2026-07-05）。✅ Price ID 確定・ローカル env 反映（`price_1TpXFpBcUTwo5TwLmK9SQbKL` / `plink_1TpXHCBcUTwo5TwLnO1BJneY`）。⬜ 残: 本番ホスト env 反映、決済→ライセンス自動有効化の設計。
-2. ~~**OP-058**~~: **2026-07-04 解消** — `ProUpgradeModal` は `App.tsx` にマウント済み（`STRIPE_PRICE_ID` 連携）。
+1. ~~**OP-057**~~: LP 決済基盤（Payment Link・Price ID・ローカル env）→ **2026-07-05 完了**。
+2. **OP-057-R**（⏸️ 後回し）: 本番ホスト env 反映 + 決済→Pro ライセンス自動有効化。Biome ブラッシュアップ計画（`biome_lenia_overhaul_plan.md` §13 等）と同一バッチで着手（2026-07-05 ユーザー決定）。Safety-Critical のため実装は人間レビュー必須。
+3. ~~**OP-058**~~: **2026-07-04 解消** — `ProUpgradeModal` は `App.tsx` にマウント済み（`STRIPE_PRICE_ID` 連携）。
 
 ### ハイブリッド価格の再パッケージ案（価格改定はユーザー専権・未実施）
 
