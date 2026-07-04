@@ -21,6 +21,7 @@ use axum::{
 };
 use axum_test::TestServer;
 use secrecy::SecretString;
+use serial_test::serial;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -466,6 +467,7 @@ async fn test_vault_delete_invalid_key() {
 }
 
 #[test]
+#[serial]
 fn test_build_auth_manager_with_invalid_base64_in_dev_falls_back_to_mock() {
     let result = crate::build_auth_manager(Some("invalid_base64_invalid_base64".to_string()));
     #[cfg(debug_assertions)]
@@ -475,6 +477,7 @@ fn test_build_auth_manager_with_invalid_base64_in_dev_falls_back_to_mock() {
 }
 
 #[test]
+#[serial]
 fn test_build_auth_manager_with_placeholder_falls_back_to_mock() {
     let result = crate::build_auth_manager(Some("<YOUR_KEY_HERE>".to_string()));
     #[cfg(debug_assertions)]
@@ -484,6 +487,7 @@ fn test_build_auth_manager_with_placeholder_falls_back_to_mock() {
 }
 
 #[test]
+#[serial]
 fn test_build_auth_manager_none_falls_back_to_mock() {
     let result = crate::build_auth_manager(None);
     #[cfg(debug_assertions)]
@@ -493,6 +497,7 @@ fn test_build_auth_manager_none_falls_back_to_mock() {
 }
 
 #[test]
+#[serial]
 fn test_build_auth_manager_scrubs_jwt_key_on_placeholder() {
     unsafe { std::env::set_var("JWT_PRIVATE_KEY_B64", "<YOUR_KEY_HERE>") };
     assert!(std::env::var("JWT_PRIVATE_KEY_B64").is_ok());
@@ -504,6 +509,7 @@ fn test_build_auth_manager_scrubs_jwt_key_on_placeholder() {
 }
 
 #[test]
+#[serial]
 fn test_build_auth_manager_scrubs_jwt_key_on_none_if_set() {
     unsafe { std::env::set_var("JWT_PRIVATE_KEY_B64", "some_secret_key") };
     assert!(std::env::var("JWT_PRIVATE_KEY_B64").is_ok());

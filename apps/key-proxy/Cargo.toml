@@ -35,6 +35,7 @@ infrastructure = { path = "../../libs/infrastructure" }
 
 [dev-dependencies]
 axum-test = "16.4.0"
+serial_test = { workspace = true }
 
 [lints]
 workspace = true
