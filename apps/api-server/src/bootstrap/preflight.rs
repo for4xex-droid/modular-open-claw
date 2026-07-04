@@ -102,7 +102,9 @@ pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
     let is_test_mode = std::env::var("STRIPE_TEST_MODE")
         .map(|v| v.to_lowercase() == "true" || v == "1")
         .unwrap_or(true);
-    let stripe_price_sub_monthly = std::env::var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY").ok();
+    let stripe_price_sub_monthly = std::env::var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY")
+        .ok()
+        .filter(|v| !v.trim().is_empty());
 
     if !is_test_mode && stripe_key_raw.is_some() && stripe_price_sub_monthly.is_none() {
         return Err(anyhow::anyhow!(

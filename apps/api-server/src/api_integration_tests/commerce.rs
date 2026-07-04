@@ -1122,10 +1122,12 @@ async fn test_preflight_production_mode_rejects_missing_price_id() {
     // VAULT_SECRET をクリアして fetch_and_inject_secrets() を早期リターンさせる。
     // KEY_PROXY_URL は .env から dotenvy で再ロードされるためクリアしても効果がない。
     let old_vault_secret = std::env::var("VAULT_SECRET").ok();
+    let old_price_id = std::env::var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY").ok();
     unsafe {
         std::env::remove_var("VAULT_SECRET");
         std::env::set_var("STRIPE_TEST_MODE", "false");
-        std::env::remove_var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY");
+        // Empty string blocks dotenvy from re-loading STRIPE_PRICE_SUBSCRIPTION_MONTHLY from .env
+        std::env::set_var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY", "");
     }
 
     let result = crate::bootstrap::preflight::init_env_and_preflight().await;
@@ -1134,6 +1136,11 @@ async fn test_preflight_production_mode_rejects_missing_price_id() {
         std::env::set_var("STRIPE_TEST_MODE", "true");
         if let Some(val) = old_vault_secret {
             std::env::set_var("VAULT_SECRET", val);
+        }
+        if let Some(val) = old_price_id {
+            std::env::set_var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY", val);
+        } else {
+            std::env::remove_var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY");
         }
     }
 
