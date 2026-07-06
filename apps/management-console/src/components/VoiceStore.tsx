@@ -12,6 +12,7 @@ import { authenticatedFetch } from "../lib/auth";
 import { useCheckoutSession } from '../hooks/useCheckoutSession';
 import { useTranslation } from '../i18n';
 import { useAgentIdentity } from '../hooks/useAgentIdentity';
+import { useCoinBalance } from '../hooks/useCoinBalance';
 import { openProUpgradeModal } from '../hooks/useSubscriptionStatus';
 import { useToast } from './common/Toast';
 
@@ -54,11 +55,12 @@ const mockAssets: VoiceAsset[] = [
 export default function VoiceStore() {
     const { t } = useTranslation();
   const { agentId, isEkycVerified } = useAgentIdentity();
+  const { balance, error: balanceError, refetch: refetchBalance } = useCoinBalance();
   const { showToast } = useToast();
   const [assets, setAssets] = useState<VoiceAsset[]>(mockAssets);
-  const [balance, setBalance] = useState<number>(0);
-  const [balanceError, setBalanceError] = useState(false);
   const [purchasing, setPurchasing] = useState<string | null>(null);
+  const [gifting, setGifting] = useState<string | null>(null);
+  const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
 
   const {
     handleCheckout,
@@ -73,23 +75,6 @@ export default function VoiceStore() {
       showToast('error', checkoutError);
     }
   }, [checkoutError, showToast]);
-
-  const fetchBalance = useCallback(async () => {
-    if (!agentId) return;
-    try {
-      setBalanceError(false);
-      const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/balance/${agentId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setBalance(typeof data?.balance === 'number' ? data.balance : 0);
-      } else {
-        setBalanceError(true);
-      }
-    } catch (e) {
-      console.error("Failed to fetch balance", e);
-      setBalanceError(true);
-    }
-  }, [agentId]);
 
   const fetchVoiceAssets = useCallback(async () => {
     try {
@@ -113,10 +98,30 @@ export default function VoiceStore() {
     }
   }, []);
 
+  const fetchWishlist = useCallback(async () => {
+    if (!agentId) return;
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/wishlist/${agentId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const ids = new Set(
+            data
+              .map((entry: { item_id?: string }) => entry.item_id)
+              .filter((id): id is string => typeof id === 'string')
+          );
+          setWishlistIds(ids);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch wishlist", e);
+    }
+  }, [agentId]);
+
   useEffect(() => {
-    fetchBalance();
     fetchVoiceAssets();
-  }, [fetchBalance, fetchVoiceAssets]);
+    fetchWishlist();
+  }, [fetchVoiceAssets, fetchWishlist]);
 
   const handlePurchase = async (asset: VoiceAsset) => {
     if (!agentId) return;
@@ -135,7 +140,8 @@ export default function VoiceStore() {
       });
 
       if (res.ok) {
-        await fetchBalance();
+        await refetchBalance();
+        await fetchWishlist();
         showToast('success', t('voice.purchaseSuccess', { name: asset.name }));
       } else {
         let message = t('voice.insufficientFunds') || 'Insufficient funds';
@@ -151,6 +157,43 @@ export default function VoiceStore() {
       showToast('error', t('common.networkError'));
     } finally {
       setPurchasing(null);
+    }
+  };
+
+  const handleGift = async (asset: VoiceAsset) => {
+    if (!agentId) return;
+    setGifting(asset.id);
+
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/purchase/${agentId}`, {
+        method: "POST",
+        body: JSON.stringify({
+          item_id: asset.id,
+          metadata: {
+            amount_coins: asset.price_coins,
+            context_layer: "gift_from_master"
+          }
+        })
+      });
+
+      if (res.ok) {
+        await refetchBalance();
+        await fetchWishlist();
+        showToast('success', t('voice.giftSuccess', { name: asset.name }));
+      } else {
+        let message = t('voice.giftFailed') || 'Gift purchase failed';
+        try {
+          const data = await res.json();
+          if (data?.message) message = data.message;
+        } catch {
+          message = `${t('common.error') || 'Error'}: ${res.status} ${res.statusText}`;
+        }
+        showToast('error', message);
+      }
+    } catch {
+      showToast('error', t('common.networkError'));
+    } finally {
+      setGifting(null);
     }
   };
 
@@ -251,6 +294,16 @@ export default function VoiceStore() {
               <div>
                 <h4 style={{ margin: "0 0 0.25rem", color: "var(--text-primary)" }}>{asset.name}</h4>
                 <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{t('voice.authorPrefix') || 'by '} {asset.author}</div>
+                {wishlistIds.has(asset.id) && (
+                  <div style={{
+                    marginTop: "0.5rem",
+                    fontSize: "0.75rem",
+                    color: "var(--accent-purple)",
+                    fontWeight: 600,
+                  }}>
+                    💡 {t('voice.wishlistBadge')}
+                  </div>
+                )}
               </div>
               <div style={{ background: "var(--accent-cyan-10)", color: "var(--accent-cyan)", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem", fontWeight: "bold", display: "flex", alignItems: "center", gap: "4px" }}>
                 <span>{asset.price_coins}</span> KC
@@ -275,13 +328,34 @@ export default function VoiceStore() {
               ))}
             </div>
 
-            <div style={{ display: "flex", gap: "0.5rem" }}>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
               <button 
                 className="secondary-button" 
                 style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}
               >
                 <Volume2 size={16} /> {t('common.preview') || 'Preview'}
               </button>
+              {wishlistIds.has(asset.id) && (
+                <button
+                  className="primary-button"
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    background: "var(--accent-purple)",
+                  }}
+                  onClick={() => handleGift(asset)}
+                  disabled={gifting === asset.id || balance < asset.price_coins || !isEkycVerified}
+                >
+                  {gifting === asset.id ? (
+                    <span className="ani-pulse">{t('voice.gifting')}</span>
+                  ) : (
+                    t('voice.giftPurchase')
+                  )}
+                </button>
+              )}
               <button 
                 className="primary-button" 
                 style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}

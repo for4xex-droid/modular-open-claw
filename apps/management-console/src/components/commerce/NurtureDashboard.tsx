@@ -10,6 +10,8 @@ import { API_BASE, STRIPE_PRICE_ID } from "../../config";
 import { authenticatedFetch, getAuthToken } from "../../lib/auth";
 import { useCheckoutSession } from "../../hooks/useCheckoutSession";
 import { openProUpgradeModal } from "../../hooks/useSubscriptionStatus";
+import { useTranslation } from "../../i18n";
+import { useCoinBalance } from "../../hooks/useCoinBalance";
 
 import {
   Wallet,
@@ -39,13 +41,17 @@ interface TransactionRecord {
   points_amount: number;
   entry_type: string;
   created_at: string;
+  memo?: string | null;
 }
 
 export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToStore?: () => void }) {
-  // useTranslation is available if needed
-  // const { t } = useTranslation();
+  const { t } = useTranslation();
+  const {
+    balance: coinBalance,
+    isLoading: coinBalanceLoading,
+    refetch: refetchCoinBalance,
+  } = useCoinBalance();
   const [balance, setBalance] = useState<PointsBalance | null>(null);
-  const [coinBalance, setCoinBalance] = useState<number | null>(null);
   const [history, setHistory] = useState<TransactionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,10 +80,9 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
     setIsLoading(true);
     setError(null);
     try {
-      const [ptsRes, histRes, kcRes] = await Promise.all([
+      const [ptsRes, histRes] = await Promise.all([
         authenticatedFetch(`${API_BASE}/api/v1/commerce/points/${agentId}`, { signal }),
         authenticatedFetch(`${API_BASE}/api/v1/commerce/history/${agentId}`, { signal }),
-        authenticatedFetch(`${API_BASE}/api/v1/commerce/balance/${agentId}`, { signal }),
       ]);
 
       if (ptsRes.ok) {
@@ -92,13 +97,6 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
         setHistory(await histRes.json());
       } else if (histRes.status !== 403) {
         throw new Error("Failed to load transaction history.");
-      }
-
-      if (kcRes.ok) {
-        const kcData = await kcRes.json();
-        setCoinBalance(typeof kcData.balance === "number" ? kcData.balance : 0);
-      } else if (kcRes.status !== 403) {
-        setCoinBalance(null);
       }
     } catch (e: unknown) {
       if (e instanceof Error) {
@@ -195,7 +193,10 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
           </button>
           <button
             className="secondary-button"
-            onClick={() => fetchData()}
+            onClick={() => {
+              fetchData();
+              void refetchCoinBalance();
+            }}
             disabled={isLoading}
             style={{ display: "flex", alignItems: "center", gap: "0.5rem", alignSelf: "flex-end" }}
           >
@@ -242,7 +243,7 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
             <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase" }}>AiomeCoin (KC)</span>
           </div>
           <div style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--accent-emerald)" }}>
-            {isLoading ? "..." : (coinBalance ?? 0).toLocaleString()} <span style={{ fontSize: "1.2rem" }}>KC</span>
+            {coinBalanceLoading ? "..." : coinBalance.toLocaleString()} <span style={{ fontSize: "1.2rem" }}>KC</span>
           </div>
         </motion.div>
         <motion.div
@@ -284,7 +285,7 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem", color: "var(--text-secondary)" }}>
             <ArrowDownRight size={20} color="var(--accent-rose)" />
-            <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase" }}>Lifetime Withdrawn</span>
+            <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase" }}>{t('nurture.convertedToCoin')}</span>
           </div>
           <div style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--accent-rose)" }}>
             {isLoading ? "..." : (balance?.lifetime_withdrawn || 0).toLocaleString()} <span style={{ fontSize: "1.2rem" }}>KP</span>
@@ -316,6 +317,7 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
                   <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>Amount (Points)</th>
                   <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>Amount (Coins)</th>
                   <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>Transaction ID</th>
+                  <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>Memo</th>
                   <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>Date</th>
                 </tr>
               </thead>
@@ -352,6 +354,9 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
                       </td>
                       <td style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
                         {record.transaction_id.substring(0, 8)}...
+                      </td>
+                      <td style={{ padding: "1rem 1.5rem", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+                        {record.memo ?? "—"}
                       </td>
                       <td style={{ padding: "1rem 1.5rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                         <Clock size={14} />

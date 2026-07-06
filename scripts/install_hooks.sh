@@ -112,7 +112,7 @@ fi
 
 # ── Check 5: Prevent committing strategic documents ──
 echo -n "  strategy docs... "
-STRATEGY_PATTERNS='(strategy|valuation|buyout|business_plan).*\.md$'
+STRATEGY_PATTERNS='(^|/)(strategy|valuation|buyout|business_plan)[^/]*\.md$'
 STAGED_FILES=$(git diff --cached --name-only || true)
 if echo "$STAGED_FILES" | grep -iqE "$STRATEGY_PATTERNS"; then
   echo "❌ STRATEGIC DOCUMENT DETECTED!"

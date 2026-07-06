@@ -36,7 +36,7 @@ git log --since="6 months ago" -- <対象パス>
 コンシューマを一度にすべてではなく、1つずつ安全に移行し、都度テストを実行する。
 // turbo-all
 ```bash
-cargo check --workspace --tests && npm run lint
+cargo check --workspace --tests && (cd apps/management-console && npm run lint)
 ```
 
 ### Step 5: 古いシステムの完全削除

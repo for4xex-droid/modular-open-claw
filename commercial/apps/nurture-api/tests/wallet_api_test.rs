@@ -25,6 +25,12 @@ struct TransferRequest {
 }
 
 async fn setup_test_app() -> (TestServer, SqlitePool, tempfile::TempDir) {
+    setup_test_app_with_policy(nurture_core::policy::EconomyPolicy::default()).await
+}
+
+async fn setup_test_app_with_policy(
+    policy: nurture_core::policy::EconomyPolicy,
+) -> (TestServer, SqlitePool, tempfile::TempDir) {
     let tdir = tempdir().unwrap();
     let db_path = tdir.path().join("test_wallet.db");
     let pool = SqlitePool::connect(&format!("sqlite:{}?mode=rwc", db_path.to_str().unwrap()))
@@ -54,7 +60,7 @@ async fn setup_test_app() -> (TestServer, SqlitePool, tempfile::TempDir) {
     let state = AppState::init(
         nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         job_queue,
-        nurture_core::policy::EconomyPolicy::default(),
+        policy,
         ActorId(system_id),
         cancel_token,
         "test_nurture_secret".to_string().into(),
@@ -83,7 +89,11 @@ fn create_token(actor_id: Uuid) -> String {
 #[tokio::test]
 #[serial]
 async fn test_transfer_api_happy_path() {
-    let (server, pool, _tdir) = setup_test_app().await;
+    let policy = nurture_core::policy::EconomyPolicy {
+        allow_p2p_transfer: true,
+        ..Default::default()
+    };
+    let (server, pool, _tdir) = setup_test_app_with_policy(policy).await;
 
     let from_id = Uuid::new_v4();
     let to_id = Uuid::new_v4();
@@ -188,7 +198,11 @@ async fn test_transfer_api_requires_kyc() {
 #[tokio::test]
 #[serial]
 async fn test_transfer_api_insufficient_funds() {
-    let (server, pool, _tdir) = setup_test_app().await;
+    let policy = nurture_core::policy::EconomyPolicy {
+        allow_p2p_transfer: true,
+        ..Default::default()
+    };
+    let (server, pool, _tdir) = setup_test_app_with_policy(policy).await;
 
     let from_id = Uuid::new_v4();
     let to_id = Uuid::new_v4();
@@ -260,4 +274,47 @@ async fn test_transfer_api_self_rejected() {
     assert!(!res.status_code().is_success());
     let err_txt = res.text();
     assert!(err_txt.contains("Self"));
+}
+
+#[tokio::test]
+#[serial]
+async fn test_transfer_api_p2p_blocked_by_default() {
+    let (server, pool, _tdir) = setup_test_app().await;
+
+    let from_id = Uuid::new_v4();
+    let to_id = Uuid::new_v4();
+
+    sqlx::query("INSERT INTO nurture_wallets (actor_id, balance, daily_limit) VALUES (?, ?, ?)")
+        .bind(from_id.to_string())
+        .bind(1000i64)
+        .bind(5000i64)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO nurture_kyc_status (actor_id, status) VALUES (?, 'verified')")
+        .bind(from_id.to_string())
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let token = create_token(from_id);
+    let req = TransferRequest {
+        to_actor_id: to_id,
+        amount: 100,
+    };
+
+    let res = server
+        .post("/wallet/transfer")
+        .add_header("Authorization", &format!("Bearer {}", token))
+        .json(&req)
+        .await;
+
+    assert!(!res.status_code().is_success());
+    let err_txt = res.text();
+    assert!(
+        err_txt.contains("P2P") || err_txt.contains("disabled"),
+        "expected P2P block message, got: {}",
+        err_txt
+    );
 }

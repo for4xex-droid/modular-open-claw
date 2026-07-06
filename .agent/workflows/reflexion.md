@@ -15,6 +15,11 @@ LLMの確率的な誤りや幻覚（Hallucination）を排除し、Golden Rule�
 **Sequential Thinking** ツールを使用して、以下のサイクルを実行してください。
 **ループ上限**: 最大3回（無限ループ防止のため）
 
+### Phase 0: 機械的チェックの委譲 (Mechanical Offload) 🤖
+`cargo fmt --check` / `cargo clippy` / テスト実行などの機械的チェックは、**低トークンのサブエージェントに委譲**して並行実行できます。本体（メインエージェント）は Phase 1 の論理・設計レビューに集中してください。
+
+> 出典: 2026-07-06 の R3 実装（commit `b63f753c`）に対する /reflexion 実行。サブエージェントが `cargo fmt` 差分と `unwrap_used` clippy 警告を検出し、本体は sqlx チェックサム問題・ドキュメント矛盾などの論理欠陥検出に集中できた（3ループで計10件の指摘を解消）。
+
 ### Phase 1: 批評 (Critique) 🧐
 現状のコードを、外部の厳しいレビュアーの視点で分析します。
 

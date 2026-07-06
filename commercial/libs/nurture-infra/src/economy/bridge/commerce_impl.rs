@@ -65,6 +65,36 @@ impl CommerceEngine for NurtureCommerceBridge {
         Ok(wallet.spent_today)
     }
 
+    async fn get_monthly_spend(&self, agent_id: uuid::Uuid) -> Result<u64, AiomeError> {
+        let wallet = self
+            .ledger
+            .get_balance(&commerce_protocol::identity::ActorId(agent_id))
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
+        Ok(wallet.spent_this_month)
+    }
+
+    async fn get_monthly_limit(&self, agent_id: uuid::Uuid) -> Result<u64, AiomeError> {
+        let policy = self.policy.read().await;
+        let wallet = self
+            .ledger
+            .get_balance(&commerce_protocol::identity::ActorId(agent_id))
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?;
+        let effective = if wallet.monthly_limit > 0 && policy.monthly_spend_limit > 0 {
+            wallet.monthly_limit.min(policy.monthly_spend_limit)
+        } else if wallet.monthly_limit > 0 {
+            wallet.monthly_limit
+        } else {
+            policy.monthly_spend_limit
+        };
+        Ok(effective)
+    }
+
     async fn list_escrows(
         &self,
         agent_id: Uuid,
@@ -507,6 +537,7 @@ impl CommerceEngine for NurtureCommerceBridge {
             entry_type: nurture_core::ledger::EntryType::Burn,
             created_at: Utc::now(),
             debit_account_version: Some(wallet.version),
+            memo: None,
         };
 
         match self.ledger.record_entry(&entry).await {
@@ -602,6 +633,7 @@ impl CommerceEngine for NurtureCommerceBridge {
             entry_type: nurture_core::ledger::EntryType::Refund,
             created_at: chrono::Utc::now(),
             debit_account_version: None,
+            memo: None,
         };
 
         self.ledger
@@ -661,6 +693,7 @@ impl CommerceEngine for NurtureCommerceBridge {
             entry_type: nurture_core::ledger::EntryType::PointsWithdrawal,
             created_at: now,
             debit_account_version: None,
+            memo: None,
         };
 
         // 2. Charge entry (mint coins to user)
@@ -685,6 +718,7 @@ impl CommerceEngine for NurtureCommerceBridge {
             entry_type: nurture_core::ledger::EntryType::Charge,
             created_at: now,
             debit_account_version: None,
+            memo: None,
         };
 
         // Strict Atomic Batching: SQLite Transaction 全成功か全失敗 (Zero-Risk)
@@ -816,6 +850,14 @@ impl CommerceEngine for NurtureCommerceBridge {
             });
         }
 
+        let policy = self.policy.read().await;
+        if !policy.allow_p2p_transfer {
+            return Err(AiomeError::Validation {
+                reason: "P2P coin transfer is disabled by policy (ADR-052): user-to-user coin transfer is blocked to comply with prepaid payment instrument regulations".to_string(),
+            });
+        }
+        drop(policy);
+
         let from_actor = commerce_protocol::identity::ActorId(from_id);
         let wallet =
             self.ledger
@@ -842,6 +884,7 @@ impl CommerceEngine for NurtureCommerceBridge {
             entry_type: nurture_core::ledger::EntryType::Transfer,
             created_at: chrono::Utc::now(),
             debit_account_version: Some(wallet.version),
+            memo: None,
         };
 
         self.ledger
@@ -1057,6 +1100,17 @@ impl CommerceEngine for NurtureCommerceBridge {
         };
 
         if let Ok(tx_id) = &result {
+            // D-5: 購入成功 = wishlist 消込み（gift_from_master に限らず常に。
+            // 残留すると B-2 再購入ブロックと衝突し「プレゼント → already owned」の UX 欠陥になる）
+            if let Err(e) =
+                crate::economy::wishlist::WishlistStore::remove(&self.pool, agent_id, item_id).await
+            {
+                tracing::warn!(
+                    "wishlist remove after purchase failed for item {} (non-fatal): {}",
+                    item_id,
+                    e
+                );
+            }
             if let Err(e) = self
                 .idempotency
                 .save_response(&idempotency_key, 200, tx_id.clone())
@@ -1067,6 +1121,25 @@ impl CommerceEngine for NurtureCommerceBridge {
         }
 
         result
+    }
+
+    async fn get_wishlist(
+        &self,
+        agent_id: Uuid,
+    ) -> Result<Vec<aiome_core_contracts::commerce::WishlistEntry>, AiomeError> {
+        let rows = crate::economy::wishlist::WishlistStore::list(&self.pool, agent_id)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Failed to get wishlist: {}", e),
+            })?;
+        Ok(rows
+            .into_iter()
+            .map(|row| aiome_core_contracts::commerce::WishlistEntry {
+                item_id: row.item_id,
+                reason: row.reason,
+                created_at: row.created_at,
+            })
+            .collect())
     }
 
     async fn get_points(
@@ -1113,6 +1186,7 @@ impl CommerceEngine for NurtureCommerceBridge {
                 entry_type: serde_json::to_string(&entry.entry_type)
                     .unwrap_or_else(|_| "Unknown".to_string()),
                 created_at: entry.created_at,
+                memo: entry.memo,
             })
             .collect())
     }

@@ -23,7 +23,7 @@ bash scripts/deep-scan.sh
 
 ```bash
 # ツール (view_file) で読み込み
-# docs/architecture/ARCHITECTURE.md
+# ARCHITECTURE.md（リポジトリルート。scripts/generate_architecture.py により自動生成）
 ```
 
 ### Step 3: レポート生成

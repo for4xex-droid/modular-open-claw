@@ -4,10 +4,10 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useState, useCallback, useEffect, useLayoutEffect, useSyncExternalStore } from 'react';
+import React, { useState, useCallback, useLayoutEffect, useSyncExternalStore } from 'react';
 import { A2uiEnvelope, A2uiComponent, A2uiSurface, A2uiMetric, A2uiTimelineEvent } from '../types';
 import { useTokenHealth } from '../hooks/useTokenHealth';
-import { useAgentIdentity } from '../hooks/useAgentIdentity';
+import { useCoinBalance } from '../hooks/useCoinBalance';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
 import { a2uiSurfaceStore } from '../lib/a2uiSurfaceStore';
@@ -20,40 +20,7 @@ interface A2uiRendererProps {
 }
 
 const WalletWidget: React.FC<{ label?: string }> = ({ label }) => {
-    const { agentId } = useAgentIdentity();
-    const [balance, setBalance] = useState<number | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (!agentId) {
-            setLoading(false);
-            return;
-        }
-        const controller = new AbortController();
-        (async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const res = await authenticatedFetch(
-                    `${API_BASE}/api/v1/commerce/balance/${agentId}`,
-                    { signal: controller.signal },
-                );
-                if (res.ok) {
-                    const data = await res.json();
-                    setBalance(typeof data.balance === 'number' ? data.balance : 0);
-                } else if (res.status !== 403) {
-                    setError('Failed to load KC balance');
-                }
-            } catch (e) {
-                if (e instanceof Error && e.name === 'AbortError') return;
-                setError('Failed to load KC balance');
-            } finally {
-                setLoading(false);
-            }
-        })();
-        return () => controller.abort();
-    }, [agentId]);
+    const { balance, isLoading, error } = useCoinBalance();
 
     return (
         <div style={{
@@ -67,10 +34,10 @@ const WalletWidget: React.FC<{ label?: string }> = ({ label }) => {
                 {label ?? 'AiomeCoin (KC)'}
             </div>
             <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
-                {loading ? '…' : error ? '—' : `${(balance ?? 0).toLocaleString()} KC`}
+                {isLoading ? '…' : error ? '—' : `${balance.toLocaleString()} KC`}
             </div>
             {error ? (
-                <div style={{ fontSize: '0.7rem', color: 'var(--accent-rose)', marginTop: '0.25rem' }}>{error}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--accent-rose)', marginTop: '0.25rem' }}>Failed to load KC balance</div>
             ) : null}
         </div>
     );

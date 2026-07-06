@@ -94,6 +94,7 @@ impl PolarWebhookHandler {
                                 entry_type: nurture_core::ledger::EntryType::Charge,
                                 created_at: chrono::Utc::now(),
                                 debit_account_version: None,
+                                memo: None,
                             };
                             match self.ledger.record_entry(&entry).await {
                                 Ok(_) => {
@@ -228,6 +229,14 @@ mod tests {
         }
         async fn sum_today(&self, _entry_type: EntryType) -> Result<u64, NurtureError> {
             Ok(0)
+        }
+        async fn has_recent_purchase(
+            &self,
+            _buyer: &ActorId,
+            _asset_id: &Uuid,
+            _within_hours: u32,
+        ) -> Result<bool, NurtureError> {
+            Ok(false)
         }
     }
 

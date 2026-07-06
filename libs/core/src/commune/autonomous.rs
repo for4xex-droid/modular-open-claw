@@ -115,37 +115,44 @@ impl AutonomousCommuneEngine {
                         break;
                     }
 
-                    // 4.6 Phase 7.2: A2C 恩返し (Autonomous Gift)
+                    // 4.6 Phase 7.2 / D-6: A2C 恩返し (Autonomous Gift)
                     if let (Some(ge), Some(email)) = (&gift_engine, &master_email) {
-                        // Karma Check (Simplified for MVP: Check if any karma lesson mentions gratitude)
-                        let has_gratitude = karma.iter().any(|k| {
-                            let lesson = k["lesson"].as_str().unwrap_or("").to_lowercase();
-                            lesson.contains("thank")
-                                || lesson.contains("感謝")
-                                || lesson.contains("helpful")
-                        });
-
-                        if has_gratitude && rounds % 10 == 0 {
-                            // Rate limit: Every 10 rounds of high karma dialogue
+                        if should_trigger_a2c_gift(&karma, rounds) {
                             let amount_usd = 1.0;
                             let agent_id = queue.get_system_agent_id().await.unwrap_or_default();
 
                             match ge.validate_gift_policy(agent_id, amount_usd).await {
                                 Ok(_) => {
-                                    info!("🎁 [AutonomousCommune] Karma Threshold met. Triggering autonomous gift for {}", email);
-                                    if let Err(e) = ge
-                                        .send_gift_code(
-                                            email,
-                                            amount_usd,
-                                            "Aiome Autonomous Gratitude (Phase 7.2)",
-                                        )
-                                        .await
-                                    {
-                                        error!("🚨 [AutonomousCommune] Autonomous gift delivery failed (${:.2}): {}", amount_usd, e);
+                                    if is_a2c_dry_run() {
+                                        info!(
+                                            "🎁 [AutonomousCommune][DRY-RUN] Would send A2C gift to {} (${:.2}) — set NURTURE_A2C_DRY_RUN=0 to enable",
+                                            email, amount_usd
+                                        );
+                                    } else {
+                                        info!(
+                                            "🎁 [AutonomousCommune] Karma threshold met. Triggering autonomous gift for {}",
+                                            email
+                                        );
+                                        if let Err(e) = ge
+                                            .send_gift_code(
+                                                email,
+                                                amount_usd,
+                                                "Aiome Autonomous Gratitude (Phase 7.2)",
+                                            )
+                                            .await
+                                        {
+                                            error!(
+                                                "🚨 [AutonomousCommune] Autonomous gift delivery failed (${:.2}): {}",
+                                                amount_usd, e
+                                            );
+                                        }
                                     }
                                 }
                                 Err(e) => {
-                                    warn!("⚠️ [AutonomousCommune] Gift policy validation failed: {}. Skipping autonomous gift.", e);
+                                    warn!(
+                                        "⚠️ [AutonomousCommune] Gift policy validation failed: {}. Skipping autonomous gift.",
+                                        e
+                                    );
                                 }
                             }
                         }
@@ -286,5 +293,43 @@ impl AutonomousCommuneEngine {
         queue.store_commune_message(&msg).await?;
 
         Ok(())
+    }
+}
+
+/// D-6: Karma-based A2C gift trigger (extracted for testability).
+pub fn should_trigger_a2c_gift(karma: &[serde_json::Value], rounds: u32) -> bool {
+    let has_gratitude = karma.iter().any(|k| {
+        let lesson = k["lesson"].as_str().unwrap_or("").to_lowercase();
+        lesson.contains("thank") || lesson.contains("感謝") || lesson.contains("helpful")
+    });
+    has_gratitude && rounds.is_multiple_of(10)
+}
+
+fn is_a2c_dry_run() -> bool {
+    std::env::var("NURTURE_A2C_DRY_RUN")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_should_trigger_a2c_gift_positive() {
+        let karma = vec![serde_json::json!({ "lesson": "User was very helpful and thanked us" })];
+        assert!(should_trigger_a2c_gift(&karma, 10));
+    }
+
+    #[test]
+    fn test_should_trigger_a2c_gift_negative_no_gratitude() {
+        let karma = vec![serde_json::json!({ "lesson": "Discussed weather patterns" })];
+        assert!(!should_trigger_a2c_gift(&karma, 10));
+    }
+
+    #[test]
+    fn test_should_trigger_a2c_gift_negative_rate_limit() {
+        let karma = vec![serde_json::json!({ "lesson": "感謝の言葉をいただいた" })];
+        assert!(!should_trigger_a2c_gift(&karma, 9));
     }
 }

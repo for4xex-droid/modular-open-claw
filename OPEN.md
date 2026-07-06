@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-06**
+**最終更新: 2026-07-07**
 
 ## 運用ルール
 
@@ -74,4 +74,5 @@
 
 ## ✅ 解決（直近のみ保持）
 
+- [x] **OP-071**: Nurture 品質最大化計画 v4（`docs/roadmaps/nurture_quality_max_plan.md`）— Phase A–E-0 + /reflexion + D-1 → **2026-07-07 完了**（CHANGELOG [Unreleased]、`cargo test --workspace` PASS、D-1 `CoinBalanceProvider` 集約）
 - [x] **OP-900**: 異常ファイル名 `memory/2026-04-07.md\`` の整理 — 2026-07-03 解決（Lessons を正規版へマージし memory/archive/ へ移動）

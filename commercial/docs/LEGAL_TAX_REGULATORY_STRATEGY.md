@@ -199,5 +199,6 @@ Phase 4 以降: B2A Merchant SDK でフィジカル EC との API 連携
 | **Phase 1** (Month 1-3) | ① TOS コア条項ドラフト作成 ② チャージ画面の法的同意 UX 設計 |
 | **Phase 2** (Month 4-6) | ③ 資金決済法の届出準備（未使用残高 1,000 万円超の場合） ④ eKYC による本人確認フロー |
 | **Phase 3** (Month 7-9) | ⑤ Tremendous API の**ホワイトリスト設計**（現金同等物排除） ⑥ AML ポリシー文書化 |
+| | ⛔ **ADR-052**: CP→外部ギフト/現金変換はスコープ外。Tremendous は A2C 専用（`docs/decisions/052-fiat-payout-scope-exclusion.md`）。⑤⑥は A2C 経路のコンプライアンスに限定 |
 | **Phase 4** (Month 10-12) | ⑦ B2A Merchant SDK の契約テンプレート ⑧ グレーゾーン解消制度への申請 |
 | **Phase 5+** (将来) | ⑨ 規制サンドボックス申請 ⑩ 業界コンソーシアム設立 ⑪ フィジカルコマース API 連携の法的整理 |

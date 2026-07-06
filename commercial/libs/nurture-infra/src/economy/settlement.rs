@@ -122,6 +122,7 @@ impl SettlementProtocol for SQLiteSettlementProvider {
             entry_type: EntryType::Purchase,
             created_at: now,
             debit_account_version: tx.debit_account_version,
+            memo: Some(format!("{}を買いました！", tx.item.name)),
         };
 
         // 2. システム手数料エントリ
@@ -136,6 +137,7 @@ impl SettlementProtocol for SQLiteSettlementProvider {
             entry_type: EntryType::SystemFee,
             created_at: now,
             debit_account_version: None,
+            memo: None,
         };
 
         // 3. 焼却エントリ (不換型報酬焼却)
@@ -150,6 +152,7 @@ impl SettlementProtocol for SQLiteSettlementProvider {
             entry_type: EntryType::Burn,
             created_at: now,
             debit_account_version: None,
+            memo: None,
         };
 
         // 台帳への一括記録
@@ -214,6 +217,7 @@ impl SettlementProtocol for SQLiteSettlementProvider {
                     entry_type: EntryType::Refund,
                     created_at: now,
                     debit_account_version: None,
+                    memo: None,
                 });
             }
         }
@@ -342,6 +346,14 @@ mod tests {
                 .map(|e| e.coin_amount)
                 .sum();
             Ok(total)
+        }
+        async fn has_recent_purchase(
+            &self,
+            _buyer: &ActorId,
+            _asset_id: &Uuid,
+            _within_hours: u32,
+        ) -> Result<bool, NurtureError> {
+            Ok(false)
         }
     }
 

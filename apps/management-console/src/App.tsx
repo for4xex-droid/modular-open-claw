@@ -83,6 +83,7 @@ import { useViewMode } from "./hooks/useViewMode";
 import { useAgentIdentity } from "./hooks/useAgentIdentity";
 import { useTokenHealth } from "./hooks/useTokenHealth";
 import { PlanBadge } from "./components/commerce/PlanBadge";
+import { CoinChip } from "./components/commerce/CoinChip";
 import { CheckoutSuccess } from "./components/commerce/CheckoutSuccess";
 import { APP_VERSION, API_BASE, STRIPE_PRICE_ID } from "./config";
 import { isValidA2uiNavTab } from "./lib/a2uiTabs";
@@ -790,6 +791,7 @@ function App() {
           </motion.h2>
 
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <CoinChip />
             <PlanBadge />
             {renderStatusBadge()}
           </div>

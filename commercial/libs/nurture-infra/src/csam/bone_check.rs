@@ -13,8 +13,9 @@
 //! 未成年の身体的特徴を持つモデルの流通を防止する。
 //!
 //! ## 判定ロジック
-//! - `head_to_body_ratio >= 0.20` → 5頭身以下の幼児的プロポーション → Reject
-//! - `head_to_body_ratio < 0.20`  → 成人的プロポーション → Safe
+//! - `head_to_body_ratio >= 1/5.5` → 5.5頭身以下の幼児的プロポーション → Reject
+//! - `head_to_body_ratio < 1/5.5`  → 成人的プロポーション → Safe
+//! - 閾値は `libs/shared/src/csam/proportions.rs` L35 (`ratio < 5.5` reject) と値整合（クレート非依存）
 
 use super::{ContentSafetyChecker, ScanVerdict};
 use async_trait::async_trait;
@@ -23,8 +24,8 @@ use uuid::Uuid;
 
 /// 幼児的プロポーション判定の閾値。
 /// head_to_body_ratio が この値以上の場合、Reject する。
-/// 5頭身 ≈ 頭が全体の20%以上を占める (1/5 = 0.20)
-const CHILD_PROPORTION_THRESHOLD: f64 = 0.20;
+/// 5.5頭身 ≈ 頭が全体の 1/5.5 ≒ 0.1818 を占める
+const CHILD_PROPORTION_THRESHOLD: f64 = 1.0 / 5.5;
 
 /// VRM 頭身比率チェッカー。
 pub struct BoneChecker {
@@ -58,21 +59,6 @@ impl ContentSafetyChecker for BoneChecker {
 
         // BoneChecker applies only to VrmAvatar
         if kind != "VrmAvatar" {
-            return Ok(ScanVerdict::Safe);
-        }
-
-        // --- Feature Step 1.4: Bypass humanoid proportion check for non-humanoid assets (dogs, cats, props, etc.) ---
-        // Defaults to true (fail-closed check) if missing or not a boolean.
-        let is_humanoid = metadata
-            .get("is_humanoid")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(true);
-
-        if !is_humanoid {
-            tracing::info!(
-                "🦴 BoneChecker: item {} is non-humanoid VrmAvatar. Bypassing proportion safety check.",
-                item_id
-            );
             return Ok(ScanVerdict::Safe);
         }
 
@@ -158,8 +144,15 @@ impl ContentSafetyChecker for BoneChecker {
                 Ok(ScanVerdict::Safe)
             }
             None => {
-                tracing::debug!("🦴 BoneChecker: item {} の頭身情報が抽出できず、メタデータにもありません。通過させます。", item_id);
-                Ok(ScanVerdict::Safe)
+                tracing::warn!(
+                    "🦴 BoneChecker: item {} proportions unverifiable — manual review required",
+                    item_id
+                );
+                Ok(ScanVerdict::Rejected {
+                    reason: "proportions unverifiable — manual review required".to_string(),
+                    layer: "BoneChecker",
+                    requires_ncmec_report: false,
+                })
             }
         }
     }
@@ -264,19 +257,18 @@ mod tests {
     async fn test_borderline_exactly_at_threshold() {
         let checker = BoneChecker::default();
         let id = Uuid::new_v4();
-        let meta = serde_json::json!({ "kind": "VrmAvatar", "content": "test_base64_data", "head_to_body_ratio": 0.20 }); // ちょうど閾値
+        let meta = serde_json::json!({ "kind": "VrmAvatar", "content": "test_base64_data", "head_to_body_ratio": 1.0 / 5.5 });
         let result = checker.scan(&id, &meta).await.unwrap();
         assert!(matches!(result, ScanVerdict::Rejected { .. }));
     }
 
     #[tokio::test]
-    async fn test_missing_ratio_passes() {
+    async fn test_missing_ratio_rejected() {
         let checker = BoneChecker::default();
         let id = Uuid::new_v4();
-        // Missing ratio but has kind and valid mock content
         let meta = serde_json::json!({ "kind": "VrmAvatar", "content": "test_base64_data" });
         let result = checker.scan(&id, &meta).await.unwrap();
-        assert!(matches!(result, ScanVerdict::Safe));
+        assert!(matches!(result, ScanVerdict::Rejected { .. }));
     }
 
     #[tokio::test]
@@ -300,10 +292,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_non_humanoid_vrm_bypasses_bone_check() {
+    async fn test_self_declared_non_humanoid_no_longer_bypasses() {
         let checker = BoneChecker::default();
         let id = Uuid::new_v4();
-        // 幼児比率 (0.25) だが is_humanoid: false の非人型モデルは Safe になるべき
         let meta = serde_json::json!({
             "kind": "VrmAvatar",
             "content": "test_base64_data",
@@ -311,9 +302,8 @@ mod tests {
             "is_humanoid": false
         });
         let result = checker.scan(&id, &meta).await.unwrap();
-        assert!(matches!(result, ScanVerdict::Safe));
+        assert!(matches!(result, ScanVerdict::Rejected { .. }));
 
-        // is_humanoid: true もしくは省略の場合は、従来通り Rejected になること
         let meta_humanoid = serde_json::json!({
             "kind": "VrmAvatar",
             "content": "test_base64_data",

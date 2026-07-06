@@ -252,7 +252,7 @@ impl EconomyLedger for DatabaseEconomyLedger {
         let limit_i64 = safe_i64(limit.into())?;
         let res: Result<Vec<LedgerEntry>, AiomeError> = sql_fetch_all_map!(
             &self.pool,
-            sqlite: "SELECT id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at
+            sqlite: "SELECT id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at, memo
                      FROM nurture_ledger WHERE debit_account = ? OR credit_account = ? ORDER BY created_at DESC LIMIT ?",
             |row| {
                 let id_str: String = row.get("id");
@@ -290,9 +290,10 @@ impl EconomyLedger for DatabaseEconomyLedger {
                     })?,
                     created_at: row.get("created_at"),
                     debit_account_version: None,
+                    memo: row.try_get::<Option<String>, _>("memo").ok().flatten(),
                 })
             },
-            pg: "SELECT id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at
+            pg: "SELECT id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at, memo
                  FROM nurture_ledger WHERE debit_account = $1 OR credit_account = $2 ORDER BY created_at DESC LIMIT $3",
             |row| {
                 let id_str: String = row.get("id");
@@ -330,6 +331,7 @@ impl EconomyLedger for DatabaseEconomyLedger {
                     })?,
                     created_at: row.get("created_at"),
                     debit_account_version: None,
+                    memo: row.try_get::<Option<String>, _>("memo").ok().flatten(),
                 })
             },
             actor.0.to_string(),
@@ -387,6 +389,7 @@ impl EconomyLedger for DatabaseEconomyLedger {
                     })?,
                     created_at: row.get("created_at"),
                     debit_account_version: None,
+            memo: None,
                 })
             },
             pg: "SELECT id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at
@@ -427,6 +430,7 @@ impl EconomyLedger for DatabaseEconomyLedger {
                     })?,
                     created_at: row.get("created_at"),
                     debit_account_version: None,
+            memo: None,
                 })
             },
             transaction_id.to_string()
@@ -470,6 +474,43 @@ impl EconomyLedger for DatabaseEconomyLedger {
             reason: e.to_string(),
         })?;
         Ok(safe_u64(total.unwrap_or(0)))
+    }
+
+    async fn has_recent_purchase(
+        &self,
+        buyer: &ActorId,
+        asset_id: &Uuid,
+        within_hours: u32,
+    ) -> Result<bool, NurtureError> {
+        let since = Utc::now() - chrono::Duration::hours(i64::from(within_hours));
+        let entry_type_json =
+            serde_json::to_string(&EntryType::Purchase).map_err(|e| NurtureError::Ledger {
+                reason: format!("EntryType serialize error: {e}"),
+            })?;
+        let asset_id_str = asset_id.to_string();
+        let buyer_str = buyer.0.to_string();
+
+        let res: Result<Option<i64>, AiomeError> = sql_fetch_optional_map!(
+            &self.pool,
+            sqlite: "SELECT COUNT(*) AS cnt FROM nurture_ledger WHERE entry_type = ? AND asset_id = ? AND debit_account = ? AND created_at > ?",
+            |row| {
+                let cnt: i64 = row.get("cnt");
+                Ok::<i64, AiomeError>(cnt)
+            },
+            pg: "SELECT COUNT(*) AS cnt FROM nurture_ledger WHERE entry_type = $1 AND asset_id = $2 AND debit_account = $3 AND created_at > $4",
+            |row| {
+                let cnt: i64 = row.get("cnt");
+                Ok::<i64, AiomeError>(cnt)
+            },
+            entry_type_json,
+            asset_id_str,
+            buyer_str,
+            since
+        );
+        let count = res.map_err(|e: AiomeError| NurtureError::Ledger {
+            reason: e.to_string(),
+        })?;
+        Ok(count.unwrap_or(0) > 0)
     }
 }
 impl DatabaseEconomyLedger {
@@ -711,8 +752,8 @@ impl DatabaseEconomyLedger {
 
             sql_tx_exec!(
                 tx,
-                sqlite: "INSERT INTO nurture_ledger (id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at, audit_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                pg: "INSERT INTO nurture_ledger (id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at, audit_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+                sqlite: "INSERT INTO nurture_ledger (id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at, audit_hash, memo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                pg: "INSERT INTO nurture_ledger (id, transaction_id, asset_id, debit_account, credit_account, coin_amount, points_amount, entry_type, created_at, audit_hash, memo) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
                 entry.id.to_string(),
                 entry.transaction_id.to_string(),
                 entry.asset_id.map(|id| id.to_string()),
@@ -722,7 +763,8 @@ impl DatabaseEconomyLedger {
                 safe_i64(entry.points_amount)?,
                 &entry_type_str,
                 entry.created_at,
-                &new_hash
+                &new_hash,
+                entry.memo.as_deref()
             )
             .map_err(|e| NurtureError::Ledger { reason: e.to_string() })?;
 
@@ -776,6 +818,7 @@ mod tests {
             entry_type: EntryType::Purchase,
             created_at: Utc::now(),
             debit_account_version: None,
+            memo: None,
         };
 
         ledger.record_entry(&entry).await.expect("Record failed");
@@ -919,6 +962,7 @@ mod tests {
             entry_type: EntryType::Purchase,
             created_at: Utc::now(),
             debit_account_version: None,
+            memo: None,
         };
 
         ledger.record_entry(&entry).await.unwrap();
@@ -960,6 +1004,7 @@ mod tests {
             entry_type: EntryType::CloneFork, // CloneManager::fork をシミュレート
             created_at: Utc::now(),
             debit_account_version: Some(0), // 古いバージョンを指定
+            memo: None,
         };
 
         // これは成功し、ウォレットのバージョンが 1 になる
@@ -980,6 +1025,7 @@ mod tests {
             entry_type: EntryType::CloneFork,
             created_at: Utc::now(),
             debit_account_version: Some(0), // 古いバージョンを指定したまま
+            memo: None,
         };
 
         // T2 は OCC 競合で失敗しなければならない

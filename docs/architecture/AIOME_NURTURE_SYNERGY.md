@@ -1,7 +1,9 @@
 # Aiome × Project NURTURE 統合仕様書
 
+> 要件正本: [`docs/specs/NURTURE_REQUIREMENTS_V2.md`](../specs/NURTURE_REQUIREMENTS_V2.md)（2026-07-06）
+
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-07-03
+> **最終更新**: 2026-07-07（品質最大化計画 v4 + /reflexion 反映）  
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -950,6 +952,10 @@ classDiagram
         +deduct_generation_cost(agent_id, asset_id, amount, generation_type) Result~()~
         +create_checkout_session(agent_id, price_id, success_url, cancel_url) Result~String~
         +create_portal_session(agent_id, return_url) Result~String~
+        +withdraw_points(actor_id, points) Result~()~
+        +get_points(agent_id) Result~PointsBalance~
+        +get_transaction_history(agent_id, limit) Result~Vec~TransactionRecord~~
+        +get_wishlist(agent_id) Result~Vec~WishlistEntry~~
     }
 
     class GiftEngine {
@@ -1195,6 +1201,7 @@ gantt
 | **開発者向けテンプレート (templates/)** | WASM Skill、Node.js 経済連携（`use_escrow`等）、Python MCP サーバーの 3 テンプレートを提供し、他エコシステム（Dify等）からの移行や NURTURE 経済連携の実装を支援 |
 | **MCP 品質ゲート監査** | MCP サーバーからロードされるツールの総数バジェット（警告上限15）および説明文品質（20文字未満）を自動的に監査。低品質なツールや過剰なMCPサーバー接続からくるエージェントのパフォーマンス低下や競合リスクを未然に防止。 |
 | **公式 X (Twitter) MCP 統合** | 公式 X MCP クライアントとの stdio 連携テンプレート、および `TrendSonar` の adapter 連動を整備。自律トレンド収集の精度と速度を大幅に向上。 |
+| **品質最大化 v4（2026-07-07）** | `nurture_wishlist` + `CommerceEngine::get_wishlist`（残高不足シグナル）、`POST /commerce/convert-points`（ADR-052）、P2P デフォルトブロック、`forget_actor` で wishlist パージ、Management Console の `CoinBalanceProvider` / `useCoinBalance` による KC 残高 fetch 集約、`NURTURE_A2C_DRY_RUN` による A2C 2段階有効化 |
 
 
 ---

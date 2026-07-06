@@ -6,11 +6,11 @@
  */
 import React from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Sparkles, Activity, Zap, Brain, BookOpen, ThumbsUp, ThumbsDown, Cpu } from 'lucide-react';
+import { MessageSquare, Sparkles, Activity, Zap, Brain, BookOpen, ThumbsUp, ThumbsDown, Cpu, ShoppingBag } from 'lucide-react';
 import { A2uiRenderer } from '../A2uiRenderer';
 import ErrorBoundary from '../common/ErrorBoundary';
 
-export type FlowCardType = 'chat_user' | 'chat_assistant' | 'chat_streaming' | 'system' | 'karma' | 'knowledge' | 'tool_exec';
+export type FlowCardType = 'chat_user' | 'chat_assistant' | 'chat_streaming' | 'system' | 'commerce' | 'karma' | 'knowledge' | 'tool_exec';
 
 export interface FlowCardProps {
     type: FlowCardType;
@@ -38,6 +38,7 @@ const FlowCard: React.FC<FlowCardProps> = ({ type, title, content, timestamp, is
             case 'karma': return <Brain size={14} color={isOod ? 'var(--accent-rose)' : 'var(--accent-cyan)'} />;
             case 'knowledge': return <BookOpen size={14} color="var(--accent-amber)" />;
             case 'tool_exec': return <Zap size={14} color="var(--accent-amber)" />;
+            case 'commerce': return <ShoppingBag size={14} color="var(--accent-emerald)" />;
             case 'system':
             default: return <Activity size={14} color="var(--accent-emerald)" />;
         }
@@ -51,6 +52,7 @@ const FlowCard: React.FC<FlowCardProps> = ({ type, title, content, timestamp, is
             case 'karma': return isOod ? 'var(--accent-rose-30)' : 'var(--accent-cyan-20)';
             case 'knowledge': return 'var(--accent-amber-30)';
             case 'tool_exec': return 'var(--accent-amber-30)';
+            case 'commerce': return 'var(--accent-emerald-30)';
             case 'system':
             default: return 'var(--accent-emerald-20)';
         }

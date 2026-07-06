@@ -237,15 +237,25 @@ async fn handle_chat_command(state: AppState, payload: AgentChatRequest) -> anyh
                 );
                 uuid::Uuid::nil()
             });
-        if let (Ok(balance), Ok(spent_today), Ok(daily_limit)) = (
+        if let (
+            Ok(balance),
+            Ok(spent_today),
+            Ok(daily_limit),
+            Ok(spent_this_month),
+            Ok(monthly_limit),
+        ) = (
             engine.get_balance(agent_id).await,
             engine.get_daily_spend(agent_id).await,
             engine.get_daily_limit(agent_id).await,
+            engine.get_monthly_spend(agent_id).await,
+            engine.get_monthly_limit(agent_id).await,
         ) {
             economic_context = Some(aiome_core::commerce::EconomicContext {
                 balance,
                 spent_today,
                 daily_limit,
+                spent_this_month,
+                monthly_limit,
             });
         }
     }

@@ -34,7 +34,7 @@ description: 動作を変えずに複雑さだけを削減する構造化リフ�
 1回の論理的な変更ごとにビルドとテストを実行する。
 // turbo-all
 ```bash
-cargo check --workspace --tests && npm run lint
+cargo check --workspace --tests && (cd apps/management-console && npm run lint)
 ```
 テストが通らない場合は即座にrevertし、別のアプローチを検討する。
 

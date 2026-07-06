@@ -147,15 +147,19 @@ impl AgentEngine {
         let mut economic_context = None;
         let system_id = state.system_agent_id;
         if let Some(engine) = state.commerce_engine.as_opt() {
-            if let (Ok(balance), Ok(spent), Ok(limit)) = (
+            if let (Ok(balance), Ok(spent), Ok(limit), Ok(spent_month), Ok(month_limit)) = (
                 engine.get_balance(system_id).await,
                 engine.get_daily_spend(system_id).await,
                 engine.get_daily_limit(system_id).await,
+                engine.get_monthly_spend(system_id).await,
+                engine.get_monthly_limit(system_id).await,
             ) {
                 economic_context = Some(aiome_core::commerce::EconomicContext {
                     balance,
                     spent_today: spent,
                     daily_limit: limit,
+                    spent_this_month: spent_month,
+                    monthly_limit: month_limit,
                 });
             }
         }

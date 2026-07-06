@@ -1236,6 +1236,49 @@ impl CommerceEngine for StripeCommerceEngine {
         Ok(vec![])
     }
 
+    async fn get_wishlist(
+        &self,
+        agent_id: Uuid,
+    ) -> Result<Vec<aiome_core_contracts::commerce::WishlistEntry>, AiomeError> {
+        if let (Some(url), Some(secret), Some(client)) = (
+            &self.nurture_url,
+            &self.nurture_secret,
+            &self.nurture_client,
+        ) {
+            let req_url = format!("{}/internal/wishlist/{}", url, agent_id);
+            let mut req = client
+                .get(&req_url)
+                .header("Authorization", format!("Bearer {}", secret))
+                .timeout(std::time::Duration::from_secs(10));
+
+            if let Some(cert_header) = self.generate_oxp_header() {
+                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
+            }
+
+            let res = req.send().await.map_infra_err_context("HTTP error")?;
+
+            if res.status().is_success() {
+                let body: Vec<aiome_core_contracts::commerce::WishlistEntry> =
+                    res.json().await.map_infra_err()?;
+                return Ok(body);
+            } else {
+                let status = res.status();
+                let text = match res.text().await {
+                    Ok(t) => t,
+                    Err(e) => {
+                        tracing::warn!("⚠️ [Billing] Failed to read wishlist error body: {:?}", e);
+                        String::new()
+                    }
+                };
+                return Err(AiomeError::Infrastructure {
+                    reason: format!("Get wishlist failed ({}): {}", status, text),
+                });
+            }
+        }
+
+        Ok(vec![])
+    }
+
     async fn create_portal_session(
         &self,
         agent_id: Uuid,

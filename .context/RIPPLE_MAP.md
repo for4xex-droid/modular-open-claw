@@ -1,4 +1,14 @@
-## 🔍 R3 本番インフラ検証（2026-07-06）
+## 🔍 Nurture 品質最大化計画 v4 実装（2026-07-06）
+
+- **変更内容**:
+    - `docs/decisions/052-fiat-payout-scope-exclusion.md` [NEW]: ADR-052。
+    - `commercial/migrations/*/20260707*.sql` [NEW]: payout DROP、licenses partial UNIQUE、ledger memo、wishlist。
+    - `commercial/libs/nurture-core/src/policy.rs`: `allow_p2p_transfer`。
+    - `commercial/libs/nurture-infra/src/csam/bone_check.rs`: fail-closed、自己申告バイパス削除。
+    - `commercial/apps/nurture-api/src/mcp_tools/buy.rs`: 再購入ブロック、`surprise_bonus`。
+    - `apps/api-server/src/routes/commerce.rs`: `convert_points`、自律購入 SSE。
+    - `apps/management-console/src/hooks/useCoinBalance.ts` / `CoinChip.tsx` [NEW]。
+- **波及効果**: OpenAPI `/withdraw` → `/convert-points`（alias 維持）。`EconomyLedger` / `LedgerEntry` / `TransactionRecord` に memo。`EconomicContext` に月次フィールド。`CommerceEngine::get_wishlist` / `WishlistEntry` / `nurture_wishlist` テーブル / VoiceStore バッジ。A2C は `should_trigger_a2c_gift` + `NURTURE_A2C_DRY_RUN`（未設定= dry-run）。/reflexion 是正（2026-07-07）: `nurture_wishlist` は GDPR `forget_actor` のパージ対象。wishlist 消込みは購入成功時に常時実行（`buy.rs` / `commerce_impl.rs`）— 新規購入経路を追加する場合は消込みも必須。
 
 - **変更内容**:
     - `docker-compose.production-verify.yml` [NEW]: 本番 postgres:16-alpine + `init.sql` の軽量検証 compose（ポート 5434）。

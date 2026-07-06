@@ -10,7 +10,7 @@ description: コードベースから仕様書とMermaid図を自動生成する
 ## 使用法
 
 ```bash
-/docs-gen crates/core
+/docs-gen libs/soul
 ```
 
 ## 実行手順
@@ -20,7 +20,7 @@ description: コードベースから仕様書とMermaid図を自動生成する
    - コメントやドキュメンテーションコメント (`///`) を読み取ります。
 
 2. **ドキュメント生成**
-   - 以下の構成でMarkdownファイル (`docs/architecture.md`) を生成/更新します。
+   - 以下の構成で `docs/architecture/` 配下に対象モジュールの仕様書 Markdown（例: `docs/architecture/INFRASTRUCTURE_MODULES.md`）を生成/更新します。
      - **概要**: モジュールの責務
      - **主要データ構造**: 構造体定義と役割
      - **インターフェース**: Trait定義

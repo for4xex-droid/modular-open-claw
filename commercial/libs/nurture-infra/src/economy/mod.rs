@@ -20,3 +20,4 @@ pub mod ledger;
 pub mod merkle;
 pub mod settlement;
 pub mod uow;
+pub mod wishlist;

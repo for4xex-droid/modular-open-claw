@@ -14,7 +14,7 @@ description: デプロイ準備、ロールアウト計画、ロールバック�
 ### Step 1: Pre-launch チェックリスト
 以下の全品質ゲートが「Green」であることを確認する。
 
-- **Code Quality**: `cargo check`, `npm run lint`, Unit/E2E テストがALL GREEN。不要な `console.log` やTODOの残存なし。
+- **Code Quality**: `cargo check --workspace --tests`, `(cd apps/management-console && npm run lint)`, Unit/E2E テストがALL GREEN。不要な `console.log` やTODOの残存なし。
 - **Security**: シークレット漏洩なし、依存関係にクリティカルな脆弱性なし（`npm audit` / `cargo audit`）。認証・認可のバリデーション実装済み。
 - **Performance**: N+1クエリなし。コアウェビタルやAPIレスポンスタイムの基本要件充足。
 - **Infrastructure**: 本番用環境変数準備、DBマイグレーション準備完了。

@@ -151,18 +151,48 @@ pub async fn get_transaction_history(
     Ok(Json(history))
 }
 
-/// [POST] /api/v1/commerce/withdraw
+/// [GET] /api/v1/commerce/wishlist/:agent_id
+#[utoipa::path(
+    get,
+    path = "/api/v1/commerce/wishlist/{agent_id}",
+    responses(
+        (status = 200, description = "Agent wishlist (items they could not afford)", body = Vec<aiome_core_contracts::commerce::WishlistEntry>),
+        (status = 403, description = "Unauthorized access")
+    ),
+    params(
+        ("agent_id" = String, Path, description = "The unique ID of the agent")
+    ),
+    security(("api_key" = []))
+)]
+pub async fn get_wishlist(
+    State(state): State<AppState>,
+    auth: crate::auth::Authenticated,
+    Path(agent_id): Path<Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    if agent_id != auth.agent_id {
+        return Err(AppError::forbidden("Unauthorized access to this agent"));
+    }
+    let engine = state.commerce_engine.as_opt().ok_or_else(|| {
+        aiome_core::error::AiomeError::Infrastructure {
+            reason: "Commerce Engine not enabled".into(),
+        }
+    })?;
+    let entries = engine.get_wishlist(agent_id).await?;
+    Ok(Json(entries))
+}
+
+/// [POST] /api/v1/commerce/convert-points
 #[utoipa::path(
     post,
-    path = "/api/v1/commerce/withdraw",
+    path = "/api/v1/commerce/convert-points",
     request_body = WithdrawRequest,
     responses(
-        (status = 200, description = "Withdrawal initiated successfully"),
+        (status = 200, description = "Creator points converted to AiomeCoin (in-ecosystem)"),
         (status = 403, description = "Unauthorized access or missing eKYC")
     ),
     security(("api_key" = []))
 )]
-pub async fn withdraw_points(
+pub async fn convert_points(
     State(state): State<AppState>,
     auth: crate::auth::Authenticated,
     Json(req): Json<WithdrawRequest>,
@@ -172,12 +202,12 @@ pub async fn withdraw_points(
     }
     if !auth.ekyc_verified {
         return Err(AppError::forbidden(
-            "eKYC verification required to withdraw",
+            "eKYC verification required to convert points",
         ));
     }
     if req.amount == 0 {
         return Err(AppError::bad_request(
-            "Withdrawal amount must be greater than zero",
+            "Conversion amount must be greater than zero",
         ));
     }
     let engine = state.commerce_engine.as_opt().ok_or_else(|| {
@@ -284,6 +314,18 @@ pub async fn execute_purchase(
     let tx_id = engine
         .execute_autonomous_purchase(agent_id, req.item_id, req.metadata)
         .await?;
+
+    if let Some(sender) = state.event_sender.as_opt() {
+        if let Err(e) = sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
+            event_type: "autonomous_purchase.completed".to_string(),
+            agent_id,
+            amount: 0,
+            currency: "KC".to_string(),
+            description: format!("item {} purchased (tx: {})", req.item_id, tx_id),
+        }) {
+            tracing::warn!("Failed to broadcast autonomous purchase event: {}", e);
+        }
+    }
 
     Ok((
         StatusCode::CREATED,

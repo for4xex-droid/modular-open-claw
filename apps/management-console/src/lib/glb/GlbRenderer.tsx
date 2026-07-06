@@ -3,6 +3,8 @@
  * Copyright (C) 2026 motivationstudio, LLC
  *
  * Licensed under the Business Source License 1.1.
+ *
+ * Phase E（VRM 配線計画）で使用予定 — GLB プレビュー用。本格 VRM 配線は別計画。
  */
 import React from 'react';
 import { useGLTF, Environment, OrbitControls } from '@react-three/drei';

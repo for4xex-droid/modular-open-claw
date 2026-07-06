@@ -15,7 +15,7 @@ description: 攻撃者視点（Red Team）による容赦ないセキュリテ�
 // turbo
 コードを「読む」前に、まず自動生成されたアーキテクチャ定義を読み込み、攻撃対象の「地図」を手に入れる。
 ```bash
-# ツール (view_file) で docs/architecture/ARCHITECTURE.md を読み込む
+# ツール (view_file) で ARCHITECTURE.md（リポジトリルート）を読み込む
 ```
 
 `ARCHITECTURE.md` と `grep_search` の走査結果から以下を把握する：

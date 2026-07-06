@@ -161,14 +161,50 @@ async fn test_subscription_and_transfer_stubs() {
 }
 
 #[tokio::test]
-async fn test_transfer_happy_path() {
+async fn test_p2p_transfer_blocked_by_default() {
     let bridge = setup_bridge().await;
     let from_actor = Uuid::new_v4();
     let to_actor = Uuid::new_v4();
 
-    // Setup wallets
     sqlx::query(
-        "INSERT INTO nurture_wallets (actor_id, balance, daily_limit, spent_today, version) VALUES (?, ?, ?, ?, ?)"
+        "INSERT INTO nurture_wallets (actor_id, balance, daily_limit, spent_today, version) VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(from_actor.to_string())
+    .bind(1000i64)
+    .bind(5000i64)
+    .bind(0i64)
+    .bind(1)
+    .execute(bridge.pool.get_sqlite_pool().unwrap())
+    .await
+    .unwrap();
+
+    let result = bridge.transfer(from_actor, to_actor, 200).await;
+    assert!(
+        result.is_err(),
+        "P2P transfer must be blocked by default (ADR-052)"
+    );
+    assert!(
+        matches!(
+            result.unwrap_err(),
+            aiome_core_contracts::error::AiomeError::Validation { .. }
+        ),
+        "Expected Validation error for blocked P2P transfer"
+    );
+}
+
+#[tokio::test]
+async fn test_p2p_transfer_allowed_when_policy_enabled() {
+    let bridge = setup_bridge().await;
+    {
+        let mut policy = bridge.policy.write().await;
+        policy.allow_p2p_transfer = true;
+    }
+
+    let from_actor = Uuid::new_v4();
+    let to_actor = Uuid::new_v4();
+
+    sqlx::query(
+        "INSERT INTO nurture_wallets (actor_id, balance, daily_limit, spent_today, version) VALUES (?, ?, ?, ?, ?)",
     )
     .bind(from_actor.to_string())
     .bind(1000i64)
@@ -180,7 +216,7 @@ async fn test_transfer_happy_path() {
     .unwrap();
 
     sqlx::query(
-        "INSERT INTO nurture_wallets (actor_id, balance, daily_limit, spent_today, version) VALUES (?, ?, ?, ?, ?)"
+        "INSERT INTO nurture_wallets (actor_id, balance, daily_limit, spent_today, version) VALUES (?, ?, ?, ?, ?)",
     )
     .bind(to_actor.to_string())
     .bind(500i64)
@@ -192,7 +228,10 @@ async fn test_transfer_happy_path() {
     .unwrap();
 
     let result = bridge.transfer(from_actor, to_actor, 200).await;
-    assert!(result.is_ok(), "Transfer should succeed");
+    assert!(
+        result.is_ok(),
+        "Transfer should succeed when allow_p2p_transfer=true"
+    );
 
     let from_wallet = bridge
         .ledger
@@ -212,6 +251,10 @@ async fn test_transfer_happy_path() {
 #[tokio::test]
 async fn test_transfer_insufficient() {
     let bridge = setup_bridge().await;
+    {
+        let mut policy = bridge.policy.write().await;
+        policy.allow_p2p_transfer = true;
+    }
     let from_actor = Uuid::new_v4();
     let to_actor = Uuid::new_v4();
 
@@ -434,6 +477,7 @@ async fn test_instant_refund_preserves_asset_id() {
         entry_type: nurture_core::ledger::EntryType::Purchase,
         created_at: chrono::Utc::now(),
         debit_account_version: Some(1),
+        memo: None,
     };
     bridge.ledger.record_entry(&purchase_entry).await.unwrap();
 

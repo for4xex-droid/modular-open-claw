@@ -76,7 +76,7 @@ const mapVitalityEvent = (event: VitalityEvent, index: number, t: (key: string) 
             return { id: `sys-${index}`, type: 'system', title: t('agent.thinkingProcess') || 'THINKING PROCESS', content: msg, timestamp: ts };
         }
         case 'commerce_event':
-            return { id: `sys-${index}`, type: 'system', title: t('storyFlow.commerceDefault') || '💰 COMMERCE', content: `${String(d?.description ?? t('storyFlow.commerceDefault'))} (${Number(d?.amount ?? 0) > 0 ? '+' : ''}${String(d?.amount ?? 0)} ${String(d?.currency ?? '')})`, timestamp: ts };
+            return { id: `commerce-${index}`, type: 'commerce', title: t('storyFlow.commerce') || '💰 お買い物', content: `${String(d?.description ?? t('storyFlow.commerceDefault'))} (${Number(d?.amount ?? 0) > 0 ? '+' : ''}${String(d?.amount ?? 0)} ${String(d?.currency ?? '')})`, timestamp: ts };
         default:
             return null;
     }

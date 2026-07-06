@@ -1,5 +1,34 @@
 ## [Unreleased]
 
+### Added (Nurture 品質最大化計画 v4 実装 2026-07-06)
+- **ADR-052**: 法定通貨ペイアウトのスコープ除外（CP→AiomeCoin のみ、P2P ブロック根拠）。
+- **Phase A**: `nurture_payout_requests` DROP マイグレーション、`/commerce/convert-points`（`/withdraw` alias 維持）、法務文言・REMAINING_TASKS 注記、NurtureDashboard i18n。
+- **Phase B**: `allow_p2p_transfer` デフォルト false、再購入ブロック（ライセンス + 24h ledger）、BoneChecker fail-closed + 閾値 1/5.5、月次上限プロンプト注入。
+- **Phase D (部分)**: `useCoinBalance` / `CoinChip`、`FlowCard` commerce 型、ledger `memo` 列、購入 SSE、`BuyResponse.surprise_bonus`。
+- **Phase D (続)**: wishlist UPSERT/API/FE（`GET /commerce/wishlist`、VoiceStore バッジ・プレゼント導線）、A2C `should_trigger_a2c_gift` + デフォルト dry-run、guardrails 憧れ表現テスト、B-1 P2P TDD。
+- **A-6 / E-0**: `UNCERTAINTY_BREAKTHROUGH.md` / `LEGAL_TAX_REGULATORY_STRATEGY.md` へ ADR-052 スコープ外注記。`useVrmExpression.ts` / `GlbRenderer.tsx` に Phase E 予定コメント。
+- **テスト安定化**: `buy_flow_e2e` / `internal_routes_test` / `wallet_api_test` を P2P ポリシー前提に更新（B-1 デフォルトブロック + 明示有効化パターン）。surprise bonus 無効化。CHANGELOG Unreleased 見出し重複解消。
+- **マイグレーション**: `20260707*` 系5本（DROP payout / licenses unique / memo / wishlist）。
+- **/reflexion セルフレビュー（2026-07-07）**: GDPR `forget_actor` に `nurture_wishlist` パージ追加（欲求記録の削除漏れ修正 + テスト）。wishlist 消込みを gift 限定から「購入成功時は常に」へ是正（再購入ブロックとの衝突防止）。`useCoinBalance.ts` の壊れた import（`../lib/api` → `../lib/auth`）と `NurtureDashboard.tsx` の `react-i18next` 誤参照（自前 i18n へ）を修正。`WishlistStore::list` に LIMIT 200。`.env.example` に `NURTURE_A2C_DRY_RUN` 追記。clippy `collapsible_if` / `field_reassign_with_default` 計9件解消 + `cargo fmt`。
+- **D-1 完了**: `useCoinBalance` を `CoinBalanceProvider`（Context）化し、`VoiceStore` / `NurtureDashboard` / `A2uiRenderer` の重複 balance fetch を hook に集約。購入後 `refetch()` で `CoinChip` 含む全 UI が同期更新。
+
+### Changed (/docs-sync 2026-07-07)
+- **`AIOME_NURTURE_SYNERGY.md`**: `CommerceEngine` に `get_wishlist` / `withdraw_points` 等を追記、品質最大化 v4 シナジー行、最終更新日 2026-07-07。
+- **`NURTURE_REQUIREMENTS_V2.md`**: wishlist / memo / BoneChecker / `CoinBalanceProvider` / A2C dry-run を実装済み拡張に追記。
+- **`OPERATIONS_MANUAL.md` v3.5**: `NURTURE_A2C_DRY_RUN` 環境変数を Nurture 節に追加。
+- **`SECURITY_DESIGN.md`**: RTBF 行91 に wishlist パージ、`forget_actor` 対策を反映。
+- **`OPEN.md`**: OP-071 完了（品質最大化 v4）、最終更新 2026-07-07。
+- **`commercial/README.md`**: wishlist アーキテクチャ保証行を追加。
+- **`nurture_quality_max_plan.md`**: D-1 ✅、`CoinBalanceProvider` 前提事実を更新。
+
+### Changed (ワークフロー棚卸し 2026-07-06)
+- **`.agent/workflows/` 全26本を守り/攻め両面で監査・修正（20ファイル変更）**:
+  - 事実誤り修正: `license-check.md` の Apache 2.0 記述を実態の BUSL 1.1（2030-04-01 Apache 移行）に統一。`chaos.md` の `ChaosMode` 一覧に `NetworkPartition` / `HighLatency` を追加（実コードと同期）。
+  - デッドパス修正: `docs/architecture/ARCHITECTURE.md` → ルート `ARCHITECTURE.md`（deep-scan / red-team / preflight / perfect-plan / overhaul）。`crates/core` / `docs/architecture.md`（docs-gen）、存在しない `/build-fix` `/test-coverage` 参照（code-review / plan / tdd）を実在ワークフローに差し替え。
+  - 再現性修正: `docs-sync.md` のハードコード日付（2026-03-17）を「実行日を `date` で確認」に変更。`powershell` ブロックを `bash` に統一（code-review / tdd）。ルートに package.json がないため `npm run lint` を `(cd apps/management-console && ...)` に修正（simplify / sunset / ship）。
+  - 構造修正: `perfect-plan.md` 見出しの `ç` typo、`code-review.md` のステップ番号重複とテンプレのフェンス欠落、`expert-review.md` の Expert 1 見出し欠落、`desktop-sidecar.md` の frontmatter 欠落、`task.md` の `/[x]` 表記ゆれ。
+  - 実績還流（出典つき）: `reflexion.md` に機械チェックのサブエージェント委譲（Phase 0）、`biz-value.md` に前回レポート読込とメトリクス委譲、`docs-sync.md` に検証スクリプト→OPERATIONS_MANUAL マッピングと OPEN.md 同期を追記（いずれも 2026-07-06 実行実績が出典）。
+
 ### Added (/docs-sync 2026-07-06)
 - **`OPERATIONS_MANUAL.md` v3.4**: §8 リリース前チェックリストに OP-012/014/G1/R2-1 検証項目、§8.1 検証スクリプト表を追記。
 - **`SECURITY_DESIGN.md`**: Keychain CLI / PostgreSQL 本番検証スクリプトへの参照、最終更新日 2026-07-06。
@@ -196,7 +225,7 @@
 - **汎用 skills 3件を移管**: Aiome 固有知識のない `backend-patterns.md` / `frontend-patterns.md` / `coding-standards.md` を `.agent/skills/` から `docs/guides/generic-patterns/` へ移動（SKILLS_MANUAL.md 同期済み）。
 - **workflow 整理**: ロードマップ誤配置の `implementation_plan.md` を `docs/roadmaps/` へ移動（HANDOVER.md / MASTER_BLUEPRINT.md / mission-control-principles.md のリンク更新）。旧 Antigravity 固有の `VIBE_WORKFLOW.md` / `spec-mode.md` を `.agent/workflows/archive/` へ。`/god-mode` `/expert-review` に非推奨・使い分け告知を追加。
 - **`scripts/docs-sync-check.sh` Check 8 [NEW]**: memory/ 日次ファイルの形式検査（20行以内・Done/Open/Lessons 3セクション、2026-07-03 以降のファイル対象）。Negative Test で git diff ベース実装の検知漏れ（memory/ は git 追跡外）を発見し、ファイルシステム走査方式へ修正済み。
-- **`/release-preflight` ステップ7.5 [NEW]**: CHANGELOG [Unreleased] の200行超過チェックを追加（リリース時のバージョン切り出しを強制）。
+- **`/release-preflight` ステップ7.5 [NEW]**: CHANGELOG Unreleased セクションの200行超過チェックを追加（リリース時のバージョン切り出しを強制）。
 - **メモリ二系統の整理**: 異常ファイル名 ``memory/2026-04-07.md` `` を教訓マージの上 `memory/archive/2026-04-07-handover.md` へ正規化。陳腐化した `.agent/memory/2026-04-01-phase2-handoff.md` をアーカイブ。`context-optimization.md` の「skills 常駐」誤記（全 skills 一括読込を誘発）を訂正。MEMORY.md の `nurture_auditor.py` 強制記述を現行ツール（grep + impact_query.py + RIPPLE_MAP）に更新。
 
 ### Added

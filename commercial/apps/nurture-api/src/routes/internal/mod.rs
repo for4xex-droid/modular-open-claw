@@ -53,6 +53,7 @@ pub fn internal_routes() -> Router {
             "/transaction-history/:actor_id",
             get(misc::get_transaction_history),
         )
+        .route("/wishlist/:actor_id", get(misc::get_wishlist))
         .route("/instant-refund", post(misc::instant_refund))
         .route("/lora-train", post(misc::internal_lora_train))
         .route("/validate-activity", post(misc::internal_validate_activity))

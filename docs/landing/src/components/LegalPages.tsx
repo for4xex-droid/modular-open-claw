@@ -104,7 +104,7 @@ export function TermsPage() {
         <ul className="list-disc pl-6 space-y-2">
           <li><strong>返金不可の方針</strong>: <strong>Stripe 決済を介して購入された Karma Coins (KC) のチャージ代金、および月額サブスクリプション料金については、理由の如何を問わず一切の返金を行いません（返金不可ポリシー）。</strong></li>
           <li><strong>プラットフォーム手数料</strong>: アプリケーション内での取引において、手数料として取引額の 15% が控除され、残る 85% がクリエイターに分配されます。</li>
-          <li><strong>eKYC（本人確認）の義務化</strong>: 出金や有償サービス提供にあたっては、Stripe Identity などを通じた本人確認（eKYC）の完了を必須条件とします。</li>
+          <li><strong>eKYC（本人確認）の義務化</strong>: ポイント交換や有償サービス提供にあたっては、Stripe Identity などを通じた本人確認（eKYC）の完了を必須条件とします。</li>
         </ul>
       </section>
 

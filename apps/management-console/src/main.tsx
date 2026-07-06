@@ -17,6 +17,7 @@ import { SystemVitalityProvider } from "./hooks/useSystemVitality";
 import { ToastProvider } from "./components/common/Toast";
 import { SubscriptionProvider } from "./hooks/useSubscriptionStatus";
 import { AgentChatProvider } from "./hooks/AgentChatProvider";
+import { CoinBalanceProvider } from "./hooks/useCoinBalance";
 
 /**
  * [Milestone 3] UI Dynamic Discovery
@@ -40,11 +41,13 @@ async function boot() {
               <SystemVitalityProvider>
                 <ToastProvider>
                   <SubscriptionProvider>
-                    <AgentChatProvider>
-                      <MotionConfig reducedMotion="user">
-                        <App />
-                      </MotionConfig>
-                    </AgentChatProvider>
+                    <CoinBalanceProvider>
+                      <AgentChatProvider>
+                        <MotionConfig reducedMotion="user">
+                          <App />
+                        </MotionConfig>
+                      </AgentChatProvider>
+                    </CoinBalanceProvider>
                   </SubscriptionProvider>
                 </ToastProvider>
               </SystemVitalityProvider>

@@ -42,6 +42,16 @@ pub trait CommerceEngine: Send + Sync {
     /// 1日の使用上限を取得する
     async fn get_daily_limit(&self, agent_id: Uuid) -> Result<u64, AiomeError>;
 
+    /// 今月使用したコインの総額を取得する
+    async fn get_monthly_spend(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
+        Ok(0)
+    }
+
+    /// 1ヶ月の使用上限を取得する (0 = 無制限)
+    async fn get_monthly_limit(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
+        Ok(0)
+    }
+
     /// エスクロー（一時保留）決済を作成する
     async fn escrow_create(&self, agent_id: Uuid, amount: u64) -> Result<String, AiomeError>;
 
@@ -117,7 +127,7 @@ pub trait CommerceEngine: Send + Sync {
     /// 即時決済（Instant Purchase）を返金する（Karma連動のトラスト閾値付き）
     async fn instant_refund(&self, transaction_id: &str, actor_id: Uuid) -> Result<(), AiomeError>;
 
-    /// クリエイターポイントをコインまたは法定通貨として出金する
+    /// クリエイターポイントを AiomeCoin に交換する（エコシステム内変換。法定通貨出金は ADR-052 によりスコープ外）
     async fn withdraw_points(
         &self,
         actor_id: Uuid,
@@ -133,6 +143,11 @@ pub trait CommerceEngine: Send + Sync {
         agent_id: Uuid,
         limit: u32,
     ) -> Result<Vec<TransactionRecord>, AiomeError>;
+
+    /// エージェントのウィッシュリスト（残高不足で購入できなかったアイテム）を取得する
+    async fn get_wishlist(&self, _agent_id: Uuid) -> Result<Vec<WishlistEntry>, AiomeError> {
+        Ok(vec![])
+    }
 
     /// Stripe Customer Portal のセッションを作成し、ポータル URL を返す
     async fn create_portal_session(
@@ -151,6 +166,15 @@ pub struct PointsBalance {
     pub conversion_rate_bps: u32,
 }
 
+/// ウィッシュリストエントリ（残高不足シグナル）
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
+pub struct WishlistEntry {
+    #[schema(value_type = String)]
+    pub item_id: Uuid,
+    pub reason: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
 /// トランザクション履歴のレコード
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct TransactionRecord {
@@ -162,6 +186,8 @@ pub struct TransactionRecord {
     pub points_amount: u64,
     pub entry_type: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
+    #[serde(default)]
+    pub memo: Option<String>,
 }
 
 /// エスクローの記録
@@ -208,6 +234,12 @@ pub struct EconomicContext {
     pub spent_today: u64,
     /// 1日の使用上限
     pub daily_limit: u64,
+    /// 1ヶ月の使用上限 (0 = 無制限)
+    #[serde(default)]
+    pub monthly_limit: u64,
+    /// 今月使用したコインの総額
+    #[serde(default)]
+    pub spent_this_month: u64,
 }
 
 /// ギフトエンジン・トレイト (A2C 恩返し / Tremendous 連携)

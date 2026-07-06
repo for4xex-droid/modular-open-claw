@@ -44,6 +44,8 @@ pub struct BuyResponse {
     pub receipt: SettlementReceipt,
     pub license_id: Option<Uuid>,
     pub escrow_id: Option<String>,
+    #[serde(default)]
+    pub surprise_bonus: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -109,6 +109,28 @@ async fn execute_purchase_core(
         });
     }
 
+    // B-2: 同一アイテム再購入ブロック（破産ループ対策）
+    if item.drm_enabled
+        && state
+            .license_store
+            .get_license(&req.buyer, &req.item_id)
+            .await?
+            .is_some()
+    {
+        return Err(NurtureError::PolicyViolation(
+            "already owned: re-purchase blocked (active license exists)".to_string(),
+        ));
+    }
+    if state
+        .ledger
+        .has_recent_purchase(&req.buyer, &req.item_id, 24)
+        .await?
+    {
+        return Err(NurtureError::PolicyViolation(
+            "rapid re-purchase blocked: same item within 24 hours".to_string(),
+        ));
+    }
+
     // 3. 購入者のウォレット取得
     let buyer_id = req.buyer;
 
@@ -132,10 +154,23 @@ async fn execute_purchase_core(
     tx_initiated.debit_account_version = Some(wallet.version);
 
     // 5. セキュリティチェック (EconomyInterceptor)
-    state
+    let check_result = state
         .interceptor
         .check_transaction(&tx_initiated, &wallet)
-        .await?;
+        .await;
+    if let Err(NurtureError::InsufficientBalance { .. }) = &check_result {
+        if let Err(e) = nurture_infra::economy::wishlist::WishlistStore::upsert(
+            &state.pool,
+            buyer_id.0,
+            req.item_id,
+            "insufficient_balance",
+        )
+        .await
+        {
+            tracing::warn!("wishlist upsert failed on insufficient balance: {}", e);
+        }
+    }
+    check_result?;
 
     // 6. 承認状態へ移行 (Authorized) — debit_account_version は authorize() で引き継がれる
     let tx_authorized = tx_initiated.authorize();
@@ -229,6 +264,7 @@ async fn execute_purchase_core(
     }
 
     // A2C: サプライズボーナス評価（W-6）
+    let mut surprise_bonus: Option<u64> = None;
     {
         use nurture_core::a2c::surprise::SurpriseEngine;
         use nurture_core::ledger::{EntryType, LedgerEntry};
@@ -247,6 +283,7 @@ async fn execute_purchase_core(
             SurpriseEngine::evaluate_bonus(receipt.coin_debited, today_issued, max_daily, &mut rng)
         };
         if let Some(bonus) = bonus {
+            surprise_bonus = Some(bonus);
             let bonus_entry = LedgerEntry {
                 id: uuid::Uuid::new_v4(),
                 transaction_id: receipt.transaction_id,
@@ -258,6 +295,7 @@ async fn execute_purchase_core(
                 entry_type: EntryType::SurpriseBonus,
                 created_at: chrono::Utc::now(),
                 debit_account_version: None,
+                memo: None,
             };
             if let Err(e) = state.ledger.record_entry(&bonus_entry).await {
                 tracing::warn!("⚠️ [A2C] SurpriseBonus record failed (non-fatal): {}", e);
@@ -265,10 +303,23 @@ async fn execute_purchase_core(
         }
     }
 
+    // D-5: 購入成功 = wishlist 消込み（残留すると再購入ブロックと衝突しバッジが stale になる）
+    if let Err(e) =
+        nurture_infra::economy::wishlist::WishlistStore::remove(&state.pool, buyer_id.0, item.id)
+            .await
+    {
+        tracing::warn!(
+            "wishlist remove after purchase failed for item {} (non-fatal): {}",
+            item.id,
+            e
+        );
+    }
+
     Ok(BuyResponse {
         transaction_id: receipt.transaction_id,
         receipt,
         license_id,
         escrow_id,
+        surprise_bonus,
     })
 }

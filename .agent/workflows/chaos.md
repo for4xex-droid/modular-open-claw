@@ -11,7 +11,7 @@ description: 制御された障害実験を自動生成・実行し、システ�
 ## 前提知識
 - カオスインジェクション基盤: `libs/infrastructure/tests/common/chaos.rs`
 - テストスイート: `libs/infrastructure/tests/chaos_experiments.rs`
-- 障害モード enum: `ChaosMode` (EmptyResponse, Timeout, MalformedJson, GiantOutput, AlwaysFail)
+- 障害モード enum: `ChaosMode` (EmptyResponse, Timeout, MalformedJson, GiantOutput, AlwaysFail, NetworkPartition, HighLatency)
 
 ---
 
@@ -35,6 +35,8 @@ description: 制御された障害実験を自動生成・実行し、システ�
 | `MalformedJson` | SoT, CortexCompiler | 不正 JSON でのフォールバック動作 |
 | `GiantOutput` | ConstraintChecker | 巨大出力の検出・制限 |
 | `AlwaysFail` | SamsaraEngine | LLM 全障害時のフォールバック継承 |
+| `NetworkPartition` | FederationOps | ネットワーク断絶時の同期エラーハンドリング |
+| `HighLatency` | FederationOps | 高レイテンシ時のタイムアウト動作 |
 
 ### Phase 3: 実験の実行 (Experiment) 🧪
 // turbo

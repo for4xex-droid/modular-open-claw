@@ -62,6 +62,17 @@ jest.mock('./hooks/useDisplayMode', () => ({
   __esModule: true,
   useDisplayMode: () => ({ mode: 'lite', setMode: jest.fn() })
 }));
+jest.mock('./hooks/useCoinBalance', () => ({
+  __esModule: true,
+  useCoinBalance: () => ({
+    balance: 0,
+    isLoading: false,
+    error: false,
+    refetch: jest.fn(),
+    agentId: null,
+  }),
+  CoinBalanceProvider: ({ children }: { children: unknown }) => children,
+}));
 jest.mock('./components/home/CharacterPanel', () => ({
   __esModule: true,
   default: () => <div data-testid="character-panel-mock">mock</div>

@@ -30,6 +30,8 @@ pub struct EconomyPolicy {
     pub min_transaction_interval_ms: u64,
     #[serde(default = "default_max_daily_surprise_bonus")]
     pub max_daily_surprise_bonus: u64,
+    /// User-to-user coin transfer (ADR-052: default false = blocked).
+    pub allow_p2p_transfer: bool,
 }
 
 fn default_max_daily_surprise_bonus() -> u64 {
@@ -52,6 +54,7 @@ impl Default for EconomyPolicy {
             max_item_price: 100_000,
             min_transaction_interval_ms: 1000, // 高頻度取引防止 (1秒間隔)
             max_daily_surprise_bonus: default_max_daily_surprise_bonus(),
+            allow_p2p_transfer: false,
         }
     }
 }

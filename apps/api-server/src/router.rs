@@ -79,8 +79,17 @@ pub fn build_app(
             get(routes::commerce::get_transaction_history),
         )
         .route(
+            "/api/v1/commerce/wishlist/:agent_id",
+            get(routes::commerce::get_wishlist),
+        )
+        .route(
+            "/api/v1/commerce/convert-points",
+            post(routes::commerce::convert_points),
+        )
+        // ADR-052: alias until sunset 2026-08-01 — use /convert-points for new integrations
+        .route(
             "/api/v1/commerce/withdraw",
-            post(routes::commerce::withdraw_points),
+            post(routes::commerce::convert_points),
         )
         .route(
             "/api/v1/commerce/transfer",

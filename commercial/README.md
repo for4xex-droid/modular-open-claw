@@ -53,6 +53,7 @@ commercial/libs/nurture-infra ← Stripe Webhook・経済ブリッジ実装
 | OS↔経済間の Zero-Trust 通信 | [internal/mod.rs](apps/nurture-api/src/routes/internal/mod.rs)（Bearer + OxiLean 証明書の二重認証） |
 | 暴走購入の実行時防壁 | [interceptor.rs](libs/nurture-infra/src/economy/interceptor.rs)（購入前プリフライト・日次上限） |
 | Aiome 本体との接点は 1 ゲートウェイのみ | [ADR-011](docs/decisions/011-nurture-bridge-isolation.md)（nurture-bridge 分離） |
+| 残高不足シグナル（wishlist） | `nurture_wishlist` テーブル + `GET /commerce/wishlist`（購入成功で消込み、GDPR `forget_actor` でパージ） |
 
 ## さらに詳しく
 

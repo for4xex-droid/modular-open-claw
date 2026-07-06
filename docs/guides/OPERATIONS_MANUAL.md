@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
-**Version:** 3.4  
-**Last Updated:** 2026-07-06
+**Version:** 3.5  
+**Last Updated:** 2026-07-07
 
 ---
 
@@ -97,6 +97,7 @@ NURTURE_API_URL=http://localhost:3020            # Nurture-APIのローカルサ
 NURTURE_DRM_MASTER_KEY=your_drm_key              # release 必須。Desktop debug は {data_dir}/.nurture_drm_master_key を自動生成・永続化
 # NURTURE_CLOUD_URL=https://nurture.your-domain.com # リモートの Nurture インスタンスを使用する場合設定
 # NURTURE_DISABLED=true                           # 経済機能を無効化しOSSモードで動作させる場合設定
+# NURTURE_A2C_DRY_RUN=1                           # A2C 恩返し: 未設定/1/true=ログのみ。0 のみで Tremendous 実送信（Human 確認後）
 
 # --- Security (Production) ---
 A2A_NODE_TOKEN=your_a2a_token                    # release ビルド必須。未設定時は api-server が起動失敗

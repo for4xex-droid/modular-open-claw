@@ -154,7 +154,7 @@ pub async fn forget_actor(
         return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to scrub wallet").into_response();
     }
 
-    // 5. サブスクリプションと出金申請のパージ
+    // 5. サブスクリプションのパージ
     if let Err(e) = sql_tx_exec!(
         &mut tx,
         sqlite: "DELETE FROM nurture_subscriptions WHERE actor_id = ?",
@@ -172,19 +172,20 @@ pub async fn forget_actor(
             .into_response();
     }
 
+    // 5.5. ウィッシュリストのパージ（欲求の行動記録 = PII 相当。D-5 で追加）
     if let Err(e) = sql_tx_exec!(
         &mut tx,
-        sqlite: "DELETE FROM nurture_payout_requests WHERE actor_id = ?",
-        pg: "DELETE FROM nurture_payout_requests WHERE actor_id = $1",
+        sqlite: "DELETE FROM nurture_wishlist WHERE agent_id = ?",
+        pg: "DELETE FROM nurture_wishlist WHERE agent_id = $1",
         &actor_id_str
     ) {
         error!(
-            "❌ [Internal/Forget] Failed to scrub payout requests for actor {}: {}",
+            "❌ [Internal/Forget] Failed to scrub wishlist for actor {}: {}",
             actor_id, e
         );
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to scrub payout requests",
+            "Failed to scrub wishlist",
         )
             .into_response();
     }

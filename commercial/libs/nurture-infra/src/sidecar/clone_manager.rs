@@ -146,6 +146,7 @@ impl CloneManager {
             entry_type: EntryType::CloneFork,
             created_at: Utc::now(),
             debit_account_version: Some(wallet.version), // OCC version stamp
+            memo: None,
         };
 
         self.ledger
@@ -170,6 +171,7 @@ impl CloneManager {
                 entry_type: EntryType::CloneMerge,
                 created_at: Utc::now(),
                 debit_account_version: None,
+                memo: None,
             };
             if let Err(e) = self.ledger.record_entry(&refund_entry).await {
                 tracing::error!(
@@ -214,6 +216,7 @@ impl CloneManager {
                     entry_type: EntryType::CloneMerge, // Merge または Refund 用のタイプ
                     created_at: Utc::now(),
                     debit_account_version: None,
+                    memo: None,
                 };
                 if let Err(re) = self.ledger.record_entry(&refund_entry).await {
                     tracing::error!(
@@ -292,6 +295,7 @@ impl CloneManager {
                 entry_type: EntryType::CloneMerge,
                 created_at: Utc::now(),
                 debit_account_version: None,
+                memo: None,
             };
             if let Err(re) = self.ledger.record_entry(&refund_entry).await {
                 tracing::error!(
@@ -377,6 +381,7 @@ impl CloneManager {
                     entry_type: EntryType::CloneMerge,
                     created_at: Utc::now(),
                     debit_account_version: None,
+                    memo: None,
                 };
 
                 // 🚨 M-4: 返金失敗をエラーとして扱いトランスアクションの整合性を守る

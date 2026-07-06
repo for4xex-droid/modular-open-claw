@@ -8,6 +8,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import NurtureDashboard from './NurtureDashboard';
 import { authenticatedFetch } from '../../lib/auth';
+import { CoinBalanceProvider } from '../../hooks/useCoinBalance';
 
 // Mock the auth and config
 jest.mock('../../lib/auth', () => ({
@@ -22,6 +23,10 @@ jest.mock('../../config', () => ({
 
 jest.mock('../../lib/navigation', () => ({
   redirect: jest.fn(),
+}));
+
+jest.mock('../../hooks/useAgentIdentity', () => ({
+  useAgentIdentity: jest.fn(() => ({ agentId: 'agent-001', isEkycVerified: true })),
 }));
 
 
@@ -61,7 +66,11 @@ describe('NurtureDashboard Commerce Integration', () => {
       return Promise.reject(new Error('Not found'));
     });
 
-    render(<NurtureDashboard />);
+    render(
+      <CoinBalanceProvider>
+        <NurtureDashboard />
+      </CoinBalanceProvider>,
+    );
 
     // Wait for the balance to load
     await waitFor(() => {

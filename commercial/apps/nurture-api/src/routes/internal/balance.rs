@@ -137,6 +137,7 @@ pub async fn charge_coins(
         entry_type: nurture_core::ledger::EntryType::Charge,
         created_at: Utc::now(),
         debit_account_version: None,
+        memo: None,
     };
 
     match state.ledger.record_entry(&entry).await {

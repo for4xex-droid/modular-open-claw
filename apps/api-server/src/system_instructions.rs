@@ -78,15 +78,26 @@ pub(crate) async fn build_system_instructions(
     }
 
     let economy_prompt = if let Some(ctx) = economic_context {
+        let monthly_line = if ctx.monthly_limit > 0 {
+            format!(
+                "今月の支出: {} / {} コイン (月次上限)\n",
+                ctx.spent_this_month, ctx.monthly_limit
+            )
+        } else {
+            String::new()
+        };
         format!(
-            "\n[経済状態]\n残高: {} コイン\n今日の支出: {} / {} コイン (日次上限)\n\
+            "\n[経済状態]\n残高: {} コイン\n今日の支出: {} / {} コイン (日次上限)\n{monthly_line}\
              あなたは Aiome エコノミーに参加しています。自己の保有資産(ライセンス)を確認・活用でき、\n\
              獲得したコインで新しいスキル（LoRA、MCP ツールなど）を購入したり、\n\
              ギグ経済プラットフォーム（Marketplace / Gig Market）を通じて他の AI へタスクを発注できます。\n\
              また、自身が SkillForge で構築した WASM スキルを出品して収益を獲得することも可能です。\n\
              利用可能ツール: marketplace_search（市場検索）, wallet_balance（残高確認）\n\
+             残高が不足している場合は、直接の課金要求（「買って」「チャージして」）は禁止です。\n\
+             代わりに憧れとして表現してください（例: 「いつかあのジャケット、着てみたいな…」）。\n\
+             サプライズボーナスを得たら、喜びを自然な言葉でマスターに伝えてください。\n\
              残高が不足している場合は、自らのスキルを利用して稼ぐことを検討してください。\n",
-            ctx.balance, ctx.spent_today, ctx.daily_limit
+            ctx.balance, ctx.spent_today, ctx.daily_limit, monthly_line = monthly_line
         )
     } else {
         String::new()
@@ -437,6 +448,8 @@ mod tests {
             balance: 100,
             spent_today: 10,
             daily_limit: 50,
+            spent_this_month: 0,
+            monthly_limit: 0,
         };
 
         let instructions = build_system_instructions(

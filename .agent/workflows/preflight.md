@@ -10,7 +10,7 @@ description: コード変更前に影響範囲を確認し、カスケードエ�
 
 ### 1. 影響範囲の特定 (Architecture & Semantic)
 変更対象のシンボルがシステム全体にどれほど波及するかを `grep_search` や `cargo tree` で特定します。
-また `docs/architecture/ARCHITECTURE.md` と `.context/RIPPLE_MAP.md` を確認し、設計上の依存関係に違反していないか確認します。
+また `ARCHITECTURE.md`（リポジトリルート）と `.context/RIPPLE_MAP.md` を確認し、設計上の依存関係に違反していないか確認します。
 ### 2. ベースラインテストの実行
 // turbo
 影響先を含むクレートのテストを**変更前に**実行し、現在の状態が正常であることを確認する。

@@ -533,6 +533,34 @@ impl NurtureCommerceBridge {
             });
         }
 
+        // B-2: 同一アイテム再購入ブロック
+        if item.drm_enabled
+            && self
+                .license_store
+                .get_license(&buyer_id, &item_id)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?
+                .is_some()
+        {
+            return Err(AiomeError::Infrastructure {
+                reason: "already owned: re-purchase blocked (active license exists)".into(),
+            });
+        }
+        if self
+            .ledger
+            .has_recent_purchase(&buyer_id, &item_id, 24)
+            .await
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: e.to_string(),
+            })?
+        {
+            return Err(AiomeError::Infrastructure {
+                reason: "rapid re-purchase blocked: same item within 24 hours".into(),
+            });
+        }
+
         // 3. 取引の構成
         let wallet =
             self.ledger
@@ -554,12 +582,24 @@ impl NurtureCommerceBridge {
         tx.debit_account_version = Some(wallet.version);
 
         // 3. インターセプト
-        self.interceptor
-            .check_transaction(&tx, &wallet)
+        let check_result = self.interceptor.check_transaction(&tx, &wallet).await;
+        if let Err(commerce_protocol::error::NurtureError::InsufficientBalance { .. }) =
+            &check_result
+        {
+            if let Err(e) = crate::economy::wishlist::WishlistStore::upsert(
+                &self.pool,
+                agent_id,
+                item_id,
+                "insufficient_balance",
+            )
             .await
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Policy Violation: {}", e),
-            })?;
+            {
+                tracing::warn!("wishlist upsert failed on insufficient balance: {}", e);
+            }
+        }
+        check_result.map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Policy Violation: {}", e),
+        })?;
 
         // 4. 承認と決済
         let tx_auth = tx.authorize();
@@ -730,6 +770,7 @@ impl NurtureCommerceBridge {
             entry_type: nurture_core::ledger::EntryType::Gift,
             created_at: Utc::now(),
             debit_account_version: None,
+            memo: None,
         };
 
         let mut uow =

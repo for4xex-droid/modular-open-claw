@@ -521,6 +521,30 @@ mod tests {
     }
 
     #[test]
+    fn test_admiration_expression_not_blocked() {
+        // D-4: 憧れ表現は通す（直接の課金要求のみブロック）
+        let admiration = "いつかあのジャケット、着てみたいな…";
+        assert!(
+            matches!(
+                BeggingSupervisor::validate_output_with_memory(
+                    admiration,
+                    None,
+                    chrono::Utc::now()
+                ),
+                ValidationResult::Valid
+            ),
+            "Admiration expression must not be blocked"
+        );
+        assert!(
+            matches!(
+                BeggingSupervisor::validate_output("買ってください"),
+                ValidationResult::Blocked(_)
+            ),
+            "Direct begging must remain blocked"
+        );
+    }
+
+    #[test]
     fn test_sanitize_for_context() {
         // HttpHeader CRLF injection mitigation
         let header_input = "malicious\r\nSet-Cookie: session=123\nhello%0d%0aworld";

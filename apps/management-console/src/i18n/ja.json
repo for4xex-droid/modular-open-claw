@@ -1,4 +1,7 @@
 {
+  "nurture": {
+    "convertedToCoin": "コイン交換済み"
+  },
   "nav": {
     "section": {
       "synergyHub": "ホーム",
@@ -663,7 +666,12 @@
     "insufficientFunds": "残高不足",
     "drmPowered": "Abyss Security Proxy DRM で保護",
     "purchaseSuccess": "{{name}} を購入しました。DRM キーは Abyss Vault に保管されました。",
-    "checkoutFailed": "チェックアウトセッションの作成に失敗しました。"
+    "checkoutFailed": "チェックアウトセッションの作成に失敗しました。",
+    "wishlistBadge": "Aiome が気になっています",
+    "giftPurchase": "プレゼントする",
+    "gifting": "贈呈中...",
+    "giftSuccess": "{{name}} を Aiome にプレゼントしました。",
+    "giftFailed": "プレゼント購入に失敗しました。"
   },
   "causal": {
     "title": "因果推論トレース",
@@ -834,8 +842,8 @@
       "protocolSelected": "プロトコルを選択しました: {{protocol}}",
       "sessionEnd": "セッションが終了しました"
     },
-    "commerce": "コマーストランザクション処理完了",
-    "commerceDefault": "コマーストランザクション処理完了",
+    "commerce": "Aiome のお買い物 ✨",
+    "commerceDefault": "購入が完了しました",
     "ood": "ドメイン外",
     "memoryRetrieved": "メモリを取得しました",
     "knowledge": "プロジェクト知識",

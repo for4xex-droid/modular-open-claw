@@ -85,11 +85,15 @@ async fn test_full_buy_flow_e2e() {
             store,
         ));
 
-    // Setup state and app
+    // Setup state and app (surprise bonus disabled — these tests assert exact settlement balances)
+    let policy = nurture_core::policy::EconomyPolicy {
+        max_daily_surprise_bonus: 0,
+        ..Default::default()
+    };
     let state = AppState::init(
         nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         job_queue,
-        nurture_core::policy::EconomyPolicy::default(),
+        policy,
         ActorId(system_id),
         cancel_token,
         "test_nurture_secret".to_string().into(),
@@ -245,10 +249,14 @@ async fn test_idempotent_buy_flow() {
             store,
         ));
 
+    let policy = nurture_core::policy::EconomyPolicy {
+        max_daily_surprise_bonus: 0,
+        ..Default::default()
+    };
     let state = AppState::init(
         nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         job_queue,
-        nurture_core::policy::EconomyPolicy::default(),
+        policy,
         ActorId(system_id),
         cancel_token,
         "test_nurture_secret".to_string().into(),
@@ -378,10 +386,14 @@ async fn test_buy_flow_with_escrow() {
             store,
         ));
 
+    let policy = nurture_core::policy::EconomyPolicy {
+        max_daily_surprise_bonus: 0,
+        ..Default::default()
+    };
     let state = AppState::init(
         nurture_bridge::db::DatabasePool::Sqlite(pool.clone()),
         job_queue,
-        nurture_core::policy::EconomyPolicy::default(),
+        policy,
         ActorId(system_id),
         cancel_token,
         "test_nurture_secret".to_string().into(),

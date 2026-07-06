@@ -1,4 +1,7 @@
 {
+  "nurture": {
+    "convertedToCoin": "Converted to Coin"
+  },
   "nav": {
     "section": {
       "synergyHub": "Home",
@@ -663,7 +666,12 @@
     "insufficientFunds": "Insufficient funds",
     "drmPowered": "Powered by Abyss Security Proxy DRM",
     "purchaseSuccess": "{{name}} purchased successfully. DRM key deposited in Abyss Vault.",
-    "checkoutFailed": "Failed to create checkout session."
+    "checkoutFailed": "Failed to create checkout session.",
+    "wishlistBadge": "Aiome has been eyeing this",
+    "giftPurchase": "Gift to Aiome",
+    "gifting": "Gifting...",
+    "giftSuccess": "Gifted {{name}} to Aiome.",
+    "giftFailed": "Gift purchase failed."
   },
   "causal": {
     "title": "Causal Reasoning Trace",
@@ -834,8 +842,8 @@
       "protocolSelected": "Selected protocol: {{protocol}}",
       "sessionEnd": "Session ended"
     },
-    "commerce": "Commerce transaction processed",
-    "commerceDefault": "Commerce transaction processed",
+    "commerce": "Aiome shopping ✨",
+    "commerceDefault": "Purchase completed",
     "ood": "Out-of-Domain",
     "memoryRetrieved": "Memory retrieved",
     "knowledge": "Project Knowledge",

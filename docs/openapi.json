@@ -1449,6 +1449,38 @@
         ]
       }
     },
+    "/api/v1/commerce/convert-points": {
+      "post": {
+        "tags": [
+          "crate::routes::commerce"
+        ],
+        "summary": "[POST] /api/v1/commerce/convert-points",
+        "operationId": "convert_points",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WithdrawRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Creator points converted to AiomeCoin (in-ecosystem)"
+          },
+          "403": {
+            "description": "Unauthorized access or missing eKYC"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/commerce/customer-portal/create": {
       "post": {
         "tags": [
@@ -1864,29 +1896,40 @@
         ]
       }
     },
-    "/api/v1/commerce/withdraw": {
-      "post": {
+    "/api/v1/commerce/wishlist/{agent_id}": {
+      "get": {
         "tags": [
           "crate::routes::commerce"
         ],
-        "summary": "[POST] /api/v1/commerce/withdraw",
-        "operationId": "withdraw_points",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WithdrawRequest"
+        "summary": "[GET] /api/v1/commerce/wishlist/:agent_id",
+        "operationId": "get_wishlist",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "description": "The unique ID of the agent",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent wishlist (items they could not afford)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WishlistEntry"
+                  }
+                }
               }
             }
           },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Withdrawal initiated successfully"
-          },
           "403": {
-            "description": "Unauthorized access or missing eKYC"
+            "description": "Unauthorized access"
           }
         },
         "security": [
@@ -6485,6 +6528,12 @@
           "id": {
             "type": "string"
           },
+          "memo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "points_amount": {
             "type": "integer",
             "format": "int64",
@@ -6714,6 +6763,29 @@
           "version": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "WishlistEntry": {
+        "type": "object",
+        "description": "ウィッシュリストエントリ（残高不足シグナル）",
+        "required": [
+          "item_id",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },

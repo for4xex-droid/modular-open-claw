@@ -3,6 +3,8 @@
  * Copyright (C) 2026 motivationstudio, LLC
  *
  * Licensed under the Business Source License 1.1.
+ *
+ * Phase E（VRM 配線計画）で使用予定 — 現時点では import ゼロ。実行時アバターは PNG ビルボード。
  */
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';

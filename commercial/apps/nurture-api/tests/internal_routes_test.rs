@@ -17,6 +17,12 @@ use sqlx::SqlitePool;
 use uuid::Uuid;
 
 async fn setup_test_server() -> (TestServer, tempfile::TempDir) {
+    setup_test_server_with_policy(nurture_core::policy::EconomyPolicy::default()).await
+}
+
+async fn setup_test_server_with_policy(
+    policy: nurture_core::policy::EconomyPolicy,
+) -> (TestServer, tempfile::TempDir) {
     let _ = tracing_subscriber::fmt()
         .with_env_filter("debug")
         .try_init();
@@ -63,7 +69,7 @@ async fn setup_test_server() -> (TestServer, tempfile::TempDir) {
     let state = AppState::init(
         nurture_bridge::db::DatabasePool::Sqlite(pool),
         job_queue,
-        nurture_core::policy::EconomyPolicy::default(),
+        policy,
         commerce_protocol::identity::ActorId(system_actor),
         cancel_token,
         "test_secret_key".to_string().into(),
@@ -231,18 +237,21 @@ async fn test_forget_actor_purges_pii_and_physical_assets() {
         .await
         .unwrap();
 
-    sqlx::query("INSERT INTO nurture_payout_requests (id, actor_id, amount_usd_cents, points_burned, status) VALUES (?, ?, 1000, 1000, 'pending')")
-        .bind(Uuid::new_v4().to_string())
-        .bind(actor_id.to_string())
-        .execute(&pool)
-        .await
-        .unwrap();
-
     sqlx::query("INSERT INTO nurture_customers (actor_id, stripe_customer_id, email) VALUES (?, 'cus_123', 'test@example.com')")
         .bind(actor_id.to_string())
         .execute(&pool)
         .await
         .unwrap();
+
+    // D-5: wishlist（欲求の行動記録）も GDPR パージ対象
+    sqlx::query(
+        "INSERT INTO nurture_wishlist (agent_id, item_id, reason) VALUES (?, ?, 'insufficient_balance')",
+    )
+    .bind(actor_id.to_string())
+    .bind(Uuid::new_v4().to_string())
+    .execute(&pool)
+    .await
+    .unwrap();
 
     let system_actor = Uuid::new_v4();
     let cancel_token = tokio_util::sync::CancellationToken::new();
@@ -325,18 +334,6 @@ async fn test_forget_actor_purges_pii_and_physical_assets() {
             .unwrap();
     assert!(sub_row.is_none(), "Subscription record should be scrubbed");
 
-    // Verify Payout Requests scrubbed
-    let payout_row: Option<(String,)> =
-        sqlx::query_as("SELECT actor_id FROM nurture_payout_requests WHERE actor_id = ?")
-            .bind(actor_id.to_string())
-            .fetch_optional(&pool)
-            .await
-            .unwrap();
-    assert!(
-        payout_row.is_none(),
-        "Payout request record should be scrubbed"
-    );
-
     // Verify Customer PII scrubbed (email & stripe_customer_id)
     let customer_row: Option<(Option<String>, Option<String>)> = sqlx::query_as(
         "SELECT email, stripe_customer_id FROM nurture_customers WHERE actor_id = ?",
@@ -352,6 +349,15 @@ async fn test_forget_actor_purges_pii_and_physical_assets() {
             "Customer stripe_id should be obfuscated"
         );
     }
+
+    // Verify wishlist scrubbed (D-5)
+    let wishlist_row: Option<(String,)> =
+        sqlx::query_as("SELECT agent_id FROM nurture_wishlist WHERE agent_id = ?")
+            .bind(actor_id.to_string())
+            .fetch_optional(&pool)
+            .await
+            .unwrap();
+    assert!(wishlist_row.is_none(), "Wishlist record should be scrubbed");
 
     // Verify AssetStorage delete_assets_for_actor was called
     let called_actor = *mock_storage.called_actor.lock().unwrap();
@@ -1050,7 +1056,11 @@ async fn test_internal_api_validate_activity_invalid_type() {
 /// 冪等性ゲート: 同一 idempotency_key での重複 transfer が二重送金にならないこと
 #[tokio::test]
 async fn test_transfer_idempotency_duplicate_request() {
-    let (server, _tdir) = setup_test_server().await;
+    let policy = nurture_core::policy::EconomyPolicy {
+        allow_p2p_transfer: true,
+        ..Default::default()
+    };
+    let (server, _tdir) = setup_test_server_with_policy(policy).await;
     let from_id = Uuid::new_v4();
     let to_id = Uuid::new_v4();
 
@@ -1151,7 +1161,11 @@ async fn test_transfer_idempotency_duplicate_request() {
 /// 冪等性ゲート: 処理失敗時にキーが解放され、同一キーでのリトライが可能なこと
 #[tokio::test]
 async fn test_transfer_idempotency_key_released_on_failure() {
-    let (server, _tdir) = setup_test_server().await;
+    let policy = nurture_core::policy::EconomyPolicy {
+        allow_p2p_transfer: true,
+        ..Default::default()
+    };
+    let (server, _tdir) = setup_test_server_with_policy(policy).await;
     let from_id = Uuid::new_v4();
     let to_id = Uuid::new_v4();
 

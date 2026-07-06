@@ -56,8 +56,10 @@ describe('機能名', () => {
 
 ### ステップ3: テスト実行（RED）
 // turbo
-```powershell
-npm test -- --watch
+```bash
+# Rust: cargo test -p <crate> <テスト名>
+# フロントエンド: (cd apps/management-console && npm test)
+cargo test -p infrastructure new_test_name
 ```
 
 テストが失敗することを確認。
@@ -69,8 +71,9 @@ npm test -- --watch
 
 ### ステップ5: テスト再実行
 // turbo
-```powershell
-npm test
+```bash
+cargo test --workspace
+# フロントエンド変更時: (cd apps/management-console && npm test)
 ```
 
 すべてのテストがパスすることを確認。
@@ -85,10 +88,10 @@ npm test
 
 **目標: 80%以上のカバレッジ**
 
-カバレッジ確認コマンド：
+カバレッジ確認コマンド（フロントエンドのみ。Rust は `cargo llvm-cov` 等が未導入のため対象外）：
 // turbo
-```powershell
-npm test -- --coverage
+```bash
+(cd apps/management-console && npm test -- --coverage)
 ```
 
 ## テストのベストプラクティス
@@ -145,7 +148,7 @@ jest.mock('./database', () => ({
 ## 関連ワークフロー
 
 - `/plan` - 実装計画
-- `/test-coverage` - カバレッジ分析
+- `/chaos` - 障害注入テスト
 - `/code-review` - コードレビュー
 
 ## 🛑 共通の言い訳 (Anti-rationalization)

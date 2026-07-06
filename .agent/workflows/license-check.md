@@ -23,7 +23,7 @@ python3 scripts/license_check.py
 ```
 
 11項目の自動チェック:
-1. ✅ `LICENSE` ファイル存在 & Apache 2.0
+1. ✅ `LICENSE` ファイル存在 & ライセンス種別（BUSL 1.1、Change License: Apache 2.0）
 2. ✅ `NOTICE` ファイル存在 & 内容検証
 3. ✅ `THIRD_PARTY_NOTICES.md` 存在 & 必須エントリ
 4. ✅ 全 `.rs` ファイルに著作権ヘッダー
@@ -42,14 +42,14 @@ python3 scripts/license_check.py
  * Aiome - The Autonomous AI Operating System
  * Copyright (C) 2026 motivationstudio, LLC
  *
- * Licensed under the Apache License, Version 2.0.
+ * Licensed under the Business Source License 1.1.
  */
 ```
 
 #### Cargo.toml に license がない場合
 `[package]` セクションに追加:
 ```toml
-license = "Apache-2.0"
+license = "BUSL-1.1"
 ```
 
 #### 新しい外部OSSを追加した場合
@@ -105,7 +105,7 @@ cd apps/management-console && npx license-checker --summary
 
 ## ライセンス互換性チェック
 
-Aiome は **Apache 2.0** です。以下のライセンスとの互換性:
+Aiome は **BUSL 1.1**（2030-04-01 に Apache 2.0 へ自動移行）です。依存として取り込む外部 OSS のライセンスとの互換性:
 
 | ライセンス | 互換性 | 注意 |
 |----------|-------|------|
@@ -120,13 +120,13 @@ Aiome は **Apache 2.0** です。以下のライセンスとの互換性:
 | CC BY 4.0 | ✅ 互換 | 論文・テキストに適用、コードには不適 |
 
 > ⚠️ **GPL/AGPL/SSPL ライセンスの依存を検出した場合は即座にアラートを上げること。**
-> これらは Apache 2.0 と互換性がなく、プロジェクト全体を汚染するリスクがあります。
+> これらはコピーレフト義務によりプロジェクト全体を汚染するリスクがあり、BUSL 1.1 とも将来の Apache 2.0 移行とも両立しません。
 
 ---
 
 ## 関連ファイル
-- `LICENSE` — プロジェクトライセンス (Apache 2.0)
-- `NOTICE` — Apache 2.0 §4(d) 準拠の帰属表示
+- `LICENSE` — プロジェクトライセンス (BUSL 1.1、Change Date: 2030-04-01 → Apache 2.0)
+- `NOTICE` — 帰属表示（Apache 2.0 §4(d) 形式）
 - `THIRD_PARTY_NOTICES.md` — 外部OSS帰属詳細
 - `scripts/license_check.py` — 自動検証スクリプト (11テスト)
 

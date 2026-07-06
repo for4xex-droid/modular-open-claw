@@ -47,6 +47,8 @@ pub struct LedgerEntry {
     pub entry_type: EntryType,
     pub created_at: DateTime<Utc>,
     pub debit_account_version: Option<u64>,
+    #[serde(default)]
+    pub memo: Option<String>,
 }
 
 #[async_trait]
@@ -67,4 +69,11 @@ pub trait EconomyLedger: Send + Sync {
     ) -> Result<Vec<LedgerEntry>, NurtureError>;
     /// 当日（UTC）の指定 EntryType の coin_amount 合計
     async fn sum_today(&self, entry_type: EntryType) -> Result<u64, NurtureError>;
+    /// 指定時間内に同一 buyer+asset の Purchase があるか（破産ループ対策）
+    async fn has_recent_purchase(
+        &self,
+        buyer: &ActorId,
+        asset_id: &Uuid,
+        within_hours: u32,
+    ) -> Result<bool, NurtureError>;
 }

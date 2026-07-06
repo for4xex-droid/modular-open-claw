@@ -8,6 +8,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import VoiceStore from './VoiceStore';
 import { authenticatedFetch } from '../lib/auth';
 import { useAgentIdentity } from '../hooks/useAgentIdentity';
+import { CoinBalanceProvider } from '../hooks/useCoinBalance';
 
 // Mock dependencies
 jest.mock('../lib/auth', () => ({
@@ -47,6 +48,13 @@ jest.mock('../i18n', () => ({
 }));
 
 describe('VoiceStore Commerce Integration', () => {
+  const renderVoiceStore = () =>
+    render(
+      <CoinBalanceProvider>
+        <VoiceStore />
+      </CoinBalanceProvider>,
+    );
+
   beforeEach(() => {
     jest.clearAllMocks();
     (useAgentIdentity as jest.Mock).mockReturnValue({
@@ -59,7 +67,7 @@ describe('VoiceStore Commerce Integration', () => {
     const originalConsoleError = console.error;
     console.error = jest.fn();
 
-    render(<VoiceStore />);
+    renderVoiceStore();
     
     const rechargeButton = await screen.findByText('voice.kcRecharge');
     fireEvent.click(rechargeButton);
@@ -75,7 +83,7 @@ describe('VoiceStore Commerce Integration', () => {
   });
 
   it('formats PurchaseRequest correctly and uses agentId when purchasing a voice asset', async () => {
-    render(<VoiceStore />);
+    renderVoiceStore();
     
     await waitFor(() => {
        expect(screen.getByText('1,000 KC')).toBeInTheDocument();
@@ -110,7 +118,7 @@ describe('VoiceStore Commerce Integration', () => {
         isEkycVerified: false
     });
 
-    render(<VoiceStore />);
+    renderVoiceStore();
     
     await waitFor(() => {
         expect(screen.getByText('1,000 KC')).toBeInTheDocument();

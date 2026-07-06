@@ -304,6 +304,19 @@ pub async fn get_transaction_history(
     }
 }
 
+pub async fn get_wishlist(
+    Path(actor_id): Path<Uuid>,
+    Extension(state): Extension<SharedState>,
+) -> impl IntoResponse {
+    match state.commerce_engine.get_wishlist(actor_id).await {
+        Ok(entries) => (StatusCode::OK, Json(entries)).into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, actor_id = %actor_id, "Get wishlist failed");
+            map_commerce_error(e)
+        }
+    }
+}
+
 pub async fn internal_purchase(
     Extension(state): Extension<SharedState>,
     Json(payload): Json<PurchaseS2SRequest>,

@@ -27,6 +27,16 @@ jest.mock('../hooks/useAgentIdentity', () => ({
   useAgentIdentity: () => ({ agentId: 'agent-001', isEkycVerified: false }),
 }));
 
+jest.mock('../hooks/useCoinBalance', () => ({
+  useCoinBalance: () => ({
+    balance: 4200,
+    isLoading: false,
+    error: false,
+    refetch: jest.fn(),
+    agentId: 'agent-001',
+  }),
+}));
+
 jest.mock('../lib/auth', () => ({
   authenticatedFetch: jest.fn().mockResolvedValue({
     ok: true,
