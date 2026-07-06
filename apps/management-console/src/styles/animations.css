@@ -56,28 +56,6 @@
     }
 }
 
-@keyframes holographicSweep {
-    0% {
-        background-position: -200% 0;
-    }
-
-    100% {
-        background-position: 200% 0;
-    }
-}
-
-@keyframes floatElement {
-
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-8px);
-    }
-}
-
 @keyframes glowPulse {
 
     0%,
@@ -105,47 +83,6 @@
 
 .ani-breath {
     animation: breathEffect 4s infinite var(--timing-soft);
-}
-
-.ani-float {
-    animation: floatElement 6s infinite var(--timing-soft);
-}
-
-/* Hover Animations Classes */
-.h-hover:hover {
-    transform: translateY(-4px);
-    transition: transform var(--speed-fast) var(--timing-soft);
-}
-
-.h-holographic {
-    background: linear-gradient(90deg,
-            transparent 0%,
-            var(--white-05) 50%,
-            transparent 100%);
-    background-size: 200% 100%;
-    transition: all var(--speed-base) var(--timing-soft);
-}
-
-.h-holographic:hover {
-    animation: holographicSweep 1.5s var(--timing-linear) infinite;
-}
-
-/* Specific component animations */
-.avatar-breath {
-    animation: breathEffect 3s infinite var(--timing-soft);
-    filter: drop-shadow(0 0 10px var(--accent-cyan-50));
-}
-
-.neural-line-animate {
-    stroke-dasharray: 1000;
-    stroke-dashoffset: 1000;
-    animation: dashCycle 5s linear infinite;
-}
-
-@keyframes dashCycle {
-    to {
-        stroke-dashoffset: 0;
-    }
 }
 
 /* Base utility animations */

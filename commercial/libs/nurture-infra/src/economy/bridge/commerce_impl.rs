@@ -17,6 +17,15 @@ use uuid::Uuid;
 use super::NurtureCommerceBridge;
 use nurture_bridge::{sql_fetch_all, sql_tx_exec, sql_tx_fetch_optional};
 
+fn effective_spend_limit(wallet_limit: u64, policy_limit: u64) -> u64 {
+    match (wallet_limit, policy_limit) {
+        (0, 0) => 0,
+        (w, 0) => w,
+        (0, p) => p,
+        (w, p) => w.min(p),
+    }
+}
+
 #[async_trait]
 impl CommerceEngine for NurtureCommerceBridge {
     async fn create_checkout_session(
@@ -128,6 +137,24 @@ impl CommerceEngine for NurtureCommerceBridge {
             });
         }
 
+        let effective_monthly =
+            effective_spend_limit(wallet.monthly_limit, policy.monthly_spend_limit);
+        if effective_monthly > 0 {
+            let new_monthly = wallet.spent_this_month.checked_add(amount).ok_or_else(|| {
+                AiomeError::Infrastructure {
+                    reason: "spent_this_month overflow detected".into(),
+                }
+            })?;
+            if new_monthly > effective_monthly {
+                return Err(AiomeError::Infrastructure {
+                    reason: format!(
+                        "Escrow would exceed monthly spend limit. Limit: {}, Current: {}, Requested: {}",
+                        effective_monthly, wallet.spent_this_month, amount
+                    ),
+                });
+            }
+        }
+
         let safe_amount = i64::try_from(amount).map_err(|_| AiomeError::Infrastructure {
             reason: format!("Escrow amount {} exceeds maximum limit", amount),
         })?;
@@ -147,8 +174,9 @@ impl CommerceEngine for NurtureCommerceBridge {
 
         let rows_affected = sql_tx_exec!(
             &mut tx,
-            sqlite: "UPDATE nurture_wallets SET balance = balance - ?, spent_today = spent_today + ?, version = version + 1 WHERE actor_id = ? AND balance >= ?",
-            pg: "UPDATE nurture_wallets SET balance = balance - $1, spent_today = spent_today + $2, version = version + 1 WHERE actor_id = $3 AND balance >= $4",
+            sqlite: "UPDATE nurture_wallets SET balance = balance - ?, spent_today = spent_today + ?, spent_this_month = spent_this_month + ?, version = version + 1 WHERE actor_id = ? AND balance >= ?",
+            pg: "UPDATE nurture_wallets SET balance = balance - $1, spent_today = spent_today + $2, spent_this_month = spent_this_month + $3, version = version + 1 WHERE actor_id = $4 AND balance >= $5",
+            safe_amount,
             safe_amount,
             safe_amount,
             agent_id.to_string(),
@@ -392,6 +420,24 @@ impl CommerceEngine for NurtureCommerceBridge {
                     effective_daily_limit, wallet.spent_today, amount
                 ),
             });
+        }
+
+        let effective_monthly =
+            effective_spend_limit(wallet.monthly_limit, policy.monthly_spend_limit);
+        if effective_monthly > 0 {
+            let new_monthly = wallet.spent_this_month.checked_add(amount).ok_or_else(|| {
+                AiomeError::Infrastructure {
+                    reason: "spent_this_month overflow detected".into(),
+                }
+            })?;
+            if new_monthly > effective_monthly {
+                return Err(AiomeError::Infrastructure {
+                    reason: format!(
+                        "Generation would exceed monthly spend limit. Effective Limit: {}, Current: {}, Requested: {}",
+                        effective_monthly, wallet.spent_this_month, amount
+                    ),
+                });
+            }
         }
 
         if let Some(a_id) = asset_id {
@@ -917,6 +963,34 @@ impl CommerceEngine for NurtureCommerceBridge {
                         activity_type, projected_spent, effective_daily_limit
                     ),
                 });
+            }
+
+            let effective_monthly_limit =
+                effective_spend_limit(wallet.monthly_limit, policy.monthly_spend_limit);
+            if effective_monthly_limit > 0 {
+                let projected_monthly =
+                    wallet.spent_this_month.checked_add(amount).ok_or_else(|| {
+                        AiomeError::Infrastructure {
+                            reason: "spent_this_month overflow detected during validation".into(),
+                        }
+                    })?;
+
+                if projected_monthly > effective_monthly_limit {
+                    tracing::warn!(
+                        agent_id = %agent_id,
+                        activity_type = %activity_type,
+                        amount = %amount,
+                        spent_this_month = %wallet.spent_this_month,
+                        effective_limit = %effective_monthly_limit,
+                        "🚫 [validate_activity] Monthly limit would be exceeded"
+                    );
+                    return Err(AiomeError::Infrastructure {
+                        reason: format!(
+                            "Monthly limit would be exceeded for activity '{}': projected={}, limit={}",
+                            activity_type, projected_monthly, effective_monthly_limit
+                        ),
+                    });
+                }
             }
         }
 

@@ -6,8 +6,34 @@
  */
 import '@testing-library/jest-dom';
 
+jest.mock('./hooks/useSubscriptionStatus', () => ({
+  SubscriptionProvider: ({ children }: { children: React.ReactNode }) => children,
+  useSubscriptionStatus: () => ({
+    status: 'active' as const,
+    isPro: true,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+  }),
+  openProUpgradeModal: jest.fn(),
+}));
+
 // Fix for React / Framer Motion usage in JSDOM which doesn't implement window.scrollTo
 window.scrollTo = jest.fn();
+
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
 
 // Global Mock Worker implementation for tests
 class MockWorker {

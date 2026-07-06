@@ -32,6 +32,16 @@ jest.mock('../i18n', () => ({
   })
 }));
 
+jest.mock('./common/Toast', () => ({
+  useToast: () => ({ showToast: jest.fn() })
+}));
+
+jest.mock('./ui/LoadingState', () => ({
+  LoadingState: ({ messageKey }: { messageKey?: string }) => (
+    <div data-testid="loading-state">{messageKey || 'loading'}</div>
+  ),
+}));
+
 describe('GraphView', () => {
   beforeEach(() => {
     jest.clearAllMocks();

@@ -13,7 +13,7 @@
 //! 経済インターセプター — 全取引のプリフライト検証レイヤー。
 //!
 //! [`EconomyInterceptor`] はトランザクションが決済 (Settlement) に進む前に、
-//! ポリシー準拠性・残高・日次上限・取引頻度の各チェックを一元的に実施する。
+//! ポリシー準拠性・残高・日次上限・月次上限・取引頻度の各チェックを一元的に実施する。
 //!
 //! ## アーキテクチャ上の位置づけ
 //! - **呼び出し元**: `bridge.rs` (自律型購入) / `buy.rs` (MCP API 購入)
@@ -32,7 +32,8 @@ use nurture_core::policy::SharedPolicy;
 /// 1. **ポリシー検証** — 取引額が最低/最大価格・単一購入上限の範囲内か
 /// 2. **残高検証** — ウォレット残高が取引額以上か
 /// 3. **日次上限検証** — 日次支出制限を超過しないか
-/// 4. **アノマリー検知** — 未来タイムスタンプ / 高頻度取引がないか
+/// 4. **月次上限検証** — 月次支出制限を超過しないか（0 = 無制限）
+/// 5. **アノマリー検知** — 未来タイムスタンプ / 高頻度取引がないか
 ///
 /// # 注意: ゼロ額トランザクション
 /// `amount_coins == 0` (無料アイテム) はポリシーバイパスが許可されている。
@@ -60,6 +61,7 @@ impl EconomyInterceptor {
     /// - [`NurtureError::PolicyViolation`] — ポリシー違反 (価格範囲・頻度制限・日次上限)
     /// - [`NurtureError::InsufficientBalance`] — 残高不足
     /// - [`NurtureError::DailyLimitExceeded`] — 日次上限超過
+    /// - [`NurtureError::MonthlyLimitExceeded`] — 月次上限超過
     ///
     /// # RwLock に関する注意
     /// 本メソッドは内部で `self.policy.read().await` を呼ぶ。
@@ -75,7 +77,7 @@ impl EconomyInterceptor {
         // ポリシーの read guard を早期ドロップするため、必要なフィールドを
         // ローカル変数にコピーする。これにより呼び出し元が同一の SharedPolicy に対して
         // read() を保持したまま本メソッドを呼んでもデッドロックしない。
-        let (daily_spend_limit, min_transaction_interval_ms) = {
+        let (daily_spend_limit, monthly_spend_limit, min_transaction_interval_ms) = {
             let policy = self.policy.read().await;
             if let Err(e) = nurture_core::policy::validate_transaction(&policy, tx) {
                 tracing::warn!(
@@ -117,7 +119,11 @@ impl EconomyInterceptor {
                 ));
             }
 
-            (policy.daily_spend_limit, policy.min_transaction_interval_ms)
+            (
+                policy.daily_spend_limit,
+                policy.monthly_spend_limit,
+                policy.min_transaction_interval_ms,
+            )
             // ← policy guard は ここでドロップされる
         };
 
@@ -187,6 +193,44 @@ impl EconomyInterceptor {
             });
         }
 
+        // 月次上限チェック: ポリシーとウォレットの厳しい方。effective == 0 は無制限。
+        let effective_monthly_limit =
+            effective_spend_limit(wallet.monthly_limit, monthly_spend_limit);
+        if tx.amount_coins > 0 && effective_monthly_limit > 0 {
+            let projected_monthly = match wallet.spent_this_month.checked_add(tx.amount_coins) {
+                Some(v) => v,
+                None => {
+                    tracing::error!(
+                        buyer_id = %wallet.owner.0,
+                        tx_id = %tx.id,
+                        spent_this_month = wallet.spent_this_month,
+                        amount = tx.amount_coins,
+                        "🚨 [Interceptor] spent_this_month の加算でオーバーフロー発生 — データ破損の可能性"
+                    );
+                    return Err(NurtureError::PolicyViolation(
+                        "システムエラー: 月次支出計算のオーバーフローを検知しました".to_string(),
+                    ));
+                }
+            };
+
+            if projected_monthly > effective_monthly_limit {
+                tracing::warn!(
+                    buyer_id = %wallet.owner.0,
+                    tx_id = %tx.id,
+                    amount = tx.amount_coins,
+                    wallet_monthly_limit = wallet.monthly_limit,
+                    policy_monthly_limit = monthly_spend_limit,
+                    effective_limit = effective_monthly_limit,
+                    spent_this_month = wallet.spent_this_month,
+                    "🚫 [Interceptor] 月次上限超過により拒否"
+                );
+                return Err(NurtureError::MonthlyLimitExceeded {
+                    limit: effective_monthly_limit,
+                    current: projected_monthly,
+                });
+            }
+        }
+
         // アノマリー検知: 高頻度取引チェック
         // NOTE: ゼロ額トランザクションにも適用される (スパム防止)
         if let Some(last_tx) = wallet.last_transaction_at {
@@ -243,6 +287,16 @@ impl EconomyInterceptor {
     }
 }
 
+/// ウォレット上限とポリシー上限の厳しい方。両方 0 の場合は 0（無制限）。
+fn effective_spend_limit(wallet_limit: u64, policy_limit: u64) -> u64 {
+    match (wallet_limit, policy_limit) {
+        (0, 0) => 0,
+        (w, 0) => w,
+        (0, p) => p,
+        (w, p) => w.min(p),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -292,6 +346,26 @@ mod tests {
         spent_today: u64,
         last_transaction_at: Option<chrono::DateTime<Utc>>,
     ) -> CoinWallet {
+        mock_wallet_with_monthly(
+            owner,
+            balance,
+            daily_limit,
+            spent_today,
+            0,
+            0,
+            last_transaction_at,
+        )
+    }
+
+    fn mock_wallet_with_monthly(
+        owner: commerce_protocol::identity::ActorId,
+        balance: u64,
+        daily_limit: u64,
+        spent_today: u64,
+        monthly_limit: u64,
+        spent_this_month: u64,
+        last_transaction_at: Option<chrono::DateTime<Utc>>,
+    ) -> CoinWallet {
         CoinWallet {
             owner,
             coin: AiomeCoin {
@@ -301,6 +375,8 @@ mod tests {
             },
             daily_limit,
             spent_today,
+            monthly_limit,
+            spent_this_month,
             last_reset: Utc::now(),
             last_transaction_at,
             version: 0,
@@ -320,6 +396,28 @@ mod tests {
             Err(NurtureError::InsufficientBalance {
                 required: 100,
                 available: 50
+            })
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_interceptor_monthly_limit_exceeded() {
+        let policy_val = EconomyPolicy {
+            daily_spend_limit: 100_000,
+            monthly_spend_limit: 500,
+            ..EconomyPolicy::default()
+        };
+        let policy = Arc::new(tokio::sync::RwLock::new(policy_val));
+        let interceptor = EconomyInterceptor::new(policy);
+        let tx = mock_tx(100);
+        let wallet = mock_wallet_with_monthly(tx.buyer, 10_000, 100_000, 0, 500, 450, None);
+
+        let result = interceptor.check_transaction(&tx, &wallet).await;
+        assert!(matches!(
+            result,
+            Err(NurtureError::MonthlyLimitExceeded {
+                limit: 500,
+                current: 550
             })
         ));
     }

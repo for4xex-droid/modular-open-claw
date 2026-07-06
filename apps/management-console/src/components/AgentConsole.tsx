@@ -12,7 +12,7 @@ import { authenticatedFetch } from '../lib/auth';
 import { API_BASE } from '../config';
 import { SLASH_COMMANDS } from '../constants/slashCommands';
 import { useTranslation } from '../i18n';
-import { useAgentChat } from '../hooks/useAgentChat';
+import { useAgentChat } from '../hooks/AgentChatProvider';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { TokenSavingsIndicator } from './common/TokenSavingsIndicator';
@@ -21,6 +21,7 @@ import ErrorBoundary from './common/ErrorBoundary';
 import { MermaidRenderer } from './MermaidRenderer';
 import { A2uiRenderer } from './A2uiRenderer';
 import { useWorkspacePersona } from '../hooks/useWorkspacePersona';
+import { LockedOverlay } from './ui/LockedOverlay';
 import { Activity, Clock, DollarSign, TrendingUp } from 'lucide-react';
 import { ActivityFeed } from './common/ActivityFeed';
 
@@ -226,6 +227,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                 )}
 
                 <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                    <LockedOverlay featureNameKey="pro.featureTts">
                     <button 
                         onClick={() => setAutoTts(!autoTts)}
                         className="stat-badge" 
@@ -244,6 +246,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         {autoTts ? <Volume2 size={12} /> : <VolumeX size={12} />}
                         {t('agent.voice')}: {autoTts ? 'ON' : 'OFF'}
                     </button>
+                    </LockedOverlay>
                     <ProofPowerIndicator variant="compact" />
                     <TokenSavingsIndicator savedChars={sessionSavedChars} variant="compact" />
                     <div className="stat-badge" style={{ fontSize: '0.7rem', background: 'var(--white-03)' }}>{t('agent.modelBadge') || '3.5B MODEL'}</div>

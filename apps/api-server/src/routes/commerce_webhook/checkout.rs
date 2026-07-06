@@ -23,6 +23,42 @@ pub async fn handle_checkout_completed<'a>(
 ) -> Result<Option<(Uuid, u64, String)>, AppError> {
     let agent_id_str = object["metadata"]["agent_id"].as_str();
     let asset_id_str = object["metadata"]["asset_id"].as_str();
+    let mode = object["mode"].as_str().unwrap_or("");
+    let customer_id = object["customer"].as_str().unwrap_or("");
+
+    // Pro subscription checkout (mode=subscription) has no asset_id — license unlock
+    // is driven by invoice.paid / subscription.updated via stripe_customers mapping.
+    if mode == "subscription" || asset_id_str.is_none() {
+        if let Some(a) = agent_id_str {
+            if !customer_id.is_empty() {
+                let agent_uuid = Uuid::parse_str(a).map_err(|e| {
+                    warn!("⚠️ [StripeWebhook] Invalid agent_id UUID '{}': {}", a, e);
+                    AppError::bad_request("Invalid agent_id in event metadata")
+                })?;
+                upsert_stripe_customer(tx, agent_uuid, customer_id).await?;
+                info!(
+                    "✅ [StripeWebhook] Subscription checkout completed: agent {} customer {}",
+                    agent_uuid, customer_id
+                );
+            } else {
+                info!(
+                    "ℹ️ [StripeWebhook] Subscription checkout completed for agent {} (no customer id in payload)",
+                    a
+                );
+            }
+        } else if !customer_id.is_empty() {
+            info!(
+                "ℹ️ [StripeWebhook] Subscription checkout completed for customer {} (agent_id not in metadata; mapping exists from session create)",
+                customer_id
+            );
+        } else {
+            warn!(
+                "⚠️ [StripeWebhook] checkout.session.completed event {} missing agent_id, asset_id, and customer",
+                event_id
+            );
+        }
+        return Ok(None);
+    }
 
     match (agent_id_str, asset_id_str) {
         (Some(a), Some(asset)) => {
@@ -106,13 +142,42 @@ pub async fn handle_checkout_completed<'a>(
             Ok(None)
         }
         _ => {
-            error!(
-                "❌ [StripeWebhook] checkout.session.completed event {} missing agent_id/asset_id metadata",
+            warn!(
+                "⚠️ [StripeWebhook] checkout.session.completed event {} missing agent_id/asset_id metadata (non-subscription)",
                 event_id
             );
-            Err(AppError::internal(
-                "Checkout event missing required metadata",
-            ))
+            Ok(None)
         }
     }
+}
+
+/// Ensures stripe_customers maps agent_id ↔ customer_id (idempotent).
+async fn upsert_stripe_customer<'a>(
+    tx: &mut DatabaseTransaction<'a>,
+    agent_id: Uuid,
+    customer_id: &str,
+) -> Result<(), AppError> {
+    const Q_UPSERT_SQLITE: &str =
+        "INSERT INTO stripe_customers (customer_id, agent_id) VALUES (?, ?) \
+        ON CONFLICT(customer_id) DO UPDATE SET agent_id = excluded.agent_id";
+    const Q_UPSERT_PG: &str =
+        "INSERT INTO stripe_customers (customer_id, agent_id) VALUES ($1, $2) \
+        ON CONFLICT(customer_id) DO UPDATE SET agent_id = EXCLUDED.agent_id";
+
+    let agent_str = agent_id.to_string();
+    infrastructure::sql_tx_exec!(
+        tx,
+        sqlite: Q_UPSERT_SQLITE,
+        pg: Q_UPSERT_PG,
+        customer_id,
+        agent_str.as_str()
+    )
+    .map_err(|e| {
+        error!(
+            "❌ [StripeWebhook] Failed to upsert stripe_customers: {}",
+            e
+        );
+        AppError::internal("Failed to upsert stripe customer mapping")
+    })?;
+    Ok(())
 }

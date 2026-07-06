@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useState, lazy, Suspense, useMemo } from 'react';
+import React, { useState, lazy, Suspense, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, ShoppingBag, Globe, Settings } from 'lucide-react';
 import { AgentStats, VitalityUIEvent } from '../../types';
@@ -115,14 +115,31 @@ const HomePage: React.FC<HomePageProps> = ({
         { key: 'collection', label: t('home.tab.collection') },
     ], [t]);
 
-    const worldSubTabs = useMemo(() => [
-        { key: 'p2p', label: t('home.tab.p2p') },
+const DEMO_SEEN_KEY = 'aiome_demo_seen';
+
+    const [demoSeen, setDemoSeen] = useState(() => !!localStorage.getItem(DEMO_SEEN_KEY));
+
+    const worldSubTabs = useMemo(() => {
+        const tabs = [
+            { key: 'observe', label: t('home.tab.observe') },
+            { key: 'biome', label: t('home.tab.biome') },
+            { key: 'connections', label: t('home.tab.connections') },
+        ];
+        if (!demoSeen) {
+            tabs.push({ key: 'demo', label: t('home.tab.demo') });
+        }
+        return tabs;
+    }, [t, demoSeen]);
+
+    const observeSubTabs = useMemo(() => [
         { key: 'dashboard', label: t('home.tab.dashboard') },
-        { key: 'biome', label: t('home.tab.biome') },
-        { key: 'map', label: t('home.tab.map') },
         { key: 'trace', label: t('home.tab.trace') },
         { key: 'chronicle', label: t('home.tab.chronicle') },
-        { key: 'demo', label: t('home.tab.demo') },
+    ], [t]);
+
+    const connectionsSubTabs = useMemo(() => [
+        { key: 'p2p', label: t('home.tab.p2p') },
+        { key: 'map', label: t('home.tab.map') },
     ], [t]);
 
     const settingsSubTabs = useMemo(() => [
@@ -150,8 +167,17 @@ const HomePage: React.FC<HomePageProps> = ({
 
     // Sub-tab states
     const [shopSubTab, setShopSubTab] = useState('store');
-    const [worldSubTab, setWorldSubTab] = useState('p2p');
+    const [worldSubTab, setWorldSubTab] = useState('observe');
+    const [observeSubTab, setObserveSubTab] = useState('dashboard');
+    const [connectionsSubTab, setConnectionsSubTab] = useState('p2p');
     const [settingsSubTab, setSettingsSubTab] = useState('general');
+
+    useEffect(() => {
+        if (worldSubTab === 'demo') {
+            localStorage.setItem(DEMO_SEEN_KEY, '1');
+            setDemoSeen(true);
+        }
+    }, [worldSubTab]);
 
     const modelUrl = (mode as string) === 'vrm' ? getAssetPath('vrm') : ((mode as string) === 'inx' ? getAssetPath('inx') : '');
 
@@ -177,11 +203,21 @@ const HomePage: React.FC<HomePageProps> = ({
             <MiniTabBar tabs={worldSubTabs} active={worldSubTab} onChange={setWorldSubTab} />
             <AnimatePresence mode="wait">
                 <motion.div key={worldSubTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.1 }} style={{ height: 'calc(100% - 2.5rem)' }}>
-                    {worldSubTab === 'p2p' && <CommuneDialogueView />}
-                    {worldSubTab === 'dashboard' && <BiotopeView stats={stats} isConnected={isConnected} recentEvents={recentEvents} sessionSavedChars={sessionSavedChars} />}
-                    {worldSubTab === 'map' && <GraphView />}
-                    {worldSubTab === 'trace' && <CausalVisualizer />}
-                    {worldSubTab === 'chronicle' && <Timeline />}
+                    {worldSubTab === 'observe' && (
+                        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <MiniTabBar tabs={observeSubTabs} active={observeSubTab} onChange={setObserveSubTab} />
+                            {observeSubTab === 'dashboard' && <BiotopeView stats={stats} isConnected={isConnected} recentEvents={recentEvents} sessionSavedChars={sessionSavedChars} />}
+                            {observeSubTab === 'trace' && <CausalVisualizer />}
+                            {observeSubTab === 'chronicle' && <Timeline />}
+                        </div>
+                    )}
+                    {worldSubTab === 'connections' && (
+                        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <MiniTabBar tabs={connectionsSubTabs} active={connectionsSubTab} onChange={setConnectionsSubTab} />
+                            {connectionsSubTab === 'p2p' && <CommuneDialogueView />}
+                            {connectionsSubTab === 'map' && <GraphView />}
+                        </div>
+                    )}
                     {worldSubTab === 'demo' && <DemoView stats={stats} lastEvent={lastEvent} isConnected={isConnected} />}
                     {worldSubTab === 'biome' && <BiomeGame />}
                 </motion.div>
@@ -206,16 +242,10 @@ const HomePage: React.FC<HomePageProps> = ({
     );
 
     return (
-        <div className="home-v2-container" style={{
-            display: 'flex',
-            height: '100%',
-            gap: '1rem',
-            padding: '1rem',
-            overflow: 'hidden'
-        }}>
+        <div className="home-v2-container">
             {/* Left: Character Panel (hidden on full-width tabs) */}
             {!isFullWidth && (
-                <div style={{ flex: '0 0 320px', minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '0.75rem', overflow: 'auto' }}>
+                <div className="home-v2-left-pane">
                     <CharacterPanel
                         stats={stats}
                         onOpenViewer={() => setIsViewerOpen(true)}
@@ -229,65 +259,42 @@ const HomePage: React.FC<HomePageProps> = ({
                     {/* クイック起動「バイオーム」カード */}
                     <div style={{
                         padding: '1rem',
-                        background: 'var(--bg-glass-heavy, rgba(17, 24, 39, 0.7))',
+                        background: 'var(--bg-glass-heavy)',
                         backdropFilter: 'blur(12px)',
-                        border: '1px solid var(--border-glass-bright, rgba(255, 255, 255, 0.15))',
+                        border: '1px solid var(--border-glass-bright)',
                         borderRadius: '12px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '0.75rem',
-                        boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+                        boxShadow: 'var(--shadow-deep)'
                     }} data-testid="biome-quick-card">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '1.25rem' }}>🎮</span>
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--white-100)' }}>バイオーム進化シミュレーター</span>
-                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>AIエージェントの動作を見守りながら遊ぶ</span>
+                                <span style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--white-100)' }}>{t('home.biomeCard.title')}</span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('home.biomeCard.subtitle')}</span>
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <button
+                                type="button"
+                                className="home-biome-btn-primary"
                                 onClick={() => {
                                     setActiveMainTab('world');
                                     setWorldSubTab('biome');
                                 }}
-                                style={{
-                                    flex: 1,
-                                    padding: '6px 10px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: 'linear-gradient(135deg, var(--accent-cyan, #06b6d4), #3b82f6)',
-                                    color: '#0c0f1d',
-                                    fontWeight: 'bold',
-                                    fontSize: '0.75rem',
-                                    cursor: 'pointer',
-                                    boxShadow: '0 0 8px rgba(6, 182, 212, 0.25)',
-                                    transition: 'all 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                                 data-testid="quick-start-biome"
                             >
-                                🚀 ゲーム開始
+                                {t('home.biomeCard.startGame')}
                             </button>
                             <button
+                                type="button"
+                                className="home-biome-btn-secondary"
                                 onClick={() => window.open('/biome-popup.html', 'Biome Game', 'width=1100,height=800,menubar=no,toolbar=no,location=no,status=no')}
-                                style={{
-                                    padding: '6px 10px',
-                                    borderRadius: '8px',
-                                    border: '1px solid var(--white-15)',
-                                    background: 'var(--white-05)',
-                                    color: 'var(--white-90)',
-                                    fontSize: '0.75rem',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--white-10)'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--white-05)'}
-                                title="別ウインドウで開く"
+                                title={t('home.biomeCard.popupTitle')}
                                 data-testid="quick-popup-biome"
                             >
-                                🪟 ポップアップ
+                                {t('home.biomeCard.popupLabel')}
                             </button>
                         </div>
                     </div>

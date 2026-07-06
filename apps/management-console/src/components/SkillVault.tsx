@@ -22,6 +22,8 @@ import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
 import { useTranslation } from '../i18n';
 import { useToast } from './common/Toast';
+import { LoadingState } from './ui/LoadingState';
+import { EmptyState } from './ui/EmptyState';
 
 interface Skill {
     name: string;
@@ -119,15 +121,27 @@ const SkillVault: React.FC = () => {
 
                 <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1rem', paddingBottom: '2rem' }}>
                     {loading ? (
-                        <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
-                            <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}>
-                                <Settings size={40} />
-                            </motion.div>
-                            <p style={{ marginTop: '1rem' }}>{t('skill.loading')}</p>
+                        <div style={{ gridColumn: '1/-1' }}>
+                            <LoadingState messageKey="skill.loading" />
                         </div>
                     ) : filteredSkills.length === 0 ? (
-                        <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
-                            {t('skill.noResults', { defaultValue: 'No skillsets found matching your filters.' })}
+                        <div style={{ gridColumn: '1/-1' }}>
+                            <EmptyState
+                                icon={Box}
+                                titleKey={skills.length === 0 ? 'skill.emptyTitle' : 'skill.filterEmptyTitle'}
+                                detailKey={skills.length === 0 ? 'skill.emptyDetail' : 'skill.filterEmptyDetail'}
+                                cta={{
+                                    labelKey: skills.length === 0 ? 'skill.emptyCta' : 'skill.filterEmptyCta',
+                                    onClick: () => {
+                                        if (skills.length === 0) {
+                                            setFilter('market');
+                                        } else {
+                                            setFilter('all');
+                                            setSearchTerm('');
+                                        }
+                                    }
+                                }}
+                            />
                         </div>
                     ) : (
                         <AnimatePresence>

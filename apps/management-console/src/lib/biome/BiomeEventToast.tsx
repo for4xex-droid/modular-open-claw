@@ -44,14 +44,14 @@ export function BiomeEventToast({ events, onDismiss }: BiomeEventToastProps) {
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
-            background: 'rgba(15, 23, 42, 0.85)',
-            border: '1px solid var(--accent-cyan, #00f0ff)',
-            boxShadow: '0 8px 32px rgba(0, 240, 255, 0.25), inset 0 0 12px rgba(0, 240, 255, 0.1)',
+            background: 'var(--bg-deep-glass)',
+            border: '1px solid var(--accent-cyan)',
+            boxShadow: '0 8px 32px var(--accent-cyan-20), inset 0 0 12px var(--accent-cyan-10)',
             backdropFilter: 'blur(12px)',
             borderRadius: 'var(--radius-md)',
             padding: '12px 16px',
-            color: 'var(--white-100, #ffffff)',
-            fontFamily: 'var(--font-main, sans-serif)',
+            color: 'var(--white-100)',
+            fontFamily: 'var(--font-main)',
             fontSize: '0.9rem',
             animation: 'biomeToastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
             pointerEvents: 'auto',
@@ -68,7 +68,7 @@ export function BiomeEventToast({ events, onDismiss }: BiomeEventToastProps) {
         >
           <span style={{ fontSize: '1.25rem' }}>{e.icon}</span>
           <span style={{ flex: '1', fontWeight: 500 }}>{e.message}</span>
-          <span style={{ fontSize: '0.75rem', color: 'var(--white-40, #666)' }}>✕</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>✕</span>
         </div>
       ))}
       <style>{`

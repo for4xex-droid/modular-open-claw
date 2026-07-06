@@ -5,7 +5,10 @@
  * Licensed under the Business Source License 1.1 (BSL 1.1).
  */
 
-use super::types::{BalanceResponse, CoinChargeRequest, DailyStatsResponse, DeductCostRequest};
+use super::types::{
+    BalanceResponse, CoinChargeRequest, DailyStatsResponse, DeductCostRequest,
+    UpdateMonthlySpendLimitRequest,
+};
 use crate::state::SharedState;
 use axum::{extract::Path, http::StatusCode, response::IntoResponse, Extension, Json};
 use chrono::Utc;
@@ -203,12 +206,39 @@ pub async fn deduct_cost(
             // Distinguish client-caused errors (4xx) from infrastructure errors (5xx)
             if msg.contains("Insufficient funds")
                 || msg.contains("daily spend limit")
+                || msg.contains("monthly spend limit")
                 || msg.contains("greater than zero")
             {
                 (StatusCode::BAD_REQUEST, "Deduction rejected").into_response()
             } else {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Deduction failed").into_response()
             }
+        }
+    }
+}
+
+pub async fn update_monthly_spend_limit(
+    Extension(state): axum::Extension<SharedState>,
+    Json(payload): Json<UpdateMonthlySpendLimitRequest>,
+) -> impl IntoResponse {
+    let mut policy = state.policy.read().await.clone();
+    policy.monthly_spend_limit = payload.monthly_spend_limit;
+    if let Err(e) = policy.validate() {
+        error!("❌ [Internal/Policy] Invalid monthly_spend_limit: {}", e);
+        return (StatusCode::BAD_REQUEST, "Invalid policy").into_response();
+    }
+
+    match state.commerce_engine.reload_policy(policy).await {
+        Ok(_) => {
+            info!(
+                "✅ [Internal/Policy] monthly_spend_limit updated to {}",
+                payload.monthly_spend_limit
+            );
+            (StatusCode::OK, "Success").into_response()
+        }
+        Err(e) => {
+            error!("❌ [Internal/Policy] reload_policy failed: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }
 }

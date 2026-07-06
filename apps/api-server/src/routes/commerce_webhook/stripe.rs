@@ -252,6 +252,17 @@ pub async fn stripe_webhook(
         let registry = state.registry.get_inner();
         pending_coin_charge =
             handle_checkout_completed(&mut tx, registry, event_id, object).await?;
+
+        // OP-057-R: Pro subscription checkout → immediate service unlock (invoice.paid also unlocks)
+        if object["mode"].as_str() == Some("subscription")
+            && object["payment_status"].as_str() == Some("paid")
+        {
+            if let Some(a) = object["metadata"]["agent_id"].as_str() {
+                pending_unlock_agent = Some(a.to_string());
+            } else if let Some(customer_id) = object["customer"].as_str() {
+                pending_unlock_agent = handle_invoice_paid(&mut tx, customer_id, "").await?;
+            }
+        }
     } else if event_type == "invoice.paid" {
         let object = &event_val["data"]["object"];
         let customer_id = object["customer"].as_str().unwrap_or_default();

@@ -55,6 +55,11 @@ jest.mock('../config', () => ({
   API_BASE: 'http://localhost'
 }));
 
+// Mock Toast
+jest.mock('./common/Toast', () => ({
+  useToast: () => ({ showToast: jest.fn() })
+}));
+
 // Mock EscrowManagementView to prevent async act warnings from it
 jest.mock('./EscrowManagementView', () => {
   return function DummyEscrowView() {
@@ -63,18 +68,18 @@ jest.mock('./EscrowManagementView', () => {
 });
 
 // Mock useViewMode
-let mockViewMode = 'advanced';
+let mockViewMode: 'simple' | 'cockpit' = 'cockpit';
 jest.mock('../hooks/useViewMode', () => ({
   useViewMode: () => ({
     viewMode: mockViewMode,
-    setViewMode: jest.fn((mode) => { mockViewMode = mode; })
+    setViewMode: jest.fn((mode: 'simple' | 'cockpit') => { mockViewMode = mode; })
   })
 }));
 
 describe('SettingsPage Integrations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockViewMode = 'advanced'; // Default to advanced for existing tests
+    mockViewMode = 'cockpit'; // Default to cockpit for existing tests
   });
 
   it('renders Channel Bridges section with X Bearer Token input', async () => {
@@ -128,8 +133,8 @@ describe('SettingsPage Integrations', () => {
     });
   });
 
-  it('hides intermediate and advanced sections in beginner mode', async () => {
-    mockViewMode = 'beginner';
+  it('hides cockpit-only sections in simple mode', async () => {
+    mockViewMode = 'simple';
     render(<SettingsPage />);
     
     // Should see Appearance and LLM Configuration
@@ -143,8 +148,8 @@ describe('SettingsPage Integrations', () => {
     expect(screen.queryByText('settings.featureFlags')).not.toBeInTheDocument();
   });
 
-  it('shows intermediate sections but hides advanced sections in intermediate mode', async () => {
-    mockViewMode = 'intermediate';
+  it('shows all sections in cockpit mode', async () => {
+    mockViewMode = 'cockpit';
     render(<SettingsPage />);
     
     // Wait for initial render/fetch to settle
@@ -154,21 +159,6 @@ describe('SettingsPage Integrations', () => {
     expect(screen.getByText('settings.commerceEconomicBase')).toBeInTheDocument();
     expect(screen.getByText('settings.channelBridges')).toBeInTheDocument();
     expect(screen.getByText('settings.securityInfrastructure')).toBeInTheDocument();
-
-    // Should NOT see Feature Flags (advanced only)
-    expect(screen.queryByText('settings.featureFlags')).not.toBeInTheDocument();
-  });
-
-  it('shows all sections in advanced mode', async () => {
-    mockViewMode = 'advanced';
-    render(<SettingsPage />);
-    
-    // Wait for initial render/fetch to settle
-    await screen.findByText('settings.appearance');
-
-    expect(screen.getByText('settings.llmEngine')).toBeInTheDocument();
-    expect(screen.getByText('settings.commerceEconomicBase')).toBeInTheDocument();
-    expect(screen.getByText('settings.channelBridges')).toBeInTheDocument();
     expect(screen.getByText('settings.featureFlags')).toBeInTheDocument();
   });
 
@@ -185,7 +175,7 @@ describe('SettingsPage Integrations', () => {
       return { ok: true, json: async () => [] };
     });
 
-    mockViewMode = 'advanced';
+    mockViewMode = 'cockpit';
     render(<SettingsPage />);
 
     // Wait for the appearance section to load (ensures main SettingsPage fetch is done)
@@ -241,7 +231,7 @@ describe('SettingsPage Integrations', () => {
       return { ok: true, json: async () => [] };
     });
 
-    mockViewMode = 'advanced';
+    mockViewMode = 'cockpit';
     render(<SettingsPage />);
     await screen.findByText('settings.appearance');
 
@@ -283,7 +273,7 @@ describe('SettingsPage Integrations', () => {
       };
     });
 
-    mockViewMode = 'advanced';
+    mockViewMode = 'cockpit';
     render(<SettingsPage />);
     
     // Wait for the settings to load
@@ -434,7 +424,7 @@ describe('SettingsPage Integrations', () => {
   });
 
   it('handles Appearance and Avatar interactions', async () => {
-    mockViewMode = 'advanced';
+    mockViewMode = 'cockpit';
     render(<SettingsPage />);
     await screen.findByText('settings.appearance');
 
@@ -454,8 +444,8 @@ describe('SettingsPage Integrations', () => {
     expect(mockSetMode).toHaveBeenCalledWith('lite');
     
     // Test View Mode toggle
-    const beginnerBtn = screen.getByText('settings.viewMode_beginner');
-    fireEvent.click(beginnerBtn);
+    const simpleBtn = screen.getByText('settings.viewMode_beginner');
+    fireEvent.click(simpleBtn);
     // setViewMode is mocked inline in hooks/useViewMode mock
   });
 
@@ -475,7 +465,7 @@ describe('SettingsPage Integrations', () => {
       return { ok: true, json: async () => [] };
     });
 
-    mockViewMode = 'advanced';
+    mockViewMode = 'cockpit';
     render(<SettingsPage />);
     await screen.findByText('settings.appearance');
 
@@ -563,7 +553,7 @@ describe('SettingsPage Integrations', () => {
   });
 
   it('renders Language Selector UI and triggers change', async () => {
-    mockViewMode = 'beginner'; // beginnerでも表示されることを検証
+    mockViewMode = 'simple'; // simpleでも表示されることを検証
     render(<SettingsPage />);
     await screen.findByText('settings.appearance');
 

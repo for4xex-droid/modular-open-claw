@@ -7,10 +7,10 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import StoryFlow from './StoryFlow';
-import { useAgentChat } from '../../hooks/useAgentChat';
+import { useAgentChat } from '../../hooks/AgentChatProvider';
 import { useCortexSuggestions } from '../../hooks/useCortexSuggestions';
 
-jest.mock('../../hooks/useAgentChat');
+jest.mock('../../hooks/AgentChatProvider');
 jest.mock('../../hooks/useCortexSuggestions');
 
 jest.mock('../../config', () => ({

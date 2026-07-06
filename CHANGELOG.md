@@ -1,5 +1,67 @@
 ## [Unreleased]
 
+### Added (/docs-sync 2026-07-06)
+- **`OPERATIONS_MANUAL.md` v3.4**: §8 リリース前チェックリストに OP-012/014/G1/R2-1 検証項目、§8.1 検証スクリプト表を追記。
+- **`SECURITY_DESIGN.md`**: Keychain CLI / PostgreSQL 本番検証スクリプトへの参照、最終更新日 2026-07-06。
+- **`api_key_rotation.md` §5**: `verify-keychain-cli.sh` 手順。
+- **`QUICKSTART.md` / `README.md` / `README_en.md`**: `QUICK_START_VERIFICATION.md`・`stripe-production-setup.md` へのリンク追加。
+
+### Added (R3 本番インフラ検証 2026-07-06)
+- **`docker-compose.production-verify.yml`**: 本番 compose と同一 postgres:16-alpine + `init.sql`（nurture / samsara_hub DB）の軽量検証スタック（ポート 5434）。
+- **`scripts/verify-production-postgres.sh`**: OP-012 — 3 DB マイグレーション + BAN ラウンドトリップ + Negative（不存在 DB 接続拒否）。Verification Protocol 3 段階対応。
+- **`libs/infrastructure/tests/postgres_production_verify.rs`**: infrastructure / nurture / samsara-hub の Postgres マイグレーション + `UniversalBanStore` 統合テスト。
+- **Postgres マイグレーション修正（OP-012 検出）**: `cortex_wiki` / `cortex_typed_links` の audit trigger が存在しない `audit_ledger_global_trigger()` を参照していた問題を `process_audit()` に修正（両マイグレーションは一度も成功し得なかったため in-place 修正が安全）。`agent_diagnoses` テーブル欠落（sqlite init との不整合）を新規 `20260601120000_add_agent_diagnoses.sql` で解消（適用済み init.sql は sqlx チェックサム保護のため不変更）。
+- **`scripts/verify-keychain-cli.sh`**: OP-014 — `abyss-vault` set/get/delete ラウンドトリップ + 非 whitelist キー拒否 + macOS Keychain smoke。
+- **`docs/guides/QUICK_START_VERIFICATION.md`**: G1 / R3-4 Human 実走チェックリスト（5 分 Quick Start 合格基準）。
+
+### Added (OP-059 R2-3 月間支出上限 2026-07-06)
+- **ADR-050**: 月間支出上限 — `EconomyPolicy.monthly_spend_limit`（0=無制限）、`nurture_wallets.monthly_limit` / `spent_this_month`、マイグレーション `20260706000000_monthly_spend_limit.sql`。
+- **`MonthlyLimitExceeded`**: commerce-protocol エラー + インターセプタ Negative Test。
+- **Settings UI**: `economy.monthly_spend_limit` 入力欄（cockpit commerce セクション）。api-server → Nurture `/internal/economy-policy/monthly-limit` 同期。
+
+### Added (Release R2/R3 ドキュメント同期 2026-07-06)
+- **ADR-051**: Stripe Customer Portal 統合照合 — OP-010 **CLOSED**（実 Billing Portal API、Mock ではない）。
+- **`stripe-production-setup.md`**: 本番 env 手順書に `VITE_STRIPE_PRICE_ID`（management-console）と OP-057-R チェックリストを追記（R2-1 手順書完了）。
+- **OPEN.md**: OP-010 / OP-028 / OP-052 / OP-056 完了反映。OP-011 に Public Beta 封印維持の R3-3 リリース判定を記録。
+- **`release_master_plan.md`**: R2-5 ✅、R2-1 手順書 ✅、R3-3 判定 ✅。
+
+### Added (Release R2 — 課金閉ループ OP-057-R 2026-07-05)
+- **Pro サブスク checkout Webhook**: `checkout.session.completed`（`mode=subscription`）を asset_id なしで正常処理。`stripe_customers` upsert + 即時 MCP unlock（`invoice.paid` と二重防御）。
+- **Checkout Session metadata**: Stripe `create_checkout_session` に `agent_id` / `checkout_type=pro_subscription` を付与。
+- **Integration test**: `test_stripe_webhook_subscription_checkout_unlocks_account` — Positive（決済完了→unlock + customer マッピング）。
+
+### Added (UI Overhaul U4 — A2UI 実戦投入 2026-07-05)
+- **U4-0 catalog + feature flag**: `state_assembly.rs` に `card` / `voiceStore` / `loraMarket` / `walletWidget` / `marketplaceItem` を catalog 登録。SettingsPage に `feature_flag.a2ui_generative_ui` トグル追加（ja/en i18n）。
+- **U4-4 動的 surface 更新**: `A2uiRenderer` で `updateComponents` / `deleteSurface` を `a2uiSurfaceStore` 経由で実装（チャット埋め込み向け3 envelope 対応）。
+- **U4-1 ナビ action**: `navigate:<tab>` action は POST せず `a2ui-navigate` CustomEvent を dispatch。`App.tsx` が whitelist 検証後に `setActiveTab`。
+- **U4-5 validator 拡張**: `voiceStore` / `loraMarket` / `walletWidget` / `marketplaceItem` を ALLOWED_COMPONENT_TYPES に追加。Rust テスト追加。
+- **U4-6 Nurture ウィジェット**: `walletWidget`（KC 残高 fetch）/ `marketplaceItem` レンダラー追加。`card` に children（ナビボタン）対応。
+- **E2E**: `e2e/a2ui.spec.ts` — card surface 描画（Positive）/ 不正 envelope type 拒否（Negative）。
+
+### Changed (UI Overhaul R1 2026-07-05)
+- **U5-6 a11y**: `components/ui/Modal.tsx` 新設（focus trap / Escape / `role="dialog"`）。`ProUpgradeModal`・`ConfirmModal` を Modal ベースへ移行。`NavItem` を `<button>` 化、サイドバートグルに `aria-label` 追加。
+- **U5-7 responsive**: `App.css` に `--bp-md` 相当のモバイルドロワー（overlay + backdrop）と HomePage 左ペイン縦積みを追加。`App.tsx` に backdrop クリックでサイドバー閉じを実装。
+- **U2-5 nav/page 日常語化**: `ja.json` / `en.json` の `nav`・`page` セクション値を MESSAGING.md 整合の日常語（Home/Chat/Safety/Economy/Settings 系）へ更新。キー名は不変。
+- **U5-8 reduced motion**: `hooks/usePrefersReducedMotion.ts` を新設し `useFluidConfig` から抽出。`main.tsx` で `MotionConfig reducedMotion="user"` を適用。
+- **U5-9 DioramaView lazy-load**: `App.tsx` で `React.lazy` + `Suspense` に変更（three.js バンドル分割）。
+- **U5-10 animations.css 整理**: 未使用5クラス（`ani-float` / `h-hover` / `h-holographic` / `avatar-breath` / `neural-line-animate`）と専用 keyframes を削除（rg 使用箇所ゼロ確認済み）。
+- **U2-4 useAgentChat Context 化**: `AgentChatProvider` + `useAgentChat()` で StoryFlow / AgentConsole の履歴を共有。`main.tsx` で Provider ラップ。Jest **392/392 PASS**。
+
+### Changed (UI Overhaul OP-066 実装 2026-07-05)
+- **U3-1 HEX→トークン全消し（OP-029 吸収）**: `test_ui_hex_violations.py` の違反 65→**0**。HomePage + Biome 系 13 ファイル（`BiomeGame` / `ThemeBridge` / `BiomeHUD` 等）の HEX/rgba を既存トークン（`var(--token)` / WebGL 向け `cssVar()`）へ置換。`tokens.css` への新規 HEX 追加なし。
+- **U0 既知バグ修正**: `buzz-approval` を Cockpit 可視タブに登録、`expert`→`advanced` 正規化（SetupWizard + `setup.rs`）、`useTtsSse` 402→`stripe-402-payment-required`、`ProUpgradeModal` に `agentId` 配線、HomePage バイオームカード i18n 化。
+- **U1 Pro 可視化（部分）**: `useSubscriptionStatus` + `SubscriptionProvider`、`PlanBadge`、`LockedOverlay`、`CheckoutSuccess` ルート、`ProUpgradeModal` i18n 化。LockedOverlay を Buzz / Treasure / LoRA / TTS（AgentConsole・StoryFlow）に適用。VoiceStore・NurtureDashboard で KC チャージと Pro サブスクの UI 分離（U1-5）。
+- **U2 Simple/Cockpit**: `ViewMode` を `simple`|`cockpit` に移行、サイドバー2段表示、SetupWizard/Settings 2択 UI、HomePage world タブ 7→3 集約。
+- **U5-A 体感品質**: サイレント失敗修正・EmptyState/LoadingState 横展開・Toast 最大3件キュー化（前セッション継続分を含む）。
+- **品質**: `ImmuneSystem` の fetch 無限ループを修正（`Toast.showToast` を `useCallback` 化 + テスト mock 安定化）。Jest **390/390 PASS**。
+
+### Changed (UI Overhaul U5-A 体感品質 2026-07-05)
+- **U5-1 サイレント失敗修正**: `GraphView` / `DiagnosticsHistory` / `SettingsPage`（初回読込）/ `ExpressionPipeline` / `home/CharacterPanel` で fetch 失敗時に Toast + エラー表示（Retry 付き）を追加。失敗とデータゼロを UI で区別。
+- **U5-2 操作フィードバック統一**: `SettingsPage` 保存成功に `showToast('success')`。`VaultSecretsManager` の `alert()` → Toast、`window.confirm()` → `ConfirmModal`。`BanDashboard` の `confirm()` → `ConfirmModal`。
+- **U5-3 空状態 CTA**: `EmptyState` を Timeline / SkillVault / DiagnosticsHistory / TreasureBox / PromptStatsView / BiotopeView に適用（各画面に次の一手 CTA）。SkillVault は初回ゼロとフィルタ結果ゼロを区別。
+- **U5-4 ローディング統一**: `LoadingState` を GraphView / ImmuneSystem / CommuneDialogueView / ExpressionPipeline / SeoPulseView に適用。
+- **U5-5 Toast キュー化**: `Toast.tsx` を最大3件同時表示のキュー方式に変更。連続操作で通知が握り潰されないようにした。
+
 ### Changed (Pro 価格改定 2026-07-05)
 - **Pro $9.99 → $19.99/月**: バイラル32原則 #32（競合より高く）に基づくユーザー決定。対外コピー SSOT（`docs/marketing/MESSAGING.md` §5・§9）、LP i18n（`ja.json`/`en.json`）、`README.md`/`README_en.md`、`ProUpgradeModal` 表示、`docs/operations/stripe-setup.md`、`.env.example` コメントを同期。
 - **LP Payment Link 差し替え**: `Pricing.tsx` の Pro CTA を $19.99 用 Link `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03` に更新（旧 `aFa9AS1Kc1l47mK3u5f7i01` は Stripe 側 inactive）。配線回帰テスト `Pricing.link.test.tsx` 追加。
@@ -14,6 +76,13 @@
 - **Problem セクション新設**: `Problem.tsx` を Hero 直下にマウント。3つの不安（データ・暴走・成果不可視）を共感ファーストで記述し3本柱へブリッジ（原則 #21）。
 - **カテゴリ比較表新設**: `Comparison.tsx` を Pricing 直前にマウント。クラウド型基盤/フレームワーク/Aiome の3列×6行（データ主権・暴走防壁・管理画面・経済圏・コスト・ロックイン）。個別製品名は挙げない方針を MESSAGING.md §2.5 に明文化（原則 #31）。
 - **アクセント色を cyan に集約**: Economy/Architecture/HowItWorks/LiveDemo/CodePreview/Showcase/Pricing/LegalLayout の brand-purple / brand-rose 装飾を cyan または無彩色に置換。購入ボタン1色の原則に整合（原則 #2）。
+
+### Added (UI 改善計画 2026-07-05)
+- **`docs/roadmaps/ui_overhaul_plan.md`**: Aiome+Nurture UI 全体改善計画 v1 を新規作成。課金メリット不可視（Pro 状態 UI 不在・402 受動導線のみ）、情報設計の混乱（二重ナビ・到達不能タブ・expert/advanced 不整合）、デザイン負債（HEX 直書き・トークン乖離）を実コード証拠付きで診断し、U0〜U4 の5フェーズに整理。A2UI（Generative UI）はナビコンシェルジュ・Pro ショーケース・動的セットアップガイドとして実戦投入する方針。
+- **同計画 v2（/perfect-plan 5ゲート検証）**: 判定 PATCH→PASS。車輪の再発明3件を是正（U3-4 は既存 `.stat-card`/`.card-hover` の React ラップに変更、U4-3 は `BiomeTutorial` パターン再利用、PlanBadge は `EkycStatusBadge` 踏襲）。catalog 未登録の `card` を U4-0 として追加。U2 の波及全数（viewMode 18箇所・テスト6ファイル）を §4.5 に確定。U2-4 チャット統一に `useAgentChat` Context 化を前提工事として明記。
+- **同計画 v3（/perfect-plan 第2周 — 体感品質・品質基盤監査）**: 診断に §1.4 体感品質（Q-1〜5: サイレント失敗5画面・ローディング6パターン混在・空状態 CTA 欠如・保存フィードバック不在・alert/confirm 残存）と §1.5 品質基盤（F-1〜6: aria 21件のみ・@media 0件・reduced-motion 未対応・DioramaView 静的 import 等）を追加。Phase U5（U5-A 体感品質 / U5-B a11y+レスポンシブ+性能）を新設。U3-4 を6プリミティブ（+LoadingState/EmptyState）に拡張。ライトテーマと一律仮想化は「やらない」判断でスコープ外に明記。
+- **同計画 v5（/perfect-plan 第4周 — 実装可能性の確定）**: 全未決定分岐を【決定】に解消（buzz-approval 登録 / expert 二重防御 / View Store はアプリ内 store 遷移 / biome を Cockpit 観測グループへ / ModelSetupStep 削除）。Appendix A（実装コントラクト）新設 — 誤解しやすい前提事実10件（テストは Vitest でなく **Jest**、settings の category クエリ非対応、サブスク API はプレーン文字列レスポンス等）、新規フック/コンポーネントの型契約（useSubscriptionStatus / PlanBadge / LockedOverlay / viewMode 写像 / navigate action）、フェーズ別 DoD コマンド（実在確認済み・コピペ可）、未整備ツール一覧（axe-core / A2UI E2E spec 等）。
+- **同計画 v4（/perfect-plan 第3周 — 課金ジャーニー一気通貫 + 計画横断監査）**: 重大バグ発見 — ProUpgradeModal に `agentId` 未配線でアプリ内唯一のアップグレード導線が Checkout 作成に失敗し得る（M-8 → U0-6 起票）。決済完了後の着地 UI 不在（M-9 → U1-8: `/checkout/success` ルート+状態再取得）。「支払い→Pro」閉ループが本番相当で不存在という構造的制約を M-10 として明文化し U1 の責務境界を定義（自動有効化は OP-057-R 待ち）。U4-0 に `a2ui_generative_ui` flag トグル追加（デフォルト OFF かつ ON にする UI が不在だった）。§4.6 で roadmaps 14件+ADR+DESIGN.md と突き合わせ、方針矛盾ゼロ・要協調5点（OP-029 一本化 / implementation_plan P3 包含等）を確定。
 
 ### Docs (/docs-sync 2026-07-05)
 - **`docs/marketing/MESSAGING.md`**: 最終更新日・LP セクション構成・Payment Link 公式 URL（§9）・OP-058 解消反映・本番デプロイ要件を追記。

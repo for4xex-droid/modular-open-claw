@@ -10,10 +10,21 @@ import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
 import { SettingEntry, ViewMode } from '../types';
 
+/** U2-1: migrate legacy view_mode values to simple | cockpit */
+export const migrateViewMode = (raw: string): ViewMode => {
+    if (raw === 'simple' || raw === 'cockpit') return raw;
+    if (raw === 'beginner') return 'simple';
+    if (raw === 'intermediate' || raw === 'advanced' || raw === 'expert') return 'cockpit';
+    return 'cockpit';
+};
+
+/** @deprecated Use migrateViewMode */
+export const normalizeViewMode = migrateViewMode;
+
 export const useViewMode = () => {
     const [viewMode, setViewMode] = useState<ViewMode>(() => {
-        const saved = localStorage.getItem('aiome_view_mode') as ViewMode;
-        return saved || 'intermediate';
+        const saved = localStorage.getItem('aiome_view_mode');
+        return saved ? migrateViewMode(saved) : 'cockpit';
     });
 
     useEffect(() => {
@@ -24,8 +35,9 @@ export const useViewMode = () => {
                     const data = await resp.json();
                     const modeSetting = data.find((s: SettingEntry) => s.key === 'view_mode');
                     if (modeSetting) {
-                        setViewMode(modeSetting.value as ViewMode);
-                        localStorage.setItem('aiome_view_mode', modeSetting.value);
+                        const migrated = migrateViewMode(modeSetting.value);
+                        setViewMode(migrated);
+                        localStorage.setItem('aiome_view_mode', migrated);
                     }
                 }
             } catch (e) {

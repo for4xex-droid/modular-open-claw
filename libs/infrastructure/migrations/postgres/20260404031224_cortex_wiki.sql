@@ -22,5 +22,5 @@ CREATE TABLE IF NOT EXISTS cortex_concept_index (
 ALTER TABLE cortex_documents ADD COLUMN compiled BOOLEAN DEFAULT FALSE;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_wiki_title ON cortex_wiki_articles(title);
 
-CREATE TRIGGER audit_insert_wiki_articles AFTER INSERT ON cortex_wiki_articles FOR EACH ROW EXECUTE FUNCTION audit_ledger_global_trigger();
-CREATE TRIGGER audit_update_wiki_articles AFTER UPDATE ON cortex_wiki_articles FOR EACH ROW EXECUTE FUNCTION audit_ledger_global_trigger();
+CREATE TRIGGER audit_insert_wiki_articles AFTER INSERT ON cortex_wiki_articles FOR EACH ROW EXECUTE FUNCTION process_audit();
+CREATE TRIGGER audit_update_wiki_articles AFTER UPDATE ON cortex_wiki_articles FOR EACH ROW EXECUTE FUNCTION process_audit();

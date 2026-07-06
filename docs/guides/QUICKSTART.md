@@ -77,3 +77,4 @@ This will stop and remove the containers, but all your AI's memories, configurat
 
 - Head over to the **Settings** tab in the app to switch your View Mode from `Beginner` to `Advanced` to unlock full developer capabilities (MCP integrations, Federation, LoRA training).
 - Check out the [Architecture Documentation](../architecture/ARCHITECTURE.md) to understand the internals of the Samsara Hub.
+- **Release verification (Human)**: Before Public Beta, complete the checklist in [Quick Start Verification](QUICK_START_VERIFICATION.md) (5-minute end-to-end run).

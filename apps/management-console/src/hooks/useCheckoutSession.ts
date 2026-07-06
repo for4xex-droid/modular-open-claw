@@ -14,7 +14,10 @@ export const useCheckoutSession = (priceId: string, agentId?: string) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isPortalLoading, setIsPortalLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const pendingRef = useRef(false); // Double-click guard (ref avoids stale closure)
+    const pendingRef = useRef(false);
+
+    const checkoutSuccessUrl = `${window.location.origin}/checkout/success`;
+    const checkoutCancelUrl = window.location.href;
 
     const handleCheckout = useCallback(async () => {
         if (pendingRef.current) return;
@@ -27,8 +30,8 @@ export const useCheckoutSession = (priceId: string, agentId?: string) => {
                 body: JSON.stringify({
                     agent_id: agentId,
                     price_id: priceId,
-                    success_url: window.location.href,
-                    cancel_url: window.location.href,
+                    success_url: checkoutSuccessUrl,
+                    cancel_url: checkoutCancelUrl,
                 }),
             });
 
@@ -48,7 +51,7 @@ export const useCheckoutSession = (priceId: string, agentId?: string) => {
             pendingRef.current = false;
             setIsLoading(false);
         }
-    }, [priceId, agentId]);
+    }, [priceId, agentId, checkoutSuccessUrl, checkoutCancelUrl]);
 
     const handlePortal = useCallback(async () => {
         if (!agentId) return;

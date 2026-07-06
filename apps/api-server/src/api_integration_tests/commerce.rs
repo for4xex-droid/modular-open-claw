@@ -531,6 +531,87 @@ async fn test_stripe_webhook_invoice_paid_unlocks_account() {
         .unwrap();
     assert_eq!(setting.as_deref(), Some("false"));
 }
+
+#[serial]
+#[tokio::test]
+async fn test_stripe_webhook_subscription_checkout_unlocks_account() {
+    let (server, state, _tmp) = create_test_server().await;
+
+    let sqlite_pool = state.db_pool.get_inner().get_sqlite_pool().unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS stripe_webhook_events (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, metadata TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    )
+    .execute(sqlite_pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, category TEXT NOT NULL, is_secret BOOLEAN NOT NULL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP);",
+    )
+    .execute(sqlite_pool)
+    .await
+    .unwrap();
+
+    let agent_id = "00000000-0000-0000-0000-000000000099";
+    let customer_id = "cus_sub_checkout";
+    std::env::set_var("STRIPE_WEBHOOK_SECRET", "whsec_mock_secret");
+
+    let payload = serde_json::json!({
+        "id": "evt_sub_checkout",
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "id": "cs_sub_checkout",
+                "mode": "subscription",
+                "payment_status": "paid",
+                "customer": customer_id,
+                "metadata": {
+                    "agent_id": agent_id,
+                    "checkout_type": "pro_subscription"
+                }
+            }
+        }
+    });
+
+    let payload_str = payload.to_string();
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+    let mut mac = Hmac::<Sha256>::new_from_slice(b"whsec_mock_secret").unwrap();
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let signed_payload = format!("{}.{}", timestamp, payload_str);
+    mac.update(signed_payload.as_bytes());
+    let sig_hash = hex::encode(mac.finalize().into_bytes());
+    let sig_header = format!("t={},v1={}", timestamp, sig_hash);
+
+    let resp = server
+        .post("/api/v1/commerce/webhook")
+        .add_header("stripe-signature", sig_header)
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+
+    use aiome_core::traits::SettingsOps;
+    let setting_key = format!("agency.{}.mcp_suspended", agent_id);
+    let setting = state
+        .job_queue
+        .get_inner()
+        .get_setting_value(&setting_key)
+        .await
+        .unwrap();
+    assert_eq!(setting.as_deref(), Some("false"));
+
+    let row: (String,) =
+        sqlx::query_as("SELECT agent_id FROM stripe_customers WHERE customer_id = ?")
+            .bind(customer_id)
+            .fetch_one(sqlite_pool)
+            .await
+            .unwrap();
+    assert_eq!(row.0, agent_id);
+}
+
 #[serial]
 #[tokio::test]
 async fn test_stripe_webhook_payment_failed_suspends_account() {

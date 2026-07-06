@@ -11,6 +11,7 @@ import { AgentStats, VitalityUIEvent } from '../types';
 import { useTranslation } from '../i18n';
 import { TreasureBox } from './TreasureBox';
 import { TokenSavingsIndicator } from './common/TokenSavingsIndicator';
+import { EmptyState } from './ui/EmptyState';
 
 interface BiotopeViewProps {
     stats: AgentStats;
@@ -159,9 +160,18 @@ const BiotopeView: React.FC<BiotopeViewProps> = ({ stats, isConnected, recentEve
                     <div style={{ overflowY: 'auto', padding: '1rem' }}>
                         <AnimatePresence mode="popLayout">
                             {recentEvents.length === 0 ? (
-                                <div key="empty" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                    {t('biotope.monitoringActivity')}
-                                </div>
+                                <EmptyState
+                                    key="empty"
+                                    icon={Activity}
+                                    titleKey="biotope.monitoringActivity"
+                                    detailKey="biotope.emptyDetail"
+                                    cta={{
+                                        labelKey: 'biotope.emptyCta',
+                                        onClick: () => window.dispatchEvent(new CustomEvent('aiome_inject_prompt', {
+                                            detail: { prompt: t('biotope.emptyPrompt', { defaultValue: 'What is happening in the system right now?' }), autoSend: false }
+                                        }))
+                                    }}
+                                />
                             ) : (
                                 recentEvents.map(event => (
                                     <motion.div

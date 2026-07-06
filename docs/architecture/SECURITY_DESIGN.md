@@ -269,9 +269,13 @@ For SEO integrations like WordPress, Aiome avoids direct API token injection int
 
 - **Keychain Access Hardening (v1.0 Beta / Beta 2)**:
   - macOS Keychain への非対話型アクセスフリーズを回避するため、`VAULT_MASTER_PASSWORD` のロード時は環境変数の確認を macOS Keychain よりも優先するよう順序を変更。
+- **CLI 検証 (OP-014 / 2026-07-06)**:
+  - `scripts/verify-keychain-cli.sh` — `abyss-vault` set/get/delete ラウンドトリップ、非 whitelist キー拒否、macOS Keychain smoke。詳細は [`docs/operations/api_key_rotation.md`](../operations/api_key_rotation.md) §5。
+- **PostgreSQL 本番検証 (OP-012 / 2026-07-06)**:
+  - `scripts/verify-production-postgres.sh` + `docker-compose.production-verify.yml` — 3 DB マイグレーションと BAN 統合の自動検証。詳細は [`docs/guides/OPERATIONS_MANUAL.md`](../guides/OPERATIONS_MANUAL.md) §8.1。
 
 ### 6.7 Query-Parameter Auth Removal (2026-07)
 The `key-proxy` no longer accepts `?key=` query-parameter authentication. Secrets must be supplied via `Authorization: Bearer` or approved header fallbacks only. This prevents vault credentials from appearing in access logs or Referer headers.
 
 ---
-*最終更新: 2026-07-03 (Internal economy idempotency, auth token rate limit, JWT iss/aud pinning, key-proxy query auth removal)*
+*最終更新: 2026-07-06 (OP-012/014 本番検証スクリプト、Keychain CLI 検証、Query-Parameter Auth Removal)*

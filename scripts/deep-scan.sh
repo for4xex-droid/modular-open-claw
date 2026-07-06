@@ -45,7 +45,6 @@ CRATES=(
   "libs/wasm-skills/fs_writer"
   "libs/napi-bridge"
   "apps/api-server"
-  "apps/watchtower"
   "apps/samsara-hub"
   "apps/key-proxy"
 )

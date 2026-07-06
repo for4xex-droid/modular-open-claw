@@ -91,6 +91,11 @@ jest.mock('./components/SetupWizard', () => ({
   default: () => <div data-testid="setup-wizard-mock">SetupWizard Mock</div>
 }));
 
+jest.mock('./components/commerce/PlanBadge', () => ({
+  __esModule: true,
+  PlanBadge: () => <div data-testid="plan-badge-mock" />
+}));
+
 jest.mock('./components/BiotopeView', () => ({
   __esModule: true,
   default: ({ recentEvents }: any) => (
@@ -109,11 +114,32 @@ jest.mock('./hooks/useTreasure', () => ({
 
 jest.mock('./hooks/useViewMode', () => ({
   __esModule: true,
-  useViewMode: () => ({ viewMode: 'advanced' })
+  useViewMode: () => ({ viewMode: 'cockpit' })
+}));
+jest.mock('./hooks/AgentChatProvider', () => ({
+  __esModule: true,
+  AgentChatProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useAgentChat: () => ({
+    input: '',
+    setInput: jest.fn(),
+    history: [],
+    isTyping: false,
+    streamingText: '',
+    autoTts: false,
+    setAutoTts: jest.fn(),
+    status: 'IDLE',
+    relevantKarma: null,
+    relevantKarmaData: null,
+    activeKnowledge: null,
+    sendMessage: jest.fn(),
+    handleFeedback: jest.fn(),
+    clearHistory: jest.fn(),
+  }),
 }));
 jest.mock('./lib/auth', () => ({
   __esModule: true,
   isAuthenticated: () => true,
+  getAuthToken: () => 'mock-token',
   authenticatedFetch: jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve([]) }))
 }));
 jest.mock('./hooks/AvatarContext', () => ({

@@ -31,6 +31,25 @@ jest.mock('../i18n', () => ({
   }),
 }));
 
+jest.mock('./common/Toast', () => ({
+  useToast: () => ({ showToast: jest.fn() }),
+}));
+
+jest.mock('./common/ConfirmModal', () => ({
+  __esModule: true,
+  default: ({ isOpen, onConfirm, onCancel, confirmText }: any) =>
+    isOpen ? (
+      <div data-testid="confirm-modal">
+        <button onClick={onConfirm}>{confirmText || 'Confirm'}</button>
+        <button onClick={onCancel}>Cancel</button>
+      </div>
+    ) : null,
+}));
+
+jest.mock('./ui/LoadingState', () => ({
+  LoadingState: () => <div data-testid="loading-state">loading</div>,
+}));
+
 describe('VaultSecretsManager Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();

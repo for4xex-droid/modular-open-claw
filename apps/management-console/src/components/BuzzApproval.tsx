@@ -19,6 +19,7 @@ import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
 import { useTranslation } from '../i18n';
 import { useToast } from './common/Toast';
+import { LockedOverlay } from './ui/LockedOverlay';
 
 interface BuzzJob {
   id: string;
@@ -142,6 +143,7 @@ const BuzzApproval = () => {
   };
 
   return (
+    <LockedOverlay featureNameKey="pro.featureBuzz">
     <div className="vault-container">
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-lg)', alignItems: 'center' }}>
         <h2><Zap size={24} color="var(--accent-cyan)" style={{ verticalAlign: 'middle', marginRight: '8px' }} />
@@ -335,6 +337,7 @@ const BuzzApproval = () => {
         textarea:focus { border-color: var(--accent-cyan) !important; }
       `}</style>
     </div>
+    </LockedOverlay>
   );
 };
 

@@ -20,6 +20,8 @@ import {
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
 import { useTranslation } from '../i18n';
+import { useToast } from './common/Toast';
+import { LoadingState } from './ui/LoadingState';
 
 interface CommuneMessage {
   id: number;
@@ -42,11 +44,13 @@ interface AutonomousStatus {
 
 const CommuneDialogueView: React.FC = () => {
     const { t } = useTranslation();
+    const { showToast } = useToast();
   const [messages, setMessages] = useState<CommuneMessage[]>([]);
   const [status, setStatus] = useState<AutonomousStatus | null>(null);
   const [peerPubkey, setPeerPubkey] = useState("PEER_NODE_DEFAULT_B");
   const [topicId, setTopicId] = useState("general_deliberation");
   const [isStarting, setIsStarting] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -55,10 +59,13 @@ const CommuneDialogueView: React.FC = () => {
       const res = await authenticatedFetch(`${API_BASE}/api/commune/list`);
       if (res.ok) {
         const data = await res.json();
-        setMessages(data.reverse()); // Show oldest at top, newest at bottom for chat
+        setMessages(data.reverse());
+      } else {
+        showToast('error', t('commune.loadFailed', { defaultValue: 'Failed to load dialogue messages.' }));
       }
     } catch (e) {
       console.error("Failed to fetch messages", e);
+      showToast('error', t('common.networkError', { defaultValue: 'A network error occurred.' }));
     }
   };
 
@@ -68,9 +75,12 @@ const CommuneDialogueView: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         setStatus(data);
+      } else {
+        showToast('error', t('commune.loadFailed', { defaultValue: 'Failed to load dialogue messages.' }));
       }
     } catch (e) {
       console.error("Failed to fetch autonomous status", e);
+      showToast('error', t('common.networkError', { defaultValue: 'A network error occurred.' }));
     }
   };
 
@@ -109,8 +119,12 @@ const CommuneDialogueView: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchMessages();
-    fetchStatus();
+    const loadInitial = async () => {
+      setLoading(true);
+      await Promise.all([fetchMessages(), fetchStatus()]);
+      setLoading(false);
+    };
+    loadInitial();
     const interval = setInterval(() => {
       fetchMessages();
       fetchStatus();
@@ -156,7 +170,9 @@ const CommuneDialogueView: React.FC = () => {
             background: 'var(--black-20)'
           }}
         >
-          {messages.length === 0 && (
+          {loading ? (
+            <LoadingState messageKey="loading" />
+          ) : messages.length === 0 && (
             <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', opacity: 0.5 }}>
               <MessageSquare size={48} style={{ marginBottom: '1rem' }} />
               <p>{t('commune.waitingMessages')}</p>

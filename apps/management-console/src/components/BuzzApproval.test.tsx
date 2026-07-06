@@ -41,6 +41,17 @@ jest.mock('../lib/auth', () => ({
   })
 }));
 
+jest.mock('../hooks/useSubscriptionStatus', () => ({
+  useSubscriptionStatus: () => ({
+    isPro: true,
+    isLoading: false,
+    status: 'active',
+    error: null,
+    refresh: jest.fn(),
+  }),
+  openProUpgradeModal: jest.fn(),
+}));
+
 jest.mock('./common/Toast', () => ({
   useToast: () => ({ showToast: jest.fn() })
 }));

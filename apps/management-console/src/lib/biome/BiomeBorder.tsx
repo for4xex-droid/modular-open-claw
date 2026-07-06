@@ -7,6 +7,7 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { cssVar } from '../../utils/cssVar';
 
 export function BiomeBorder() {
   const lineMaterialRef = useRef<THREE.LineBasicMaterial | null>(null);
@@ -77,7 +78,7 @@ export function BiomeBorder() {
     <lineSegments geometry={borderGeometry}>
       <lineBasicMaterial
         ref={lineMaterialRef}
-        color="#00f0ff"
+        color={cssVar('--accent-cyan')}
         transparent
         opacity={0.6}
         linewidth={2} // WebGL規格によっては1固定になるが定義しておく

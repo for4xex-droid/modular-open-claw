@@ -4,8 +4,9 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useAgentChat } from './useAgentChat';
+import { AgentChatProvider, useAgentChat } from './AgentChatProvider';
 // @ts-expect-error Node util module types may not be installed in frontend
 import { TextEncoder, TextDecoder } from 'util';
 
@@ -28,9 +29,12 @@ jest.mock('./useSystemVitality', () => ({
   useSystemVitality: () => ({ lastEvent: null })
 }));
 
+const wrapper = ({ children }: { children: React.ReactNode }) =>
+  React.createElement(AgentChatProvider, null, children);
+
 describe('useAgentChat JS Bridge Feedback', () => {
   it('listens for aiome_inject_prompt CustomEvent and updates input', async () => {
-    const { result } = renderHook(() => useAgentChat());
+    const { result } = renderHook(() => useAgentChat(), { wrapper });
     
     act(() => {
       window.dispatchEvent(new CustomEvent('aiome_inject_prompt', {
@@ -49,7 +53,7 @@ describe('useAgentChat JS Bridge Feedback', () => {
   });
 
   it('triggers sendMessage automatically when aiome_inject_prompt event is fired with autoSend', async () => {
-    const { result } = renderHook(() => useAgentChat());
+    const { result } = renderHook(() => useAgentChat(), { wrapper });
     
     act(() => {
       window.dispatchEvent(new CustomEvent('aiome_inject_prompt', {
@@ -74,7 +78,7 @@ describe('useAgentChat Slash Command Interception', () => {
   });
 
   it('intercepts /store command, skips fetch, and injects voiceStore envelope locally', async () => {
-    const { result } = renderHook(() => useAgentChat());
+    const { result } = renderHook(() => useAgentChat(), { wrapper });
     // @ts-expect-error
     const authMock = require('../lib/auth').authenticatedFetch;
     
@@ -100,7 +104,7 @@ describe('useAgentChat Slash Command Interception', () => {
   });
 
   it('intercepts /treasure command, skips fetch, and injects treasureItem envelope locally', async () => {
-    const { result } = renderHook(() => useAgentChat());
+    const { result } = renderHook(() => useAgentChat(), { wrapper });
     // @ts-expect-error
     const authMock = require('../lib/auth').authenticatedFetch;
     
@@ -116,7 +120,7 @@ describe('useAgentChat Slash Command Interception', () => {
   });
 
   it('intercepts /lora command, skips fetch, and injects loraMarket envelope locally', async () => {
-    const { result } = renderHook(() => useAgentChat());
+    const { result } = renderHook(() => useAgentChat(), { wrapper });
     // @ts-expect-error
     const authMock = require('../lib/auth').authenticatedFetch;
     
@@ -132,7 +136,7 @@ describe('useAgentChat Slash Command Interception', () => {
   });
 
   it('intercepts /clear command, skips fetch, and clears chat history', async () => {
-    const { result } = renderHook(() => useAgentChat());
+    const { result } = renderHook(() => useAgentChat(), { wrapper });
     // @ts-expect-error
     const authMock = require('../lib/auth').authenticatedFetch;
 
@@ -183,7 +187,7 @@ describe('useAgentChat TTS Integration', () => {
   });
 
   it('calls useTtsSse.speak instead of fetch when autoTts is enabled and a message is sent', async () => {
-    const { result } = renderHook(() => useAgentChat());
+    const { result } = renderHook(() => useAgentChat(), { wrapper });
     
     // @ts-expect-error
     const authMock = require('../lib/auth').authenticatedFetch;
@@ -224,7 +228,7 @@ describe('useAgentChat TTS Integration', () => {
   });
 
   it('falls back to static blob fetch if useTtsSse.speak throws an error', async () => {
-    const { result } = renderHook(() => useAgentChat());
+    const { result } = renderHook(() => useAgentChat(), { wrapper });
     
     // @ts-expect-error
     const authMock = require('../lib/auth').authenticatedFetch;

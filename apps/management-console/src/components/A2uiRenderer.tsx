@@ -4,17 +4,77 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useLayoutEffect, useSyncExternalStore } from 'react';
 import { A2uiEnvelope, A2uiComponent, A2uiSurface, A2uiMetric, A2uiTimelineEvent } from '../types';
 import { useTokenHealth } from '../hooks/useTokenHealth';
+import { useAgentIdentity } from '../hooks/useAgentIdentity';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
+import { a2uiSurfaceStore } from '../lib/a2uiSurfaceStore';
 import { TreasureBox } from './TreasureBox';
 import VoiceStore from './VoiceStore';
 import LoraTrainingView from './LoraTrainingView';
+
 interface A2uiRendererProps {
     envelope: A2uiEnvelope;
 }
+
+const WalletWidget: React.FC<{ label?: string }> = ({ label }) => {
+    const { agentId } = useAgentIdentity();
+    const [balance, setBalance] = useState<number | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!agentId) {
+            setLoading(false);
+            return;
+        }
+        const controller = new AbortController();
+        (async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const res = await authenticatedFetch(
+                    `${API_BASE}/api/v1/commerce/balance/${agentId}`,
+                    { signal: controller.signal },
+                );
+                if (res.ok) {
+                    const data = await res.json();
+                    setBalance(typeof data.balance === 'number' ? data.balance : 0);
+                } else if (res.status !== 403) {
+                    setError('Failed to load KC balance');
+                }
+            } catch (e) {
+                if (e instanceof Error && e.name === 'AbortError') return;
+                setError('Failed to load KC balance');
+            } finally {
+                setLoading(false);
+            }
+        })();
+        return () => controller.abort();
+    }, [agentId]);
+
+    return (
+        <div style={{
+            padding: '0.75rem 1rem',
+            background: 'var(--bg-glass-light)',
+            border: '1px solid var(--border-glass-bright)',
+            borderRadius: 'var(--radius-md)',
+            margin: '0.5rem 0',
+        }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                {label ?? 'AiomeCoin (KC)'}
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
+                {loading ? '…' : error ? '—' : `${(balance ?? 0).toLocaleString()} KC`}
+            </div>
+            {error ? (
+                <div style={{ fontSize: '0.7rem', color: 'var(--accent-rose)', marginTop: '0.25rem' }}>{error}</div>
+            ) : null}
+        </div>
+    );
+};
 
 /**
  * 再帰的コンポーネントレンダラー。
@@ -129,7 +189,7 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     {component.props?.title ? <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{String(component.props.title)}</h4> : null}
                     {component.props?.description ? <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{String(component.props.description)}</p> : null}
                     {component.children && component.children.length > 0 && (
-                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                             {component.children.map((child, i) => <ComponentRenderer key={i} component={child} onAction={onAction} isSubmitting={isSubmitting} />)}
                         </div>
                     )}
@@ -174,7 +234,53 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     <LoraTrainingView />
                 </div>
             );
-        case 'progressBar':
+        case 'walletWidget':
+            return (
+                <WalletWidget label={typeof component.props?.label === 'string' ? component.props.label : undefined} />
+            );
+        case 'marketplaceItem': {
+            const title = typeof component.props?.title === 'string' ? component.props.title : 'Marketplace Item';
+            const price = typeof component.props?.price === 'number' ? component.props.price : null;
+            const currency = typeof component.props?.currency === 'string' ? component.props.currency : 'KC';
+            const description = typeof component.props?.description === 'string' ? component.props.description : null;
+            return (
+                <div style={{
+                    padding: '1rem',
+                    background: 'var(--bg-glass-light)',
+                    border: '1px solid var(--border-glass-bright)',
+                    borderRadius: 'var(--radius-md)',
+                    margin: '0.5rem 0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem',
+                }}>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{title}</h4>
+                    {description ? <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{description}</p> : null}
+                    {price !== null ? (
+                        <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--accent-purple)' }}>
+                            {price.toLocaleString()} {currency}
+                        </div>
+                    ) : null}
+                    <button
+                        type="button"
+                        style={{
+                            alignSelf: 'flex-start',
+                            padding: '0.4rem 0.75rem',
+                            fontSize: '0.8rem',
+                            background: 'var(--white-05)',
+                            border: '1px solid var(--border-glass-bright)',
+                            borderRadius: 'var(--radius-sm)',
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                        }}
+                        onClick={() => onAction('navigate:store')}
+                    >
+                        View Store
+                    </button>
+                </div>
+            );
+        }
+        case 'progressBar': {
             const progress = Number(component.props?.progress || 0);
             return (
                 <div style={{ width: '100%', margin: '0.5rem 0' }}>
@@ -184,7 +290,8 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     </div>
                 </div>
             );
-        case 'alert':
+        }
+        case 'alert': {
             const severity = String(component.props?.severity || 'info');
             const alertColor = severity === 'error' ? 'var(--accent-rose)' : severity === 'warning' ? 'var(--accent-amber)' : 'var(--accent-cyan)';
             const alertBg = severity === 'error' ? 'var(--accent-rose-10)' : severity === 'warning' ? 'var(--accent-amber-10)' : 'var(--accent-cyan-10)';
@@ -193,11 +300,19 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     {component.props?.message ? <div>{String(component.props.message)}</div> : null}
                 </div>
             );
+        }
         case 'card':
             return (
                 <div style={{ padding: '1rem', background: 'var(--bg-glass-light)', border: '1px solid var(--border-glass-bright)', borderRadius: 'var(--radius-md)', margin: '0.5rem 0' }}>
                     {component.props?.title ? <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '1rem' }}>{String(component.props.title)}</h4> : null}
                     {component.props?.content ? <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{String(component.props.content)}</p> : null}
+                    {(component.children ?? []).length > 0 && (
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+                            {component.children.map((child, i) => (
+                                <ComponentRenderer key={i} component={child} onAction={onAction} isSubmitting={isSubmitting} />
+                            ))}
+                        </div>
+                    )}
                 </div>
             );
         case 'codeBlock':
@@ -206,7 +321,7 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     <code>{String(component.props?.code || '')}</code>
                 </pre>
             );
-        case 'chart':
+        case 'chart': {
             const metrics: A2uiMetric[] = Array.isArray(component.props?.metrics) ? component.props.metrics : [];
             return (
                 <div style={{ padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', margin: '0.5rem 0' }}>
@@ -224,7 +339,8 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     </div>
                 </div>
             );
-        case 'dataTable':
+        }
+        case 'dataTable': {
             const cols: string[] = Array.isArray(component.props?.columns) ? component.props.columns : [];
             const rows: Record<string, unknown>[] = Array.isArray(component.props?.rows) ? component.props.rows : [];
             return (
@@ -243,7 +359,8 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     </table>
                 </div>
             );
-        case 'cellStatus':
+        }
+        case 'cellStatus': {
             const statusColor = component.props?.status === 'active' ? 'var(--accent-emerald)' : component.props?.status === 'error' ? 'var(--accent-rose)' : 'var(--text-muted)';
             return (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '1rem', background: 'var(--white-05)', border: `1px solid ${statusColor}40` }}>
@@ -251,7 +368,8 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     {String(component.props?.label || component.props?.status || 'unknown')}
                 </span>
             );
-        case 'timeline':
+        }
+        case 'timeline': {
             const events: A2uiTimelineEvent[] = Array.isArray(component.props?.events) ? component.props.events : [];
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', margin: '0.5rem 0', paddingLeft: '0.5rem', borderLeft: '2px solid var(--border-glass)' }}>
@@ -264,6 +382,7 @@ const ComponentRenderer: React.FC<{ component: A2uiComponent, onAction: (action:
                     ))}
                 </div>
             );
+        }
         default:
             return (
                 <div style={{
@@ -296,11 +415,92 @@ const SurfaceRenderer: React.FC<{ surface: A2uiSurface, onAction: (action: strin
     );
 };
 
+const SurfaceShell: React.FC<{ surfaceId: string, surface: A2uiSurface, onAction: (action: string) => void, isSubmitting: boolean }> = ({ surfaceId, surface, onAction, isSubmitting }) => (
+    <div style={{
+        width: '100%',
+        padding: 'var(--space-md)',
+        borderRadius: 'var(--radius-md)',
+        background: 'var(--bg-glass-heavy)',
+        border: '1px solid var(--border-glass-bright)',
+        boxShadow: 'var(--shadow-deep)',
+        marginTop: '1rem',
+        marginBottom: '1rem',
+        overflow: 'hidden',
+        position: 'relative',
+    }}>
+        <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '3px',
+            height: '100%',
+            background: 'linear-gradient(to bottom, var(--accent-cyan), var(--accent-purple))',
+            opacity: 0.8,
+        }} />
+        <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 'var(--space-sm)',
+            paddingBottom: '0.75rem',
+            borderBottom: '1px solid var(--border-glass)',
+        }}>
+            <span style={{
+                fontSize: '0.7rem',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 700,
+                color: 'var(--accent-cyan)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+            }}>
+                <span style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: 'var(--accent-cyan)',
+                    boxShadow: 'var(--glow-cyan)',
+                }} />
+                A2UI Surface
+            </span>
+            <span style={{
+                fontSize: '0.6rem',
+                color: 'var(--text-muted)',
+                fontFamily: 'var(--font-mono)',
+                opacity: 0.6,
+            }}>
+                {surfaceId.length > 8
+                    ? `ID: ${surfaceId.slice(0, 8)}…`
+                    : `ID: ${surfaceId}`}
+            </span>
+        </div>
+        <SurfaceRenderer surface={surface} onAction={onAction} isSubmitting={isSubmitting} />
+    </div>
+);
+
 export const A2uiRenderer: React.FC<A2uiRendererProps> = ({ envelope }) => {
     const { checkHealth } = useTokenHealth();
     const [submittingData, setSubmittingData] = useState(false);
 
+    useLayoutEffect(() => {
+        a2uiSurfaceStore.applyEnvelope(envelope);
+    }, [envelope]);
+
+    useSyncExternalStore(
+        (cb) => a2uiSurfaceStore.subscribe(cb),
+        () => a2uiSurfaceStore.getSnapshot(),
+        () => a2uiSurfaceStore.getSnapshot(),
+    );
+
     const handleAction = useCallback(async (action: string, surfaceId: string) => {
+        if (action.startsWith('navigate:')) {
+            const tab = action.slice('navigate:'.length);
+            window.dispatchEvent(new CustomEvent('a2ui-navigate', { detail: { tab } }));
+            return;
+        }
+
         if (submittingData) return;
         setSubmittingData(true);
         try {
@@ -327,94 +527,31 @@ export const A2uiRenderer: React.FC<A2uiRendererProps> = ({ envelope }) => {
         }
     }, [submittingData, checkHealth]);
 
-    if (envelope.type === 'createSurface') {
-        // Runtime guard: discriminated unions don't guarantee shape at runtime
-        const surface = envelope.surface;
-        if (!surface || !Array.isArray(surface.components)) {
-            return null;
-        }
-        const surfaceId = surface.id ?? 'unknown';
-        return (
-            <div style={{
-                width: '100%',
-                padding: 'var(--space-md)',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--bg-glass-heavy)',
-                border: '1px solid var(--border-glass-bright)',
-                boxShadow: 'var(--shadow-deep)',
-                marginTop: '1rem',
-                marginBottom: '1rem',
-                overflow: 'hidden',
-                position: 'relative',
-            }}>
-                {/* Accent bar */}
-                <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '3px',
-                    height: '100%',
-                    background: 'linear-gradient(to bottom, var(--accent-cyan), var(--accent-purple))',
-                    opacity: 0.8,
-                }} />
-                {/* Header */}
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 'var(--space-sm)',
-                    paddingBottom: '0.75rem',
-                    borderBottom: '1px solid var(--border-glass)',
-                }}>
-                    <span style={{
-                        fontSize: '0.7rem',
-                        fontFamily: 'var(--font-mono)',
-                        fontWeight: 700,
-                        color: 'var(--accent-cyan)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.1em',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                    }}>
-                        <span style={{
-                            width: '6px',
-                            height: '6px',
-                            borderRadius: '50%',
-                            background: 'var(--accent-cyan)',
-                            boxShadow: 'var(--glow-cyan)',
-                        }} />
-                        A2UI Surface
-                    </span>
-                    <span style={{
-                        fontSize: '0.6rem',
-                        color: 'var(--text-muted)',
-                        fontFamily: 'var(--font-mono)',
-                        opacity: 0.6,
-                    }}>
-                        {surfaceId.length > 8
-                            ? `ID: ${surfaceId.slice(0, 8)}…`
-                            : `ID: ${surfaceId}`}
-                    </span>
-                </div>
-                <SurfaceRenderer surface={surface} onAction={(action) => handleAction(action, surfaceId)} isSubmitting={submittingData} />
-            </div>
-        );
+    if (envelope.type === 'updateComponents' || envelope.type === 'deleteSurface') {
+        return null;
     }
 
-    // updateComponents / deleteSurface — Phase 0 では情報表示のみ
+    if (envelope.type !== 'createSurface') {
+        return null;
+    }
+
+    const surface = envelope.surface;
+    if (!surface || !Array.isArray(surface.components)) {
+        return null;
+    }
+
+    const surfaceId = surface.id ?? 'unknown';
+    if (a2uiSurfaceStore.isDeleted(surfaceId)) {
+        return null;
+    }
+    const current = a2uiSurfaceStore.getSurface(surfaceId) ?? surface;
+
     return (
-        <div style={{
-            fontSize: '0.75rem',
-            color: 'var(--accent-amber)',
-            fontStyle: 'italic',
-            padding: '0.75rem',
-            border: '1px dashed var(--accent-amber-30)',
-            borderRadius: 'var(--radius-sm)',
-            background: 'var(--accent-amber-05)',
-            margin: '0.5rem 0',
-        }}>
-            A2UI Operation: {envelope.type} (Phase 0 — dynamic update not yet supported)
-        </div>
+        <SurfaceShell
+            surfaceId={surfaceId}
+            surface={current}
+            onAction={(action) => handleAction(action, surfaceId)}
+            isSubmitting={submittingData}
+        />
     );
 };

@@ -80,13 +80,14 @@ colors:
   accent-purple-20: "rgba(167, 139, 250, 0.2)"
   accent-purple-10: "rgba(167, 139, 250, 0.1)"
   accent-purple-05: "rgba(167, 139, 250, 0.05)"
-  accent-rose: "#ff4d94"
-  accent-rose-rgb: "255, 77, 148"
-  accent-rose-50: "rgba(255, 77, 148, 0.5)"
-  accent-rose-30: "rgba(255, 77, 148, 0.3)"
-  accent-rose-20: "rgba(255, 77, 148, 0.2)"
-  accent-rose-10: "rgba(255, 77, 148, 0.1)"
-  accent-rose-05: "rgba(255, 77, 148, 0.05)"
+  accent-rose: "#f472b6"
+  accent-rose-rgb: "244, 114, 182"
+  accent-rose-50: "rgba(244, 114, 182, 0.5)"
+  accent-rose-30: "rgba(244, 114, 182, 0.3)"
+  accent-rose-20: "rgba(244, 114, 182, 0.2)"
+  accent-rose-15: "rgba(244, 114, 182, 0.15)"
+  accent-rose-10: "rgba(244, 114, 182, 0.1)"
+  accent-rose-05: "rgba(244, 114, 182, 0.05)"
   accent-emerald-05: "rgba(16, 185, 129, 0.05)"
   accent-emerald-10: "rgba(16, 185, 129, 0.1)"
   accent-emerald-20: "rgba(16, 185, 129, 0.2)"
@@ -113,7 +114,7 @@ colors:
   border-glass-bright: "rgba(255, 255, 255, 0.15)"
   glow-cyan: "0 0 25px rgba(0, 242, 255, 0.25)"
   glow-purple: "0 0 25px rgba(188, 140, 255, 0.25)"
-  glow-rose: "0 0 25px rgba(255, 77, 148, 0.25)"
+  glow-rose: "0 0 20px rgba(244, 114, 182, 0.2)"
   shadow-deep: "0 20px 50px var(--black-50)"
   speed-fast: "0.15s"
   speed-normal: "0.3s"
@@ -169,7 +170,7 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 **Key Characteristics:**
 - Dark-mode-native: `var(--bg-dark-obsidian)` (#05070a) as the deepest canvas, glass layers with `backdrop-filter: blur(40px)`
 - Glassmorphism everywhere: panels at `var(--bg-glass-heavy)` (rgba(16,20,28,0.8)) with blur and saturate
-- Triple-accent system: Cyan (`var(--accent-cyan)`, #00f2ff), Purple (`var(--accent-purple)`, #bc8cff), Rose (`var(--accent-rose)`, #ff4d94)
+- Triple-accent system: Cyan (`var(--accent-cyan)`, #38bdf8), Purple (`var(--accent-purple)`, #a78bfa), Rose (`var(--accent-rose)`, #f472b6)
 - Brand gradient: `linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))` on headings
 - Artemis Typography: Outfit (display), Inter (body), JetBrains Mono (code)
 - Neon glow effects: `var(--glow-cyan)` = `0 0 25px rgba(0, 242, 255, 0.25)`
@@ -427,7 +428,7 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 ### Shadow System
 - **Glow Cyan** — `var(--glow-cyan)`: `0 0 25px rgba(0, 242, 255, 0.25)` — Active/focus states
 - **Glow Purple** — `var(--glow-purple)`: `0 0 25px rgba(188, 140, 255, 0.25)` — Secondary glow
-- **Glow Rose** — `var(--glow-rose)`: `0 0 25px rgba(255, 77, 148, 0.25)` — Error/danger glow
+- **Glow Rose** — `var(--glow-rose)`: `0 0 20px rgba(244, 114, 182, 0.2)` — Error/danger glow
 - **Shadow Deep** — `var(--shadow-deep)`: `0 20px 50px rgba(0, 0, 0, 0.5)` — Panel elevation
 
 ### Border Radius Scale
@@ -481,7 +482,7 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 - Muted Text: `var(--text-muted)` (#64748b)
 - Border: `var(--border-glass)` (rgba(255, 255, 255, 0.08))
 - Success: `var(--accent-emerald)` (#10b981)
-- Error: `var(--accent-rose)` (#ff4d94)
+- Error: `var(--accent-rose)` (#f472b6)
 - Warning: `var(--accent-amber)` (#f59e0b)
 - Charts: `var(--chart-1)` to `var(--chart-5)`
 

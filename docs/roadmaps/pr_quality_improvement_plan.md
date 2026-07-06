@@ -1,3 +1,5 @@
+> タスク追跡の正本は OPEN.md。本書は履歴・設計参照用。
+
 # プロダクト PR 品質改善計画 — LP（aiome.dev）& GitHub README
 
 > 作成日: 2026-07-03（同日、市場ニーズ照合により v2 へ改訂）/ **追記: 2026-07-05** — LP・価格・Payment Link の**最新 SSOT は [`docs/marketing/MESSAGING.md`](../marketing/MESSAGING.md)**。Pro **$19.99/月**、Payment Link `aFa00i9cEaVE4ay4y9f7i03`（旧 Link inactive）。本計画内の **$9.99 表記は履歴**。

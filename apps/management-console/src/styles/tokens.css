@@ -4,6 +4,11 @@
  * Auto-generated from DESIGN.md. DO NOT EDIT DIRECTLY. 
  */
 :root {
+  /* ── Breakpoints ── */
+  --bp-sm: 480px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+
   /* ── Backgrounds ── */
   --bg-primary: #0b0d14;
   --bg-base: var(--bg-primary);

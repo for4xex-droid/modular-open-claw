@@ -53,7 +53,7 @@ describe('useCheckoutSession hook', () => {
                 body: JSON.stringify({
                     agent_id: 'agent_456',
                     price_id: 'price_123',
-                    success_url: window.location.href,
+                    success_url: `${window.location.origin}/checkout/success`,
                     cancel_url: window.location.href,
                 }),
             }

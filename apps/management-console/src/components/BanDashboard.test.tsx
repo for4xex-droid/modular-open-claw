@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import BanDashboard from './BanDashboard';
 import { authenticatedFetch } from '../lib/auth';
 
@@ -48,6 +48,17 @@ jest.mock('./common/Toast', () => ({
   useToast: () => ({ showToast: jest.fn() })
 }));
 
+jest.mock('./common/ConfirmModal', () => ({
+  __esModule: true,
+  default: ({ isOpen, onConfirm, onCancel, confirmText }: any) =>
+    isOpen ? (
+      <div data-testid="confirm-modal">
+        <button onClick={onConfirm}>{confirmText || 'Confirm'}</button>
+        <button onClick={onCancel}>Cancel</button>
+      </div>
+    ) : null,
+}));
+
 jest.mock('../config', () => ({
   API_BASE: 'http://localhost:3015'
 }));
@@ -59,17 +70,10 @@ jest.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: any) => <>{children}</>,
 }));
 
-// Mock confirm dialog
-const originalConfirm = window.confirm;
-
+// ConfirmModal replaces window.confirm for unban flow
 describe('BanDashboard Governance Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    window.confirm = () => true;
-  });
-
-  afterAll(() => {
-    window.confirm = originalConfirm;
   });
 
   it('fetches and renders active and historical bans on mount', async () => {
@@ -137,6 +141,9 @@ describe('BanDashboard Governance Integration', () => {
 
     const unbanBtn = await screen.findByRole('button', { name: 'Unban' });
     fireEvent.click(unbanBtn);
+
+    await screen.findByTestId('confirm-modal');
+    fireEvent.click(within(screen.getByTestId('confirm-modal')).getByRole('button', { name: 'Unban' }));
 
     await waitFor(() => {
       expect(authenticatedFetch).toHaveBeenCalledWith(

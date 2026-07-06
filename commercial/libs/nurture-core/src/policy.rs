@@ -17,6 +17,9 @@ use commerce_protocol::transaction::{Transaction, TxState};
 #[serde(default)]
 pub struct EconomyPolicy {
     pub daily_spend_limit: u64,
+    /// Global monthly spend cap (0 = disabled / unlimited).
+    #[serde(default)]
+    pub monthly_spend_limit: u64,
     pub max_single_purchase: u64,
     pub creator_points_rate: u32,
     pub system_fee_rate: u32,
@@ -39,6 +42,7 @@ impl Default for EconomyPolicy {
     fn default() -> Self {
         Self {
             daily_spend_limit: 10_000,
+            monthly_spend_limit: 0,
             max_single_purchase: 5_000,
             creator_points_rate: 7000, // 70%
             system_fee_rate: 3000,     // 30%

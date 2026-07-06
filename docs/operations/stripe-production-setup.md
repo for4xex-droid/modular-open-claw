@@ -2,6 +2,16 @@
 
 Stripe の本番アカウント申請承認に伴い、Aiome 課金システムを本番（実決済）モードへ切り替えるための設定手順です。
 
+**最終更新: 2026-07-06** — release_master_plan **R2-1** 手順書（Human 作業の正本）。凍結台帳 **OP-057-R** チェックリストと対応。
+
+> **OP-057-R チェックリスト（本番 env 反映）**
+> 1. [ ] api-server 本番ホストに `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_TEST_MODE=false` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` を設定（§2）
+> 2. [ ] management-console 本番ビルドに `VITE_STRIPE_PRICE_ID` を設定（§2.1）— **api-server と同一 Price ID**
+> 3. [ ] Stripe Dashboard Webhook 登録（§3）
+> 4. [ ] 本番 API が実 Price ID を返すことを確認（DoD: release_master_plan R2-1）
+>
+> 決済→Pro 自動有効化（OP-057-R (2)）は 2026-07-05 コード完了。デプロイ前の人間レビューは `OPEN.md` OP-057-R を参照。
+
 ---
 
 ## 1. Stripe Dashboard での事前準備
@@ -38,6 +48,25 @@ STRIPE_TEST_MODE="false"
 # Stripe Dashboard で取得した月額サブスクの価格 ID
 STRIPE_PRICE_SUBSCRIPTION_MONTHLY="price_xxxx"
 ```
+
+### 2.1 management-console フロントエンド（`VITE_STRIPE_PRICE_ID`）
+
+Pro アプリ内 Checkout（`ProUpgradeModal` / `useCheckoutSession`）はビルド時に Vite 環境変数を埋め込みます。**api-server の `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` と同一の Price ID** を設定してください。
+
+| 環境変数 | 設定先 | 用途 |
+|---|---|---|
+| `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` | api-server 本番 `.env` | Checkout Session 作成・Webhook 照合 |
+| `VITE_STRIPE_PRICE_ID` | `apps/management-console/.env` または CI secrets | フロント Checkout リクエストの `price_id` |
+
+```bash
+# apps/management-console/.env（本番ビルド / CI）
+VITE_STRIPE_PRICE_ID="price_xxxx"   # STRIPE_PRICE_SUBSCRIPTION_MONTHLY と同一値
+```
+
+**確定値（2026-07-05、OP-057）**: `price_1TpXFpBcUTwo5TwLmK9SQbKL`（Pro $19.99/月）。開発手順の詳細は [stripe-setup.md](stripe-setup.md) §2.5 を参照。
+
+> [!NOTE]
+> Vite 変数はビルド時に静的埋め込みされます。Price ID 変更後は **management-console の再ビルド・再デプロイ** が必要です。
 
 > [!CAUTION]
 > - `STRIPE_TEST_MODE="false"` に設定されると、起動時プリフライトチェックで `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` が未設定の場合は**サーバーの起動を拒否**する安全ガードが稼働します。

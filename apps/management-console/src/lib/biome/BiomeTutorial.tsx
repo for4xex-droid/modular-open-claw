@@ -92,7 +92,7 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
         width: rect.width + pad * 2,
         height: rect.height + pad * 2,
         border: '3px solid var(--accent-cyan)',
-        boxShadow: '0 0 15px var(--accent-cyan), 0 0 0 9999px var(--black-75, rgba(0, 0, 0, 0.75))',
+        boxShadow: '0 0 15px var(--accent-cyan), 0 0 0 9999px var(--black-70)',
         borderRadius: 'var(--radius-sm)',
         zIndex: 1001,
         transition: 'all 0.3s ease',
@@ -152,10 +152,10 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
           border: '1px solid var(--border-glass-bright)',
           borderRadius: 'var(--radius-md)',
           padding: 'var(--space-sm)',
-          boxShadow: '0 8px 32px var(--black-80, rgba(0, 0, 0, 0.8)), 0 0 20px var(--accent-cyan-10)',
+          boxShadow: '0 8px 32px var(--black-85), 0 0 20px var(--accent-cyan-10)',
           backdropFilter: 'blur(12px)',
           color: 'var(--white-100)',
-          fontFamily: 'var(--font-main, sans-serif)'
+          fontFamily: 'var(--font-main)'
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -205,7 +205,7 @@ export function BiomeTutorial({ onClose }: BiomeTutorialProps) {
               background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-blue))',
               border: 'none',
               borderRadius: '6px',
-              color: 'var(--bg-primary, #0c0f1d)',
+              color: 'var(--text-inverse)',
               padding: '6px 16px',
               cursor: 'pointer',
               fontSize: '0.75rem',

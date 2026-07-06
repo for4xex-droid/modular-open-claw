@@ -1,0 +1,22 @@
+# Lightweight PostgreSQL stack mirroring docker-compose.production.yml postgres service.
+# Used by scripts/verify-production-postgres.sh (OP-012 / R3-1).
+# Does NOT start api-server / nurture-api / samsara-hub (heavy custom images + secrets).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aiome-pg-production-verify
+    environment:
+      POSTGRES_USER: aiome
+      POSTGRES_PASSWORD: aiome_verify_password
+      POSTGRES_DB: aiome
+    ports:
+      # localhost 限定バインド（検証用ダミーパスワードのため外部公開しない）
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiome -d aiome"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

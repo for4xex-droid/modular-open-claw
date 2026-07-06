@@ -44,7 +44,7 @@ export interface UseAgentChatReturn extends AgentChatState {
     clearHistory: () => void;
 }
 
-export const useAgentChat = (): UseAgentChatReturn => {
+export const useAgentChatState = (): UseAgentChatReturn => {
     const [input, setInput] = useState("");
     const [history, setHistory] = useState<ChatMessage[]>([]);
     const [isTyping, setIsTyping] = useState(false);

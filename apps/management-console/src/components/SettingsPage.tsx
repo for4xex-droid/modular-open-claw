@@ -23,6 +23,8 @@ import { OriginManager } from './OriginManager';
 import { ToxicityConfig } from './ToxicityConfig';
 import { VaultSecretsManager } from './VaultSecretsManager';
 import { VaultKeyStatus } from './VaultKeyStatus';
+import { useToast } from './common/Toast';
+import { LoadingState } from './ui/LoadingState';
 
 
 const SettingsPage: React.FC = () => {
@@ -31,8 +33,10 @@ const SettingsPage: React.FC = () => {
     const { viewMode, setViewMode } = useViewMode();
     const { t } = useTranslation();
     const { lang, setLang } = useLanguage();
+    const { showToast } = useToast();
     const [settings, setSettings] = useState<SettingEntry[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [saving, setSaving] = useState<string | null>(null);
     const [testResults, setTestResults] = useState<Record<string, { success: boolean, message: string, loading: boolean }>>({});
     const [globalError, setGlobalError] = useState<string | null>(null);
@@ -60,6 +64,7 @@ const SettingsPage: React.FC = () => {
     }, []);
 
     const fetchSettings = async () => {
+        setLoadError(null);
         try {
             const res = await authenticatedFetch(`${API_BASE}/api/v1/settings`);
             if (res.ok) {
@@ -70,9 +75,16 @@ const SettingsPage: React.FC = () => {
                     console.error("Unexpected settings response format:", typeof data);
                     setSettings([]);
                 }
+            } else {
+                const message = t('settings.loadFailed', { defaultValue: 'Failed to load settings.' });
+                setLoadError(message);
+                showToast('error', message);
             }
         } catch (error) {
             console.error("Failed to fetch settings", error);
+            const message = t('common.networkError', { defaultValue: 'A network error occurred.' });
+            setLoadError(message);
+            showToast('error', message);
         } finally {
             setLoading(false);
         }
@@ -94,6 +106,7 @@ const SettingsPage: React.FC = () => {
                         return [...prev, { key, value, category, is_secret: false, updated_at: new Date().toISOString() }];
                     }
                 });
+                showToast('success', t('settings.saveSuccess', { defaultValue: 'Setting saved successfully.' }));
             } else {
                 const text = await res.text();
                 setGlobalError(`Failed to save setting: ${text}`);
@@ -131,9 +144,17 @@ const SettingsPage: React.FC = () => {
     const getSetting = (key: string) => settings.find(s => s.key === key)?.value || "";
 
     if (loading) {
+        return <LoadingState />;
+    }
+
+    if (loadError) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                <Loader2 className="ani-spin" size={40} color="var(--accent-cyan)" />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', height: '50vh' }}>
+                <AlertTriangle size={40} color="var(--accent-rose)" />
+                <p style={{ color: 'var(--text-secondary)' }}>{loadError}</p>
+                <button className="primary-button" onClick={() => { setLoading(true); fetchSettings(); }}>
+                    {t('error.retry', { defaultValue: 'Retry' })}
+                </button>
             </div>
         );
     }
@@ -228,13 +249,16 @@ const SettingsPage: React.FC = () => {
                                 {t('settings.interfaceComplexityHelp', { defaultValue: 'Adjusts available settings and logs based on your experience level.' })}
                             </div>
                             <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--white-05)', padding: '4px', borderRadius: '10px' }}>
-                                {['beginner', 'intermediate', 'advanced'].map((m) => (
+                                {([
+                                    { value: 'simple' as ViewMode, labelKey: 'settings.viewMode_beginner' },
+                                    { value: 'cockpit' as ViewMode, labelKey: 'settings.viewMode_advanced' },
+                                ]).map(({ value, labelKey }) => (
                                     <button
-                                        key={m}
-                                        onClick={() => setViewMode(m as ViewMode)}
-                                        style={{ ...modeBtnStyle(viewMode === m), textTransform: 'capitalize' as const }}
+                                        key={value}
+                                        onClick={() => setViewMode(value)}
+                                        style={{ ...modeBtnStyle(viewMode === value), textTransform: 'capitalize' as const }}
                                     >
-                                        {t(`settings.viewMode_${m}`)}
+                                        {t(labelKey)}
                                     </button>
                                 ))}
                             </div>
@@ -308,7 +332,7 @@ const SettingsPage: React.FC = () => {
                 </section>
 
                 {/* Commerce Integration Section */}
-                {viewMode !== 'beginner' && (
+                {viewMode === 'cockpit' && (
                 <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Shield size={24} color="var(--accent-emerald)" />
@@ -331,6 +355,14 @@ const SettingsPage: React.FC = () => {
                                 <option value="polar" style={{ background: 'var(--bg-primary)' }}>{t('settings.commercePolar', { defaultValue: 'Polar (MoR & P2P)' })}</option>
                             </select>
                         </div>
+
+                        <SettingInput
+                            label={t('settings.monthlySpendLimit', { defaultValue: 'Monthly spend limit (KC, 0 = unlimited)' }) as string}
+                            value={getSetting('economy.monthly_spend_limit')}
+                            placeholder="0"
+                            onBlur={(v) => updateSetting('economy.monthly_spend_limit', v, 'commerce')}
+                            saving={saving === 'economy.monthly_spend_limit'}
+                        />
 
                         {getSetting('commerce_provider') === 'stripe' && (
                             <>
@@ -390,7 +422,7 @@ const SettingsPage: React.FC = () => {
                 )}
 
                 {/* Channel Bridges Section */}
-                {viewMode !== 'beginner' && (
+                {viewMode === 'cockpit' && (
                 <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Share2 size={24} color="var(--accent-cyan)" />
@@ -422,7 +454,7 @@ const SettingsPage: React.FC = () => {
                 </section>
 
                 {/* 3. Security & Infrastructure */}
-                {viewMode !== 'beginner' && (
+                {viewMode === 'cockpit' && (
                 <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Lock size={24} color="var(--accent-amber)" />
@@ -444,7 +476,7 @@ const SettingsPage: React.FC = () => {
                 </section>
                 )}
 
-                {viewMode === 'advanced' && (
+                {viewMode === 'cockpit' && (
                 <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <Shield size={24} color="var(--accent-emerald)" />
@@ -494,11 +526,17 @@ const SettingsPage: React.FC = () => {
                             onUpdate={(v) => updateSetting('ENABLE_TOOL_REVIEWER', v, 'feature_flags')} 
                             saving={saving === 'ENABLE_TOOL_REVIEWER'} 
                         />
+                        <FeatureToggle 
+                            label={t('settings.ffA2uiGenerativeUi', { defaultValue: 'Generative UI (A2UI)' }) as string} 
+                            current={getSetting('feature_flag.a2ui_generative_ui')} 
+                            onUpdate={(v) => updateSetting('feature_flag.a2ui_generative_ui', v, 'feature_flags')} 
+                            saving={saving === 'feature_flag.a2ui_generative_ui'} 
+                        />
                     </div>
                 </section>
                 )}
 
-                {viewMode === 'advanced' && (
+                {viewMode === 'cockpit' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
                         <EscrowManagementView />
                         <McpConfigManager />

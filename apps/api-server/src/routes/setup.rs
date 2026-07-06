@@ -83,11 +83,18 @@ pub async fn setup_init(
         return Err(AppError::bad_request("Invalid email address format"));
     }
 
-    // Validate view_mode against known variants
-    let allowed_modes = ["beginner", "intermediate", "advanced", "expert"];
+    // Validate view_mode against known variants (legacy aliases accepted, stored as simple/cockpit)
+    let allowed_modes = [
+        "simple",
+        "cockpit",
+        "beginner",
+        "intermediate",
+        "advanced",
+        "expert",
+    ];
     if !allowed_modes.contains(&payload.view_mode.as_str()) {
         return Err(AppError::bad_request(
-            "Invalid view_mode. Must be one of: beginner, intermediate, advanced, expert",
+            "Invalid view_mode. Must be one of: simple, cockpit, beginner, intermediate, advanced, expert",
         ));
     }
 
@@ -126,10 +133,16 @@ pub async fn setup_init(
         .get_inner()
         .update_setting("ai_name", ai_name, "system", false)
         .await?;
+    // U2-1: normalize legacy values to simple | cockpit
+    let view_mode_normalized = match payload.view_mode.as_str() {
+        "beginner" | "simple" => "simple",
+        "intermediate" | "advanced" | "expert" | "cockpit" => "cockpit",
+        other => other,
+    };
     state
         .job_queue
         .get_inner()
-        .update_setting("view_mode", &payload.view_mode, "ui", false)
+        .update_setting("view_mode", view_mode_normalized, "ui", false)
         .await?;
     state
         .job_queue

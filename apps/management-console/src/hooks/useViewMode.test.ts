@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useViewMode } from './useViewMode';
+import { useViewMode, migrateViewMode } from './useViewMode';
 import { authenticatedFetch } from '../lib/auth';
 
 jest.mock('../lib/auth', () => ({
@@ -16,6 +16,20 @@ jest.mock('../config', () => ({
     API_BASE: 'http://localhost:3000'
 }));
 
+describe('migrateViewMode', () => {
+    it.each([
+        ['beginner', 'simple'],
+        ['simple', 'simple'],
+        ['intermediate', 'cockpit'],
+        ['advanced', 'cockpit'],
+        ['expert', 'cockpit'],
+        ['cockpit', 'cockpit'],
+        ['unknown', 'cockpit'],
+    ])('maps %s to %s', (input, expected) => {
+        expect(migrateViewMode(input)).toBe(expected);
+    });
+});
+
 describe('useViewMode', () => {
     let mockFetch: jest.Mock;
 
@@ -25,24 +39,24 @@ describe('useViewMode', () => {
         mockFetch = authenticatedFetch as jest.Mock;
     });
 
-    it('should initialize with intermediate mode by default', () => {
+    it('should initialize with cockpit mode by default', () => {
         mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [] });
         
         const { result } = renderHook(() => useViewMode());
         
-        expect(result.current.viewMode).toBe('intermediate');
+        expect(result.current.viewMode).toBe('cockpit');
     });
 
-    it('should initialize from localStorage if available', () => {
+    it('should migrate legacy localStorage values on init', () => {
         localStorage.setItem('aiome_view_mode', 'advanced');
         mockFetch.mockResolvedValueOnce({ ok: true, json: async () => [] });
         
         const { result } = renderHook(() => useViewMode());
         
-        expect(result.current.viewMode).toBe('advanced');
+        expect(result.current.viewMode).toBe('cockpit');
     });
 
-    it('should fetch view mode from API and update state', async () => {
+    it('should fetch view mode from API and migrate legacy values', async () => {
         mockFetch.mockResolvedValueOnce({ 
             ok: true, 
             json: async () => [{ key: 'view_mode', value: 'beginner' }] 
@@ -51,10 +65,10 @@ describe('useViewMode', () => {
         const { result } = renderHook(() => useViewMode());
         
         await waitFor(() => {
-            expect(result.current.viewMode).toBe('beginner');
+            expect(result.current.viewMode).toBe('simple');
         });
         
-        expect(localStorage.getItem('aiome_view_mode')).toBe('beginner');
+        expect(localStorage.getItem('aiome_view_mode')).toBe('simple');
     });
 
     it('should update view mode and call API', async () => {
@@ -64,17 +78,17 @@ describe('useViewMode', () => {
         const { result } = renderHook(() => useViewMode());
         
         await act(async () => {
-            await result.current.setViewMode('advanced');
+            await result.current.setViewMode('cockpit');
         });
         
-        expect(result.current.viewMode).toBe('advanced');
-        expect(localStorage.getItem('aiome_view_mode')).toBe('advanced');
+        expect(result.current.viewMode).toBe('cockpit');
+        expect(localStorage.getItem('aiome_view_mode')).toBe('cockpit');
         
         expect(mockFetch).toHaveBeenCalledWith(
             'http://localhost:3000/api/v1/settings',
             expect.objectContaining({
                 method: 'PUT',
-                body: JSON.stringify({ key: 'view_mode', value: 'advanced', category: 'ui' })
+                body: JSON.stringify({ key: 'view_mode', value: 'cockpit', category: 'ui' })
             })
         );
     });
@@ -88,7 +102,7 @@ describe('useViewMode', () => {
         // Wait a bit to ensure the effect completes
         await new Promise(resolve => setTimeout(resolve, 0));
         
-        expect(result.current.viewMode).toBe('intermediate');
+        expect(result.current.viewMode).toBe('cockpit');
         expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to fetch view mode', expect.any(Error));
         
         consoleErrorSpy.mockRestore();
@@ -102,10 +116,10 @@ describe('useViewMode', () => {
         const { result } = renderHook(() => useViewMode());
         
         await act(async () => {
-            await result.current.setViewMode('advanced');
+            await result.current.setViewMode('cockpit');
         });
         
-        expect(result.current.viewMode).toBe('advanced'); // State updates optimistically
+        expect(result.current.viewMode).toBe('cockpit'); // State updates optimistically
         expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to update view mode', expect.any(Error));
         
         consoleErrorSpy.mockRestore();

@@ -21,6 +21,18 @@ jest.mock('../i18n', () => ({
     useTranslation: () => ({ t: (key: string) => key })
 }));
 
+jest.mock('./common/Toast', () => ({
+    useToast: () => ({ showToast: jest.fn() })
+}));
+
+jest.mock('./ui/LoadingState', () => ({
+    LoadingState: () => <div data-testid="loading-state">loading</div>,
+}));
+
+jest.mock('./ui/EmptyState', () => ({
+    EmptyState: ({ titleKey }: { titleKey: string }) => <div data-testid="empty-state">{titleKey}</div>,
+}));
+
 // Mock framer-motion to avoid animation issues
 jest.mock('framer-motion', () => ({
     motion: {

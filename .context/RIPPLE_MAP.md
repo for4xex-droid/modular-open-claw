@@ -1,3 +1,24 @@
+## 🔍 R3 本番インフラ検証（2026-07-06）
+
+- **変更内容**:
+    - `docker-compose.production-verify.yml` [NEW]: 本番 postgres:16-alpine + `init.sql` の軽量検証 compose（ポート 5434）。
+    - `scripts/verify-production-postgres.sh` [NEW]: OP-012 — 3 DB マイグレーション + BAN ラウンドトリップ検証。
+    - `libs/infrastructure/tests/postgres_production_verify.rs` [NEW]: infrastructure / nurture / samsara-hub Postgres マイグレーション + `UniversalBanStore` 統合テスト。
+    - `scripts/verify-keychain-cli.sh` [NEW]: OP-014 — `abyss-vault` CLI ラウンドトリップ + Keychain smoke。
+    - `docs/guides/QUICK_START_VERIFICATION.md` [NEW]: G1 Human 実走チェックリスト（R3-4）。
+- **波及効果**: CI 既存 `docker-compose.test.yml`（5433）は変更なし。本番 verify は独立ポート 5434。`PRODUCTION_VERIFY_PG_BASE` を `.env.example` に追記。R5 preflight 前に verify スクリプト実行を推奨。
+- **OP-012 検出バグ修正**: Postgres マイグレーション — (1) `audit_ledger_global_trigger()` → `process_audit()`（cortex_wiki / cortex_typed_links、常に失敗していたため未記録 = in-place 修正安全）、(2) `agent_diagnoses` テーブル欠落を新規 `20260601120000_add_agent_diagnoses.sql` で解消（init.sql はチェックサム保護のため不変更）。
+
+## 🔍 UI 全体改善計画の策定（2026-07-05）
+
+- **変更内容**:
+    - `docs/roadmaps/ui_overhaul_plan.md` [NEW]: Aiome+Nurture UI 改善計画 v1。現状診断（S/M/D 課題17件、証拠付き）→ Phase U0（バグ修正）/ U1（Pro 可視化）/ U2（Simple/Cockpit 2モード制）/ U3（デザイン統一）/ U4（A2UI 実戦投入）。サブエージェント3体の実コード棚卸しに基づく。
+- **波及効果**: 計画のみ（コード変更なし）。U1 は OP-057-R と同バッチ推奨。U3-1 が OP-029 を吸収予定。既知バグ（buzz-approval 到達不能、expert/advanced 不整合、useTtsSse 402 不発）を U0 として起票。
+- **v2（/perfect-plan 検証、同日）**: 判定 PASS。既存資産の再利用を明記（`.stat-card` / `EkycStatusBadge` / `BiomeTutorial`）、U4-0（catalog へ `card` 登録）を追加、§4.5 に U2 波及マップ（viewMode 18箇所 / Vitest 3 / E2E 2 / Rust テスト 1）を確定。実装時は §4.5 が Impact Analysis の一次資料。
+- **v3（/perfect-plan 第2周、同日）**: 体感品質（Q-1〜5）+ 品質基盤（F-1〜6）の監査で Phase U5 を新設。波及: U3-4 が6プリミティブに拡張（U5-A の前提部品化）、`common/Toast.tsx` はキュー化予定（U5-5）、U5-B は U2 完了後に実施（ナビ確定前の a11y/レスポンシブ着手は手戻り）。
+- **v4（/perfect-plan 第3周、同日）**: 課金ジャーニー監査で M-8（ProUpgradeModal `agentId` 未配線 = `App.tsx` L782 の実バグ）・M-9（決済後着地 UI 不在）・M-10（支払い→Pro 閉ループ不存在）を発見し U0-6/U1-8 を起票。計画横断監査で OP-029→U3-1 一本化・implementation_plan P3 包含を確定（§4.6）。波及: OPEN.md の OP-029/OP-066 注記更新、`useCheckoutSession.ts` の success_url が U1-8 で変更予定。
+- **v5（/perfect-plan 第4周、同日）**: 未決定分岐5件を決定に固定し Appendix A（実装コントラクト）を新設。重要な事実修正: management-console のテストは **Jest**（計画中の Vitest 表記を全修正）。U4-1 のナビ action は `navigate:` prefix + `isVisible()` 登録タブのホワイトリスト検証 + フロントローカル実行と契約化。波及: U2-6 で `ModelSetupStep.tsx` 削除予定、U4-0 で `feature_flag.a2ui_generative_ui` トグルが SettingsPage に追加予定。
+
 ## 🔍 Pro 価格改定 $19.99/月（2026-07-05）
 
 - **変更内容**:

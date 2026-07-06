@@ -26,6 +26,10 @@ const ALLOWED_COMPONENT_TYPES: &[&str] = &[
     "timeline",
     "codeBlock",
     "card",
+    "voiceStore",
+    "loraMarket",
+    "walletWidget",
+    "marketplaceItem",
 ];
 
 /// ネストされた children の再帰深度上限（StackOverflow 防止）
@@ -489,5 +493,82 @@ mod tests {
             result.is_err(),
             "Validator must block components with more than 64 children to prevent wide DoS"
         );
+    }
+
+    #[test]
+    fn test_validator_allows_nurture_widget_types() {
+        for component_type in [
+            "voiceStore",
+            "loraMarket",
+            "walletWidget",
+            "marketplaceItem",
+        ] {
+            let envelope = A2uiEnvelope::CreateSurface {
+                surface: Surface {
+                    id: format!("nurture-{}", component_type),
+                    version: "0.9".to_string(),
+                    source: "test".to_string(),
+                    components: vec![Component {
+                        r#type: component_type.to_string(),
+                        props: serde_json::json!({"title": "Test", "price": 100}),
+                        children: vec![],
+                    }],
+                },
+            };
+            let result = A2uiValidator::verify_a2ui_surface(&envelope);
+            assert!(
+                result.is_ok(),
+                "Component type {} should be allowed: {:?}",
+                component_type,
+                result
+            );
+        }
+    }
+
+    #[test]
+    fn test_validator_allows_card_with_nav_button_children() {
+        let envelope = A2uiEnvelope::CreateSurface {
+            surface: Surface {
+                id: "nav-card".to_string(),
+                version: "0.9".to_string(),
+                source: "test".to_string(),
+                components: vec![Component {
+                    r#type: "card".to_string(),
+                    props: serde_json::json!({"title": "Go to logs", "content": "Open audit view"}),
+                    children: vec![Component {
+                        r#type: "button".to_string(),
+                        props: serde_json::json!({"label": "View Logs", "action": "navigate:audit"}),
+                        children: vec![],
+                    }],
+                }],
+            },
+        };
+        let result = A2uiValidator::verify_a2ui_surface(&envelope);
+        assert!(
+            result.is_ok(),
+            "card with button children should pass: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_validator_blocks_unknown_nurture_widget_type() {
+        let envelope = A2uiEnvelope::CreateSurface {
+            surface: Surface {
+                id: "bad-widget".to_string(),
+                version: "0.9".to_string(),
+                source: "test".to_string(),
+                components: vec![Component {
+                    r#type: "paymentExecutor".to_string(),
+                    props: serde_json::Value::Null,
+                    children: vec![],
+                }],
+            },
+        };
+        let result = A2uiValidator::verify_a2ui_surface(&envelope);
+        assert!(result.is_err(), "Unknown widget type must be rejected");
+        if let Err(AiomeError::SecurityViolation { reason }) = result {
+            assert!(reason.contains("Unauthorized"));
+        }
     }
 }

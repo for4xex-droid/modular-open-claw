@@ -136,7 +136,7 @@ export function estimateCost(nodes: Node[]): CostEstimate {
     if (!nodeType) continue;
 
     const typeName = Object.keys(nodeType)[0];
-    const details = (nodeType as any)[typeName] || {};
+    const details = Object.values(nodeType)[0] ?? {};
 
     switch (typeName) {
       case 'LlmPrompt':

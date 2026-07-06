@@ -11,6 +11,7 @@ import { ShieldAlert, UserX, ShieldCheck, UserCheck, AlertTriangle, Search } fro
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
 import { useToast } from "./common/Toast";
+import ConfirmModal from "./common/ConfirmModal";
 
 interface BanRecord {
   actor_id: string;
@@ -31,6 +32,7 @@ export default function BanDashboard() {
   const [severity, setSeverity] = useState("HIGH");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [unbanTargetId, setUnbanTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBans();
@@ -93,10 +95,6 @@ export default function BanDashboard() {
   };
 
   const handleUnban = async (actorId: string) => {
-    if (!confirm("Are you sure you want to restore and unban this agent?")) {
-      return;
-    }
-
     try {
       const res = await authenticatedFetch(`${API_BASE}/api/v1/admin/unban`, {
         method: "POST",
@@ -117,6 +115,8 @@ export default function BanDashboard() {
       }
     } catch (err) {
       showToast("error", "Network error while lifting suspension.");
+    } finally {
+      setUnbanTargetId(null);
     }
   };
 
@@ -128,6 +128,16 @@ export default function BanDashboard() {
 
   return (
     <div className="system-panel" style={{ padding: "2rem", height: "100%", overflowY: "auto" }}>
+      <ConfirmModal
+        isOpen={!!unbanTargetId}
+        type="warning"
+        title="Restore Agent Access"
+        message="Are you sure you want to restore and unban this agent?"
+        confirmText="Unban"
+        cancelText="Cancel"
+        onConfirm={() => unbanTargetId && handleUnban(unbanTargetId)}
+        onCancel={() => setUnbanTargetId(null)}
+      />
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
         <div>
@@ -321,7 +331,7 @@ export default function BanDashboard() {
                         {isActive && (
                           <button
                             className="secondary-button"
-                            onClick={() => handleUnban(ban.actor_id)}
+                            onClick={() => setUnbanTargetId(ban.actor_id)}
                             style={{
                               padding: "0.4rem 0.8rem",
                               fontSize: "0.8rem",

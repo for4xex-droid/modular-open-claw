@@ -9,6 +9,9 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from '../i18n';
 import { authenticatedFetch } from '../lib/auth';
 import { API_BASE } from '../config';
+import { useToast } from './common/Toast';
+import ConfirmModal from './common/ConfirmModal';
+import { LoadingState } from './ui/LoadingState';
 import { 
   Key, 
   Trash2, 
@@ -28,6 +31,7 @@ export interface SecretItem {
 
 export function VaultSecretsManager() {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const [secrets, setSecrets] = useState<SecretItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +49,7 @@ export function VaultSecretsManager() {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [secretValue, setSecretValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
 
   const fetchStatus = async () => {
     setLoading(true);
@@ -94,15 +99,15 @@ export function VaultSecretsManager() {
       setEditingKey(null);
       setSecretValue('');
       await fetchStatus();
+      showToast('success', t('vault.toast.saveSuccess'));
     } catch (err: any) {
-      alert(t('vault.toast.saveError', { error: err.message }));
+      showToast('error', t('vault.toast.saveError', { error: err.message }));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (key: string) => {
-    if (!window.confirm(t('vault.status.deleteConfirm'))) return;
     try {
       const res = await authenticatedFetch(`${API_BASE}/api/v1/vault/secrets/${key}`, {
         method: 'DELETE',
@@ -111,8 +116,11 @@ export function VaultSecretsManager() {
         throw new Error(`HTTP ${res.status}`);
       }
       await fetchStatus();
+      showToast('success', t('vault.toast.deleteSuccess'));
     } catch (err: any) {
-      alert(t('vault.toast.deleteError', { error: err.message }));
+      showToast('error', t('vault.toast.deleteError', { error: err.message }));
+    } finally {
+      setDeletingKey(null);
     }
   };
 
@@ -125,11 +133,7 @@ export function VaultSecretsManager() {
   }
 
   if (loading) {
-    return (
-      <div className="vault-loading" style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-xl)' }}>
-        <Loader2 className="animate-spin" style={{ color: 'var(--color-primary-light)' }} />
-      </div>
-    );
+    return <LoadingState />;
   }
 
   if (error) {
@@ -145,6 +149,16 @@ export function VaultSecretsManager() {
 
   return (
     <div className="vault-secrets-manager">
+      <ConfirmModal
+        isOpen={!!deletingKey}
+        type="danger"
+        title={t('vault.status.delete')}
+        message={t('vault.status.deleteConfirm')}
+        confirmText={t('vault.status.delete')}
+        cancelText={t('vault.modal.cancel')}
+        onConfirm={() => deletingKey && handleDelete(deletingKey)}
+        onCancel={() => setDeletingKey(null)}
+      />
       <div className="vault-header" style={{ marginBottom: 'var(--space-lg)' }}>
         <h3 style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
           <Key /> {t('vault.title')}
@@ -216,7 +230,7 @@ export function VaultSecretsManager() {
                               {secret.is_set && (
                                 <button 
                                   className="btn btn-sm btn-danger" 
-                                  onClick={() => handleDelete(secret.key)}
+                                  onClick={() => setDeletingKey(secret.key)}
                                 >
                                   <Trash2 size={12} />
                                 </button>
@@ -242,7 +256,7 @@ export function VaultSecretsManager() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
+          background: 'var(--black-50)',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',

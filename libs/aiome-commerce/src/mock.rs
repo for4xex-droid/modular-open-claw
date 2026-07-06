@@ -28,12 +28,30 @@ pub struct MockCommerceEngine {
 }
 
 #[cfg(any(test, debug_assertions))]
+fn subscription_override_from_env() -> u8 {
+    match std::env::var("MOCK_SUBSCRIPTION_STATUS")
+        .unwrap_or_default()
+        .to_lowercase()
+        .as_str()
+    {
+        "free" | "none" => 1,
+        "trialing" => 2,
+        "past_due" => 3,
+        "cancelled" => 4,
+        "unpaid" => 5,
+        _ => 0,
+    }
+}
+
+#[cfg(any(test, debug_assertions))]
 impl Default for MockCommerceEngine {
     fn default() -> Self {
         Self {
             balances: Arc::new(DashMap::new()),
             escrows: Arc::new(DashMap::new()),
-            subscription_override: Arc::new(std::sync::atomic::AtomicU8::new(0)),
+            subscription_override: Arc::new(std::sync::atomic::AtomicU8::new(
+                subscription_override_from_env(),
+            )),
         }
     }
 }

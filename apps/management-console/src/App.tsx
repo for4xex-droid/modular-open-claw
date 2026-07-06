@@ -33,7 +33,8 @@ import {
   Coins,
   BarChart2,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Gamepad2
 } from "lucide-react";
 const LoginScreen = React.lazy(() => import("./components/LoginScreen"));
 const SetupWizard = React.lazy(() => import("./components/SetupWizard"));
@@ -57,6 +58,7 @@ const VoiceStore = React.lazy(() => import("./components/VoiceStore"));
 const McpDashboard = React.lazy(() => import("./components/McpDashboard"));
 const BanDashboard = React.lazy(() => import("./components/BanDashboard"));
 const DemoView = React.lazy(() => import("./components/DemoView"));
+const BiomeGame = React.lazy(() => import("./lib/biome/BiomeGame").then(m => ({ default: m.BiomeGame })));
 const CausalVisualizer = React.lazy(() => import("./components/CausalVisualizer"));
 const CortexView = React.lazy(() => import("./components/cortex/CortexView"));
 const NurtureDashboard = React.lazy(() => import("./components/commerce/NurtureDashboard"));
@@ -65,7 +67,7 @@ const ProUpgradeModal = React.lazy(() =>
 );
 const BuzzApproval = React.lazy(() => import("./components/BuzzApproval"));
 const WorkflowBuilder = React.lazy(() => import("./components/WorkflowBuilder"));
-import DioramaView from "./components/diorama/DioramaView";
+const DioramaView = React.lazy(() => import("./components/diorama/DioramaView"));
 const TaskApprovalOverlay = React.lazy(() => import("./components/TaskApprovalOverlay"));
 import { SoTProgressBar } from "./components/SoTProgressBar";
 import { useWorkspacePersona } from "./hooks/useWorkspacePersona";
@@ -78,8 +80,12 @@ import { useDisplayMode } from "./hooks/useDisplayMode";
 import { AgentStats, VitalityUIEvent, Karma, SoTEvent, ImmuneAlertEvent, AegisSentinelEvent, InspirationEvent, BiomeEvolutionEvent, CrisisPredictionEvent } from "./types";
 import { useSystemVitality } from "./hooks/useSystemVitality";
 import { useViewMode } from "./hooks/useViewMode";
+import { useAgentIdentity } from "./hooks/useAgentIdentity";
 import { useTokenHealth } from "./hooks/useTokenHealth";
+import { PlanBadge } from "./components/commerce/PlanBadge";
+import { CheckoutSuccess } from "./components/commerce/CheckoutSuccess";
 import { APP_VERSION, API_BASE, STRIPE_PRICE_ID } from "./config";
+import { isValidA2uiNavTab } from "./lib/a2uiTabs";
 
 /** Valid boot mode states returned from the API normalization layer */
 type BootMode = 'Normal' | 'Setup';
@@ -97,6 +103,10 @@ function App() {
   const [isAuth, setIsAuth] = useState(isAuthenticated());
   const [sessionSavedChars, setSessionSavedChars] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileNav, setIsMobileNav] = useState(false);
+  const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(
+    () => typeof window !== 'undefined' && window.location.pathname.endsWith('/checkout/success')
+  );
   const seenTokenEventsRef = React.useRef(new Set<number>());
   const navContainerRef = useRef<HTMLDivElement>(null);
 
@@ -108,6 +118,37 @@ function App() {
       activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const syncMobileNav = () => setIsMobileNav(mq.matches);
+    syncMobileNav();
+    mq.addEventListener('change', syncMobileNav);
+    return () => mq.removeEventListener('change', syncMobileNav);
+  }, []);
+
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      setIsSidebarOpen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isMobileNav) {
+      setIsSidebarOpen(false);
+    }
+  }, [activeTab, isMobileNav]);
+
+  useEffect(() => {
+    const onA2uiNavigate = (event: Event) => {
+      const tab = (event as CustomEvent<{ tab?: string }>).detail?.tab;
+      if (typeof tab === 'string' && isValidA2uiNavTab(tab)) {
+        setActiveTab(tab);
+      }
+    };
+    window.addEventListener('a2ui-navigate', onA2uiNavigate);
+    return () => window.removeEventListener('a2ui-navigate', onA2uiNavigate);
+  }, []);
 
   const { events: vitalityEvents, lastEvent, connectionStatus, toggleConnection, lastPingMs } = useSystemVitality();
 
@@ -300,16 +341,15 @@ function App() {
   };
 
   const { viewMode } = useViewMode();
+  const { agentId } = useAgentIdentity();
   const { isExpired, dismiss } = useTokenHealth();
 
   const isVisible = (tab: string) => {
-    const beginner = ['home-v2', 'agent', 'artifacts', 'settings'];
-    const intermediate = [...beginner, 'dashboard', 'demo', 'cortex', 'vault', 'store', 'nurture', 'mcp-dashboard', 'seo-pulse', 'status-page', 'workflow-builder'];
-    const advanced = [...intermediate, 'karma', 'graph', 'causal', 'commune', 'audit', 'prompt-stats', 'immune', 'lora', 'expressions', 'ban-dashboard'];
-    
-    if (viewMode === 'beginner') return beginner.includes(tab);
-    if (viewMode === 'intermediate') return intermediate.includes(tab);
-    return advanced.includes(tab);
+    const simple = ['home-v2', 'agent', 'artifacts', 'settings'];
+    const cockpit = [...simple, 'dashboard', 'demo', 'biome', 'cortex', 'vault', 'store', 'nurture', 'mcp-dashboard', 'seo-pulse', 'status-page', 'workflow-builder', 'karma', 'graph', 'causal', 'commune', 'audit', 'prompt-stats', 'immune', 'lora', 'expressions', 'ban-dashboard', 'buzz-approval'];
+
+    if (viewMode === 'simple') return simple.includes(tab);
+    return cockpit.includes(tab);
   };
 
   const isBootComplete = bootMode === 'Normal' && isAuth;
@@ -347,11 +387,11 @@ function App() {
             <AiomeSkeleton height="40px" width="200px" />
           </div>
         ) : bootMode === 'Setup' ? (
-          <React.Suspense fallback={<div />}>
+          <React.Suspense fallback={<AiomeSkeleton height="40px" width="200px" />}>
             <SetupWizard onComplete={() => setBootMode('Normal')} />
           </React.Suspense>
         ) : !isAuth ? (
-          <React.Suspense fallback={<div />}>
+          <React.Suspense fallback={<AiomeSkeleton height="40px" width="200px" />}>
             <LoginScreen onAuthenticated={() => setIsAuth(true)} />
           </React.Suspense>
         ) : null}
@@ -401,7 +441,9 @@ function App() {
       </AnimatePresence>
 
       {/* Digital Diorama — Resident Avatar */}
-      <DioramaView status={avatarState} mode={displayMode} activeTab={activeTab} />
+      <React.Suspense fallback={null}>
+        <DioramaView status={avatarState} mode={displayMode} activeTab={activeTab} />
+      </React.Suspense>
       
       {/* Society of Thought Visualization */}
       <SoTProgressBar />
@@ -413,17 +455,26 @@ function App() {
         </div>
       )}
 
-      {/* Sidebar — advanced mode only */}
-      {viewMode === 'advanced' && <aside className={`sidebar ${isSidebarOpen ? '' : 'closed'}`}>
+      {/* Sidebar — cockpit mode only */}
+      {viewMode === 'cockpit' && isMobileNav && isSidebarOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      {viewMode === 'cockpit' && <aside className={`sidebar ${isSidebarOpen ? '' : 'closed'}`}>
         <div className="brand">
           <BrainCircuit size={28} color="var(--accent-cyan)" />
           <span>Aiome</span>
         </div>
         <div className="sidebar-toggle-container">
           <button 
+            type="button"
             className="sidebar-toggle-btn"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            data-tooltip="Toggle Sidebar"
+            aria-label={t('sidebar.toggleSidebar')}
+            data-tooltip={t('sidebar.toggleSidebar')}
           >
             {isSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
           </button>
@@ -462,6 +513,14 @@ function App() {
               label={t('nav.demo')}
               active={activeTab === "demo"}
               onClick={() => setActiveTab("demo")}
+            />
+          )}
+          {isVisible("biome") && (
+            <NavItem
+              icon={<Gamepad2 size={20} />}
+              label={t('nav.biome')}
+              active={activeTab === "biome"}
+              onClick={() => setActiveTab("biome")}
             />
           )}
           {isVisible("karma") && (
@@ -686,6 +745,16 @@ function App() {
       {/* Main Content */}
       <main className="main-content">
         <header className="header">
+          {isMobileNav && viewMode === 'cockpit' && !isSidebarOpen && (
+            <button
+              type="button"
+              className="mobile-menu-btn"
+              aria-label={t('sidebar.openMenu')}
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <PanelLeftOpen size={20} />
+            </button>
+          )}
           <motion.h2
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -694,6 +763,7 @@ function App() {
             {activeTab === "home-v2" && t('page.homeV2')}
             {activeTab === "dashboard" && t('page.biotope')}
             {activeTab === "demo" && t('page.demo')}
+            {activeTab === "biome" && t('page.biome')}
             {activeTab === "karma" && t('page.chronicle')}
             {activeTab === "graph" && t('page.resonanceMap')}
             {activeTab === "immune" && t('page.immuneSystem')}
@@ -716,9 +786,11 @@ function App() {
             {activeTab === "settings" && t('page.settings')}
             {activeTab === "agency" && t('page.agencyOnboarding')}
             {activeTab === "status-page" && t('page.statusPage')}
+            {activeTab === "buzz-approval" && t('page.buzzApproval')}
           </motion.h2>
 
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <PlanBadge />
             {renderStatusBadge()}
           </div>
         </header>
@@ -744,9 +816,20 @@ function App() {
               transition={{ duration: 0.2 }}
               style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
             >
+              {showCheckoutSuccess ? (
+                <CheckoutSuccess
+                  onGoHome={() => {
+                    setShowCheckoutSuccess(false);
+                    window.history.replaceState({}, '', '/');
+                    setActiveTab('home-v2');
+                  }}
+                />
+              ) : (
+              <>
               {activeTab === "home-v2" && <HomePage stats={stats} vitalityEvents={vitalityEvents} connectionStatus={connectionStatus} recentEvents={recentEvents} lastEvent={lastEvent} sessionSavedChars={sessionSavedChars} />}
               {activeTab === "dashboard" && <BiotopeView stats={stats} isConnected={isConnected} recentEvents={recentEvents} sessionSavedChars={sessionSavedChars} />}
               {activeTab === "demo" && <DemoView stats={stats} lastEvent={lastEvent} isConnected={isConnected} />}
+              {activeTab === "biome" && <BiomeGame />}
               {activeTab === "karma" && <Timeline />}
               {activeTab === "graph" && <GraphView />}
               {activeTab === "immune" && <ImmuneSystem />}
@@ -762,7 +845,7 @@ function App() {
               {activeTab === "commune" && <CommuneDialogueView />}
               {activeTab === "store" && <VoiceStore />}
               {activeTab === "ban-dashboard" && <BanDashboard />}
-              {activeTab === "nurture" && <NurtureDashboard />}
+              {activeTab === "nurture" && <NurtureDashboard onNavigateToStore={() => setActiveTab('store')} />}
               {activeTab === "workflow-builder" && <WorkflowBuilder />}
               {activeTab === "buzz-approval" && <BuzzApproval />}
               {activeTab === "causal" && <CausalVisualizer />}
@@ -770,6 +853,8 @@ function App() {
               {activeTab === "settings" && <SettingsPage />}
               {activeTab === "agency" && <AiaaOnboardingWizard />}
               {activeTab === "status-page" && <StatusPage />}
+              </>
+              )}
             </motion.div>
           </React.Suspense>
         </AnimatePresence>
@@ -779,7 +864,7 @@ function App() {
 
       <React.Suspense fallback={null}>
         <TaskApprovalOverlay />
-        <ProUpgradeModal priceId={STRIPE_PRICE_ID} />
+        <ProUpgradeModal priceId={STRIPE_PRICE_ID} agentId={agentId ?? undefined} />
       </React.Suspense>
       </>)}
     </div>
@@ -788,14 +873,15 @@ function App() {
 
 function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
   return (
-    <div
+    <button
+      type="button"
       className={`nav-item ${active ? 'active' : ''}`}
       onClick={onClick}
     >
       {icon}
       <span>{label}</span>
       {active && <motion.div layoutId="active-pill" className="nav-active-bar" />}
-    </div>
+    </button>
   );
 }
 

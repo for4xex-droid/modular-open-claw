@@ -239,6 +239,8 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 - **[開発者オンボーディング (Developer Onboarding)](docs/DEVELOPER_ONBOARDING.md)**: 開発環境の準備、物理構造、システム間データフローおよび Nurture S2S 連携。
 - **[AI憲法 (Architecture Law)](docs/architecture/ARCHITECTURE_LAW.md)**: 知的誠実性と安全性を担保する基本原則。
 - **[運用マニュアル (Operations Manual)](docs/guides/OPERATIONS_MANUAL.md)**: 詳細な環境構築と運用手順。
+- **[Quick Start 実走チェックリスト](docs/guides/QUICK_START_VERIFICATION.md)**: Public Beta 前の G1 検証（Human、5 分完走）。
+- **[Stripe 本番セットアップ](docs/operations/stripe-production-setup.md)**: 本番 Price ID / env 反映手順（R2-1）。
 - **[セキュリティ設計 (Security Design)](docs/architecture/SECURITY_DESIGN.md)**: 多層防御の詳細。
 
 ---

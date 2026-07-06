@@ -20,6 +20,11 @@ pub struct DailyStatsResponse {
 }
 
 #[derive(Deserialize)]
+pub struct UpdateMonthlySpendLimitRequest {
+    pub monthly_spend_limit: u64,
+}
+
+#[derive(Deserialize)]
 pub struct CoinChargeRequest {
     pub actor_id: Uuid,
     pub amount: u64,

@@ -16,11 +16,15 @@ import {
   ToggleLeft,
   ToggleRight,
   MessageCircle,
-  Clock
+  Clock,
+  AlertTriangle
 } from "lucide-react";
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
 import { useTranslation } from '../i18n';
+import { useToast } from './common/Toast';
+import { LoadingState } from './ui/LoadingState';
+import { EmptyState } from './ui/EmptyState';
 
 interface Expression {
   id: string;
@@ -40,9 +44,12 @@ interface PipelineStatus {
 
 const ExpressionPipeline: React.FC = () => {
     const { t } = useTranslation();
+    const { showToast } = useToast();
   const [expressions, setExpressions] = useState<Expression[]>([]);
   const [status, setStatus] = useState<PipelineStatus | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchStatus = async () => {
     try {
@@ -50,9 +57,16 @@ const ExpressionPipeline: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         setStatus(data);
+      } else {
+        const message = t('expression.loadFailed', { defaultValue: 'Failed to load expression pipeline status.' });
+        setError(message);
+        showToast('error', message);
       }
     } catch (e) {
       console.error("Failed to fetch expression status", e);
+      const message = t('common.networkError', { defaultValue: 'A network error occurred.' });
+      setError(message);
+      showToast('error', message);
     }
   };
 
@@ -61,11 +75,25 @@ const ExpressionPipeline: React.FC = () => {
       const res = await authenticatedFetch(`${API_BASE}/api/expression/list`);
       if (res.ok) {
         const data = await res.json();
-        setExpressions(data);
+        setExpressions(Array.isArray(data) ? data : []);
+      } else {
+        const message = t('expression.loadFailed', { defaultValue: 'Failed to load expression pipeline status.' });
+        setError(message);
+        showToast('error', message);
       }
     } catch (e) {
       console.error("Failed to fetch expressions", e);
+      const message = t('common.networkError', { defaultValue: 'A network error occurred.' });
+      setError(message);
+      showToast('error', message);
     }
+  };
+
+  const loadAll = async () => {
+    setLoading(true);
+    setError(null);
+    await Promise.all([fetchStatus(), fetchExpressions()]);
+    setLoading(false);
   };
 
   const toggleAuto = async () => {
@@ -78,9 +106,12 @@ const ExpressionPipeline: React.FC = () => {
       });
       if (res.ok) {
         fetchStatus();
+      } else {
+        showToast('error', t('expression.toggleFailed', { defaultValue: 'Failed to toggle autonomous mode.' }));
       }
     } catch (e) {
       console.error("Failed to toggle auto-expression", e);
+      showToast('error', t('common.networkError', { defaultValue: 'A network error occurred.' }));
     }
   };
 
@@ -91,20 +122,38 @@ const ExpressionPipeline: React.FC = () => {
       if (res.ok) {
         fetchExpressions();
         fetchStatus();
+      } else {
+        showToast('error', t('expression.generateFailed', { defaultValue: 'Failed to generate expression.' }));
       }
     } catch (e) {
       console.error("Failed to generate expression", e);
+      showToast('error', t('common.networkError', { defaultValue: 'A network error occurred.' }));
     } finally {
       setIsGenerating(false);
     }
   };
 
   useEffect(() => {
-    fetchStatus();
-    fetchExpressions();
+    loadAll();
     const interval = setInterval(fetchStatus, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  if (loading) {
+    return <LoadingState messageKey="loading" />;
+  }
+
+  if (error && !status && expressions.length === 0) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '4rem' }}>
+        <AlertTriangle size={48} color="var(--accent-rose)" style={{ opacity: 0.5 }} />
+        <p style={{ color: 'var(--text-secondary)' }}>{error}</p>
+        <button className="primary-button" onClick={loadAll}>
+          <RefreshCw size={14} /> {t('error.retry', { defaultValue: 'Retry' })}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="expression-pipeline" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
@@ -257,11 +306,12 @@ const ExpressionPipeline: React.FC = () => {
         </div>
 
         {expressions.length === 0 && (
-          <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-glass-light)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--border-glass)' }}>
-            <MessageCircle size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
-            <p>{t('expression.noExpressions')}</p>
-            <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>{t('expression.triggerHint')}</p>
-          </div>
+          <EmptyState
+            icon={MessageCircle}
+            titleKey="expression.noExpressions"
+            detailKey="expression.triggerHint"
+            cta={{ labelKey: 'expression.generate', onClick: generateManually }}
+          />
         )}
       </div>
     </div>

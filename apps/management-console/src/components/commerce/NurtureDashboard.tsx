@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE, STRIPE_PRICE_ID } from "../../config";
 import { authenticatedFetch, getAuthToken } from "../../lib/auth";
 import { useCheckoutSession } from "../../hooks/useCheckoutSession";
+import { openProUpgradeModal } from "../../hooks/useSubscriptionStatus";
 
 import {
   Wallet,
@@ -40,7 +41,7 @@ interface TransactionRecord {
   created_at: string;
 }
 
-export default function NurtureDashboard() {
+export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToStore?: () => void }) {
   // useTranslation is available if needed
   // const { t } = useTranslation();
   const [balance, setBalance] = useState<PointsBalance | null>(null);
@@ -139,19 +140,55 @@ export default function NurtureDashboard() {
             Real-time tracking of Experience points and transaction ledgers.
           </p>
         </div>
-        <div style={{ display: "flex", gap: "1rem" }}>
-          <button
-            className="primary-button"
-            onClick={handleCheckout}
-            disabled={isLoading || isCheckoutLoading}
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--accent-emerald)", color: "var(--black-100)" }}
-          >
-            {isCheckoutLoading ? "Loading..." : "Buy Points"}
-          </button>
+        <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.35rem",
+            padding: "0.75rem 1rem",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--accent-emerald-30)",
+            background: "var(--black-20)",
+          }}>
+            <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--accent-emerald)", textTransform: "uppercase" }}>
+              KC / Points
+            </span>
+            <button
+              className="primary-button"
+              onClick={handleCheckout}
+              disabled={isLoading || isCheckoutLoading}
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--accent-emerald)", color: "var(--black-100)" }}
+            >
+              {isCheckoutLoading ? "Loading..." : "Buy Points (KC)"}
+            </button>
+            <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", maxWidth: "200px" }}>
+              Karma Coin / experience points — separate from Pro subscription.
+            </span>
+          </div>
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.35rem",
+            padding: "0.75rem 1rem",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--accent-purple-30)",
+            background: "var(--black-20)",
+          }}>
+            <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--accent-purple)", textTransform: "uppercase" }}>
+              Aiome Pro
+            </span>
+            <button
+              className="primary-button"
+              onClick={() => openProUpgradeModal()}
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              Upgrade to Pro
+            </button>
+          </div>
           <button
             className="secondary-button"
-            onClick={() => window.open(`https://buy.stripe.com/test_store_stub_${agentId}`, '_blank')}
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem", borderColor: "var(--accent-purple)", color: "var(--accent-purple)" }}
+            onClick={() => onNavigateToStore?.()}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem", borderColor: "var(--accent-purple)", color: "var(--accent-purple)", alignSelf: "flex-end" }}
           >
             <Wallet size={16} />
             View Store
@@ -160,7 +197,7 @@ export default function NurtureDashboard() {
             className="secondary-button"
             onClick={() => fetchData()}
             disabled={isLoading}
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem", alignSelf: "flex-end" }}
           >
             <RefreshCcw size={16} className={isLoading ? "ani-spin" : ""} />
             Refresh

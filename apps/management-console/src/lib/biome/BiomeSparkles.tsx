@@ -5,6 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 import { Sparkles } from '@react-three/drei';
+import { cssVar } from '../../utils/cssVar';
 
 interface BiomeSparklesProps {
   rarity?: number;
@@ -20,7 +21,7 @@ export function BiomeSparkles({ rarity = 0 }: BiomeSparklesProps) {
       size={6}
       speed={0.4}
       opacity={0.3}
-      color="#ffe080" // 金色調のパーティクル
+      color={cssVar('--accent-amber')}
     />
   );
 }

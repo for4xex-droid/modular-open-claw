@@ -21,6 +21,18 @@ jest.mock('../i18n', () => ({
     useTranslation: () => ({ t: (key: string) => key })
 }));
 
+jest.mock('./common/Toast', () => ({
+    useToast: () => ({ showToast: jest.fn() })
+}));
+
+jest.mock('./ui/LoadingState', () => ({
+    LoadingState: () => <div data-testid="loading-state">loading</div>,
+}));
+
+jest.mock('./ui/EmptyState', () => ({
+    EmptyState: ({ titleKey }: { titleKey: string }) => <div data-testid="empty-state">{titleKey}</div>,
+}));
+
 jest.mock('framer-motion', () => ({
     motion: {
         div: ({ children, ...props }: any) => <div {...props}>{children}</div>
@@ -38,7 +50,8 @@ jest.mock('lucide-react', () => ({
     ToggleLeft: () => <div data-testid="icon-toggle-left"></div>,
     ToggleRight: () => <div data-testid="icon-toggle-right"></div>,
     MessageCircle: () => <div data-testid="icon-message"></div>,
-    Clock: () => <div data-testid="icon-clock"></div>
+    Clock: () => <div data-testid="icon-clock"></div>,
+    AlertTriangle: () => <div data-testid="icon-alert"></div>
 }));
 
 describe('ExpressionPipeline Component', () => {
@@ -73,14 +86,18 @@ describe('ExpressionPipeline Component', () => {
     ];
 
     it('renders empty state initially', async () => {
-        mockFetch.mockResolvedValue({
-            ok: true,
-            json: async () => []
+        mockFetch.mockImplementation((url) => {
+            if (url.includes('/api/expression/status')) {
+                return Promise.resolve({ ok: true, json: async () => mockStatus });
+            }
+            return Promise.resolve({ ok: true, json: async () => [] });
         });
 
         render(<ExpressionPipeline />);
         
-        expect(screen.getByText('expression.title')).toBeTruthy();
+        await waitFor(() => {
+            expect(screen.getByText('expression.title')).toBeTruthy();
+        });
         
         await waitFor(() => {
             expect(screen.getByText('expression.noExpressions')).toBeTruthy();
@@ -204,7 +221,7 @@ describe('ExpressionPipeline Component', () => {
         render(<ExpressionPipeline />);
 
         await waitFor(() => {
-            expect(screen.getByText('expression.noExpressions')).toBeTruthy();
+            expect(screen.getByText('common.networkError')).toBeTruthy();
         });
 
         expect(consoleSpy).toHaveBeenCalledWith('Failed to fetch expression status', expect.any(Error));

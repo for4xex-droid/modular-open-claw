@@ -149,3 +149,18 @@ Stripe Webhook v2 thin event への移行やシークレットのローテーシ
    `aiome` には起動後に環境変数からシークレットをメモリ上からクリアするスクラビング機能 (`scrub_env`) が備わっていますが、ファイル自体（`.env`）に平文のAPIキーを書き残したまま放置しないようにしてください。
 2. **ホワイトリスト制限 (`ALLOWED_VAULT_SECRETS`)**:
    `key-proxy` が配信を許可するキーは `libs/shared/src/security.rs` のホワイトリストに登録されているものに限定されます。新しい種類のエコシステムAPIキーを追加する場合は、事前にソースコード側のホワイトリストにキー名を追加する必要があります。
+
+---
+
+## 5. CLI 動作検証（OP-014）
+
+Keychain / AbyssVault 連携が壊れていないことを確認する自動スクリプトを用意しています。
+
+```bash
+bash scripts/verify-keychain-cli.sh
+```
+
+- **Positive**: whitelist キー（例: `SEARCH_API_KEY`）の set → get ラウンドトリップ
+- **Negative**: 非 whitelist キーの拒否
+- **Revert**: テストシークレットの delete
+- **macOS**: Keychain への書き込み・読み取り smoke（`security` CLI 利用）

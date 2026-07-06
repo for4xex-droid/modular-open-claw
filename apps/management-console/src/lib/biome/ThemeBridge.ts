@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { cssVar } from '../../utils/cssVar';
 
 class ThemeBridge {
   private static colorCache: Map<string, THREE.Color> = new Map();
@@ -51,9 +52,11 @@ class ThemeBridge {
     const cached = this.colorCache.get(el);
     if (cached) return cached;
 
-    const cssVar = `--biome-element-${el}`;
-    const fallback = el === 'fallback' ? '#01040a' : '#ffffff';
-    const hex = this.getCssVariable(cssVar, fallback);
+    const tokenName = `--biome-element-${el}`;
+    const fallback = el === 'fallback'
+      ? cssVar('--biome-element-fallback')
+      : cssVar('--white-100');
+    const hex = this.getCssVariable(tokenName, fallback);
 
     const color = new THREE.Color(hex);
     this.colorCache.set(el, color);
@@ -65,22 +68,10 @@ class ThemeBridge {
    */
   public static getUiElementColor(element: string): string {
     const el = element.toLowerCase();
-    const cssVar = `--biome-ui-element-${el}`;
-    
-    // フォールバック用のカラーマッピング
-    const fallbackMap: Record<string, string> = {
-      c: '#33ff55',
-      n: '#4488ff',
-      p: '#ff9922',
-      h: '#cc44ff',
-      o: '#00ddff',
-      s: '#ffdd33',
-      fe: '#ff5544',
-      si: '#aaaaee',
-    };
-    const fallback = fallbackMap[el] || '#00f0ff';
+    const tokenName = `--biome-ui-element-${el}`;
+    const fallback = cssVar(`--biome-ui-element-${el}`, cssVar('--accent-cyan'));
 
-    return this.getCssVariable(cssVar, fallback);
+    return this.getCssVariable(tokenName, fallback);
   }
 }
 

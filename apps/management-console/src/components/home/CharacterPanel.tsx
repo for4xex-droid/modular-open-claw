@@ -17,6 +17,7 @@ import { EkycStatusBadge } from '../character/EkycStatusBadge';
 import { SoulStatusBadge } from '../character/SoulStatusBadge';
 import { authenticatedFetch } from '../../lib/auth';
 import { API_BASE } from '../../config';
+import { useToast } from '../common/Toast';
 
 interface CharacterPanelProps {
     stats: AgentStats;
@@ -31,6 +32,7 @@ interface CharacterPanelProps {
 
 const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, isViewerOpen, modelUrl, avatarState, mode, sessionSavedChars }) => {
     const { t } = useTranslation();
+    const { showToast } = useToast();
     const [ekycStatus, setEkycStatus] = React.useState<boolean | null>(null);
     const [soulState, setSoulState] = React.useState<string>('Awake');
     const [fetchedLevel, setFetchedLevel] = React.useState<number | null>(null);
@@ -39,15 +41,21 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
         authenticatedFetch(`${API_BASE}/api/v1/ekyc/status`)
             .then(r => r.ok ? r.json() : Promise.reject('Status not ok'))
             .then(d => setEkycStatus(d.verified))
-            .catch(e => console.error('EKYC fetch error', e));
+            .catch(e => {
+                console.error('EKYC fetch error', e);
+                showToast('error', t('character.loadFailed', { defaultValue: 'Failed to load identity status.' }));
+            });
         authenticatedFetch(`${API_BASE}/api/v1/soul/status`)
             .then(r => r.ok ? r.json() : Promise.reject('Status not ok'))
             .then(d => {
                 setSoulState(d.state || 'Awake');
                 if (d.level) setFetchedLevel(d.level);
             })
-            .catch(e => console.error('Soul state fetch error', e));
-    }, []);
+            .catch(e => {
+                console.error('Soul state fetch error', e);
+                showToast('error', t('character.loadFailed', { defaultValue: 'Failed to load identity status.' }));
+            });
+    }, [showToast, t]);
 
     const handleVerifyEkyc = async () => {
         try {
@@ -58,10 +66,11 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
                     window.open(data.session_url, '_blank', 'noopener,noreferrer');
                 }
             } else {
-                console.error('Failed to create eKYC session');
+                showToast('error', t('ekyc.sessionFailed', { defaultValue: 'Failed to create eKYC session.' }));
             }
         } catch (e) {
             console.error('Error creating eKYC session', e);
+            showToast('error', t('common.networkError', { defaultValue: 'A network error occurred.' }));
         }
     };
 

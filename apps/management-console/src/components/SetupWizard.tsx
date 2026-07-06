@@ -57,7 +57,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
     // State for all steps
     const [tosAccepted, setTosAccepted] = useState(false);
     const [aiName, setAiName] = useState("");
-    const [viewMode, setViewMode] = useState("intermediate");
+    const [viewMode, setViewMode] = useState("cockpit");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -364,7 +364,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                             
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                                 <button
-                                    onClick={() => { setViewMode('beginner'); setStep(4); }}
+                                    onClick={() => { setViewMode('simple'); setStep(4); }}
                                     style={{ padding: '1.5rem', background: 'var(--white-03)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left' }}
                                 >
                                     <strong style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>
@@ -375,28 +375,17 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                                     </span>
                                 </button>
                                 <button
-                                    onClick={() => { setViewMode('intermediate'); setStep(4); }}
+                                    onClick={() => { setViewMode('cockpit'); setStep(4); }}
                                     style={{ padding: '1.5rem', background: 'var(--white-03)', border: '1px solid var(--accent-cyan-10)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left' }}
                                 >
                                     <strong style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>
-                                        {t('setup.standardMode') || 'Standard Mode'}
+                                        {t('setup.cockpitMode') || t('setup.expertMode') || 'Cockpit Mode'}
                                         <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', background: 'var(--accent-cyan-10)', color: 'var(--accent-cyan)', padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
                                             {t('setup.recommended') || 'Recommended'}
                                         </span>
                                     </strong>
                                     <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                                        {t('setup.standardModeDesc') || 'Dashboard, SEO, and core tools.'}
-                                    </span>
-                                </button>
-                                <button
-                                    onClick={() => { setViewMode('expert'); setStep(4); }}
-                                    style={{ padding: '1.5rem', background: 'var(--white-03)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left' }}
-                                >
-                                    <strong style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>
-                                        {t('setup.expertMode') || 'Expert Mode'}
-                                    </strong>
-                                    <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                                        {t('setup.expertModeDesc') || 'Full observability, logs, and developer tools.'}
+                                        {t('setup.cockpitModeDesc') || t('setup.expertModeDesc') || 'Full observability, logs, and developer tools.'}
                                     </span>
                                 </button>
                             </div>

@@ -101,6 +101,7 @@ pub const ALLOWED_KEYS: &[&str] = &[
     "ENABLE_TOOL_REVIEWER",
     "last_notified_version",
     "pro_monthly_kc_allowance",
+    "economy.monthly_spend_limit",
 ];
 
 pub const ALLOWED_CATEGORIES: &[&str] = &[
@@ -299,6 +300,15 @@ pub async fn update_setting(
                     });
                 }
             }
+        }
+    }
+
+    if payload.key == "economy.monthly_spend_limit" {
+        if let Err(e) = sync_monthly_spend_limit_to_nurture(&state, &payload.value).await {
+            tracing::warn!(
+                "⚠️ [Settings] Failed to sync economy.monthly_spend_limit to Nurture: {}",
+                e
+            );
         }
     }
 
@@ -621,6 +631,60 @@ pub async fn get_identity(
         ai_motto,
         ai_vrm_url,
     }))
+}
+
+async fn sync_monthly_spend_limit_to_nurture(state: &AppState, value: &str) -> Result<(), String> {
+    let limit: u64 = value
+        .trim()
+        .parse()
+        .map_err(|_| "economy.monthly_spend_limit must be a non-negative integer".to_string())?;
+
+    let nurture_url = match &state.nurture_url {
+        Some(url) if !url.is_empty() => url.clone(),
+        _ => return Ok(()),
+    };
+
+    let secret = state
+        .nurture_internal_secret
+        .as_ref()
+        .ok_or_else(|| "NURTURE_INTERNAL_SECRET not configured".to_string())?
+        .clone();
+
+    let cert = aiome_core_contracts::oxilean::OxiLeanProofCertificate::generate_header(
+        "aiome-edge-node",
+        state
+            .oxilean_power
+            .load(std::sync::atomic::Ordering::Relaxed),
+        &secret,
+    )
+    .ok_or_else(|| "Failed to generate OxiLean certificate".to_string())?;
+
+    let req_url = format!(
+        "{}/internal/economy-policy/monthly-limit",
+        nurture_url.trim_end_matches('/')
+    );
+    let payload = serde_json::json!({ "monthly_spend_limit": limit });
+
+    let client = aiome_core::http::get_http_client();
+    let resp = client
+        .post(&req_url)
+        .header("Authorization", format!("Bearer {}", secret))
+        .header("X-OxiLean-Proof-Certificate", cert)
+        .json(&payload)
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(|e| format!("Nurture relay network error: {}", e))?;
+
+    if resp.status().is_success() {
+        tracing::info!(
+            "♻️ [Settings] Synced economy.monthly_spend_limit={} to Nurture",
+            limit
+        );
+        Ok(())
+    } else {
+        Err(format!("Nurture returned HTTP {}", resp.status()))
+    }
 }
 
 #[cfg(test)]

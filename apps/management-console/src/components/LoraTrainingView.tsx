@@ -18,6 +18,7 @@ import {
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
 import { useTranslation } from '../i18n';
+import { LockedOverlay } from './ui/LockedOverlay';
 
 const LoraTrainingView: React.FC = () => {
     const { t } = useTranslation();
@@ -122,6 +123,7 @@ const LoraTrainingView: React.FC = () => {
     };
 
     return (
+        <LockedOverlay featureNameKey="pro.featureLora">
         <div className="lora-view-container ani-fade">
             {/* Left Panel: Configuration */}
             <div className="main-panel lora-config-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
@@ -328,6 +330,7 @@ const LoraTrainingView: React.FC = () => {
                 }
             `}</style>
         </div>
+        </LockedOverlay>
     );
 };
 

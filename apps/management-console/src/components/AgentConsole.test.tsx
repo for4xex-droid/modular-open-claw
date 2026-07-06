@@ -9,7 +9,7 @@ import { render, screen } from '@testing-library/react';
 import AgentConsole from './AgentConsole';
 
 // Mock useAgentChat
-jest.mock('../hooks/useAgentChat', () => ({
+jest.mock('../hooks/AgentChatProvider', () => ({
   useAgentChat: () => ({
     history: [],
     input: '',
@@ -80,7 +80,7 @@ describe('AgentConsole Slash Commands UI', () => {
     // We override the useAgentChat mock specifically for this test to simulate typing '/'
     const setInputMock = jest.fn();
     // @ts-expect-error
-    jest.spyOn(require('../hooks/useAgentChat'), 'useAgentChat').mockReturnValue({
+    jest.spyOn(require('../hooks/AgentChatProvider'), 'useAgentChat').mockReturnValue({
       history: [],
       input: '/',
       isTyping: false,
@@ -108,7 +108,7 @@ describe('AgentConsole Slash Commands UI', () => {
   it('renders AI messages using ReactMarkdown', () => {
     // Arrange
     // @ts-expect-error
-    jest.spyOn(require('../hooks/useAgentChat'), 'useAgentChat').mockReturnValue({
+    jest.spyOn(require('../hooks/AgentChatProvider'), 'useAgentChat').mockReturnValue({
       history: [
         { id: '1', role: 'aiome', content: '# Hello World\nThis is a **markdown** test.', timestamp: Date.now() }
       ],

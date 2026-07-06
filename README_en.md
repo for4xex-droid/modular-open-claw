@@ -238,6 +238,8 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 - **[Developer Onboarding](docs/DEVELOPER_ONBOARDING.md)**: Guidelines for local environment setup, crate architecture, system data flows, and Nurture S2S integration.
 - **[Architecture Law](docs/architecture/ARCHITECTURE_LAW.md)**: Foundational principles guaranteeing intellectual honesty and safety.
 - **[Operations Manual](docs/guides/OPERATIONS_MANUAL.md)**: Detailed environment setup and operational procedures.
+- **[Quick Start Verification Checklist](docs/guides/QUICK_START_VERIFICATION.md)**: G1 pre-release human walkthrough (5-minute end-to-end).
+- **[Stripe Production Setup](docs/operations/stripe-production-setup.md)**: Production Price ID and env deployment (R2-1).
 - **[Security Design](docs/architecture/SECURITY_DESIGN.md)**: Deep dive into the defense-in-depth mechanisms.
 
 ---

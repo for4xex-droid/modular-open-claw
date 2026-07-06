@@ -116,7 +116,7 @@ export function BiomeHUD({
               fontSize: '0.85rem',
               fontWeight: 'bold',
               color: decor.color,
-              background: 'var(--white-03, rgba(255, 255, 255, 0.03))',
+              background: 'var(--white-03)',
               padding: '4px 8px',
               borderRadius: 'var(--radius-sm)',
               marginTop: '4px',
@@ -170,7 +170,7 @@ export function BiomeHUD({
                 style={{
                   height: '100%',
                   width: `${progressPct}%`,
-                  background: 'linear-gradient(90deg, var(--accent-cyan), var(--accent-purple, #d946ef))',
+                  background: 'linear-gradient(90deg, var(--accent-cyan), var(--accent-purple))',
                   borderRadius: '3px',
                   transition: 'width var(--speed-fast) ease',
                 }}

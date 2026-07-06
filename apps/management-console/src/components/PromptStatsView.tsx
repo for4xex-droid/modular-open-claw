@@ -10,6 +10,8 @@ import { Activity, RefreshCw } from 'lucide-react';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
 import { useTranslation } from '../i18n';
+import { LoadingState } from './ui/LoadingState';
+import { EmptyState } from './ui/EmptyState';
 
 import { components } from '../types/generated';
 
@@ -75,17 +77,18 @@ const PromptStatsView: React.FC = () => {
       
       <div className="panel-content scroll-v" style={{ padding: 'var(--space-md)' }}>
         {loading ? (
-          <div className="loading-state">
-            <p>{t('common.loading')}</p>
-          </div>
+          <LoadingState messageKey="common.loading" />
         ) : error ? (
           <div className="loading-state">
              <p style={{ color: 'var(--accent-rose)' }}>{error}</p>
           </div>
         ) : stats.length === 0 ? (
-          <div className="loading-state">
-             <p>{t('promptStats.noData')}</p>
-          </div>
+          <EmptyState
+            icon={Activity}
+            titleKey="promptStats.noData"
+            detailKey="promptStats.emptyDetail"
+            cta={{ labelKey: 'common.refresh', onClick: () => fetchStats() }}
+          />
         ) : (
           <>
             <div className="chart-container">

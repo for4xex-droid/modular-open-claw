@@ -28,6 +28,10 @@ jest.mock('../hooks/useSystemVitality', () => ({
   })
 }));
 
+jest.mock('./ui/LoadingState', () => ({
+  LoadingState: () => <div data-testid="loading-state">loading</div>,
+}));
+
 describe('SeoPulseView', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -80,6 +84,10 @@ describe('SeoPulseView', () => {
     });
 
     render(<SeoPulseView />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-state')).not.toBeInTheDocument();
+    });
 
     expect(screen.getByText('SIL')).toBeInTheDocument();
 

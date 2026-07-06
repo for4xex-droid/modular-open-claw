@@ -41,7 +41,7 @@ export function CycleSelect({
           data-testid="cycle-pause"
           style={{
             background: paused ? 'var(--accent-cyan)' : 'var(--white-10)',
-            color: paused ? 'var(--bg-primary, #0c0f1d)' : 'var(--white-100)',
+            color: paused ? 'var(--text-inverse)' : 'var(--white-100)',
             border: 'none',
             padding: '0.4rem 0.6rem',
             borderRadius: '4px',
@@ -86,7 +86,7 @@ export function CycleSelect({
           aria-label="Toggle Bloom"
           data-testid="toggle-bloom"
           style={{
-            background: bloomEnabled ? 'rgba(6, 182, 212, 0.2)' : 'var(--white-05)',
+            background: bloomEnabled ? 'var(--accent-cyan-20)' : 'var(--white-05)',
             color: bloomEnabled ? 'var(--accent-cyan)' : 'var(--white-60)',
             border: bloomEnabled ? '1px solid var(--accent-cyan-30)' : '1px solid transparent',
             padding: '0.4rem 0.6rem',
@@ -95,7 +95,7 @@ export function CycleSelect({
             fontSize: '0.75rem',
             fontWeight: '600',
             transition: 'all 0.2s',
-            boxShadow: bloomEnabled ? '0 0 8px rgba(6, 182, 212, 0.1)' : 'none'
+            boxShadow: bloomEnabled ? '0 0 8px var(--accent-cyan-10)' : 'none'
           }}
         >
           ✨ グロウ

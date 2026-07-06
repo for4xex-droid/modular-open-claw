@@ -88,8 +88,8 @@ export function BiomeControls({
           style={{
             ...primaryButtonStyle,
             width: '100%',
-            background: seedMode ? 'var(--accent-cyan, #00f0ff)' : 'var(--accent-cyan-20)',
-            color: seedMode ? '#0c0f1d' : 'var(--accent-cyan)',
+            background: seedMode ? 'var(--accent-cyan)' : 'var(--accent-cyan-20)',
+            color: seedMode ? 'var(--text-inverse)' : 'var(--accent-cyan)',
             boxShadow: seedMode ? '0 0 12px var(--accent-cyan)' : 'none',
           }}
           onClick={onToggleSeedMode}
@@ -134,7 +134,7 @@ export function BiomeControls({
       {/* 図鑑 */}
       <div>
         <button
-          style={{ ...buttonStyle, width: '100%', background: 'var(--accent-purple-20)', color: 'var(--accent-purple, #d946ef)', border: '1px solid var(--accent-purple-30)' }}
+          style={{ ...buttonStyle, width: '100%', background: 'var(--accent-purple-20)', color: 'var(--accent-purple)', border: '1px solid var(--accent-purple-30)' }}
           onClick={onShowCatalog}
           aria-label="Catalog"
           data-testid="control-catalog"
@@ -173,7 +173,7 @@ export function BiomeControls({
         )}
         {onShowTutorial && (
           <button
-            style={{ ...buttonStyle, flex: '1 1 45%', background: 'var(--accent-amber-15)', color: 'var(--accent-amber, #f59e0b)', border: '1px solid var(--accent-amber-30)' }}
+            style={{ ...buttonStyle, flex: '1 1 45%', background: 'var(--accent-amber-15)', color: 'var(--accent-amber)', border: '1px solid var(--accent-amber-30)' }}
             onClick={onShowTutorial}
             aria-label="Tutorial"
             data-testid="control-tutorial"

@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
-**Version:** 3.3  
-**Last Updated:** 2026-07-03
+**Version:** 3.4  
+**Last Updated:** 2026-07-06
 
 ---
 
@@ -248,6 +248,22 @@ RUST_LOG=info cargo run -p api-server
 - [ ] api-server (release): `A2A_NODE_TOKEN` が設定されているか確認（未設定時は起動失敗）
 - [ ] nurture-api (cloud-storage): `S3_BUCKET_NAME` が設定されているか確認（未設定時は Mock へフォールバックせず起動エラー）
 - [ ] CI Postgres テスト: `docker-compose.test.yml` を用いた `db_config_test` がローカルで PASS するか確認
+- [ ] **PostgreSQL 本番検証 (OP-012)**: `bash scripts/verify-production-postgres.sh` が Positive / Negative / Revert すべて PASS すること（`docker-compose.production-verify.yml`、ポート `127.0.0.1:5434`）
+- [ ] **Keychain CLI 検証 (OP-014)**: `bash scripts/verify-keychain-cli.sh` が PASS すること（`abyss-vault` set/get/delete + 非 whitelist 拒否）
+- [ ] **Quick Start 実走 (G1)**: Human が [`docs/guides/QUICK_START_VERIFICATION.md`](QUICK_START_VERIFICATION.md) に沿って 5 分以内に完走すること
+- [ ] **Stripe 本番 env (R2-1)**: [`docs/operations/stripe-production-setup.md`](../operations/stripe-production-setup.md) の手順どおり `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` / `VITE_STRIPE_PRICE_ID` を反映
+
+### 8.1 Release Verification Scripts（リリース前検証）
+
+本番 compose 全体（`docker-compose.production.yml`）は secrets とカスタムイメージに依存するため、軽量スタックで DB 整合性を先に検証します。
+
+| スクリプト | 用途 | 前提 |
+|---|---|---|
+| `scripts/verify-production-postgres.sh` | 3 DB（`aiome` / `nurture` / `samsara_hub`）マイグレーション + BAN 統合 | Docker、`docker-compose.production-verify.yml` |
+| `scripts/verify-keychain-cli.sh` | `abyss-vault` CLI ラウンドトリップ + macOS Keychain smoke | `VAULT_MASTER_PASSWORD`（一時ディレクトリ） |
+| `docs/guides/QUICK_START_VERIFICATION.md` | G1: clone → 起動 → Setup Wizard → チャット | Human 実走 |
+
+検証用 Postgres URL（任意）: `.env.example` の `PRODUCTION_VERIFY_PG_BASE` を参照。
 
 
 ### 9. local Embedding Server (ruri-v3) の起動

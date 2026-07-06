@@ -23,6 +23,10 @@ jest.mock('../../i18n', () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }));
 
+jest.mock('../common/Toast', () => ({
+  useToast: () => ({ showToast: jest.fn() })
+}));
+
 // Mock the nested components
 jest.mock('../../lib/vrm/VrmRenderer', () => () => <div data-testid="vrm-renderer" />);
 jest.mock('../../lib/inx/InxRenderer', () => () => <div data-testid="inx-renderer" />);

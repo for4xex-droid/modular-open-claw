@@ -10,6 +10,8 @@ import { Zap, Terminal, BrainCircuit, Clock, Sparkles } from 'lucide-react';
 import { API_BASE } from "../config";
 import { authenticatedFetch } from '../lib/auth';
 import { useTranslation } from '../i18n';
+import { EmptyState } from './ui/EmptyState';
+import { LoadingState } from './ui/LoadingState';
 
 interface TimelineEvent {
     id?: string;
@@ -111,9 +113,7 @@ const Timeline: React.FC = () => {
 
             <div style={{ padding: '1.5rem', maxHeight: '75vh', overflowY: 'auto' }}>
                 {loading ? (
-                    <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        <div className="ani-pulse">{t('timeline.syncing')}</div>
-                    </div>
+                    <LoadingState messageKey="timeline.syncing" />
                 ) : error ? (
                     <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--accent-rose)' }}>
                         <Zap size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
@@ -121,10 +121,17 @@ const Timeline: React.FC = () => {
                         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>{error}</p>
                     </div>
                 ) : events.length === 0 ? (
-                    <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        <Zap size={48} style={{ opacity: 0.1, marginBottom: '1rem' }} />
-                        <p>{t('timeline.noRecords')}</p>
-                    </div>
+                    <EmptyState
+                        icon={Zap}
+                        titleKey="timeline.noRecords"
+                        detailKey="timeline.emptyDetail"
+                        cta={{
+                            labelKey: 'timeline.emptyCta',
+                            onClick: () => window.dispatchEvent(new CustomEvent('aiome_inject_prompt', {
+                                detail: { prompt: t('timeline.emptyPrompt', { defaultValue: 'Tell me what you learned today.' }), autoSend: false }
+                            }))
+                        }}
+                    />
                 ) : (
                     <div style={{ position: 'relative' }}>
                         <div style={{

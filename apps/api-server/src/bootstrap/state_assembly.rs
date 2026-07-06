@@ -291,7 +291,7 @@ pub async fn assemble_app_state(
                 "text",
                 serde_json::json!({"content": "string", "markdown": "boolean"}),
             );
-            catalog.register_component("button", serde_json::json!({"label": "string", "action": "string (whitelist: approve_job:<uuid>, run_skill:<name>, cancel_job:<uuid>)", "variant": "string (optional)"}));
+            catalog.register_component("button", serde_json::json!({"label": "string", "action": "string (whitelist: approve_job:<uuid>, run_skill:<name>, cancel_job:<uuid>, navigate:<tab>)", "variant": "string (optional)"}));
             catalog.register_component("list", serde_json::json!({"ordered": "boolean"}));
             catalog.register_component(
                 "form",
@@ -325,6 +325,25 @@ pub async fn assemble_app_state(
             catalog.register_component(
                 "codeBlock",
                 serde_json::json!({"code": "string", "language": "string"}),
+            );
+            catalog.register_component(
+                "card",
+                serde_json::json!({"title": "string (optional)", "content": "string (optional)"}),
+            );
+            catalog.register_component("voiceStore", serde_json::json!({}));
+            catalog.register_component("loraMarket", serde_json::json!({}));
+            catalog.register_component(
+                "walletWidget",
+                serde_json::json!({"label": "string (optional)"}),
+            );
+            catalog.register_component(
+                "marketplaceItem",
+                serde_json::json!({
+                    "title": "string",
+                    "price": "number",
+                    "currency": "string (optional, default KC)",
+                    "description": "string (optional)"
+                }),
             );
             Component::new(std::sync::Arc::new(catalog))
         },

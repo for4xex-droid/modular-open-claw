@@ -15,5 +15,5 @@ CREATE INDEX idx_typed_links_source ON cortex_typed_links(source_article_id);
 CREATE INDEX idx_typed_links_target ON cortex_typed_links(target_article_id);
 CREATE INDEX idx_typed_links_type ON cortex_typed_links(link_type);
 
-CREATE TRIGGER audit_insert_typed_links AFTER INSERT ON cortex_typed_links FOR EACH ROW EXECUTE FUNCTION audit_ledger_global_trigger();
-CREATE TRIGGER audit_update_typed_links AFTER UPDATE ON cortex_typed_links FOR EACH ROW EXECUTE FUNCTION audit_ledger_global_trigger();
+CREATE TRIGGER audit_insert_typed_links AFTER INSERT ON cortex_typed_links FOR EACH ROW EXECUTE FUNCTION process_audit();
+CREATE TRIGGER audit_update_typed_links AFTER UPDATE ON cortex_typed_links FOR EACH ROW EXECUTE FUNCTION process_audit();

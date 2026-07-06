@@ -62,6 +62,17 @@ export const useTtsSse = (): UseTtsSseReturn => {
                 },
                 body: JSON.stringify({ text }),
                 signal: ctrl.signal,
+                async onopen(response) {
+                    if (response.status === 402) {
+                        if (typeof window !== 'undefined') {
+                            window.dispatchEvent(new CustomEvent('stripe-402-payment-required'));
+                        }
+                        throw new Error('Subscription required');
+                    }
+                    if (!response.ok) {
+                        throw new Error(`TTS request failed: ${response.status}`);
+                    }
+                },
                 onmessage(ev) {
                     if (ev.event === 'audio') {
                         const binaryStr = window.atob(ev.data);

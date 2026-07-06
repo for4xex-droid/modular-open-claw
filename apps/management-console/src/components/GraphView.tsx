@@ -4,15 +4,17 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Network, Node as VisNode, Edge as VisEdge } from "vis-network";
 import { DataSet } from "vis-data";
-import { GitMerge, ZoomIn, ZoomOut, RefreshCw, Layers } from 'lucide-react';
+import { GitMerge, ZoomIn, ZoomOut, RefreshCw, Layers, AlertTriangle } from 'lucide-react';
 import { API_BASE } from "../config";
 import { GraphNode, GraphEdge } from '../types';
 import { authenticatedFetch } from '../lib/auth';
 import { useTranslation } from '../i18n';
 import { useGraphTheme } from '../hooks/useGraphTheme';
+import { useToast } from './common/Toast';
+import { LoadingState } from './ui/LoadingState';
 
 import { cssVar } from '../utils/cssVar';
 
@@ -29,132 +31,141 @@ const GraphView: React.FC = () => {
     const [nodeCount, setNodeCount] = useState(0);
     const [artifactCount, setArtifactCount] = useState(0);
     const [showArtifacts, setShowArtifacts] = useState(true);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const { t } = useTranslation();
+    const { showToast } = useToast();
     const theme = useGraphTheme();
 
-    useEffect(() => {
+    const initGraph = useCallback(async () => {
         const container = containerRef.current;
         if (!container) return;
 
-        const initGraph = async () => {
-            try {
-                // Parallel fetch for Karma and Artifacts
-                const [karmaRes, artifactRes] = await Promise.all([
-                    authenticatedFetch(`${API_BASE}/api/synergy/graph`),
-                    authenticatedFetch(`${API_BASE}/api/artifacts?limit=50`)
-                ]);
+        setLoading(true);
+        setError(null);
 
-                if (!karmaRes.ok || !artifactRes.ok) {
-                    console.error("Graph API error", { karma: karmaRes.status, artifact: artifactRes.status });
-                    return;
-                }
+        try {
+            const [karmaRes, artifactRes] = await Promise.all([
+                authenticatedFetch(`${API_BASE}/api/synergy/graph`),
+                authenticatedFetch(`${API_BASE}/api/artifacts?limit=50`)
+            ]);
 
-                const karmaData = await karmaRes.json();
-                const artifacts = await artifactRes.json();
-
-                // Double check container existence before creating Network instance
-                if (!containerRef.current) return;
-
-                // 1. Process Memory Nodes/Edges
-                const safeNodes = Array.isArray(karmaData?.nodes) ? karmaData.nodes : [];
-                const nodes = new DataSet<VisNode>(safeNodes.map((n: GraphNode) => ({
-                    ...n,
-                    color: {
-                        background: n.group === 'karma_local' ? theme.nodes.karmaLocal.background : theme.nodes.karmaForeign.background,
-                        border: n.group === 'karma_local' ? theme.nodes.karmaLocal.border : theme.nodes.karmaForeign.border,
-                        highlight: {
-                            background: n.group === 'karma_local' ? theme.nodes.karmaLocal.highlight.background : theme.nodes.karmaForeign.highlight.background,
-                            border: theme.nodes.karmaLocal.highlight.border,
-                        }
-                    },
-                    font: { color: theme.text, size: 12, face: 'Inter, system-ui' },
-                    shape: 'dot',
-                    size: 20 + (n.label.length / 5)
-                })));
-
-                const safeEdges = Array.isArray(karmaData?.edges) ? karmaData.edges : [];
-                const edges = new DataSet<VisEdge>(safeEdges.map((e: GraphEdge) => ({
-                    ...e,
-                    color: { color: theme.edges.default.color, highlight: theme.edges.default.highlight },
-                    width: 1,
-                    smooth: { type: 'continuous' }
-                })));
-
-                // 2. Add Artifact Nodes if toggled
-                const safeArtifacts = Array.isArray(artifacts) ? artifacts : [];
-                setArtifactCount(safeArtifacts.length);
-
-                if (showArtifacts) {
-                    safeArtifacts.forEach((art: ArtifactData) => {
-                        nodes.add({
-                            id: art.id,
-                            label: `📦 ${art.title}`,
-                            group: 'artifact',
-                            color: {
-                                background: theme.nodes.artifact.background,
-                                border: theme.nodes.artifact.border,
-                                highlight: { background: theme.nodes.artifact.highlight.background, border: theme.nodes.artifact.highlight.border }
-                            },
-                            font: { color: theme.nodes.artifact.font, size: 13, bold: "bold" },
-                            shape: 'diamond',
-                            size: 25,
-                            title: `Category: ${art.category}`
-                        });
-
-                        // Add edges from Memory refs if present
-                        if (art.karma_refs) {
-                            art.karma_refs.forEach((karmaId: string) => {
-                                edges.add({
-                                    from: karmaId,
-                                    to: art.id,
-                                    label: 'materialized',
-                                    color: { color: theme.edges.materialized.color },
-                                    dashes: true,
-                                    width: 1
-                                });
-                            });
-                        }
-                    });
-                }
-
-                setNodeCount(nodes.length);
-
-                const options = {
-                    nodes: {
-                        borderWidth: 2,
-                        shadow: { enabled: true, color: theme.shadow, size: 10, x: 5, y: 5 }
-                    },
-                    edges: { arrows: 'to' },
-                    physics: {
-                        stabilization: true,
-                        barnesHut: {
-                            gravitationalConstant: -2500,
-                            centralGravity: 0.3,
-                            springLength: 120,
-                            springConstant: 0.04,
-                            damping: 0.09,
-                            avoidOverlap: 0.2
-                        }
-                    },
-                    interaction: {
-                        hover: true,
-                        tooltipDelay: 200,
-                        zoomView: true
-                    }
-                };
-
-                networkRef.current = new Network(container, { nodes, edges }, options);
-            } catch (e) {
-                console.error("Graph failed to load", e);
+            if (!karmaRes.ok || !artifactRes.ok) {
+                const message = t('graph.loadFailed', { defaultValue: 'Failed to load knowledge graph.' });
+                setError(message);
+                showToast('error', message);
+                return;
             }
-        };
 
+            const karmaData = await karmaRes.json();
+            const artifacts = await artifactRes.json();
+
+            if (!containerRef.current) return;
+
+            networkRef.current?.destroy();
+
+            const safeNodes = Array.isArray(karmaData?.nodes) ? karmaData.nodes : [];
+            const nodes = new DataSet<VisNode>(safeNodes.map((n: GraphNode) => ({
+                ...n,
+                color: {
+                    background: n.group === 'karma_local' ? theme.nodes.karmaLocal.background : theme.nodes.karmaForeign.background,
+                    border: n.group === 'karma_local' ? theme.nodes.karmaLocal.border : theme.nodes.karmaForeign.border,
+                    highlight: {
+                        background: n.group === 'karma_local' ? theme.nodes.karmaLocal.highlight.background : theme.nodes.karmaForeign.highlight.background,
+                        border: theme.nodes.karmaLocal.highlight.border,
+                    }
+                },
+                font: { color: theme.text, size: 12, face: 'Inter, system-ui' },
+                shape: 'dot',
+                size: 20 + (n.label.length / 5)
+            })));
+
+            const safeEdges = Array.isArray(karmaData?.edges) ? karmaData.edges : [];
+            const edges = new DataSet<VisEdge>(safeEdges.map((e: GraphEdge) => ({
+                ...e,
+                color: { color: theme.edges.default.color, highlight: theme.edges.default.highlight },
+                width: 1,
+                smooth: { type: 'continuous' }
+            })));
+
+            const safeArtifacts = Array.isArray(artifacts) ? artifacts : [];
+            setArtifactCount(safeArtifacts.length);
+
+            if (showArtifacts) {
+                safeArtifacts.forEach((art: ArtifactData) => {
+                    nodes.add({
+                        id: art.id,
+                        label: `📦 ${art.title}`,
+                        group: 'artifact',
+                        color: {
+                            background: theme.nodes.artifact.background,
+                            border: theme.nodes.artifact.border,
+                            highlight: { background: theme.nodes.artifact.highlight.background, border: theme.nodes.artifact.highlight.border }
+                        },
+                        font: { color: theme.nodes.artifact.font, size: 13, bold: "bold" },
+                        shape: 'diamond',
+                        size: 25,
+                        title: `Category: ${art.category}`
+                    });
+
+                    if (art.karma_refs) {
+                        art.karma_refs.forEach((karmaId: string) => {
+                            edges.add({
+                                from: karmaId,
+                                to: art.id,
+                                label: 'materialized',
+                                color: { color: theme.edges.materialized.color },
+                                dashes: true,
+                                width: 1
+                            });
+                        });
+                    }
+                });
+            }
+
+            setNodeCount(nodes.length);
+
+            const options = {
+                nodes: {
+                    borderWidth: 2,
+                    shadow: { enabled: true, color: theme.shadow, size: 10, x: 5, y: 5 }
+                },
+                edges: { arrows: 'to' },
+                physics: {
+                    stabilization: true,
+                    barnesHut: {
+                        gravitationalConstant: -2500,
+                        centralGravity: 0.3,
+                        springLength: 120,
+                        springConstant: 0.04,
+                        damping: 0.09,
+                        avoidOverlap: 0.2
+                    }
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 200,
+                    zoomView: true
+                }
+            };
+
+            networkRef.current = new Network(container, { nodes, edges }, options);
+        } catch (e) {
+            console.error("Graph failed to load", e);
+            const message = t('common.networkError', { defaultValue: 'A network error occurred.' });
+            setError(message);
+            showToast('error', message);
+        } finally {
+            setLoading(false);
+        }
+    }, [theme, showArtifacts, t, showToast]);
+
+    useEffect(() => {
         initGraph();
-
         return () => {
             networkRef.current?.destroy();
         };
-    }, [theme, showArtifacts, t]);
+    }, [initGraph]);
 
     const zoomIn = () => networkRef.current?.moveTo({ scale: (networkRef.current?.getScale() || 1) * 1.2 });
     const zoomOut = () => networkRef.current?.moveTo({ scale: (networkRef.current?.getScale() || 1) / 1.2 });
@@ -178,7 +189,22 @@ const GraphView: React.FC = () => {
                 </div>
             </div>
 
-            <div ref={containerRef} style={{ flex: 1, background: `radial-gradient(circle at center, ${theme.background.gradientInner} 0%, ${theme.background.gradientOuter} 100%)` }} />
+            <div ref={containerRef} style={{ flex: 1, background: `radial-gradient(circle at center, ${theme.background.gradientInner} 0%, ${theme.background.gradientOuter} 100%)`, position: 'relative' }}>
+                {loading && (
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--black-40)', zIndex: 5 }}>
+                        <LoadingState messageKey="loading" />
+                    </div>
+                )}
+                {error && !loading && (
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', background: 'var(--accent-rose-05)', zIndex: 5 }}>
+                        <AlertTriangle size={40} color="var(--accent-rose)" />
+                        <p style={{ color: 'var(--text-secondary)' }}>{error}</p>
+                        <button className="primary-button" onClick={initGraph}>
+                            <RefreshCw size={14} /> {t('error.retry', { defaultValue: 'Retry' })}
+                        </button>
+                    </div>
+                )}
+            </div>
 
             {/* Overlay Controls */}
             <div style={{ position: 'absolute', right: '1.5rem', bottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10 }}>

@@ -49,7 +49,7 @@ async function completeWizardUntilInit() {
   await waitFor(() => screen.getByText(/Name your AI/i));
   fireEvent.click(screen.getByRole('button', { name: /Next/i }));
   await waitFor(() => screen.getByText(/Choose your experience/i));
-  fireEvent.click(screen.getByText(/Expert Mode/i));
+  fireEvent.click(screen.getByText(/Cockpit Mode/i));
   await waitFor(() => screen.getByText(/Create Admin/i));
   fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'admin@example.com' } });
   fireEvent.change(screen.getByLabelText(/^Password/i), { target: { value: 'SecurePass1234!' } });
@@ -95,7 +95,7 @@ describe('SetupWizard Component', () => {
 
     // Step 3: View Mode
     await waitFor(() => expect(screen.getByText(/Choose your experience/i)).toBeInTheDocument());
-    fireEvent.click(screen.getByText(/Expert Mode/i));
+    fireEvent.click(screen.getByText(/Cockpit Mode/i));
 
     // Step 4: Admin Credentials
     await waitFor(() => expect(screen.getByText(/Create Admin/i)).toBeInTheDocument());
@@ -274,7 +274,7 @@ describe('SetupWizard Component', () => {
     await waitFor(() => screen.getByText(/Name your AI/i));
     fireEvent.click(screen.getByRole('button', { name: /Next/i }));
     await waitFor(() => screen.getByText(/Choose your experience/i));
-    fireEvent.click(screen.getByText(/Standard Mode/i));
+    fireEvent.click(screen.getByText(/Cockpit Mode/i));
 
     await waitFor(() => screen.getByText(/Create Admin/i));
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'admin@example.com' } });
@@ -302,7 +302,7 @@ describe('SetupWizard Component', () => {
     await waitFor(() => screen.getByText(/Name your AI/i));
     fireEvent.click(screen.getByRole('button', { name: /Next/i }));
     await waitFor(() => screen.getByText(/Choose your experience/i));
-    fireEvent.click(screen.getByText(/Expert Mode/i));
+    fireEvent.click(screen.getByText(/Cockpit Mode/i));
 
     await waitFor(() => screen.getByText(/Create Admin/i));
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'admin@example.com' } });

@@ -71,7 +71,7 @@ export function BiomeResult({
   const saveButtonStyle: CSSProperties = {
     ...buttonStyle,
     background: 'linear-gradient(135deg, var(--accent-amber), var(--accent-amber-30))',
-    color: 'var(--text-inverse, #0c0f1d)',
+    color: 'var(--text-inverse)',
     border: 'none'
   };
 

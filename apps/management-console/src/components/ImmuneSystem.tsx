@@ -14,6 +14,7 @@ import { authenticatedFetch } from "../lib/auth";
 import { useTranslation } from '../i18n';
 import ConfirmModal from './common/ConfirmModal';
 import { useToast } from './common/Toast';
+import { LoadingState } from './ui/LoadingState';
 
 interface QuarantinedAsset {
     id: string;
@@ -35,6 +36,7 @@ const ImmuneSystem: React.FC = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const { showToast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
+    const [loading, setLoading] = useState(true);
     
     // Confirm Modals state
     const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
@@ -93,9 +95,15 @@ const ImmuneSystem: React.FC = () => {
     }, [showToast, t]);
 
     useEffect(() => {
-        fetchRules();
-        fetchQuarantined();
-        fetchAegisStatus();
+        const loadAll = async () => {
+            setLoading(true);
+            try {
+                await Promise.all([fetchRules(), fetchQuarantined(), fetchAegisStatus()]);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadAll();
     }, [fetchRules, fetchQuarantined, fetchAegisStatus]);
 
     const handleAddRule = async () => {
@@ -283,6 +291,10 @@ const ImmuneSystem: React.FC = () => {
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-lg)' }}>
+                {loading ? (
+                    <LoadingState messageKey="loading" />
+                ) : (
+                <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
                     <div style={{ display: 'flex', gap: 'var(--space-sm)', flex: 1, maxWidth: '600px' }}>
                         <div style={{
@@ -654,6 +666,8 @@ const ImmuneSystem: React.FC = () => {
                         {t('immune.abyssVaultDesc')}
                     </p>
                 </div>
+                </>
+                )}
             </div>
 
             <style>{`

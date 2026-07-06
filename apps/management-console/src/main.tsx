@@ -6,6 +6,7 @@
  */
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { MotionConfig } from "framer-motion";
 import App from "./App";
 import "./App.css";
 import { AvatarCharacterProvider } from "./hooks/AvatarContext";
@@ -14,6 +15,8 @@ import { LanguageProvider } from "./i18n";
 import { initApiBase } from "./config";
 import { SystemVitalityProvider } from "./hooks/useSystemVitality";
 import { ToastProvider } from "./components/common/Toast";
+import { SubscriptionProvider } from "./hooks/useSubscriptionStatus";
+import { AgentChatProvider } from "./hooks/AgentChatProvider";
 
 /**
  * [Milestone 3] UI Dynamic Discovery
@@ -36,7 +39,13 @@ async function boot() {
             <AvatarCharacterProvider>
               <SystemVitalityProvider>
                 <ToastProvider>
-                  <App />
+                  <SubscriptionProvider>
+                    <AgentChatProvider>
+                      <MotionConfig reducedMotion="user">
+                        <App />
+                      </MotionConfig>
+                    </AgentChatProvider>
+                  </SubscriptionProvider>
                 </ToastProvider>
               </SystemVitalityProvider>
             </AvatarCharacterProvider>

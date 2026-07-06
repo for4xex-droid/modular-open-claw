@@ -21,6 +21,9 @@ pub enum NurtureError {
     #[error("日次上限超過: 上限 {limit}, 現在 {current}")]
     DailyLimitExceeded { limit: u64, current: u64 },
 
+    #[error("月次上限超過: 上限 {limit}, 現在 {current}")]
+    MonthlyLimitExceeded { limit: u64, current: u64 },
+
     #[error("アイテムが見つからない: {0}")]
     ItemNotFound(Uuid),
 
@@ -67,6 +70,7 @@ impl axum::response::IntoResponse for NurtureError {
         let status = match &self {
             NurtureError::InsufficientBalance { .. } => StatusCode::PAYMENT_REQUIRED,
             NurtureError::DailyLimitExceeded { .. } => StatusCode::FORBIDDEN,
+            NurtureError::MonthlyLimitExceeded { .. } => StatusCode::FORBIDDEN,
             NurtureError::ItemNotFound(_) => StatusCode::NOT_FOUND,
             NurtureError::PolicyViolation(_) => StatusCode::FORBIDDEN,
             NurtureError::InterceptorBlocked(_) => StatusCode::FORBIDDEN,
@@ -131,6 +135,13 @@ mod tests {
             get_status(NurtureError::DailyLimitExceeded {
                 limit: 100,
                 current: 150
+            }),
+            StatusCode::FORBIDDEN
+        );
+        assert_eq!(
+            get_status(NurtureError::MonthlyLimitExceeded {
+                limit: 500,
+                current: 600
             }),
             StatusCode::FORBIDDEN
         );

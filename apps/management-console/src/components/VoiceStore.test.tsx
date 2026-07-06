@@ -43,7 +43,7 @@ jest.mock('../config', () => ({
 }));
 
 jest.mock('../i18n', () => ({
-  useTranslation: () => ({ t: () => undefined })
+  useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 describe('VoiceStore Commerce Integration', () => {
@@ -61,7 +61,7 @@ describe('VoiceStore Commerce Integration', () => {
 
     render(<VoiceStore />);
     
-    const rechargeButton = await screen.findByText('Recharge');
+    const rechargeButton = await screen.findByText('voice.kcRecharge');
     fireEvent.click(rechargeButton);
     
     await waitFor(() => {
@@ -81,7 +81,7 @@ describe('VoiceStore Commerce Integration', () => {
        expect(screen.getByText('1,000 KC')).toBeInTheDocument();
     });
 
-    const purchaseButtons = await screen.findAllByRole('button', { name: /Purchase/i });
+    const purchaseButtons = await screen.findAllByRole('button', { name: 'voice.purchase' });
     expect(purchaseButtons[0]).toBeEnabled();
 
     fireEvent.click(purchaseButtons[0]);
@@ -116,10 +116,10 @@ describe('VoiceStore Commerce Integration', () => {
         expect(screen.getByText('1,000 KC')).toBeInTheDocument();
     });
     
-    const purchaseButtons = await screen.findAllByRole('button', { name: /Purchase/i });
+    const purchaseButtons = await screen.findAllByRole('button', { name: 'voice.purchase' });
     expect(purchaseButtons[0]).toBeDisabled();
     
-    const ekycMessages = await screen.findAllByText(/eKYC Required/i);
+    const ekycMessages = await screen.findAllByText('voice.ekycRequired');
     expect(ekycMessages.length).toBeGreaterThan(0);
   });
 });

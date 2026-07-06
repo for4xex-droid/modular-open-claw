@@ -21,11 +21,33 @@ jest.mock('../i18n', () => ({
     useTranslation: () => ({ t: (key: string) => key })
 }));
 
+jest.mock('./common/Toast', () => ({
+    useToast: () => ({ showToast: jest.fn() })
+}));
+
+jest.mock('./ui/LoadingState', () => ({
+    LoadingState: ({ messageKey }: { messageKey?: string }) => (
+        <div data-testid="loading-state">{messageKey || 'loading'}</div>
+    ),
+}));
+
 // Mock framer-motion to avoid animation issues in Jest
 jest.mock('framer-motion', () => ({
     motion: {
         div: ({ children, ...props }: any) => <div {...props}>{children}</div>
     }
+}));
+
+jest.mock('./ui/LoadingState', () => ({
+    LoadingState: ({ messageKey }: { messageKey?: string }) => (
+        <div data-testid="loading-state">{messageKey || 'loading'}</div>
+    ),
+}));
+
+jest.mock('./ui/EmptyState', () => ({
+    EmptyState: ({ titleKey }: { titleKey: string }) => (
+        <div data-testid="empty-state">{titleKey}</div>
+    ),
 }));
 
 // Mock lucide-react icons
@@ -93,7 +115,7 @@ describe('DiagnosticsHistory Component', () => {
 
         render(<DiagnosticsHistory />);
         
-        expect(screen.getByTestId('icon-refresh')).toBeTruthy();
+        expect(screen.getByTestId('loading-state')).toBeTruthy();
         expect(screen.getByText('diagnostics.syncing')).toBeTruthy();
 
         // Resolve fetch to clean up
@@ -111,7 +133,7 @@ describe('DiagnosticsHistory Component', () => {
         render(<DiagnosticsHistory />);
 
         await waitFor(() => {
-            expect(screen.queryByTestId('icon-refresh')).toBeNull();
+            expect(screen.queryByTestId('loading-state')).toBeNull();
         });
 
         expect(screen.getByText('job-1234')).toBeTruthy(); // job_id slice
@@ -132,7 +154,7 @@ describe('DiagnosticsHistory Component', () => {
         render(<DiagnosticsHistory />);
 
         await waitFor(() => {
-            expect(screen.queryByTestId('icon-refresh')).toBeNull();
+            expect(screen.queryByTestId('loading-state')).toBeNull();
         });
 
         fireEvent.click(screen.getByText('diagnostics.tabLedger'));
@@ -193,7 +215,7 @@ describe('DiagnosticsHistory Component', () => {
         render(<DiagnosticsHistory />);
 
         await waitFor(() => {
-            expect(screen.queryByTestId('icon-refresh')).toBeNull();
+            expect(screen.queryByTestId('loading-state')).toBeNull();
         });
 
         // Should render empty list without crashing

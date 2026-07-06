@@ -6,10 +6,13 @@
  */
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ExternalLink, Info, Loader2, RefreshCw } from 'lucide-react';
+import { Sparkles, ExternalLink, RefreshCw } from 'lucide-react';
 import { useTreasure } from '../hooks/useTreasure';
 import { TreasureItem } from '../types';
 import { useTranslation } from '../i18n';
+import { LoadingState } from './ui/LoadingState';
+import { EmptyState } from './ui/EmptyState';
+import { LockedOverlay } from './ui/LockedOverlay';
 import './TreasureBox.css';
 
 export const TreasureBox: React.FC = () => {
@@ -31,6 +34,7 @@ export const TreasureBox: React.FC = () => {
     };
 
     return (
+        <LockedOverlay featureNameKey="pro.featureAgentSense">
         <div className="artemis-treasure-box">
             {/* Header */}
             <div className="artemis-treasure-header">
@@ -61,10 +65,7 @@ export const TreasureBox: React.FC = () => {
 
             {/* Loading State */}
             {loading && items.length === 0 && (
-                <div className="artemis-treasure-loading">
-                    <Loader2 className="artemis-treasure-loading-icon animate-spin" />
-                    <p className="artemis-treasure-loading-text">{t('treasure.loading')}</p>
-                </div>
+                <LoadingState messageKey="treasure.loading" />
             )}
 
             {/* Items Grid */}
@@ -115,10 +116,12 @@ export const TreasureBox: React.FC = () => {
 
             {/* Empty State */}
             {!loading && items.length === 0 && !error && (
-                <div className="artemis-treasure-empty">
-                    <Info className="artemis-treasure-empty-icon" />
-                    <p className="artemis-treasure-empty-text">{t('treasure.empty')}</p>
-                </div>
+                <EmptyState
+                    icon={Sparkles}
+                    titleKey="treasure.empty"
+                    detailKey="treasure.emptyDetail"
+                    cta={{ labelKey: 'common.refresh', onClick: () => refresh() }}
+                />
             )}
 
             {/* Engagement Effect Overlay */}
@@ -138,5 +141,6 @@ export const TreasureBox: React.FC = () => {
                 )}
             </AnimatePresence>
         </div>
+        </LockedOverlay>
     );
 };

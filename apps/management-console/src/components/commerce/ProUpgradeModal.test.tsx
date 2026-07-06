@@ -14,6 +14,34 @@ import { useCheckoutSession } from '../../hooks/useCheckoutSession';
 // mock custom hook
 jest.mock('../../hooks/useCheckoutSession');
 
+jest.mock('../../i18n', () => ({
+    useTranslation: () => ({
+        t: (key: string, opts?: { feature?: string }) => {
+            const map: Record<string, string> = {
+                'pro.modalTitle': 'Unlock Aiome Pro',
+                'pro.modalSubtitle': 'Supercharge your AI OS.',
+                'pro.cancel': 'Cancel',
+                'pro.upgrade': 'Upgrade to Pro',
+                'pro.closeModal': 'Close modal',
+                'pro.pricePeriod': '/ month',
+                'pro.trialBadge': '14-day Free Trial',
+                'pro.featureBuzz': 'Buzz',
+                'pro.featureBuzzDesc': 'Buzz desc',
+                'pro.featureAgentSense': 'AgentSense',
+                'pro.featureAgentSenseDesc': 'AgentSense desc',
+                'pro.featureLora': 'LoRA',
+                'pro.featureLoraDesc': 'LoRA desc',
+                'pro.featureGift': 'Gifts',
+                'pro.featureGiftDesc': 'Gifts desc',
+                'pro.featureTts': 'TTS',
+                'pro.featureTtsDesc': 'TTS desc',
+                'pro.triggeredBy': `${opts?.feature ?? ''} requires Pro`,
+            };
+            return map[key] ?? key;
+        },
+    }),
+}));
+
 jest.mock('../../config', () => ({
     API_BASE: 'http://localhost:3000',
 }));
@@ -79,8 +107,8 @@ describe('ProUpgradeModal component', () => {
         fireEvent(window, new CustomEvent('stripe-402-payment-required'));
         expect(screen.getByText('Unlock Aiome Pro')).toBeInTheDocument();
 
-        // Press Escape
-        fireEvent.keyDown(window, { key: 'Escape' });
+        // Press Escape (Modal listens on document)
+        fireEvent.keyDown(document, { key: 'Escape' });
 
         expect(screen.queryByText('Unlock Aiome Pro')).not.toBeInTheDocument();
     });

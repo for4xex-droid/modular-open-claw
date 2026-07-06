@@ -10,6 +10,7 @@ import { useSystemVitality } from '../hooks/useSystemVitality';
 import { authenticatedFetch } from '../lib/auth';
 import { SidecarHealth } from '../types';
 import { API_BASE } from '../config';
+import { LoadingState } from './ui/LoadingState';
 
 /** Quality Gate 履歴エントリの型定義（バックエンド QualityGateEntry と同期） */
 interface QualityGateEvent {
@@ -34,6 +35,7 @@ export default function SeoPulseView() {
     const [geoOptimizerStatus, setGeoOptimizerStatus] = useState<SidecarHealth | null>(null);
     const [history, setHistory] = useState<QualityGateEvent[]>([]);
     const [currentViseme, setCurrentViseme] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         let timeoutId: ReturnType<typeof setTimeout>;
@@ -55,7 +57,6 @@ export default function SeoPulseView() {
     useEffect(() => {
         const fetchStatus = async () => {
             try {
-                // auth-exempt, standard fetch
                 const res = await fetch(`${API_BASE}/api/v1/bootstrap/status`);
                 if (res.ok) {
                     const data = await res.json();
@@ -81,8 +82,12 @@ export default function SeoPulseView() {
                 console.error("Failed to fetch quality gate history", err);
             }
         };
-        fetchStatus();
-        fetchHistory();
+        const loadAll = async () => {
+            setLoading(true);
+            await Promise.all([fetchStatus(), fetchHistory()]);
+            setLoading(false);
+        };
+        loadAll();
     }, []);
 
     // Combine unique events (by job_id or just append latest live ones to history)
@@ -128,6 +133,10 @@ export default function SeoPulseView() {
             </div>
 
             <div style={{ padding: 'var(--space-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', overflowY: 'auto' }}>
+                {loading ? (
+                    <LoadingState messageKey="loading" />
+                ) : (
+                <>
                 {/* Viseme Visualizer */}
                 <div className="glass-panel" style={{ padding: 'var(--space-sm)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)' }}>
                     <div style={{ fontSize: 'var(--font-size-2xs)', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 'var(--space-xs)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
@@ -190,6 +199,8 @@ export default function SeoPulseView() {
                         ))
                     )}
                 </div>
+                </>
+                )}
             </div>
         </div>
     );

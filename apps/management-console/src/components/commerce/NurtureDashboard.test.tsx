@@ -39,6 +39,12 @@ describe('NurtureDashboard Commerce Integration', () => {
           json: () => Promise.resolve({ balance: 1000, lifetime_earned: 1000, lifetime_withdrawn: 0, conversion_rate_bps: 100 }),
         });
       }
+      if (url.includes('/commerce/balance')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ balance: 500 }),
+        });
+      }
       if (url.includes('/commerce/history')) {
         return Promise.resolve({
           ok: true,
@@ -63,7 +69,7 @@ describe('NurtureDashboard Commerce Integration', () => {
     });
 
     // Act: Click Buy Points button
-    const buyButton = screen.getByText('Buy Points');
+    const buyButton = screen.getByText('Buy Points (KC)');
     expect(buyButton).toBeInTheDocument();
     
     fireEvent.click(buyButton);

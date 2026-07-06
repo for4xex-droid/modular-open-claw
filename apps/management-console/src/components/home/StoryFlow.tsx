@@ -8,11 +8,12 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Send, Sparkles, Volume2, VolumeX, Cpu, Wifi, WifiOff, Brain } from 'lucide-react';
 import FlowCard, { FlowCardType } from './FlowCard';
-import { useAgentChat } from '../../hooks/useAgentChat';
+import { useAgentChat } from '../../hooks/AgentChatProvider';
 import { VitalityEvent } from '../../hooks/useSystemVitality';
 import { useTranslation } from '../../i18n';
 import { useCortexSuggestions } from '../../hooks/useCortexSuggestions';
 import { TokenSavingsIndicator } from '../common/TokenSavingsIndicator';
+import { LockedOverlay } from '../ui/LockedOverlay';
 import { SLASH_COMMANDS } from '../../constants/slashCommands';
 
 /** Unified timeline entry for rendering */
@@ -221,6 +222,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                 <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                     <TokenSavingsIndicator savedChars={sessionSavedChars} variant="compact" />
                     {/* TTS Toggle */}
+                    <LockedOverlay featureNameKey="pro.featureTts">
                     <button
                         onClick={() => chat.setAutoTts(!chat.autoTts)}
                         style={{
@@ -240,6 +242,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                         {chat.autoTts ? <Volume2 size={11} /> : <VolumeX size={11} />}
                         TTS
                     </button>
+                    </LockedOverlay>
 
                     {/* Connection Status */}
                     <div style={{

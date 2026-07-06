@@ -7246,6 +7246,7 @@ dependencies = [
  "secrecy",
  "serde",
  "serde_json",
+ "serial_test 3.4.0",
  "shared",
  "sqlx",
  "subtle",

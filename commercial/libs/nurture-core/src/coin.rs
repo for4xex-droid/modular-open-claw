@@ -28,6 +28,8 @@ pub struct CoinWallet {
     pub coin: AiomeCoin,
     pub daily_limit: u64,
     pub spent_today: u64,
+    pub monthly_limit: u64,
+    pub spent_this_month: u64,
     pub last_reset: DateTime<Utc>,
     pub last_transaction_at: Option<DateTime<Utc>>,
     pub version: u64,
@@ -54,6 +56,7 @@ impl CoinWallet {
 
     pub fn spend(&mut self, amount: u64) -> Result<(), NurtureError> {
         self.check_daily_limit(amount)?;
+        self.check_monthly_limit(amount)?;
 
         if self.coin.balance < amount {
             return Err(NurtureError::InsufficientBalance {
@@ -76,6 +79,26 @@ impl CoinWallet {
                 .ok_or_else(|| NurtureError::Ledger {
                     reason: "Spent today overflow".to_string(),
                 })?;
+        self.spent_this_month =
+            self.spent_this_month
+                .checked_add(amount)
+                .ok_or_else(|| NurtureError::Ledger {
+                    reason: "Spent this month overflow".to_string(),
+                })?;
+        Ok(())
+    }
+
+    pub fn check_monthly_limit(&self, amount: u64) -> Result<(), NurtureError> {
+        if self.monthly_limit == 0 {
+            return Ok(());
+        }
+        let new_spent = self.spent_this_month.saturating_add(amount);
+        if new_spent > self.monthly_limit {
+            return Err(NurtureError::MonthlyLimitExceeded {
+                limit: self.monthly_limit,
+                current: new_spent,
+            });
+        }
         Ok(())
     }
 
@@ -106,6 +129,8 @@ mod tests {
             },
             daily_limit: limit,
             spent_today: 0,
+            monthly_limit: limit,
+            spent_this_month: 0,
             last_reset: Utc::now(),
             last_transaction_at: None,
             version: 0,
@@ -140,6 +165,31 @@ mod tests {
     }
 
     #[test]
+    fn test_monthly_limit() {
+        let mut wallet = CoinWallet {
+            owner: ActorId(Uuid::new_v4()),
+            coin: AiomeCoin {
+                balance: 1000,
+                lifetime_charged: 1000,
+                lifetime_spent: 0,
+            },
+            daily_limit: 10_000,
+            spent_today: 0,
+            monthly_limit: 100,
+            spent_this_month: 0,
+            last_reset: Utc::now(),
+            last_transaction_at: None,
+            version: 0,
+        };
+        wallet.spend(60).unwrap();
+        let result = wallet.spend(50);
+        assert!(matches!(
+            result,
+            Err(NurtureError::MonthlyLimitExceeded { .. })
+        ));
+    }
+
+    #[test]
     fn test_daily_limit() {
         let mut wallet = test_wallet(1000, 100);
         wallet.spend(60).unwrap();
@@ -168,6 +218,8 @@ mod tests {
             },
             daily_limit: 10000,
             spent_today: 0,
+            monthly_limit: 0,
+            spent_this_month: 0,
             last_reset: Utc::now(),
             last_transaction_at: None,
             version: 0,

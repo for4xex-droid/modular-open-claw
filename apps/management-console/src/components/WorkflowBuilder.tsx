@@ -22,7 +22,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import './WorkflowBuilder.css';
 import { useWorkflowApi } from '../hooks/useWorkflowApi';
-import { estimateCost } from '../lib/workflowConverter';
+import { estimateCost, NodeType } from '../lib/workflowConverter';
 import { useSystemVitality } from '../hooks/useSystemVitality';
 import { useTranslation } from '../i18n';
 
@@ -68,6 +68,31 @@ const nodeTypes = {
   Condition: ConditionNode,
 };
 
+interface NodeConfigDetails {
+  trigger?: string;
+  model?: string;
+  temperature?: number;
+  delay_seconds?: number;
+  language?: string;
+  code?: string;
+  mode?: string;
+  expression?: string;
+  max_iterations?: number;
+}
+
+const detailStr = (v: unknown, fallback = ''): string =>
+  typeof v === 'string' ? v : fallback;
+
+const detailNum = (v: unknown, fallback: number): number =>
+  typeof v === 'number' && !Number.isNaN(v) ? v : fallback;
+
+interface WorkflowTaskEventData {
+  job_id?: string;
+  percent?: number;
+  message?: string;
+  error?: string;
+}
+
 export default function WorkflowBuilder() {
   const { t } = useTranslation();
 
@@ -98,7 +123,7 @@ export default function WorkflowBuilder() {
     if (!lastEvent || !currentExecutionId) return;
 
     const { type, data } = lastEvent;
-    const eventData = data as any;
+    const eventData = data as WorkflowTaskEventData;
 
     if (eventData?.job_id !== currentExecutionId) return;
 
@@ -230,12 +255,12 @@ export default function WorkflowBuilder() {
     setSelectedNode((prev) => prev ? { ...prev, data: { ...prev.data, label } } : null);
   };
 
-  const getNodeTypeInfo = (node: Node) => {
-    const nodeType = node.data?.node_type as any;
+  const getNodeTypeInfo = (node: Node): { typeName: string; details: NodeConfigDetails } => {
+    const nodeType = node.data?.node_type as NodeType | undefined;
     if (!nodeType) return { typeName: 'Start', details: { trigger: 'Manual' } };
     const typeName = Object.keys(nodeType)[0];
-    const details = nodeType[typeName] || {};
-    return { typeName, details };
+    const details = Object.values(nodeType)[0] ?? {};
+    return { typeName, details: details as NodeConfigDetails };
   };
 
   const updateNodeTypeDetails = (updates: any) => {
@@ -268,7 +293,7 @@ export default function WorkflowBuilder() {
     );
   };
 
-  const { typeName, details } = selectedNode ? getNodeTypeInfo(selectedNode) : { typeName: '', details: {} as any };
+  const { typeName, details } = selectedNode ? getNodeTypeInfo(selectedNode) : { typeName: '', details: {} as NodeConfigDetails };
 
   return (
     <div className="workflow-builder-container">
@@ -377,7 +402,7 @@ export default function WorkflowBuilder() {
                   <label>{t('workflowBuilder.config.llmModel')}</label>
                   <input
                     type="text"
-                    value={details.model || ''}
+                    value={detailStr(details.model)}
                     onChange={(e) => updateNodeTypeDetails({ model: e.target.value })}
                   />
                 </div>
@@ -388,7 +413,7 @@ export default function WorkflowBuilder() {
                     step="0.1"
                     min="0"
                     max="2"
-                    value={details.temperature ?? 0.7}
+                    value={detailNum(details.temperature, 0.7)}
                     onChange={(e) => updateNodeTypeDetails({ temperature: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
@@ -401,7 +426,7 @@ export default function WorkflowBuilder() {
                 <input
                   type="number"
                   min="1"
-                  value={details.delay_seconds || 60}
+                  value={detailNum(details.delay_seconds, 60)}
                   onChange={(e) => updateNodeTypeDetails({ delay_seconds: parseInt(e.target.value) || 1 })}
                 />
               </div>
@@ -412,7 +437,7 @@ export default function WorkflowBuilder() {
                 <div className="form-group">
                   <label>{t('workflowBuilder.config.language')}</label>
                   <select
-                    value={details.language || 'javascript'}
+                    value={detailStr(details.language, 'javascript')}
                     onChange={(e) => updateNodeTypeDetails({ language: e.target.value })}
                   >
                     <option value="javascript">JavaScript</option>
@@ -423,7 +448,7 @@ export default function WorkflowBuilder() {
                 <div className="form-group">
                   <label>{t('workflowBuilder.config.wasmCode')}</label>
                   <textarea
-                    value={details.code || ''}
+                    value={detailStr(details.code)}
                     onChange={(e) => updateNodeTypeDetails({ code: e.target.value })}
                     rows={4}
                   />
@@ -436,7 +461,7 @@ export default function WorkflowBuilder() {
                 <div className="form-group">
                   <label>{t('workflowBuilder.config.evaluationMode')}</label>
                   <select
-                    value={details.mode || 'Expression'}
+                    value={detailStr(details.mode, 'Expression')}
                     onChange={(e) => updateNodeTypeDetails({ mode: e.target.value })}
                   >
                     <option value="Expression">Expression</option>
@@ -447,7 +472,7 @@ export default function WorkflowBuilder() {
                   <label>{t('workflowBuilder.config.expression')}</label>
                   <input
                     type="text"
-                    value={details.expression || ''}
+                    value={detailStr(details.expression)}
                     onChange={(e) => updateNodeTypeDetails({ expression: e.target.value })}
                   />
                 </div>

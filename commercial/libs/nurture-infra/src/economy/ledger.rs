@@ -9,7 +9,7 @@
 
 use crate::economy::merkle::MerkleAudit;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, Utc};
 use commerce_protocol::error::NurtureError;
 use commerce_protocol::identity::ActorId;
 use nurture_bridge::db::{DatabasePool, DatabaseTransaction};
@@ -77,6 +77,8 @@ impl EconomyLedger for DatabaseEconomyLedger {
                 i64,
                 i64,
                 i64,
+                i64,
+                i64,
                 DateTime<Utc>,
                 i64,
                 Option<DateTime<Utc>>,
@@ -84,29 +86,33 @@ impl EconomyLedger for DatabaseEconomyLedger {
             AiomeError,
         > = sql_fetch_optional_map!(
             &self.pool,
-            sqlite: "SELECT balance, lifetime_charged, lifetime_spent, daily_limit, spent_today, last_reset, version, last_transaction_at FROM nurture_wallets WHERE actor_id = ?",
+            sqlite: "SELECT balance, lifetime_charged, lifetime_spent, daily_limit, spent_today, monthly_limit, spent_this_month, last_reset, version, last_transaction_at FROM nurture_wallets WHERE actor_id = ?",
             |row| {
                 let balance: i64 = row.get("balance");
                 let lifetime_charged: i64 = row.get("lifetime_charged");
                 let lifetime_spent: i64 = row.get("lifetime_spent");
                 let daily_limit: i64 = row.get("daily_limit");
                 let spent_today: i64 = row.get("spent_today");
+                let monthly_limit: i64 = row.get("monthly_limit");
+                let spent_this_month: i64 = row.get("spent_this_month");
                 let last_reset: DateTime<Utc> = row.get("last_reset");
                 let version: i64 = row.get("version");
                 let last_transaction_at: Option<DateTime<Utc>> = row.try_get("last_transaction_at").ok();
-                Ok::<(i64, i64, i64, i64, i64, DateTime<Utc>, i64, Option<DateTime<Utc>>), AiomeError>((balance, lifetime_charged, lifetime_spent, daily_limit, spent_today, last_reset, version, last_transaction_at))
+                Ok::<(i64, i64, i64, i64, i64, i64, i64, DateTime<Utc>, i64, Option<DateTime<Utc>>), AiomeError>((balance, lifetime_charged, lifetime_spent, daily_limit, spent_today, monthly_limit, spent_this_month, last_reset, version, last_transaction_at))
             },
-            pg: "SELECT balance, lifetime_charged, lifetime_spent, daily_limit, spent_today, last_reset, version, last_transaction_at FROM nurture_wallets WHERE actor_id = $1",
+            pg: "SELECT balance, lifetime_charged, lifetime_spent, daily_limit, spent_today, monthly_limit, spent_this_month, last_reset, version, last_transaction_at FROM nurture_wallets WHERE actor_id = $1",
             |row| {
                 let balance: i64 = row.get("balance");
                 let lifetime_charged: i64 = row.get("lifetime_charged");
                 let lifetime_spent: i64 = row.get("lifetime_spent");
                 let daily_limit: i64 = row.get("daily_limit");
                 let spent_today: i64 = row.get("spent_today");
+                let monthly_limit: i64 = row.get("monthly_limit");
+                let spent_this_month: i64 = row.get("spent_this_month");
                 let last_reset: DateTime<Utc> = row.get("last_reset");
                 let version: i64 = row.get("version");
                 let last_transaction_at: Option<DateTime<Utc>> = row.try_get("last_transaction_at").ok();
-                Ok::<(i64, i64, i64, i64, i64, DateTime<Utc>, i64, Option<DateTime<Utc>>), AiomeError>((balance, lifetime_charged, lifetime_spent, daily_limit, spent_today, last_reset, version, last_transaction_at))
+                Ok::<(i64, i64, i64, i64, i64, i64, i64, DateTime<Utc>, i64, Option<DateTime<Utc>>), AiomeError>((balance, lifetime_charged, lifetime_spent, daily_limit, spent_today, monthly_limit, spent_this_month, last_reset, version, last_transaction_at))
             },
             actor.0.to_string()
         );
@@ -121,6 +127,8 @@ impl EconomyLedger for DatabaseEconomyLedger {
                 lifetime_spent,
                 daily_limit,
                 spent_today_val,
+                monthly_limit,
+                spent_this_month_val,
                 last_reset,
                 version,
                 last_transaction_at,
@@ -129,6 +137,10 @@ impl EconomyLedger for DatabaseEconomyLedger {
                 let mut spent_today = safe_u64(spent_today_val);
                 if last_reset.date_naive() < now.date_naive() {
                     spent_today = 0;
+                }
+                let mut spent_this_month = safe_u64(spent_this_month_val);
+                if last_reset.year() != now.year() || last_reset.month() != now.month() {
+                    spent_this_month = 0;
                 }
 
                 Ok(CoinWallet {
@@ -140,6 +152,8 @@ impl EconomyLedger for DatabaseEconomyLedger {
                     },
                     daily_limit: safe_u64(daily_limit),
                     spent_today,
+                    monthly_limit: safe_u64(monthly_limit),
+                    spent_this_month,
                     last_reset,
                     last_transaction_at,
                     version: safe_u64(version),
@@ -168,6 +182,8 @@ impl EconomyLedger for DatabaseEconomyLedger {
                     },
                     daily_limit: 10_000,
                     spent_today: 0,
+                    monthly_limit: 0,
+                    spent_this_month: 0,
                     last_reset: now,
                     last_transaction_at: None,
                     version: 0,
@@ -489,6 +505,17 @@ impl DatabaseEconomyLedger {
                 reason: e.to_string(),
             })?;
 
+            sql_tx_exec!(
+                tx,
+                sqlite: "UPDATE nurture_wallets SET spent_this_month = 0 WHERE actor_id = ? AND strftime('%Y-%m', last_reset) < strftime('%Y-%m', ?)",
+                pg: "UPDATE nurture_wallets SET spent_this_month = 0 WHERE actor_id = $1 AND date_trunc('month', last_reset) < date_trunc('month', $2::timestamptz)",
+                &debit_str,
+                now
+            )
+            .map_err(|e| NurtureError::Ledger {
+                reason: e.to_string(),
+            })?;
+
             // 2. 出金側 (Debit) の更新
             let rows_affected = if entry.entry_type == EntryType::Charge
                 || entry.entry_type == EntryType::SurpriseBonus
@@ -514,8 +541,9 @@ impl DatabaseEconomyLedger {
                     EntryType::Transfer | EntryType::Purchase | EntryType::SystemFee | EntryType::PointsWithdrawal | EntryType::Burn | EntryType::CloneFork | EntryType::SageMeditation => {
                         sql_tx_exec!(
                             tx,
-                            sqlite: "UPDATE nurture_wallets SET balance = balance - ?, lifetime_spent = lifetime_spent + ?, spent_today = spent_today + ?, version = version + 1, last_transaction_at = CURRENT_TIMESTAMP WHERE actor_id = ? AND version = ? AND balance >= ?",
-                            pg: "UPDATE nurture_wallets SET balance = balance - $1, lifetime_spent = lifetime_spent + $2, spent_today = spent_today + $3, version = version + 1, last_transaction_at = CURRENT_TIMESTAMP WHERE actor_id = $4 AND version = $5 AND balance >= $6",
+                            sqlite: "UPDATE nurture_wallets SET balance = balance - ?, lifetime_spent = lifetime_spent + ?, spent_today = spent_today + ?, spent_this_month = spent_this_month + ?, version = version + 1, last_transaction_at = CURRENT_TIMESTAMP WHERE actor_id = ? AND version = ? AND balance >= ?",
+                            pg: "UPDATE nurture_wallets SET balance = balance - $1, lifetime_spent = lifetime_spent + $2, spent_today = spent_today + $3, spent_this_month = spent_this_month + $4, version = version + 1, last_transaction_at = CURRENT_TIMESTAMP WHERE actor_id = $5 AND version = $6 AND balance >= $7",
+                            safe_i64(entry.coin_amount)?,
                             safe_i64(entry.coin_amount)?,
                             safe_i64(entry.coin_amount)?,
                             safe_i64(entry.coin_amount)?,
@@ -545,8 +573,9 @@ impl DatabaseEconomyLedger {
                     EntryType::Transfer | EntryType::Purchase | EntryType::SystemFee | EntryType::PointsWithdrawal | EntryType::Burn | EntryType::CloneFork | EntryType::SageMeditation => {
                         sql_tx_exec!(
                             tx,
-                            sqlite: "UPDATE nurture_wallets SET balance = balance - ?, lifetime_spent = lifetime_spent + ?, spent_today = spent_today + ?, version = version + 1, last_transaction_at = CURRENT_TIMESTAMP WHERE actor_id = ? AND balance >= ?",
-                            pg: "UPDATE nurture_wallets SET balance = balance - $1, lifetime_spent = lifetime_spent + $2, spent_today = spent_today + $3, version = version + 1, last_transaction_at = CURRENT_TIMESTAMP WHERE actor_id = $4 AND balance >= $5",
+                            sqlite: "UPDATE nurture_wallets SET balance = balance - ?, lifetime_spent = lifetime_spent + ?, spent_today = spent_today + ?, spent_this_month = spent_this_month + ?, version = version + 1, last_transaction_at = CURRENT_TIMESTAMP WHERE actor_id = ? AND balance >= ?",
+                            pg: "UPDATE nurture_wallets SET balance = balance - $1, lifetime_spent = lifetime_spent + $2, spent_today = spent_today + $3, spent_this_month = spent_this_month + $4, version = version + 1, last_transaction_at = CURRENT_TIMESTAMP WHERE actor_id = $5 AND balance >= $6",
+                            safe_i64(entry.coin_amount)?,
                             safe_i64(entry.coin_amount)?,
                             safe_i64(entry.coin_amount)?,
                             safe_i64(entry.coin_amount)?,
@@ -571,9 +600,10 @@ impl DatabaseEconomyLedger {
                     // Refund時: credit(元のbuyer) の残高を増やす。さらに spent_today と lifetime_spent を回復させる
                     sql_tx_exec!(
                         tx,
-                        sqlite: "INSERT INTO nurture_wallets (actor_id, balance) VALUES (?, ?) ON CONFLICT(actor_id) DO UPDATE SET balance = balance + ?, lifetime_spent = MAX(0, lifetime_spent - ?), spent_today = MAX(0, spent_today - ?)",
-                        pg: "INSERT INTO nurture_wallets (actor_id, balance) VALUES ($1, $2) ON CONFLICT(actor_id) DO UPDATE SET balance = nurture_wallets.balance + $3, lifetime_spent = GREATEST(0, nurture_wallets.lifetime_spent - $4), spent_today = GREATEST(0, nurture_wallets.spent_today - $5)",
+                        sqlite: "INSERT INTO nurture_wallets (actor_id, balance) VALUES (?, ?) ON CONFLICT(actor_id) DO UPDATE SET balance = balance + ?, lifetime_spent = MAX(0, lifetime_spent - ?), spent_today = MAX(0, spent_today - ?), spent_this_month = MAX(0, spent_this_month - ?)",
+                        pg: "INSERT INTO nurture_wallets (actor_id, balance) VALUES ($1, $2) ON CONFLICT(actor_id) DO UPDATE SET balance = nurture_wallets.balance + $3, lifetime_spent = GREATEST(0, nurture_wallets.lifetime_spent - $4), spent_today = GREATEST(0, nurture_wallets.spent_today - $5), spent_this_month = GREATEST(0, nurture_wallets.spent_this_month - $6)",
                         &credit_str,
+                        safe_i64(entry.coin_amount)?,
                         safe_i64(entry.coin_amount)?,
                         safe_i64(entry.coin_amount)?,
                         safe_i64(entry.coin_amount)?,
@@ -777,6 +807,8 @@ mod tests {
                 lifetime_spent INTEGER NOT NULL,
                 daily_limit INTEGER NOT NULL,
                 spent_today INTEGER NOT NULL,
+                monthly_limit INTEGER NOT NULL DEFAULT 0,
+                spent_this_month INTEGER NOT NULL DEFAULT 0,
                 last_reset TIMESTAMP NOT NULL,
                 last_transaction_at TIMESTAMP,
                 version INTEGER NOT NULL
@@ -791,8 +823,8 @@ mod tests {
 
         // 不正な負の値 (-1000) を直接データベースに挿入
         sqlx::query(
-            "INSERT INTO nurture_wallets (actor_id, balance, lifetime_charged, lifetime_spent, daily_limit, spent_today, last_reset, version)
-             VALUES (?, -1000, -500, -200, -100, -50, ?, 0)"
+            "INSERT INTO nurture_wallets (actor_id, balance, lifetime_charged, lifetime_spent, daily_limit, spent_today, monthly_limit, spent_this_month, last_reset, version)
+             VALUES (?, -1000, -500, -200, -100, -50, -10, -5, ?, 0)"
         )
         .bind(actor.0.to_string())
         .bind(now)

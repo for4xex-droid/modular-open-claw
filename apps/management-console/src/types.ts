@@ -200,7 +200,7 @@ export interface SettingEntry {
     updated_at: string;
 }
 
-export type ViewMode = 'beginner' | 'intermediate' | 'advanced';
+export type ViewMode = 'simple' | 'cockpit';
 
 export interface CausalGraphNode {
     id: string;

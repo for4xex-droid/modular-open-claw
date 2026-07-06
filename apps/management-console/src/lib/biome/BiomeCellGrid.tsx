@@ -13,6 +13,7 @@ import { createCellGeometry } from './cellGeometries';
 import { CELL_COUNT, RENDER_STRIDE, GRID_WIDTH, MORPH_COUNT, InjectionMark } from './biomeTypes';
 import { biomeCellVertexShader, biomeCellFragmentShader } from './shaders/biomeCell';
 import ThemeBridge from './ThemeBridge';
+import { cssVar } from '../../utils/cssVar';
 
 // --- shaderMaterial の定義 ---
 const BiomeCellMaterial = shaderMaterial(
@@ -236,7 +237,7 @@ export function BiomeCellGrid({ renderView, rarity, injectionMarks, hoverCell }:
       {/* ホバーハイライト */}
       <mesh ref={hoverRingRef} visible={false}>
         <ringGeometry args={[0.35, 0.5, 16]} />
-        <meshBasicMaterial color="#00f0ff" transparent opacity={0.7} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={cssVar('--accent-cyan')} transparent opacity={0.7} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );

@@ -72,7 +72,7 @@ export function useWorkflowApi() {
     setError(null);
     try {
       const def = toWorkflowDefinition(params);
-      const res = await authenticatedFetch(`${API_BASE}/api/v1/workflows/validate`, {
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/workflows/${params.id}/validate`, {
         method: 'POST',
         body: JSON.stringify(def),
       });

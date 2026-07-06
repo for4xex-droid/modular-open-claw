@@ -17,12 +17,22 @@ jest.mock('../config', () => ({
     API_BASE: 'http://localhost:3000'
 }));
 
-jest.mock('../i18n', () => ({
-    useTranslation: () => ({ t: (key: string) => key })
-}));
+jest.mock('../i18n', () => {
+    const t = (key: string) => key;
+    return {
+        useTranslation: () => ({ t }),
+    };
+});
 
-jest.mock('./common/Toast', () => ({
-    useToast: () => ({ showToast: jest.fn() })
+jest.mock('./common/Toast', () => {
+    const showToast = jest.fn();
+    return {
+        useToast: () => ({ showToast }),
+    };
+});
+
+jest.mock('./ui/LoadingState', () => ({
+    LoadingState: () => <div data-testid="loading-state">loading</div>,
 }));
 
 jest.mock('./common/ConfirmModal', () => {
@@ -114,6 +124,36 @@ describe('ImmuneSystem Component', () => {
         ]
     };
 
+    const setupImmuneFetch = (rules: typeof mockRules | [] = mockRules) => {
+        mockFetch.mockImplementation((url: string, options?: RequestInit) => {
+            if (url.includes('/api/synergy/rules') && options?.method === 'POST') {
+                return Promise.resolve({ ok: true });
+            }
+            if (url.includes('/api/synergy/rules') && options?.method === 'PUT') {
+                return Promise.resolve({ ok: true });
+            }
+            if (url.includes('/api/synergy/rules') && options?.method === 'DELETE') {
+                return Promise.resolve({ ok: true });
+            }
+            if (url.includes('/api/synergy/rules')) {
+                return Promise.resolve({ ok: true, json: async () => rules });
+            }
+            if (url.includes('/api/v1/audit/quarantine')) {
+                return Promise.resolve({ ok: true, json: async () => mockQuarantined });
+            }
+            if (url.includes('/api/v1/watchtower')) {
+                return Promise.resolve({ ok: true, json: async () => mockAegisStatus });
+            }
+            return Promise.resolve({ ok: true, json: async () => [] });
+        });
+    };
+
+    const waitForRulesReady = async () => {
+        await waitFor(() => {
+            expect(screen.getByText('immune.forgeNewRule')).toBeTruthy();
+        });
+    };
+
     it('renders and fetches data correctly', async () => {
         mockFetch.mockImplementation((url) => {
             if (url.includes('/api/synergy/rules')) return Promise.resolve({ ok: true, json: async () => mockRules });
@@ -124,7 +164,9 @@ describe('ImmuneSystem Component', () => {
 
         render(<ImmuneSystem />);
 
-        expect(screen.getByText('immune.title')).toBeTruthy();
+        await waitFor(() => {
+            expect(screen.getByText('immune.title')).toBeTruthy();
+        });
 
         // Should be on RULES tab by default
         await waitFor(() => {
@@ -175,14 +217,10 @@ describe('ImmuneSystem Component', () => {
     });
 
     it('adds a new rule successfully', async () => {
-        mockFetch.mockImplementation((url, options) => {
-            if (url.includes('/api/synergy/rules') && options?.method === 'POST') {
-                return Promise.resolve({ ok: true });
-            }
-            return Promise.resolve({ ok: true, json: async () => [] });
-        });
+        setupImmuneFetch([]);
 
         render(<ImmuneSystem />);
+        await waitForRulesReady();
 
         // Click Add Rule button
         fireEvent.click(screen.getByText('immune.forgeNewRule'));
@@ -195,7 +233,7 @@ describe('ImmuneSystem Component', () => {
         fireEvent.change(screen.getByPlaceholderText('e.g. /etc/passwd'), { target: { value: 'test pattern' } });
         
         // Save
-        fireEvent.click(screen.getByText('immune.activateRule'));
+        fireEvent.click(await screen.findByText('immune.activateRule'));
 
         await waitFor(() => {
             expect(mockFetch).toHaveBeenCalledWith(
@@ -209,17 +247,10 @@ describe('ImmuneSystem Component', () => {
     });
 
     it('edits an existing rule successfully', async () => {
-        mockFetch.mockImplementation((url, options) => {
-            if (url.includes('/api/synergy/rules') && options?.method === 'PUT') {
-                return Promise.resolve({ ok: true });
-            }
-            if (url.includes('/api/synergy/rules') && !options) {
-                return Promise.resolve({ ok: true, json: async () => mockRules });
-            }
-            return Promise.resolve({ ok: true, json: async () => [] });
-        });
+        setupImmuneFetch();
 
         render(<ImmuneSystem />);
+        await waitForRulesReady();
 
         await waitFor(() => {
             expect(screen.getByText('/etc/passwd')).toBeTruthy();
@@ -237,7 +268,7 @@ describe('ImmuneSystem Component', () => {
         fireEvent.change(screen.getByDisplayValue('/etc/passwd'), { target: { value: 'new pattern' } });
 
         // Save
-        fireEvent.click(screen.getByText('immune.updateRule'));
+        fireEvent.click(await screen.findByText('immune.updateRule'));
 
         await waitFor(() => {
             expect(mockFetch).toHaveBeenCalledWith(

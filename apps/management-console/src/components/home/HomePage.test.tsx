@@ -95,7 +95,7 @@ describe('HomePage Component', () => {
         
         await waitFor(() => {
             expect(screen.queryByTestId('character-panel')).toBeNull();
-            expect(screen.getByTestId('commune-dialogue-view')).toBeTruthy();
+            expect(screen.getByTestId('biotope-view')).toBeTruthy();
         });
     });
 

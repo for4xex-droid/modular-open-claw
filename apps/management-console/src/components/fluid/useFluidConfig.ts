@@ -5,14 +5,14 @@
  * Licensed under the Business Source License 1.1.
  */
 import { useMemo } from 'react';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 import { cssVar } from '../../utils/cssVar';
 import { parseColorToRGB } from '../../utils/colorUtils';
 
 export function useFluidConfig() {
+  const prefersReducedMotion = usePrefersReducedMotion();
+
   return useMemo(() => {
-    const prefersReducedMotion =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const isMobile =
       typeof window !== 'undefined' &&
       window.matchMedia('(max-width: 768px)').matches;
@@ -30,5 +30,5 @@ export function useFluidConfig() {
       },
       maxDpr: isMobile ? 1.0 : 1.5,
     };
-  }, []);
+  }, [prefersReducedMotion]);
 }

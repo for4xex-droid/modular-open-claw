@@ -4,7 +4,10 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
-> Last Updated: 2026-05-30
+> Last Updated: 2026-07-06
+
+### Added
+- **OP-059 R2-3 月間支出上限 (W-7d)**: `monthly_spend_limit` ポリシー、`nurture_wallets` 月次カラム、インターセプタ/ledger/commerce 経路、Settings UI 連携。
 
 ### Added
 - **nurture-bridge L2 re-export (E-1)**:

@@ -762,7 +762,11 @@ impl CommerceEngine for StripeCommerceEngine {
             .mode(stripe_checkout::CheckoutSessionMode::Subscription)
             .success_url(success_url)
             .cancel_url(cancel_url)
-            .line_items(vec![line_item]);
+            .line_items(vec![line_item])
+            .metadata(std::collections::HashMap::from([
+                ("agent_id".to_string(), agent_id.to_string()),
+                ("checkout_type".to_string(), "pro_subscription".to_string()),
+            ]));
 
         let session = create_session
             .send(&self.client)

@@ -12,6 +12,7 @@ import { authenticatedFetch } from "../lib/auth";
 import { useCheckoutSession } from '../hooks/useCheckoutSession';
 import { useTranslation } from '../i18n';
 import { useAgentIdentity } from '../hooks/useAgentIdentity';
+import { openProUpgradeModal } from '../hooks/useSubscriptionStatus';
 import { useToast } from './common/Toast';
 
 interface VoiceAsset {
@@ -165,37 +166,71 @@ export default function VoiceStore() {
             {t('voice.subtitle') || 'Acquire premium XTTS voices with mathematically enforced DRM.'}
           </p>
         </div>
-        <div style={{ 
-          background: "var(--black-30)", 
-          padding: "0.75rem 1.5rem", 
-          borderRadius: "8px",
-          border: "1px solid var(--white-05)",
-          display: "flex",
-          alignItems: "center",
-          gap: "1rem"
-        }}>
-          <div>
-            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase" }}>{t('voice.walletBalance')}</span>
-            <div style={{ fontWeight: "bold", color: balanceError ? "var(--accent-rose)" : "var(--accent-cyan)", fontSize: "1.2rem" }}>
-              {balanceError ? (t('common.error') || '—') : `${balance.toLocaleString()} KC`}
+        <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+          <div style={{ 
+            background: "var(--black-30)", 
+            padding: "0.75rem 1.5rem", 
+            borderRadius: "8px",
+            border: "1px solid var(--accent-cyan-30)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.75rem",
+            minWidth: "220px"
+          }}>
+            <span style={{ fontSize: "0.7rem", color: "var(--accent-cyan)", fontWeight: 700, textTransform: "uppercase" }}>
+              {t('voice.kcSectionTitle')}
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase" }}>{t('voice.walletBalance')}</span>
+                <div style={{ fontWeight: "bold", color: balanceError ? "var(--accent-rose)" : "var(--accent-cyan)", fontSize: "1.2rem" }}>
+                  {balanceError ? (t('common.error') || '—') : `${balance.toLocaleString()} KC`}
+                </div>
+              </div>
+              <button 
+                className="primary-button" 
+                style={{ padding: "0.5rem 1rem", fontSize: "0.85rem", background: "var(--accent-cyan)", color: "var(--black-100)" }}
+                onClick={handleCheckout}
+                disabled={isRecharging || !agentId}
+              >
+                {isRecharging ? (t('common.processing') || 'Processing...') : t('voice.kcRecharge')}
+              </button>
             </div>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{t('voice.kcSectionDesc')}</span>
           </div>
-          <button 
-            className="primary-button" 
-            style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
-            onClick={handleCheckout}
-            disabled={isRecharging || !agentId}
-          >
-            {isRecharging ? (t('common.processing') || 'Processing...') : (t('voice.recharge') || 'Recharge')}
-          </button>
-          <button 
-            className="secondary-button" 
-            style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
-            onClick={handlePortal}
-            disabled={isManagingPortal || !agentId}
-          >
-            {isManagingPortal ? (t('common.processing') || 'Processing...') : (t('voice.manageSubscription') || 'Manage')}
-          </button>
+          <div style={{ 
+            background: "var(--black-30)", 
+            padding: "0.75rem 1.5rem", 
+            borderRadius: "8px",
+            border: "1px solid var(--accent-purple-30)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.75rem",
+            minWidth: "220px"
+          }}>
+            <span style={{ fontSize: "0.7rem", color: "var(--accent-purple)", fontWeight: 700, textTransform: "uppercase" }}>
+              {t('voice.proSectionTitle')}
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+              <button 
+                className="primary-button" 
+                style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+                onClick={() => openProUpgradeModal()}
+                disabled={!agentId}
+              >
+                {t('pro.upgrade')}
+              </button>
+              <button 
+                className="secondary-button" 
+                style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+                onClick={handlePortal}
+                disabled={isManagingPortal || !agentId}
+              >
+                {isManagingPortal ? (t('common.processing') || 'Processing...') : t('voice.manageSubscription')}
+              </button>
+            </div>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{t('voice.proSectionDesc')}</span>
+          </div>
         </div>
       </div>
 

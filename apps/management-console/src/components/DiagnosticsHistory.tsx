@@ -19,6 +19,9 @@ import {
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
 import { useTranslation } from '../i18n';
+import { useToast } from './common/Toast';
+import { LoadingState } from './ui/LoadingState';
+import { EmptyState } from './ui/EmptyState';
 
 interface Diagnosis {
   id: number;
@@ -40,30 +43,41 @@ interface AuditEntry {
 
 const DiagnosticsHistory: React.FC = () => {
     const { t } = useTranslation();
+    const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<"diagnostics" | "ledger">("diagnostics");
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [ledger, setLedger] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
   const PAGE_SIZE = 20;
 
   useEffect(() => {
+    setPage(1);
     fetchData();
   }, [activeTab]);
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const endpoint = activeTab === "diagnostics" ? "/api/v1/audit/diagnostics" : "/api/v1/audit/ledger";
       const res = await authenticatedFetch(`${API_BASE}${endpoint}`);
       if (res.ok) {
         const data = await res.json();
-        if (activeTab === "diagnostics") setDiagnoses(data);
-        else setLedger(data);
+        if (activeTab === "diagnostics") setDiagnoses(Array.isArray(data) ? data : []);
+        else setLedger(Array.isArray(data) ? data : []);
+      } else {
+        const message = t('diagnostics.loadFailed', { defaultValue: 'Failed to load audit data.' });
+        setError(message);
+        showToast('error', message);
       }
     } catch (e) {
       console.error(`Failed to fetch ${activeTab}`, e);
+      const message = t('common.networkError', { defaultValue: 'A network error occurred.' });
+      setError(message);
+      showToast('error', message);
     } finally {
       setLoading(false);
     }
@@ -151,6 +165,8 @@ const DiagnosticsHistory: React.FC = () => {
     </div>
   );
 
+  const currentItems = activeTab === 'diagnostics' ? diagnoses : ledger;
+
   return (
     <div className="main-panel ani-fade">
       <div className="panel-header">
@@ -170,10 +186,22 @@ const DiagnosticsHistory: React.FC = () => {
 
       <div className="panel-content scroll-v" style={{ padding: '1.5rem' }}>
         {loading && page === 1 ? (
-          <div className="loading-state">
-            <RefreshCw className="ani-pulse" size={48} color="var(--accent-rose)" />
-            <p>{t('diagnostics.syncing')}</p>
+          <LoadingState messageKey="diagnostics.syncing" />
+        ) : error ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '4rem' }}>
+            <AlertTriangle size={48} color="var(--accent-rose)" style={{ opacity: 0.5 }} />
+            <p style={{ color: 'var(--text-secondary)' }}>{error}</p>
+            <button className="primary-button" onClick={fetchData}>
+              <RefreshCw size={14} /> {t('error.retry', { defaultValue: 'Retry' })}
+            </button>
           </div>
+        ) : currentItems.length === 0 ? (
+          <EmptyState
+            icon={activeTab === 'diagnostics' ? AlertTriangle : History}
+            titleKey={activeTab === 'diagnostics' ? 'diagnostics.emptyTitle' : 'diagnostics.ledgerEmptyTitle'}
+            detailKey="diagnostics.emptyDetail"
+            cta={{ labelKey: 'common.refresh', onClick: fetchData }}
+          />
         ) : (
           activeTab === 'diagnostics' ? renderDiagnostics() : renderLedger()
         )}
@@ -330,15 +358,6 @@ const DiagnosticsHistory: React.FC = () => {
         .hash-sig {
           font-size: 0.6rem;
           font-family: var(--font-mono);
-          color: var(--text-muted);
-        }
-        .loading-state {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 5rem;
-          gap: 1.5rem;
           color: var(--text-muted);
         }
       `}</style>

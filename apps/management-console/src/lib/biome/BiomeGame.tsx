@@ -20,6 +20,7 @@ import { BiomeTutorial } from './BiomeTutorial';
 import { BiomeEventToast } from './BiomeEventToast';
 import { fetchBiomeSpecimens, saveBiomeRun, saveBiomeSpecimen } from './biomeApi';
 import { isAuthenticated } from '../../lib/auth';
+import { cssVar } from '../../utils/cssVar';
 
 export interface BiomeGameProps {
   seed?: number;
@@ -350,7 +351,7 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
       paintEnv(coord.x, coord.y, 4, envPen);
       setClickPulse(true);
       setTimeout(() => setClickPulse(false), 150);
-      const penColor = envPen === 1 ? '#8899aa' : envPen === 2 ? '#66ff99' : '#ff5566';
+      const penColor = envPen === 1 ? cssVar('--biome-element-fe') : envPen === 2 ? cssVar('--accent-emerald') : cssVar('--accent-rose');
       const penLabel = envPen === 1 ? '🧱 壁' : envPen === 2 ? '🌿 養分' : '☠️ 毒';
       startInjectionRipple(coord.x, coord.y, 0);
       spawnFloatingText(coord.x, coord.y, penLabel, penColor);
@@ -373,7 +374,7 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
     lastInjectTimeRef.current = now;
 
     startInjectionRipple(coord.x, coord.y, 0);
-    const color = '#00f0ff';
+    const color = cssVar('--accent-cyan');
     spawnParticles(coord.x, coord.y, color);
     const comboText = nextCombo > 1 ? ` COMBO x${nextCombo}!` : '';
     spawnFloatingText(coord.x, coord.y, `🌱 種まき${comboText}`, color);
@@ -473,15 +474,15 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
       }}>
         {error ? (
           <>
-            <span style={{ color: 'var(--danger, #ff4444)' }}>⚠ Biome Engine の読み込みに失敗しました</span>
-            <span style={{ fontSize: '0.85rem', color: 'var(--white-60, #999)', maxWidth: '400px', textAlign: 'center' }}>{error}</span>
+            <span style={{ color: 'var(--accent-rose)' }}>⚠ Biome Engine の読み込みに失敗しました</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '400px', textAlign: 'center' }}>{error}</span>
             <button
               onClick={() => window.location.reload()}
               style={{
                 marginTop: '0.5rem',
                 padding: '0.5rem 1.5rem',
-                background: 'var(--primary, #6366f1)',
-                color: '#fff',
+                background: 'var(--accent-purple)',
+                color: 'var(--white-100)',
                 border: 'none',
                 borderRadius: '0.5rem',
                 cursor: 'pointer',
@@ -570,7 +571,7 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
           height: '512px',
           position: 'relative',
           flexShrink: 0,
-          boxShadow: clickPulse ? '0 0 24px 4px rgba(0, 240, 255, 0.6)' : '0 0 0 0 rgba(0, 240, 255, 0)',
+          boxShadow: clickPulse ? '0 0 24px 4px var(--accent-cyan-70)' : '0 0 0 0 var(--accent-cyan-05)',
           transition: 'box-shadow 0.15s ease-out'
         }}>
           <BiomeCanvas
@@ -597,8 +598,8 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
             width: '512px',
             height: '512px',
             borderRadius: 'var(--radius-md)',
-            background: 'radial-gradient(circle at center, rgba(0, 240, 255, 0.12) 0%, transparent 70%)',
-            boxShadow: flash ? '0 0 30px rgba(0, 240, 255, 0.3), inset 0 0 30px rgba(0, 240, 255, 0.1)' : 'none',
+            background: 'radial-gradient(circle at center, var(--accent-cyan-10) 0%, transparent 70%)',
+            boxShadow: flash ? '0 0 30px var(--accent-cyan-30), inset 0 0 30px var(--accent-cyan-10)' : 'none',
             opacity: flash ? 1 : 0,
             pointerEvents: 'none',
             transition: flash ? 'none' : 'opacity 0.3s ease-out',
@@ -656,8 +657,8 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
               position: 'absolute',
               bottom: '16px',
               left: '16px',
-              background: 'rgba(10, 15, 30, 0.85)',
-              border: '1px solid var(--accent-cyan, #00f0ff)',
+              background: 'var(--bg-deep-glass)',
+              border: '1px solid var(--accent-cyan)',
               borderRadius: 'var(--radius-sm)',
               padding: '8px 12px',
               fontSize: '0.8rem',
@@ -668,7 +669,7 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
               display: 'flex',
               flexDirection: 'column',
               gap: '4px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+              boxShadow: '0 4px 12px var(--black-50)'
             }}>
               <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)', display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
                 <span>座標 ({hoverCell.x}, {hoverCell.y})</span>
@@ -682,7 +683,7 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
                     {(hoverData.elements[2] / 655.35).toFixed(0)}%
                   </div>
                   {hoverData.is_frozen && (
-                    <div style={{ color: '#00f0ff', fontSize: '0.75rem', marginTop: '2px' }}>❄️ 凍結状態</div>
+                    <div style={{ color: 'var(--accent-cyan)', fontSize: '0.75rem', marginTop: '2px' }}>❄️ 凍結状態</div>
                   )}
                 </>
               )}
@@ -732,10 +733,10 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
           </div>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             {([
-              { key: null, label: '🌱 種まき', color: '#00f0ff' },
-              { key: 1 as const, label: '🧱 壁', color: '#8899aa' },
-              { key: 2 as const, label: '🌿 養分', color: '#66ff99' },
-              { key: 3 as const, label: '☠️ 毒', color: '#ff5566' },
+              { key: null, label: '🌱 種まき', color: 'var(--accent-cyan)' },
+              { key: 1 as const, label: '🧱 壁', color: 'var(--biome-element-fe)' },
+              { key: 2 as const, label: '🌿 養分', color: 'var(--accent-emerald)' },
+              { key: 3 as const, label: '☠️ 毒', color: 'var(--accent-rose)' },
             ]).map((pen) => (
               <button
                 key={String(pen.key)}
@@ -745,7 +746,7 @@ export function BiomeGame({ seed, standalone }: BiomeGameProps) {
                   background: envPen === pen.key ? pen.color : 'var(--white-05)',
                   border: `1px solid ${envPen === pen.key ? pen.color : 'var(--white-10)'}`,
                   borderRadius: 'var(--radius-sm)',
-                  color: envPen === pen.key ? '#001018' : 'var(--white-100)',
+                  color: envPen === pen.key ? 'var(--text-inverse)' : 'var(--white-100)',
                   padding: '8px 4px',
                   cursor: 'pointer',
                   fontSize: '12px',

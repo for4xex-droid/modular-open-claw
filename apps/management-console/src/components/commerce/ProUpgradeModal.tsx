@@ -9,124 +9,117 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, Check, X, CreditCard } from 'lucide-react';
 import { useCheckoutSession } from '../../hooks/useCheckoutSession';
 import { cssVar } from '../../utils/cssVar';
+import { useTranslation } from '../../i18n';
+import { Modal } from '../ui/Modal';
 
 interface ProUpgradeModalProps {
     priceId: string;
     agentId?: string;
+    /** Optional feature name i18n key when opened from LockedOverlay */
+    triggerFeatureKey?: string;
 }
 
+const FEATURE_KEYS = [
+    { title: 'pro.featureBuzz', desc: 'pro.featureBuzzDesc' },
+    { title: 'pro.featureAgentSense', desc: 'pro.featureAgentSenseDesc' },
+    { title: 'pro.featureLora', desc: 'pro.featureLoraDesc' },
+    { title: 'pro.featureGift', desc: 'pro.featureGiftDesc' },
+    { title: 'pro.featureTts', desc: 'pro.featureTtsDesc' },
+] as const;
+
 export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({ priceId, agentId }) => {
+    const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
+    const [triggerFeatureKey, setTriggerFeatureKey] = useState<string | undefined>();
     const { handleCheckout, isLoading, error } = useCheckoutSession(priceId, agentId);
 
     useEffect(() => {
         const handle402Event = () => {
             setIsOpen(true);
         };
+        const handleOpenEvent = (e: Event) => {
+            const detail = (e as CustomEvent<{ featureKey?: string }>).detail;
+            setTriggerFeatureKey(detail?.featureKey);
+            setIsOpen(true);
+        };
 
         window.addEventListener('stripe-402-payment-required', handle402Event);
+        window.addEventListener('pro-upgrade-modal-open', handleOpenEvent);
         return () => {
             window.removeEventListener('stripe-402-payment-required', handle402Event);
+            window.removeEventListener('pro-upgrade-modal-open', handleOpenEvent);
         };
     }, []);
 
-    useEffect(() => {
-        if (!isOpen) return;
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setIsOpen(false);
-        };
-        window.addEventListener('keydown', handleEscape);
-        return () => window.removeEventListener('keydown', handleEscape);
-    }, [isOpen]);
-
-    if (!isOpen) return null;
-
     return (
-        <div style={styles.overlay}>
-            <div style={styles.modal}>
-                {/* Header with Glowing Sparkles */}
+        <Modal
+            isOpen={isOpen}
+            onClose={() => setIsOpen(false)}
+            labelledBy="pro-upgrade-modal-title"
+            overlayStyle={styles.overlay}
+            dialogStyle={styles.modal}
+            zIndex={9999}
+        >
                 <div style={styles.header}>
                     <div style={styles.sparkleContainer}>
                         <Sparkles size={32} color={cssVar('--accent-purple', '#bc8cff')} style={styles.iconGlow} />
                     </div>
-                    <button onClick={() => setIsOpen(false)} style={styles.closeButton} aria-label="Close modal">
+                    <button type="button" onClick={() => setIsOpen(false)} style={styles.closeButton} aria-label={t('pro.closeModal')}>
                         <X size={18} color={cssVar('--text-secondary', '#94a3b8')} />
                     </button>
                 </div>
 
-                {/* Body Content */}
                 <div style={styles.content}>
-                    <h2 style={styles.title}>Unlock Aiome Pro</h2>
-                    <p style={styles.subtitle}>
-                        Supercharge your AI Operating System with full autonomy and production-ready economics.
-                    </p>
+                    <h2 id="pro-upgrade-modal-title" style={styles.title}>{t('pro.modalTitle')}</h2>
+                    {triggerFeatureKey && (
+                        <p style={{ ...styles.subtitle, color: 'var(--accent-purple)', fontWeight: 600 }}>
+                            {t('pro.triggeredBy', { feature: t(triggerFeatureKey) })}
+                        </p>
+                    )}
+                    <p style={styles.subtitle}>{t('pro.modalSubtitle')}</p>
 
-                    {/* Pro Features Checklist */}
                     <div style={styles.featuresList}>
-                        <div style={styles.featureItem}>
-                            <div style={styles.checkIconWrapper}>
-                                <Check size={14} color={cssVar('--accent-emerald', '#10b981')} />
+                        {FEATURE_KEYS.map(({ title, desc }) => (
+                            <div key={title} style={styles.featureItem}>
+                                <div style={styles.checkIconWrapper}>
+                                    <Check size={14} color={cssVar('--accent-emerald', '#10b981')} />
+                                </div>
+                                <div>
+                                    <h4 style={styles.featureTitle}>{t(title)}</h4>
+                                    <p style={styles.featureDesc}>{t(desc)}</p>
+                                </div>
                             </div>
-                            <div>
-                                <h4 style={styles.featureTitle}>Autonomous Revenue Engine</h4>
-                                <p style={styles.featureDesc}>Activate complete Stripe billing integration & economics ledger.</p>
-                            </div>
-                        </div>
-
-                        <div style={styles.featureItem}>
-                            <div style={styles.checkIconWrapper}>
-                                <Check size={14} color={cssVar('--accent-emerald', '#10b981')} />
-                            </div>
-                            <div>
-                                <h4 style={styles.featureTitle}>BuzzProtocol Growth Suite</h4>
-                                <p style={styles.featureDesc}>Automatic high-impact outreach and X (Twitter) cognitive expansion.</p>
-                            </div>
-                        </div>
-
-                        <div style={styles.featureItem}>
-                            <div style={styles.checkIconWrapper}>
-                                <Check size={14} color={cssVar('--accent-emerald', '#10b981')} />
-                            </div>
-                            <div>
-                                <h4 style={styles.featureTitle}>Sovereign Security Shield</h4>
-                                <p style={styles.featureDesc}>Hardened production config, Sandboxed Isolation, and eKYC verification.</p>
-                            </div>
-                        </div>
+                        ))}
                     </div>
 
-                    {/* Pricing & Trial Notice */}
                     <div style={styles.priceContainer}>
                         <span style={styles.priceAmount}>$19.99</span>
-                        <span style={styles.pricePeriod}>/ month</span>
-                        <div style={styles.trialBadge}>14-day Free Trial</div>
+                        <span style={styles.pricePeriod}>{t('pro.pricePeriod')}</span>
+                        <div style={styles.trialBadge}>{t('pro.trialBadge')}</div>
                     </div>
 
                     {error && <div style={styles.errorMessage}>{error}</div>}
                 </div>
 
-                {/* Footer Buttons */}
                 <div style={styles.footer}>
-                    <button onClick={() => setIsOpen(false)} style={styles.cancelButton} disabled={isLoading}>
-                        Cancel
+                    <button type="button" onClick={() => setIsOpen(false)} style={styles.cancelButton} disabled={isLoading}>
+                        {t('pro.cancel')}
                     </button>
-                    <button onClick={handleCheckout} style={styles.upgradeButton} disabled={isLoading}>
+                    <button type="button" onClick={handleCheckout} style={styles.upgradeButton} disabled={isLoading}>
                         {isLoading ? (
                             <span style={styles.spinner}></span>
                         ) : (
                             <>
                                 <CreditCard size={16} style={{ marginRight: '0.5rem' }} />
-                                Upgrade to Pro
+                                {t('pro.upgrade')}
                             </>
                         )}
                     </button>
                 </div>
-            </div>
-        </div>
+        </Modal>
     );
 };
 
-// Sleek Glassmorphism & Cyberpunk-infused CSS-in-JS Styles
-// All colors reference tokens.css via var() — Golden Rule U-002 compliant
 const styles: { [key: string]: React.CSSProperties } = {
     overlay: {
         position: 'fixed',

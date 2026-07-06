@@ -38,6 +38,10 @@ pub fn internal_routes() -> Router {
         .route("/escrow-refund", post(escrow::refund_escrow))
         .route("/escrow-list/:actor_id", get(escrow::list_escrows))
         .route("/deduct", post(balance::deduct_cost))
+        .route(
+            "/economy-policy/monthly-limit",
+            post(balance::update_monthly_spend_limit),
+        )
         .route("/upload", post(misc::upload_handler))
         .route("/forget/:actor_id", post(gdpr::forget_actor))
         .route("/oxilean/status", get(misc::get_oxilean_status))
