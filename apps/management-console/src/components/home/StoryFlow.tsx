@@ -222,7 +222,7 @@ const StoryFlow: React.FC<StoryFlowProps> = ({ sysEvents = [], connectionStatus 
                 <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
                     <TokenSavingsIndicator savedChars={sessionSavedChars} variant="compact" />
                     {/* TTS Toggle */}
-                    <LockedOverlay featureNameKey="pro.featureTts">
+                    <LockedOverlay featureNameKey="pro.featureTts" variant="badge">
                     <button
                         onClick={() => chat.setAutoTts(!chat.autoTts)}
                         style={{

@@ -34,7 +34,7 @@ test.describe('Cortex Dynamic Suggestions', () => {
     await page.waitForSelector('.app-container', { timeout: 5000 });
 
     // Navigate to Home V2
-    const homeV2Tab = page.locator('nav.nav-group div', { hasText: 'Home v2' }).first();
+    const homeV2Tab = page.getByTestId('nav-home-v2');
     await expect(homeV2Tab).toBeVisible();
     await homeV2Tab.click();
   });

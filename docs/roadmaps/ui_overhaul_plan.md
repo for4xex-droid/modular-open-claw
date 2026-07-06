@@ -1,7 +1,7 @@
-# Aiome + Nurture UI 全体改善計画（UI Overhaul Plan v5 — /perfect-plan 4周検証済み・実装可能仕様）
+# Aiome + Nurture UI 全体改善計画（UI Overhaul Plan v6 — 実地レビュー反映・情報設計確定版）
 
-- **作成日**: 2026-07-05（v2: /perfect-plan 5ゲート検証。v3: 体感品質・品質基盤監査で Phase U5 新設。v4: 課金ジャーニー検証+計画横断監査。**v5: 全未決定分岐の解消 + 実装コントラクト（Appendix A）追加 — 誰でも実装可能な仕様に固定**）
-- **ステータス**: **実装中**（2026-07-05 着手 — U0/U2/U5-A 完了、U1 部分完了、U3/U4/U5-B 未着手）
+- **作成日**: 2026-07-05（v2: /perfect-plan 5ゲート検証。v3: 体感品質・品質基盤監査で Phase U5 新設。v4: 課金ジャーニー検証+計画横断監査。v5: 全未決定分岐の解消 + 実装コントラクト（Appendix A）追加。**v6（2026-07-07）: ユーザー実地レビューで「まだ分かりにくい」と判定。§12 に即修正バグ（U0-B）と Phase U6（情報設計の確定・メニュー順序）を新設**）
+- **ステータス**: **実装中**（2026-07-05 R1 完了 = U0/U1/U3/U4/U5 実装済み（OP-066: Jest 392 PASS / hex 0 / deep-scan 0。残: U2-4 variant 統合・U1-3 ギフト/ギルド）。**ただし U2 は「ラベル置換のみ完了・構造再編（5グループ化）は未完」に v6 で格下げ（§12.2）**。U0-B/U6 は未着手）
 - **根拠**: サブエージェント3体による実コード棚卸し（UI構造 / 課金導線 / Generative UI 資産）+ 第4サブエージェントによるパス実在検証（Gate 1 相当）済み。全ファイルパス・行番号は 2026-07-05 時点で実在確認済み。`GET /api/v1/commerce/subscription/{agent_id}` は `commerce.rs` L432–445 に実在（U1-1 はフロント追加のみで成立）。
 - **目的**: 以下4課題を解消し「AI に詳しくなくても使いこなせる UI」へ転換する。
   1. **課金メリットが伝わらない** — Pro の価値が 402 エラー発生まで不可視
@@ -510,4 +510,207 @@ REPO=/Users/motista/Desktop/antigravity/aiome
 | ネットワーク遮断 spec（`e2e/error-states.spec.ts` 新規） | U5-1 の Negative Test | U5-1 着手時 |
 | `rollup-plugin-visualizer`（任意） | U5-9 chunk 分析（`npm run build` stdout でも代替可） | U5-9 着手時 |
 | `test_ui_hex_violations.py` の CI 組込（任意） | U3 ゲートの回帰防止 | U3 完了時 |
+
+---
+
+## 12. v6（2026-07-07）: ユーザー実地レビューの反映 — 即修正バグ + 情報設計の確定
+
+**契機**: ローカル起動レビューで「本人ステータスの読み込みに失敗しました」エラーが多重表示され、かつ「各機能の使い方もセクション毎の名前も全て分かりにくい。メニューの順番も含めて改修せよ」との判定を受けた。v5 までの計画は「ラベルの日常語化（U2-5）」を完了扱いにしていたが、**実地では効果不十分**であることが確認された。
+
+### 12.1 Phase U0-B: 即修正バグ（工数: 小 / 最優先）
+
+| ID | 症状 | 根本原因（検証済み） | 修正案 | 備考 |
+|---|---|---|---|---|
+| U0-B1 | ホーム表示直後に「本人ステータスの読み込みに失敗しました」トーストが3連発 | `GET /api/v1/ekyc/status` が **HTTP 500**（実測: `Missing request extension: AuthenticatedUser`）。`router.rs` L597–600 で本ルートが `internal_router`（`auth_middleware` 層 = 検証のみ、extension 注入なし）に登録されているが、ハンドラ `get_ekyc_status_handler`（`avatar.rs` L172–174）は `jwt_auth_middleware` が注入する `Extension<AuthenticatedUser>` を要求するため必ず落ちる。旧パス `/api/avatar/ekyc-status`（L819–827）は `jwt_auth_middleware` を個別適用しており正常 | (a) `router.rs` L597 のルートに `jwt_auth_middleware` を route_layer で適用（旧パスと同形）、または (b) ハンドラを `Authenticated` extractor に書換。**(a) を推奨**（ハンドラ不変・差分1箇所） | **Safety-Critical（認証）隣接**。実装には明示的な「修正しろ」承認が必要 |
+| U0-B2 | 同エラーが同時に3枚も積み上がる | `CharacterPanel.tsx` L40–58 が eKYC/soul の2 fetch で同一文言のトーストを出し、React StrictMode の二重マウントで倍加。失敗の区別も再試行手段もない | エラートーストの重複抑止（同一メッセージのデデュープ）+ CharacterPanel は「読み込み失敗」をパネル内表示+再試行ボタンに変更（U5-1 のパターン適用対象に追加） | フロントのみ |
+| U0-B3 | eKYC ステータス確認のたびに Stripe セッションを新規作成している | `get_ekyc_status_handler` が status 確認なのに `create_verification_session` を呼ぶ（`STRIPE_API_KEY` 設定時は毎回実 API 呼び出し = 遅延・失敗要因） | status 確認とセッション作成の分離（`/api/v1/ekyc/session` は既に別在: `router.rs` L574–584）。status ハンドラから session 作成を除去 | Safety-Critical 隣接のため要承認 |
+| U0-B4 | HEX/rgba 直書きの回帰（U-002 違反） | `python3 scripts/test_ui_hex_violations.py` が **RED**: `CoinChip.tsx` に rgba 直書き2件（2026-07-06 の D-1 残高統合実装で混入。U3-1 完了後の新規リグレッション） | rgba 2件を `tokens.css` の var() へ置換 | フロントのみ・サブエージェント委譲可 |
+
+### 12.2 U2 の完了判定の訂正（v6 監査）
+
+実コード確認（2026-07-07）の結果、U2 の実装状況は以下の通り:
+
+- **完了**: viewMode 2値化（`isVisible()` は simple/cockpit の2配列）、一次ラベルの日常語化（`nav.*` 値の置換）
+- **未完**: **U2-3 のサイドバー5グループ再編**。現状は `nav.section.synergyHub`（「ホーム」）に16項目、`nav.section.control`（「ツール」）に10項目の**2グループ・順序に設計意図なし**（`App.tsx` L485–707）
+- **効果不十分**: U2-5 のラベルは平易語になったが、**互いに区別がつかない**（下表）。「ラベルを易しくする」だけでは「どれを押せば何が起きるか」は伝わらない
+
+**現行ラベルの混同ペア（実地レビューで露呈した問題）**:
+
+| 混同グループ | 現行ラベル | 実体 |
+|---|---|---|
+| 記録系3画面 | 「きろく」(karma) /「行動の記録」(audit) /「利用状況」(prompt-stats) | Karma年代記 / 監査ログ / プロンプト統計 |
+| 状態系2画面 | 「ようすを見る」(dashboard) /「健康状態」(status-page) | Biotope総合ダッシュボード / システム稼働状態 |
+| つながり系2画面 | 「つながり」(graph) /「AI同士の対話」(commune) | 共鳴マップ / P2P Commune |
+| 意味不明ラベル | 「原因をたどる」(causal) /「デモ」(demo) /「ふやす」(nurture) /「整える」(settings) | 因果トレース / 自律デモ / Nurture経済 / 設定 |
+| 二重ナビ | サイドバー「ホーム」内の HomePage にさらに home/shop/world/settings の4タブ | サイドバーと同名概念が入れ子（`HomePage.tsx` L58） |
+
+### 12.3 Phase U6: 情報設計の確定 — メニュー順序・命名規約・画面自己説明（工数: 中 / U0-B 後）
+
+**設計原則（v6 追加）**:
+1. **並び順は「利用頻度 × 習熟段階」**: 毎日使う（話す・見る）→ 育てる → 広げる → 守る・設定 の順。アルファベットや実装順ではなく、ユーザーの一日の動線に沿う。
+2. **ラベルは「動詞的ひらがな」をやめ「名詞（機能名）+サブテキスト」に**: 「ようすを見る」のような曖昧動詞は識別子として機能しない。一次ラベルは短い名詞、NavItem に1行サブテキスト（または tooltip）で「何ができるか」を必ず添える。
+3. **1画面1責務・重複統合**: 区別できない画面は名前を変えるのではなく統合するか、親子関係（タブ）にする。
+4. **全画面に自己説明ヘッダ**: 画面上部に「この画面でできること」1行説明を常設（i18n `page.*.description` を新設）。
+
+| ID | 内容 | 対象 | 検証 |
+|---|---|---|---|
+| U6-1 | **サイドバー5グループ再編+順序確定**（下表。U2-3 の未完部分を確定仕様で実施）。`nav.section.*` キーを5個に拡張 | `App.tsx` L485–707 / `i18n/ja.json`・`en.json` | 全項目が設計表の順に表示・Jest スナップショット更新 |
+| U6-2 | **ラベル全面改定**（下表）: 名詞化+混同ペア解消。`nav.*` は値のみ変更（キー不変 = テスト影響最小、v4 §4.5 の原則踏襲） | `i18n/ja.json` / `en.json` | 混同ペア表の全行が別名になる。i18n パリティテスト PASS |
+| U6-3 | **NavItem サブテキスト対応**: `NavItem` に `description?: string` を追加し、ホバー tooltip + サイドバー幅に応じた2行表示。`nav.desc.*` キー新設（26項目） | `App.tsx` L876（NavItem）/ i18n | 全 NavItem に説明が付く |
+| U6-4 | **画面自己説明ヘッダ**: 各画面 `<h2>` 直下に1行説明（`page.desc.*`）。まず cockpit 26画面に一括適用 | `App.tsx` のタイトル描画部 + i18n | 全画面に説明表示 |
+| U6-5 | **記録系3画面の統合**: 「きろく」「行動の記録」「利用状況」を単一「アクティビティ」画面のタブ（タイムライン / 監査ログ / 使用量）に統合。ルーティングは activeTab 互換を維持（旧値→新画面+タブへ写像）。**A2UI ナビ whitelist（`lib/a2uiTabs.ts` L9–37）と backend `validator.rs` L540（`navigate:audit` 使用例）にも写像を反映**（§13 Gate 3） | `Timeline.tsx` / `DiagnosticsHistory.tsx` / `PromptStatsView.tsx` + `App.tsx` / `lib/a2uiTabs.ts` / `libs/infrastructure/src/a2ui/validator.rs` | 3ラベルがサイドバーから1つに減る。旧 activeTab 値・`navigate:audit` でも到達可能 |
+| U6-6 | **HomePage 二重ナビの解消**: HomePage 内 settings タブは Cockpit の設定画面へ誘導（重複実装を段階廃止）。world タブは「ワールド」サイドバー項目と統合方針を確定（simple モードの唯一の入口として残すのは可） | `home/HomePage.tsx` | サイドバーと HomePage で同名異物がなくなる |
+| U6-7 | **demo の降格**: 「デモ」をサイドバー常設から外し、ホームの「はじめての方へ」カード（初回のみ）+ 設定内へ移動 | `App.tsx` / `home/HomePage.tsx` | cockpit 既定表示が1項目減る |
+| U6-8 | **スタイル負債 第2波（おしゃれ化の実弾）**: (1) インライン style 最多5ファイル（`AgentConsole` 93 / `ImmuneSystem` 86 / `StatusPage` 74 / `SettingsPage` 69 / `SetupWizard` 66。components/ 全体で1,444箇所）を共通 CSS クラス + `components/ui/` プリミティブへ段階移行。**未作成プリミティブ Card / StatCard / SectionHeader（U3-4 の残り3/6）をここで新設** (2) **レスポンシブの実適用**: `--bp-*` トークンは定義済みだが `@media` は App.css L914 のドロワー1箇所+TSX 埋込4箇所のみ。しかも `var(--bp-*)` 未参照（リテラル 768px 直書き）。375px 対応を主要画面に展開 (3) **HEX/rgba の実残債 71件の解消**: `test_ui_hex_violations.py` は `.css` ファイルをスキャンしないため見逃しあり — 最悪は `WorkflowBuilder.css` の46件。スクリプトのスコープ拡張（.css 含む）+ 全置換 (4) `animations.css` 死活整理の残り（`.ani-slide-up` / `glowPulse` / `hudPulse` の3定義が使用0件） (5) **DESIGN.md ⇔ tokens.css の SSOT 再確立**: 5トークンの実乖離（font-main/font-display/bg-primary/bg-dark-sidebar/accent-emerald — §14 Gate 1）を、DESIGN.md を現行 tokens.css の実値へ更新する方向で解消。それまで `npm run sync:tokens` の実行禁止（UI 色の巻き戻りリスク） | 上記5ファイル / `WorkflowBuilder.css` / `App.css` / `styles/` / `DESIGN.md` / `scripts/test_ui_hex_violations.py` | インライン style 件数を計測して対象5ファイルで半減。拡張後の hex スクリプト GREEN（71→0）。375px で横スクロールなし。`git diff --exit-code src/styles/tokens.css`（sync 後に差分ゼロ） |
+
+**U6-1 確定版サイドバー（cockpit・上から順に）**
+
+| グループ（`nav.section.*`） | 項目（順序どおり） | 対応 activeTab |
+|---|---|---|
+| 1. ホーム | ホーム / AIとはなす /（agency モード時のみ）法人向け | home-v2, agent, agency |
+| 2. そだてる | ワールド（Biome） / AI学習 / スキル / 知識ベース / AIの表現 | biome, lora, vault, cortex, expressions |
+| 3. ようすを見る | ダッシュボード / アクティビティ（U6-5 統合後） / 共鳴マップ / 因果トレース / システム状態 | dashboard, karma(統合), graph, causal, status-page |
+| 4. ひろげる | コイン・そだて経済 / ボイスショップ / SNS承認 / SEO / AI同士の対話 / ワークフロー / 外部ツール（MCP） / ファイル | nurture, store, buzz-approval, seo-pulse, commune, workflow-builder, mcp-dashboard, artifacts |
+| 5. まもる・整える | セキュリティ / ルール / 設定 | immune, ban-dashboard, settings |
+
+（simple モードは現行4項目 = home-v2 / agent / artifacts / settings を維持）
+
+**U6-2 ラベル改定表（ja。en は同時改定）**
+
+| activeTab | 現行 | 改定案（一次ラベル） | サブテキスト例（`nav.desc.*`） |
+|---|---|---|---|
+| dashboard | ようすを見る | ダッシュボード | AIの状態をひと目で確認 |
+| karma | きろく | アクティビティ | AIの行動履歴とタイムライン |
+| audit | 行動の記録 | （U6-5でアクティビティ内タブ「監査ログ」へ） | 操作の監査記録 |
+| prompt-stats | 利用状況 | （U6-5でアクティビティ内タブ「使用量」へ） | プロンプト使用量の統計 |
+| graph | つながり | 共鳴マップ | 知識と話題のつながりを図で見る |
+| causal | 原因をたどる | 因果トレース | 「なぜこの行動をしたか」を追跡 |
+| status-page | 健康状態 | システム状態 | サーバーと機能の稼働状況 |
+| commune | AI同士の対話 | AIコミュニティ | 他のAIとの対話・共同作業 |
+| nurture | ふやす | コイン・そだて | AiomeCoinの残高とそだて経済 |
+| store | ボイス | ボイスショップ | 声の購入とギフト |
+| seo-pulse | SEO | SEO発信 | 検索向け記事の自動発信 |
+| buzz-approval | 承認待ち | SNS承認 | AIが作ったSNS投稿の承認 |
+| workflow-builder | 仕事の流れ | ワークフロー | 自動化フローの作成 |
+| mcp-dashboard | 外部ツール | 外部ツール（MCP） | 接続中の外部ツール管理 |
+| immune | 安全 | セキュリティ | 脅威検知と防御の状況 |
+| settings | 整える | 設定 | アカウントと動作の設定 |
+
+（記載のない項目は現行ラベル維持。最終文言は `MESSAGING.md`（SSOT）と突き合わせて確定する）
+
+### 12.4 実行順序と委譲（v6）
+
+> **実装状況（2026-07-07 更新）**: U0-B 全件 + U6-1〜8 + **U6-9** 実装完了。検証: tsc / Jest 404 PASS / hex ゲート GREEN。U6-9: 「コインとポイント」改名、DioramaView データ画面非表示、NurtureDashboard i18n 化。
+
+```
+U0-B（バグ即修正 — U0-B1/B3 は人間承認必須、U0-B4 は委譲可）
+  → ラベル承認ゲート（§13 Gate 4-1: 確定ラベル対照表のユーザー承認）
+  → 第1弾: U6-1/2/3/4（グルーピング・命名・自己説明 — E2E 追随修正を同一 PR に含める）
+  → 第2弾: U6-5/6/7（画面統合・二重ナビ解消 — a2uiTabs/validator.rs の写像込み）
+  → 第3弾: U6-8（スタイル負債第2波 — 第1・2弾と並行可）
+```
+
+| 作業 | 担当 |
+|---|---|
+| U0-B4（rgba 置換）・U6-2 ラベル置換・U6-3/U6-4 の i18n キー一括追加・E2E ラベル追随・検証（lint/Jest/i18n パリティ/hex） | 低トークンサブエージェント |
+| U0-B1/B3（認証隣接）・U6-1 グループ構造・U6-5 統合設計（a2uiTabs 写像含む） | メインエージェント（U0-B1/B3 は人間承認後） |
+| U6-6/U6-7・U6-8 のインライン style 移行 | メイン設計 → サブエージェント横展開 |
+
+### 12.5 検証基準（v6 追加分）
+
+| 項目 | 成功基準 |
+|---|---|
+| U0-B1 | ログイン→ホーム表示でエラートースト0件。`curl`（JWT付き）で `/api/v1/ekyc/status` が 200。**Negative Test**: JWT なし→401、不正 JWT→401 |
+| U0-B4 | `python3 scripts/test_ui_hex_violations.py` GREEN（0 violations） |
+| U6-1/2 | サイドバーが5グループ・確定順で表示。混同ペア表の全行が別名。`npm run lint && npm test` PASS。**E2E 7 spec の英語ラベル hasText を追随修正 + nav へ data-testid 付与**（§13 Gate 3） |
+| U6-5 | 旧 activeTab 値（karma/audit/prompt-stats）でアクセスしても新画面の該当タブが開く。`navigate:audit`（A2UI）でも到達可能。`cargo test -p infrastructure a2ui` PASS |
+| U6-8 | インライン style 件数（rg 計測）が対象5ファイルで半減。375px 幅で横スクロールなし |
+| 全体 | ユーザー実機レビューで「どのメニューが何か説明なしで分かる」ことの再判定 |
+
+---
+
+## 13. /perfect-plan 第5周検証結果（2026-07-07・v6 反映済み）— 実コードベース照合
+
+**検証体制**: メインエージェントが Gate 1–5 を実コード照合で実施（i18n キー・A2UI whitelist・E2E ラベル依存・hex ゲート実走・インライン style 計測）。サイドバー構造インベントリはサブエージェント委譲済み（§12 の入力）。
+
+### Gate 1: 構造スキャン — ⚠️→✅（PATCH 適用済み）
+
+- ⚠️→修正: **v6 冒頭のステータス行が事実誤認**だった。OPEN.md OP-066 により U0–U5 は 2026-07-05 R1 完了（Jest 392 PASS / hex 0 / deep-scan 0）。`components/ui/`（EmptyState / LoadingState / LockedOverlay / Modal）・`useSubscriptionStatus.tsx`・A2UI `navigate:` action はすべて**実装済みで実在確認**。ステータス行を修正済み
+- ⚠️→発見: **hex ゲートが RED に回帰**（`CoinChip.tsx` rgba 2件、2026-07-06 D-1 実装で混入）→ U0-B4 として起票
+- ⚠️→発見: **hex スクリプトに盲点** — `.css` ファイルをスキャンしないため、実残債は **71件**（最悪 `WorkflowBuilder.css` 46件、`ProUpgradeModal.tsx` 3件等）。「hex 0」の完了報告はスクリプトのスコープ内でのみ真。スクリプト拡張+全置換を U6-8 に組込
+- ⚠️→発見: U3-4 の6プリミティブは **3/6 のみ実装**（LockedOverlay / LoadingState / EmptyState あり、Card / StatCard / SectionHeader なし）→ 残り3つは U6-8 で新設
+- ✅ `nav.desc.*` / `page.desc.*` キーは ja.json に不存在（新設で衝突なし。`setup.*.desc` が同一パターンの先例）
+- ✅ U6-5 の対象コンポーネント実在確認: audit=`DiagnosticsHistory.tsx`（「AuditLog」ではない — §12.3 の表記を修正済み）、karma=`Timeline.tsx`、prompt-stats=`PromptStatsView.tsx`
+- ✅ NavItem は `App.tsx` L876 の単一定義（props: icon/label/active/onClick）。`description` prop 追加に衝突なし
+
+### Gate 2: 要件カバレッジ（NURTURE クロスチェック） — ✅
+
+- §2 経済台帳 / §6 VRM / §7 A2C / §8 P2P: 影響なし（U6 は表示・情報設計のみ。commune はラベル変更のみで Federation 不介入）
+- §3 MCP: 影響なし
+- §4 セキュリティ: **U0-B1/B3 が認証ミドルウェア隣接** — 人間承認ゲートを §12.1 に明記済み。U6-5 は A2UI ナビ whitelist（XSS/不正遷移ガード）に波及するため、旧値写像を whitelist 側にも実装（緩和ではなく等価変換であること）
+- §5 法的リスク: ラベル変更・グルーピングのみ。ダークパターン要素なし
+
+### Gate 3: 依存関係 & 波及 — ⚠️→✅（§12.3 に反映済み）
+
+| 波及先 | 内容 | 対応 |
+|---|---|---|
+| `src/lib/a2uiTabs.ts` L9–37 | `A2UI_NAV_TABS` に karma/audit/prompt-stats が登録済み。U6-5 統合で不整合化 | U6-5 対象に追加済み（旧値は写像として維持） |
+| `libs/infrastructure/src/a2ui/validator.rs` L540 | `navigate:audit` を使用（Rust 側）。フロント側も `A2uiRenderer.test.tsx` L113/L123・`e2e/a2ui.spec.ts` L12 が `navigate:audit` / `tab: 'audit'` を使用 | U6-5 対象に追加済み。`cargo test -p infrastructure a2ui` + `npm test -- A2uiRenderer` を DoD に追加 |
+| E2E 7 spec が**英語ラベル hasText でナビを特定** | `a2ui.spec.ts`（'Agent Console'）/ `home_v2.spec.ts`（'Home v2(Beta)'）/ `demo.spec.ts`（'Synergy Demo'）/ `cortex_view.spec.ts` / `ui_fixes.spec.ts`（'AI Chat', 'Voice'）/ `screencast.spec.ts`（日英正規表現）/ `promo-clips.spec.ts`（`navigateToTab` ヘルパー） → U6-2 の en.json 改定で広範囲に破損 | U6-1/2 の DoD に **E2E 7 spec の追随修正**を明記（恒久対策: nav に data-testid 付与を U6-1 に含める） |
+| Jest | nav ラベルは**キー名アサートのみ**（`'nav.biotope'` 等 — `t: (k) => k` モック）。日本語ラベル値のアサートなし | 値のみ変更なら Jest 影響ゼロ（v4 §4.5 の前提を実測で再確認） |
+| activeTab 永続化 | localStorage / URL への activeTab 保存は**不存在**（rg 0件） | 旧値写像は a2ui-navigate 経路のみで足りる |
+
+### Gate 4: 悪魔の弁護人
+
+1. **最悪のシナリオ**: ラベル改定が3度目の空振り（v5「日常語化」→実地で不評→v6「名詞化」も外す）。→ **対策: U6-2 の実装前に「確定ラベル対照表」（§12.3 の表）をユーザーに提示し承認を得る承認ゲートを必須化**。文言の最終決定権はユーザーにあり、エージェントは実装のみ。
+2. **見落とされた前提**: 「26画面を全部残す」前提が正しいとは限らない。メニューが分かりにくい根因は**数**でもある。→ U6-5/6/7 で cockpit 既定 26→23 項目に削減。それでも多い場合の次の一手（「その他」折りたたみ）は今回**不採用**と明示（隠すと到達不能バグ S-3 の再発リスク）。
+3. **やらないメリット**: なし（ユーザーが明示的に改修を要求済み）。ただし**工数大の U6-5/6（画面統合）は第2弾に分離可能** — U0-B + U6-1/2/3/4（グルーピング・命名・自己説明）だけで体感は大きく改善するため、トークン・時間予算が厳しい場合は統合系を後続 PR に分割する。
+
+### Gate 5: 実行順序 — ✅
+
+- `U0-B（要承認・即修正）→ ラベル承認ゲート → U6-1/2/3/4（第1弾）→ U6-5/6/7（第2弾）→ U6-8（第3弾・並行可）` に確定。U6-2 の audit/prompt-stats ラベルは U6-5 の統合決定に従属（§12.3 で既に整理済み・二度手間なし）
+- E2E 追随修正は U6-2 と**同一 PR**（分離すると main が RED になる）
+- OPEN.md の既知ギャップとの競合なし（OP-002 Biome 目視は独立。OP-066 の残項目 U2-4 variant 統合は U6 と非干渉）
+
+### 判定: **✅ PASS（v6 PATCH 適用済み）**
+
+- 事実誤認2件（ステータス行・audit コンポーネント名）と波及漏れ3件（a2uiTabs / validator.rs / E2E ラベル依存）を計画に反映済み
+- hex 回帰（U0-B4）を新規発見・起票
+- 実装開始の前提条件: **(1) U0-B1/B3 の人間承認（認証隣接） (2) U6-2 確定ラベル対照表のユーザー承認**
+
+---
+
+## 14. /perfect-plan 第6周検証結果（2026-07-07）— §12/§13 自体の実在照合・実装可能性の最終確認
+
+**検証体制**: §12/§13 に記載した行番号・前提・DoD コマンドをメインエージェントが実測（`lint:design` 実走・CSS 実読・i18n キー全数照合）。補助照合はサブエージェント委譲。
+
+### Gate 1: 構造スキャン — ✅（U6 の土台は全て実在。新発見2件を注記）
+
+| 検証項目 | 結果 |
+|---|---|
+| U6-4 の挿入点 | ✅ 全27タブのヘッダタイトルは `App.tsx` L764–790 の**単一 `<motion.h2>`** に集約されており、`page.*` キーも27個全て実在（ja.json）。説明の挿入点は1箇所+キー27個追加のみ |
+| U6-3 の CSS 前提 | ✅ `.nav-item`（`App.css` L221–240）は **padding ベースで固定 height なし**。ただしラベル span は `white-space: nowrap`（L756–758）のため、2行表示にはマークアップ（説明用 span 追加）+ CSS の両方の小修正が必要。ブロッカーなし |
+| U2-1 / U4-0 の完了 | ✅ `migrateViewMode`（`useViewMode.ts` L14–18、既定 cockpit）と `feature_flag.a2ui_generative_ui` トグル（`SettingsPage.tsx` L530–533）は実装済み |
+| ⚠️ U3-2 の乖離は**部分未解消** | `--accent-rose`（#f472b6）と `--layout-sidebar-width`（280px）は一致。しかし**5トークンで実乖離が残存**: `--font-main` / `--font-display`（DESIGN.md は 'Artemis Inter' を含むが tokens.css は削除済み）、`--bg-primary`（#0b0b0f vs #0b0d14）、`--bg-dark-sidebar`、`--accent-emerald`（#10b981 vs #34d399）。tokens.css ヘッダは「Auto-generated from DESIGN.md. DO NOT EDIT DIRECTLY」と宣言しているのに直接編集されており、**SSOT の方向が崩壊**（`npm run sync:tokens` を実行すると現行 UI の色が巻き戻るリスク）。→ **U6-8 に「DESIGN.md を現行 tokens.css の実値に合わせて再生成し、SSOT 方向を再確立する」を追加** |
+| ⚠️ 新発見1: `lint:design` が RED | `npm run lint:design`（`@google/design.md` linter）が **99 errors**。ただし内容は「rgba()/var() 値を hex でないためエラー扱い」という**リンタ側スキーマの厳格さによる偽陽性が大半**。Appendix A の U3 DoD からは**当面除外**し、DESIGN.md のスキーマ適合は独立タスクとする（U6 のブロッカーではない） |
+| ⚠️ 新発見2: `data-testid` ゼロ | `App.tsx` に data-testid は **0件**。E2E の `navigateToTab`（`promo-clips.spec.ts` L25–31）も `.nav-item` + hasText 正規表現でナビを特定 → §13 の「data-testid 付与」は完全新規作業（既存慣習なし）。U6-1 の作業量に含めて見積もる |
+
+### Gate 2: 要件カバレッジ — ✅（第5周から変更なし。U6 は表示層のみ、認証隣接は承認ゲート済み）
+
+### Gate 3: 依存関係 — ✅（第5周で全数列挙済み。第6周の実測で追加の波及先は発見されず）
+
+- E2E のラベル依存は `navigateToTab` ヘルパー1関数+個別 spec の hasText に集約されており、**ヘルパー修正1箇所で promo-clips 系はまとめて追随可能**（波及コストは §13 の見積りより小さい）
+
+### Gate 4: 悪魔の弁護人（第6周の意地悪な問い）
+
+1. **「検証6周は過剰では？ 分析麻痺に陥っていないか？」** — 正しい懸念。第6周の新発見は「lint:design の偽陽性」「data-testid 不在」の2件のみで**収穫逓減が明確**。本計画はこれ以上の検証周回を行わず、**2つの承認（U0-B1/B3・ラベル対照表）が得られ次第、実装に着手する**ことをここに固定する。
+2. **「`lint:design` RED を放置してよいのか？」** — U6 のスコープでは可（UI 実装と独立した文書リンタの問題）。ただし Appendix A に「U3 DoD コマンド」として記載済みだったため、そのまま実行すると DoD 不能になる — 本周で DoD から除外済み。
+3. **「サブエージェント委譲でトークンは本当に節約できているか？」** — 探索系は有効（棚卸し3件で本体コンテキストを消費せず）。ただし応答待ちが長い（10分超）ため、**実装フェーズでは「機械的置換の実行」のみ委譲し、検証はメインの直接実測を優先**する運用に調整する。
+
+### Gate 5: 実行順序 — ✅
+
+- §12.4 の3弾構成に変更なし。第6周の実測により第1弾（U6-1/2/3/4）の不確実性は解消（挿入点1箇所・キー27個・CSS ブロッカーなし・E2E はヘルパー集約）
+- 実装順の最適化1件: **data-testid 付与（新規）を U6-1 の最初に行う** → 以降のラベル変更で E2E が壊れない状態を先に作る（E2E 追随を1回で済ませる）
+
+### 判定: **✅ PASS（第6周・実装移行可）** — 検証は本周で打ち切り。残る前提は人間承認2件のみ
 

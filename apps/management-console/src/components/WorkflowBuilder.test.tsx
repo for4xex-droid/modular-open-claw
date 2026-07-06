@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import WorkflowBuilder from './WorkflowBuilder';
 import { LanguageProvider } from '../i18n';
@@ -54,15 +54,34 @@ jest.mock('@xyflow/react', () => {
   };
 });
 
-// useSystemVitality のモック
+// useSystemVitality のモック — イベント注入で再レンダーを促す
 let mockLastEvent: any = null;
-jest.mock('../hooks/useSystemVitality', () => ({
-  useSystemVitality: () => ({
-    lastEvent: mockLastEvent,
-    events: [],
-    connectionStatus: 'connected',
-  }),
-}));
+const vitalitySubscribers = new Set<() => void>();
+
+jest.mock('../hooks/useSystemVitality', () => {
+  const React = require('react');
+  return {
+    useSystemVitality: () => {
+      const [, bump] = React.useReducer((c: number) => c + 1, 0);
+      React.useEffect(() => {
+        vitalitySubscribers.add(bump);
+        return () => {
+          vitalitySubscribers.delete(bump);
+        };
+      }, [bump]);
+      return {
+        lastEvent: mockLastEvent,
+        events: [],
+        connectionStatus: 'connected',
+      };
+    },
+  };
+});
+
+function pushMockVitalityEvent(event: unknown) {
+  mockLastEvent = event;
+  vitalitySubscribers.forEach((fn) => fn());
+}
 
 jest.mock('../config', () => ({
   API_BASE: 'http://localhost:3000'
@@ -76,6 +95,8 @@ describe('WorkflowBuilder Component', () => {
 
   beforeEach(() => {
     localStorage.setItem('aiome_lang', 'en');
+    mockLastEvent = null;
+    vitalitySubscribers.clear();
   });
 
   it('renders without crashing and shows React Flow canvas', () => {
@@ -130,13 +151,14 @@ describe('WorkflowBuilder Component', () => {
   });
 
   it('displays validation errors when validation fails', async () => {
+    const payload = {
+      valid: false,
+      errors: ['Start node missing', 'Invalid edge connection'],
+    };
     const mockFetch = jest.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({
-        valid: false,
-        errors: ['Start node missing', 'Invalid edge connection'],
-      }),
+      text: async () => JSON.stringify(payload),
     });
     global.fetch = mockFetch;
 
@@ -155,80 +177,97 @@ describe('WorkflowBuilder Component', () => {
   });
 
   it('displays estimated execution cost and triggers execute on button click', async () => {
-    const mockFetch = jest.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ execution_id: 'exec-999' }),
+    const mockFetch = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('/execute')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ execution_id: 'exec-999', job_ids: ['job-1'] }),
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
     });
     global.fetch = mockFetch;
 
     renderWithI18n();
 
-    // 初期配置のノードが Start Node 1つなので、コストは $0.0000 になるはず
     expect(screen.getByText(/Estimated Cost:/i)).toHaveTextContent('$0.0000');
 
-    // 「Execute」ボタンをクリック
+    const saveBtn = screen.getByText('Save').closest('button');
+    fireEvent.click(saveBtn!);
+
+    await screen.findByText(/Workflow saved successfully/i);
+
     const executeBtn = screen.getByText('Execute').closest('button');
     expect(executeBtn).toBeInTheDocument();
+    expect(executeBtn).not.toBeDisabled();
     fireEvent.click(executeBtn!);
 
-    // 実行成功メッセージが表示されるのを確認
     const successMsg = await screen.findByText(/Execution started/i);
     expect(successMsg).toBeInTheDocument();
     expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/execute'), expect.any(Object));
   });
 
-  it('updates execution status from SystemVitality SSE events', async () => {
+  it('updates execution status from SystemVitality SSE events via job_ids', async () => {
     mockLastEvent = null;
 
-    const mockFetch = jest.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ execution_id: 'exec-123' }),
+    const mockFetch = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('/execute')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            execution_id: 'exec-123',
+            job_ids: ['job-a', 'job-b'],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
     });
     global.fetch = mockFetch;
 
-    const { rerender } = renderWithI18n();
+    renderWithI18n();
 
-    // 「Execute」ボタンをクリックして execution_id='exec-123' をセットさせる
-    const executeBtn = screen.getByText('Execute').closest('button');
-    fireEvent.click(executeBtn!);
+    fireEvent.click(screen.getByText('Save').closest('button')!);
+    await screen.findByText(/Workflow saved successfully/i);
 
-    // 実行成功メッセージが表示されて execution_id がセットされるのを待つ
+    fireEvent.click(screen.getByText('Execute').closest('button')!);
     await screen.findByText(/Execution started: exec-123/i);
 
-    // 進捗イベントを注入
-    mockLastEvent = {
+    pushMockVitalityEvent({
       type: 'task_progress',
       data: {
-        job_id: 'exec-123',
+        job_id: 'job-a',
         percent: 50,
         message: 'Running Step 2...',
       },
-    };
+    });
 
-    rerender(<WorkflowBuilder />);
+    await waitFor(() => {
+      expect(screen.getByText(/Workflow Execution Status/i)).toBeInTheDocument();
+      expect(screen.getByText('RUNNING')).toBeInTheDocument();
+      expect(screen.getByText(/50%/i)).toBeInTheDocument();
+      expect(screen.getByText('Running Step 2...')).toBeInTheDocument();
+    });
 
-    // 画面上にステータスと進捗メッセージが描画されたことを確認
-    expect(screen.getByText(/Workflow Execution Status/i)).toBeInTheDocument();
-    expect(screen.getByText('RUNNING')).toBeInTheDocument();
-    expect(screen.getByText(/50%/i)).toBeInTheDocument();
-    expect(screen.getByText('Running Step 2...')).toBeInTheDocument();
-
-    // 完了イベントを注入
-    mockLastEvent = {
+    pushMockVitalityEvent({
       type: 'task_completed',
-      data: {
-        job_id: 'exec-123',
-        result: 'Success',
-      },
-    };
+      data: { job_id: 'job-a' },
+    });
 
-    rerender(<WorkflowBuilder />);
+    await waitFor(() => {
+      expect(screen.getByText('RUNNING')).toBeInTheDocument();
+    });
 
-    // ステータスが COMPLETED になり、完了メッセージが表示されることを確認
-    expect(screen.getByText('COMPLETED')).toBeInTheDocument();
-    expect(screen.getByText('Completed successfully!')).toBeInTheDocument();
+    pushMockVitalityEvent({
+      type: 'task_completed',
+      data: { job_id: 'job-b' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('COMPLETED')).toBeInTheDocument();
+      expect(screen.getByText('Completed successfully!')).toBeInTheDocument();
+    });
   });
 
   it('renders Condition node with true and false output handles', () => {

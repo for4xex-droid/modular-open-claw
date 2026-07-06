@@ -49,7 +49,7 @@ test.describe('Cortex View UI', () => {
     await page.goto('/');
 
     // The nav item should be visible in the sidebar
-    const cortexTab = page.locator('.nav-item').filter({ hasText: /Knowledge Base/i });
+    const cortexTab = page.getByTestId('nav-cortex');
     await expect(cortexTab).toBeVisible({ timeout: 5000 });
     await cortexTab.click();
 

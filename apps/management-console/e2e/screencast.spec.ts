@@ -24,7 +24,7 @@ test('Aiome 90-second Screencast', async ({ page }) => {
   
   // Scene 2: Agent Console (Chat / System Feed)
   // Find the Agent Console tab and click it
-  const agentTab = page.locator('.nav-item').filter({ hasText: /Agent Console|エージェント/i }).first();
+  const agentTab = page.getByTestId('nav-agent');
   if (await agentTab.isVisible()) {
     await agentTab.click();
   }
@@ -40,7 +40,7 @@ test('Aiome 90-second Screencast', async ({ page }) => {
   await page.waitForTimeout(3000);
 
   // Scene 3: Cortex Navigation
-  const targetTab = page.locator('.nav-item').filter({ hasText: /Cortex|コーテックス/i }).first();
+  const targetTab = page.getByTestId('nav-cortex');
   if (await targetTab.isVisible()) {
     await targetTab.click();
     await expect(page.locator('.cortex-container')).toBeVisible();
@@ -48,7 +48,7 @@ test('Aiome 90-second Screencast', async ({ page }) => {
   }
 
   // Scene 4: Immune System Navigation
-  const observabilityTab = page.locator('.nav-item').filter({ hasText: /Immune|免疫/i }).first();
+  const observabilityTab = page.getByTestId('nav-immune');
   if (await observabilityTab.isVisible()) {
     await observabilityTab.click();
     await expect(page.locator('.immune-system-container, .immune-system')).toBeVisible();

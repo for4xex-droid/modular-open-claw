@@ -9,18 +9,18 @@ import {
   Activity, 
   Shield, 
   AlertTriangle, 
-  Users, 
-  CheckCircle, 
   RefreshCw, 
   Cpu, 
   Server, 
   Database,
-  Layers
 } from "lucide-react";
 import { authenticatedFetch } from "../lib/auth";
 import { API_BASE } from "../config";
 
 import { components } from "../types/generated";
+import { StatCard } from './ui/StatCard';
+import { SectionHeader } from './ui/SectionHeader';
+import { Card } from './ui/Card';
 
 type SystemHealth = components["schemas"]["ResourceStatus"];
 
@@ -68,23 +68,23 @@ export default function StatusPage() {
 
   if (loading) {
     return (
-      <div className="status-container loading-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem' }}>
-        <RefreshCw className="animate-spin text-accent-cyan" size={40} style={{ color: 'var(--accent-cyan)' }} />
-        <p style={{ color: 'var(--text-secondary)' }}>Synchronizing integrity metrics...</p>
+      <div className="ui-center-state">
+        <RefreshCw className="animate-spin text-accent-cyan" size={40} />
+        <p className="ui-help-text">Synchronizing integrity metrics...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="status-container error-state" style={{ padding: '2rem', background: 'var(--accent-rose-05)', border: '1px solid var(--accent-rose-20)', borderRadius: '12px', margin: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+      <div className="ui-center-state">
         <AlertTriangle color="var(--accent-rose)" size={48} />
-        <h3 style={{ color: 'var(--accent-rose)', margin: 0 }}>System Telemetry Offline</h3>
-        <p style={{ color: 'var(--text-secondary)', textAlign: 'center', maxWidth: '500px' }}>{error}</p>
+        <h3 className="ui-section-header__title">System Telemetry Offline</h3>
+        <p className="ui-help-text">{error}</p>
         <button 
           id="btn-retry-status"
-          onClick={fetchHealth} 
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--accent-rose)', color: 'var(--bg-primary)', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
+          className="primary-button"
+          onClick={fetchHealth}
         >
           <RefreshCw size={16} />
           Retry Connection
@@ -103,24 +103,25 @@ export default function StatusPage() {
   const memUsed = health?.memory_usage_mb || 0;
   const memTotal = health?.total_memory_mb || 1;
   const memPercent = Math.min(100, Math.round((memUsed / memTotal) * 100));
+  const diskUsedPercent = health && health.total_disk_gb > 0
+    ? Math.round(((health.total_disk_gb - health.disk_free_gb) / health.total_disk_gb) * 100)
+    : 0;
 
   return (
-    <div className="status-page-wrapper" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', color: 'var(--text-primary)' }}>
+    <div className="settings-page ui-field-stack ui-field-stack--compact">
       {/* Header Info */}
-      <div className="status-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--white-05)', paddingBottom: '1rem' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800, background: 'linear-gradient(to right, var(--accent-cyan), var(--accent-purple))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            System Status & Integrity Hub
-          </h1>
-          <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+      <div className="ui-field-row ui-field-row--between">
+        <div className="header-title-block">
+          <h2>System Status & Integrity Hub</h2>
+          <p className="page-desc">
             Real-time diagnostics and autonomous support escalation telemetry
           </p>
         </div>
         <button 
           id="btn-refresh-status"
+          className="primary-button"
           onClick={fetchHealth} 
           disabled={refreshing}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'var(--black-40)', border: '1px solid var(--white-10)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-primary)', transition: 'all 0.2s' }}
         >
           <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
           Refresh
@@ -128,85 +129,55 @@ export default function StatusPage() {
       </div>
 
       {/* Support Incidents Analytics Panel (S-5 Requirement) */}
-      <section className="dashboard-section" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Shield size={18} color="var(--accent-cyan)" />
-          Support Escalation Stats (Last 7 Days)
-        </h3>
+      <section className="ui-field-stack ui-field-stack--compact">
+        <SectionHeader
+          icon={<Shield size={18} color="var(--accent-cyan)" />}
+          title="Support Escalation Stats (Last 7 Days)"
+        />
         
-        <div className="incident-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-          {/* Card 1: Total Incidents */}
-          <div className="glass-card" style={{ background: 'var(--black-40)', backdropFilter: 'blur(10px)', border: '1px solid var(--white-05)', borderRadius: '12px', padding: '1.25rem', position: 'relative', overflow: 'hidden' }}>
-            <div className="card-badge" style={{ position: 'absolute', top: 0, right: 0, width: '4px', height: '100%', background: 'var(--accent-cyan)' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Total Support Reports</span>
-              <Layers size={16} color="var(--accent-cyan)" />
-            </div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, margin: '0.5rem 0', color: 'var(--accent-cyan)' }}>
-              {si ? si.total_incidents_7d : 0}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Accumulated across past 7 days</div>
-          </div>
+        <div className="grid-stats">
+          <StatCard
+            label="Total Support Reports"
+            value={si ? si.total_incidents_7d : 0}
+            trend="Accumulated across past 7 days"
+          />
 
-          {/* Card 2: Unresolved Incidents */}
-          <div className="glass-card" style={{ background: 'var(--black-40)', backdropFilter: 'blur(10px)', border: '1px solid var(--white-05)', borderRadius: '12px', padding: '1.25rem', position: 'relative', overflow: 'hidden' }}>
-            <div className="card-badge" style={{ position: 'absolute', top: 0, right: 0, width: '4px', height: '100%', background: (si && si.unresolved > 0) ? 'var(--accent-rose)' : 'var(--accent-emerald)' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Active Unresolved Incidents</span>
-              <AlertTriangle size={16} color={(si && si.unresolved > 0) ? 'var(--accent-rose)' : 'var(--accent-emerald)'} />
-            </div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, margin: '0.5rem 0', color: (si && si.unresolved > 0) ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}>
-              {si ? si.unresolved : 0}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Requires operator or system remediation</div>
-          </div>
+          <StatCard
+            label="Active Unresolved Incidents"
+            value={si ? si.unresolved : 0}
+            trend="Requires operator or system remediation"
+            trendClassName={si && si.unresolved > 0 ? '' : 'trend-up'}
+          />
 
-          {/* Card 3: Impacted Users */}
-          <div className="glass-card" style={{ background: 'var(--black-40)', backdropFilter: 'blur(10px)', border: '1px solid var(--white-05)', borderRadius: '12px', padding: '1.25rem', position: 'relative', overflow: 'hidden' }}>
-            <div className="card-badge" style={{ position: 'absolute', top: 0, right: 0, width: '4px', height: '100%', background: 'var(--accent-purple)' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Distinct Users Supported</span>
-              <Users size={16} color="var(--accent-purple)" />
-            </div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, margin: '0.5rem 0', color: 'var(--accent-purple)' }}>
-              {si ? si.distinct_users : 0}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Unique users interacting with help desk</div>
-          </div>
+          <StatCard
+            label="Distinct Users Supported"
+            value={si ? si.distinct_users : 0}
+            trend="Unique users interacting with help desk"
+          />
 
-          {/* Card 4: Top Severity */}
-          <div className="glass-card" style={{ background: 'var(--black-40)', backdropFilter: 'blur(10px)', border: '1px solid var(--white-05)', borderRadius: '12px', padding: '1.25rem', position: 'relative', overflow: 'hidden' }}>
-            <div className="card-badge" style={{ 
-              position: 'absolute', top: 0, right: 0, width: '4px', height: '100%', 
-              background: si?.top_severity === 'Critical' ? 'var(--accent-rose)' : si?.top_severity === 'High' ? 'var(--accent-amber)' : 'var(--text-secondary)'
-            }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Peak Severity Node</span>
-              <CheckCircle size={16} color="var(--text-secondary)" />
-            </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.85rem 0 0.5rem 0', color: 'var(--text-secondary)' }}>
-              {si ? si.top_severity : "None"}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Highest incident alert level registered</div>
-          </div>
+          <StatCard
+            label="Peak Severity Node"
+            value={si ? si.top_severity : "None"}
+            trend="Highest incident alert level registered"
+          />
         </div>
       </section>
 
       {/* Resource Health Metrics */}
-      <div className="health-metrics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.5rem' }}>
+      <div className="settings-grid">
         
         {/* Memory & Disk Telemetry */}
-        <div className="panel" style={{ background: 'var(--black-40)', backdropFilter: 'blur(10px)', border: '1px solid var(--white-05)', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--white-05)', paddingBottom: '0.5rem' }}>
-            <Cpu size={16} color="var(--accent-cyan)" />
-            Resource Telemetry
-          </h4>
+        <Card>
+          <SectionHeader
+            icon={<Cpu size={16} color="var(--accent-cyan)" />}
+            title="Resource Telemetry"
+          />
 
           {/* CPU Bar */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>CPU Utilization</span>
-              <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{cpuVal}%</span>
+          <div className="ui-field-stack ui-field-stack--xs">
+            <div className="ui-field-row ui-field-row--between">
+              <span className="ui-field-label ui-field-label--inline">CPU Utilization</span>
+              <span className="trend-up">{cpuVal}%</span>
             </div>
             <div style={{ height: '8px', background: 'var(--white-05)', borderRadius: '4px', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${cpuVal}%`, background: 'var(--accent-cyan)', borderRadius: '4px', transition: 'width 0.5s ease-out' }} />
@@ -214,10 +185,10 @@ export default function StatusPage() {
           </div>
 
           {/* Memory Bar */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Resident Memory (RAM)</span>
-              <span style={{ color: 'var(--accent-purple)', fontWeight: 600 }}>{memUsed} MB / {memTotal} MB</span>
+          <div className="ui-field-stack ui-field-stack--xs">
+            <div className="ui-field-row ui-field-row--between">
+              <span className="ui-field-label ui-field-label--inline">Resident Memory (RAM)</span>
+              <span>{memUsed} MB / {memTotal} MB</span>
             </div>
             <div style={{ height: '8px', background: 'var(--white-05)', borderRadius: '4px', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${memPercent}%`, background: 'var(--accent-purple)', borderRadius: '4px', transition: 'width 0.5s ease-out' }} />
@@ -225,60 +196,50 @@ export default function StatusPage() {
           </div>
 
           {/* Disk Bar */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Local Disk (Free Space)</span>
-              <span style={{ color: 'var(--accent-emerald)', fontWeight: 600 }}>{health?.disk_free_gb || 0} GB Free / {health?.total_disk_gb || 0} GB</span>
+          <div className="ui-field-stack ui-field-stack--xs">
+            <div className="ui-field-row ui-field-row--between">
+              <span className="ui-field-label ui-field-label--inline">Local Disk (Free Space)</span>
+              <span className="trend-up">{health?.disk_free_gb || 0} GB Free / {health?.total_disk_gb || 0} GB</span>
             </div>
             {health && (
               <div style={{ height: '8px', background: 'var(--white-05)', borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${health.total_disk_gb > 0 ? Math.round(((health.total_disk_gb - health.disk_free_gb) / health.total_disk_gb) * 100) : 0}%`, background: 'var(--accent-emerald)', borderRadius: '4px' }} />
+                <div style={{ height: '100%', width: `${diskUsedPercent}%`, background: 'var(--accent-emerald)', borderRadius: '4px' }} />
               </div>
             )}
           </div>
-        </div>
+        </Card>
 
         {/* Component Integrity states (LLM Circuit Breaker, LoRA Autotuner, etc.) */}
-        <div className="panel" style={{ background: 'var(--black-40)', backdropFilter: 'blur(10px)', border: '1px solid var(--white-05)', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--white-05)', paddingBottom: '0.5rem' }}>
-            <Server size={16} color="var(--accent-purple)" />
-            Component Integrity Status
-          </h4>
+        <Card>
+          <SectionHeader
+            icon={<Server size={16} color="var(--accent-purple)" />}
+            title="Component Integrity Status"
+          />
 
           {/* LLM Circuit Breaker Status */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'var(--black-20)', borderRadius: '8px', border: '1px solid var(--white-05)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div className="ui-field-row ui-field-row--between glass-panel ui-card--pad-md">
+            <div className="ui-field-row">
               <Database size={14} color="var(--accent-cyan)" />
-              <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>LLM Circuit Breaker</span>
+              <span className="ui-field-label ui-field-label--inline">LLM Circuit Breaker</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <span style={{ 
-                width: '8px', height: '8px', borderRadius: '50%', 
-                background: cb?.state === 'Closed' ? 'var(--accent-emerald)' : 'var(--accent-rose)' 
-              }} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: cb?.state === 'Closed' ? 'var(--accent-emerald)' : 'var(--accent-rose)' }}>
-                {cb ? cb.state : "Offline"}
-              </span>
+            <div className={`status-badge${cb?.state === 'Closed' ? '' : ' disconnected'}`}>
+              <span className={`status-dot${cb?.state === 'Closed' ? '' : ' offline'}`} />
+              {cb ? cb.state : "Offline"}
             </div>
           </div>
 
           {/* LoRA Engine Autotuner Status */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'var(--black-20)', borderRadius: '8px', border: '1px solid var(--white-05)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div className="ui-field-row ui-field-row--between glass-panel ui-card--pad-md">
+            <div className="ui-field-row">
               <Activity size={14} color="var(--accent-purple)" />
-              <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>LoRA Autotuner</span>
+              <span className="ui-field-label ui-field-label--inline">LoRA Autotuner</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <span style={{ 
-                width: '8px', height: '8px', borderRadius: '50%', 
-                background: lora?.status === 'ready' ? 'var(--accent-emerald)' : 'var(--text-secondary)' 
-              }} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: lora?.status === 'ready' ? 'var(--accent-emerald)' : 'var(--text-secondary)' }}>
-                {lora ? lora.status : "Offline"}
-              </span>
+            <div className={`status-badge${lora?.status === 'ready' ? '' : ' paused'}`}>
+              <span className={`status-dot${lora?.status === 'ready' ? '' : ' offline'}`} />
+              {lora ? lora.status : "Offline"}
             </div>
           </div>
-        </div>
+        </Card>
 
       </div>
     </div>

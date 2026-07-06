@@ -144,12 +144,12 @@ export default function VoiceStore() {
         await fetchWishlist();
         showToast('success', t('voice.purchaseSuccess', { name: asset.name }));
       } else {
-        let message = t('voice.insufficientFunds') || 'Insufficient funds';
+        let message = t('voice.insufficientFunds');
         try {
           const data = await res.json();
           if (data?.message) message = data.message;
         } catch {
-          message = `${t('common.error') || 'Error'}: ${res.status} ${res.statusText}`;
+          message = `${t('common.error')}: ${res.status} ${res.statusText}`;
         }
         showToast('error', message);
       }
@@ -181,12 +181,12 @@ export default function VoiceStore() {
         await fetchWishlist();
         showToast('success', t('voice.giftSuccess', { name: asset.name }));
       } else {
-        let message = t('voice.giftFailed') || 'Gift purchase failed';
+        let message = t('voice.giftFailed');
         try {
           const data = await res.json();
           if (data?.message) message = data.message;
         } catch {
-          message = `${t('common.error') || 'Error'}: ${res.status} ${res.statusText}`;
+          message = `${t('common.error')}: ${res.status} ${res.statusText}`;
         }
         showToast('error', message);
       }
@@ -203,10 +203,10 @@ export default function VoiceStore() {
         <div>
           <h3 style={{ margin: 0, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Crown size={24} color="var(--accent-purple)" />
-            {t('voice.title') || 'Creator Registry & Voice Store'}
+            {t('voice.title')}
           </h3>
           <p style={{ margin: "0.5rem 0 0", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-            {t('voice.subtitle') || 'Acquire premium XTTS voices with mathematically enforced DRM.'}
+            {t('voice.subtitle')}
           </p>
         </div>
         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
@@ -227,7 +227,7 @@ export default function VoiceStore() {
               <div>
                 <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase" }}>{t('voice.walletBalance')}</span>
                 <div style={{ fontWeight: "bold", color: balanceError ? "var(--accent-rose)" : "var(--accent-cyan)", fontSize: "1.2rem" }}>
-                  {balanceError ? (t('common.error') || '—') : `${balance.toLocaleString()} KC`}
+                  {balanceError ? t('common.error') : `${balance.toLocaleString()} KC`}
                 </div>
               </div>
               <button 
@@ -236,7 +236,7 @@ export default function VoiceStore() {
                 onClick={handleCheckout}
                 disabled={isRecharging || !agentId}
               >
-                {isRecharging ? (t('common.processing') || 'Processing...') : t('voice.kcRecharge')}
+                {isRecharging ? t('common.processing') : t('voice.kcRecharge')}
               </button>
             </div>
             <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{t('voice.kcSectionDesc')}</span>
@@ -269,7 +269,7 @@ export default function VoiceStore() {
                 onClick={handlePortal}
                 disabled={isManagingPortal || !agentId}
               >
-                {isManagingPortal ? (t('common.processing') || 'Processing...') : t('voice.manageSubscription')}
+                {isManagingPortal ? t('common.processing') : t('voice.manageSubscription')}
               </button>
             </div>
             <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{t('voice.proSectionDesc')}</span>
@@ -293,7 +293,7 @@ export default function VoiceStore() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
               <div>
                 <h4 style={{ margin: "0 0 0.25rem", color: "var(--text-primary)" }}>{asset.name}</h4>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{t('voice.authorPrefix') || 'by '} {asset.author}</div>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{t('voice.authorPrefix')}{asset.author}</div>
                 {wishlistIds.has(asset.id) && (
                   <div style={{
                     marginTop: "0.5rem",
@@ -333,7 +333,7 @@ export default function VoiceStore() {
                 className="secondary-button" 
                 style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}
               >
-                <Volume2 size={16} /> {t('common.preview') || 'Preview'}
+                <Volume2 size={16} /> {t('common.preview')}
               </button>
               {wishlistIds.has(asset.id) && (
                 <button
@@ -366,19 +366,19 @@ export default function VoiceStore() {
                   <span className="ani-pulse">{t('voice.securing')}</span>
                 ) : (
                   <>
-                    <ShoppingCart size={16} /> {t('voice.purchase') || 'Purchase'}
+                    <ShoppingCart size={16} /> {t('voice.purchase')}
                   </>
                 )}
               </button>
             </div>
             {(!isEkycVerified || balance < asset.price_coins) && (
               <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "var(--accent-rose)", textAlign: "center" }}>
-                {!isEkycVerified ? (t('voice.ekycRequired') || 'eKYC Required') : (t('voice.insufficientFunds') || 'Insufficient funds')}
+                {!isEkycVerified ? t('voice.ekycRequired') : t('voice.insufficientFunds')}
               </div>
             )}
             <div style={{ marginTop: "1rem", fontSize: "0.7rem", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem" }}>
               <ShieldCheck size={12} color="var(--accent-emerald)" />
-              {t('voice.drmPowered') || 'Powered by Abyss Security Proxy DRM'}
+              {t('voice.drmPowered')}
             </div>
           </motion.div>
         ))}

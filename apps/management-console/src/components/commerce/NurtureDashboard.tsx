@@ -4,13 +4,13 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE, STRIPE_PRICE_ID } from "../../config";
 import { authenticatedFetch, getAuthToken } from "../../lib/auth";
 import { useCheckoutSession } from "../../hooks/useCheckoutSession";
 import { openProUpgradeModal } from "../../hooks/useSubscriptionStatus";
-import { useTranslation } from "../../i18n";
+import { useTranslation, useLanguage } from "../../i18n";
 import { useCoinBalance } from "../../hooks/useCoinBalance";
 
 import {
@@ -46,6 +46,7 @@ interface TransactionRecord {
 
 export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToStore?: () => void }) {
   const { t } = useTranslation();
+  const { lang } = useLanguage();
   const {
     balance: coinBalance,
     isLoading: coinBalanceLoading,
@@ -56,7 +57,6 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Extract agent_id from JWT token, or fallback to mock
   const token = getAuthToken();
   let agentId = "agent-001";
   if (token) {
@@ -76,7 +76,7 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
     }
   }, [checkoutError]);
 
-  const fetchData = async (signal?: AbortSignal) => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -88,37 +88,38 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
       if (ptsRes.ok) {
         setBalance(await ptsRes.json());
       } else if (ptsRes.status === 403) {
-        throw new Error("Unauthorized: Access denied to this agent's ledger.");
+        throw new Error(t('nurture.errorUnauthorized'));
       } else {
-        throw new Error("Failed to load points balance.");
+        throw new Error(t('nurture.errorPoints'));
       }
 
       if (histRes.ok) {
         setHistory(await histRes.json());
       } else if (histRes.status !== 403) {
-        throw new Error("Failed to load transaction history.");
+        throw new Error(t('nurture.errorHistory'));
       }
     } catch (e: unknown) {
       if (e instanceof Error) {
         if (e.name === 'AbortError') return;
-        setError(e.message || "Failed to connect to Nurture Engine.");
+        setError(e.message || t('nurture.errorConnect'));
       } else {
-        setError("Failed to connect to Nurture Engine.");
+        setError(t('nurture.errorConnect'));
       }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [agentId, t]);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchData(controller.signal);
+    void fetchData(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [fetchData]);
 
   const formatDate = (dateString: string) => {
     const d = new Date(dateString);
-    return new Intl.DateTimeFormat("en-US", {
+    const locale = lang === 'ja' ? 'ja-JP' : 'en-US';
+    return new Intl.DateTimeFormat(locale, {
       month: "short",
       day: "2-digit",
       hour: "2-digit",
@@ -126,30 +127,33 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
     }).format(d);
   };
 
+  const handleRetry = () => {
+    void fetchData();
+    void refetchCoinBalance();
+  };
+
   return (
     <div className="system-panel" style={{ padding: "2rem", height: "100%", overflowY: "auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
         <div>
           <h3 style={{ margin: 0, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Wallet size={24} color="var(--accent-purple)" />
-            Nurture Economy Engine
+            {t('nurture.title')}
           </h3>
           <p style={{ margin: "0.5rem 0 0", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-            Real-time tracking of Experience points and transaction ledgers.
+            {t('nurture.subtitle')}
           </p>
         </div>
         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-          <div style={{
+          <div className="config-card" style={{
             display: "flex",
             flexDirection: "column",
             gap: "0.35rem",
             padding: "0.75rem 1rem",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--accent-emerald-30)",
-            background: "var(--black-20)",
+            borderColor: "var(--accent-emerald-30)",
           }}>
             <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--accent-emerald)", textTransform: "uppercase" }}>
-              KC / Points
+              {t('nurture.kcPointsSection')}
             </span>
             <button
               className="primary-button"
@@ -157,30 +161,28 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
               disabled={isLoading || isCheckoutLoading}
               style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--accent-emerald)", color: "var(--black-100)" }}
             >
-              {isCheckoutLoading ? "Loading..." : "Buy Points (KC)"}
+              {isCheckoutLoading ? t('nurture.loading') : t('nurture.buyPoints')}
             </button>
             <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", maxWidth: "200px" }}>
-              Karma Coin / experience points — separate from Pro subscription.
+              {t('nurture.buyPointsHint')}
             </span>
           </div>
-          <div style={{
+          <div className="config-card" style={{
             display: "flex",
             flexDirection: "column",
             gap: "0.35rem",
             padding: "0.75rem 1rem",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--accent-purple-30)",
-            background: "var(--black-20)",
+            borderColor: "var(--accent-purple-30)",
           }}>
             <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--accent-purple)", textTransform: "uppercase" }}>
-              Aiome Pro
+              {t('nurture.proSection')}
             </span>
             <button
               className="primary-button"
               onClick={() => openProUpgradeModal()}
               style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
             >
-              Upgrade to Pro
+              {t('nurture.upgradePro')}
             </button>
           </div>
           <button
@@ -189,19 +191,16 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
             style={{ display: "flex", alignItems: "center", gap: "0.5rem", borderColor: "var(--accent-purple)", color: "var(--accent-purple)", alignSelf: "flex-end" }}
           >
             <Wallet size={16} />
-            View Store
+            {t('nurture.viewStore')}
           </button>
           <button
             className="secondary-button"
-            onClick={() => {
-              fetchData();
-              void refetchCoinBalance();
-            }}
+            onClick={handleRetry}
             disabled={isLoading}
             style={{ display: "flex", alignItems: "center", gap: "0.5rem", alignSelf: "flex-end" }}
           >
             <RefreshCcw size={16} className={isLoading ? "ani-spin" : ""} />
-            Refresh
+            {t('nurture.refresh')}
           </button>
         </div>
       </div>
@@ -221,11 +220,24 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
               marginBottom: "2rem",
               display: "flex",
               alignItems: "center",
-              gap: "0.5rem",
+              justifyContent: "space-between",
+              gap: "1rem",
+              flexWrap: "wrap",
             }}
           >
-            <ShieldCheck size={20} />
-            <span style={{ fontWeight: 600 }}>{error}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <ShieldCheck size={20} />
+              <span style={{ fontWeight: 600 }}>{error}</span>
+            </div>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleRetry}
+              disabled={isLoading}
+              style={{ borderColor: "var(--accent-rose-30)", color: "var(--accent-rose)" }}
+            >
+              {t('error.retry')}
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -240,7 +252,7 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem", color: "var(--text-secondary)" }}>
             <Wallet size={20} color="var(--accent-emerald)" />
-            <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase" }}>AiomeCoin (KC)</span>
+            <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase" }}>{t('nurture.aiomeCoin')}</span>
           </div>
           <div style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--accent-emerald)" }}>
             {coinBalanceLoading ? "..." : coinBalance.toLocaleString()} <span style={{ fontSize: "1.2rem" }}>KC</span>
@@ -255,7 +267,7 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem", color: "var(--text-secondary)" }}>
             <Award size={20} color="var(--accent-purple)" />
-            <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase" }}>ポイント残高</span>
+            <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase" }}>{t('nurture.pointsBalance')}</span>
           </div>
           <div style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--accent-purple)" }}>
             {isLoading ? "..." : (balance?.balance || 0).toLocaleString()} <span style={{ fontSize: "1.2rem" }}>KP</span>
@@ -270,7 +282,7 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem", color: "var(--text-secondary)" }}>
             <TrendingUp size={20} color="var(--accent-cyan)" />
-            <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase" }}>Lifetime Earned</span>
+            <span style={{ fontSize: "0.9rem", fontWeight: 600, textTransform: "uppercase" }}>{t('nurture.lifetimeEarned')}</span>
           </div>
           <div style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--accent-cyan)" }}>
             {isLoading ? "..." : (balance?.lifetime_earned || 0).toLocaleString()} <span style={{ fontSize: "1.2rem" }}>KP</span>
@@ -296,29 +308,29 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
       <div className="config-card" style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "1.5rem", borderBottom: "1px solid var(--white-10)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <History size={20} color="var(--accent-cyan)" />
-          <h4 style={{ margin: 0, color: "var(--text-primary)", fontSize: "1.1rem" }}>Ledger History</h4>
+          <h4 style={{ margin: 0, color: "var(--text-primary)", fontSize: "1.1rem" }}>{t('nurture.ledgerHistory')}</h4>
         </div>
         
         {isLoading && history.length === 0 ? (
           <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>
             <RefreshCcw size={24} className="ani-spin" style={{ margin: "0 auto 1rem" }} />
-            Loading transactions...
+            {t('nurture.loadingTransactions')}
           </div>
         ) : history.length === 0 ? (
           <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>
-            No transactions found.
+            {t('nurture.noTransactions')}
           </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
               <thead>
                 <tr style={{ background: "var(--black-20)", textAlign: "left" }}>
-                  <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>Type</th>
-                  <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>Amount (Points)</th>
-                  <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>Amount (Coins)</th>
-                  <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>Transaction ID</th>
-                  <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>Memo</th>
-                  <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>Date</th>
+                  <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>{t('nurture.tableType')}</th>
+                  <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>{t('nurture.tablePoints')}</th>
+                  <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>{t('nurture.tableCoins')}</th>
+                  <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>{t('nurture.tableTxId')}</th>
+                  <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>{t('nurture.tableMemo')}</th>
+                  <th style={{ padding: "1rem 1.5rem", color: "var(--text-muted)", fontWeight: 600 }}>{t('nurture.tableDate')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -335,11 +347,11 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
                       <td style={{ padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                         {isCredit ? (
                           <span style={{ color: "var(--accent-emerald)", display: "flex", alignItems: "center", gap: "4px", background: "var(--accent-emerald-10)", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem" }}>
-                            <ArrowUpRight size={14} /> Received
+                            <ArrowUpRight size={14} /> {t('nurture.received')}
                           </span>
                         ) : (
                           <span style={{ color: "var(--accent-rose)", display: "flex", alignItems: "center", gap: "4px", background: "var(--accent-rose-10)", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem" }}>
-                            <ArrowDownRight size={14} /> Sent
+                            <ArrowDownRight size={14} /> {t('nurture.sent')}
                           </span>
                         )}
                         <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem", textTransform: "capitalize" }}>

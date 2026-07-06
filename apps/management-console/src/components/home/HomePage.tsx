@@ -15,6 +15,7 @@ import AvatarViewerModal from './AvatarViewerModal';
 import { useAvatarState } from '../../hooks/useAvatarState';
 import { useDisplayMode } from '../../hooks/useDisplayMode';
 import { useAvatarCharacter } from '../../hooks/AvatarContext';
+import { useViewMode } from '../../hooks/useViewMode';
 import { useTranslation } from '../../i18n';
 
 // === Lazy-loaded sub-pages ===
@@ -160,10 +161,21 @@ const DEMO_SEEN_KEY = 'aiome_demo_seen';
     const avatarState = useAvatarState() as AvatarStateLiteral;
     const { mode } = useDisplayMode();
     const { getAssetPath } = useAvatarCharacter();
+    const { viewMode } = useViewMode();
     const [isViewerOpen, setIsViewerOpen] = useState(false);
 
     // Main tab state
     const [activeMainTab, setActiveMainTab] = useState<MainTab>('home');
+
+    // U6-6: cockpit モードではサイドバーの「設定」と HomePage 内設定タブが二重になるため、
+    // 本体の設定画面へ誘導する。simple モードでは HomePage が唯一の入口なので従来どおり。
+    const handleMainTabClick = (key: MainTab) => {
+        if (key === 'settings' && viewMode === 'cockpit') {
+            window.dispatchEvent(new CustomEvent('a2ui-navigate', { detail: { tab: 'settings' } }));
+            return;
+        }
+        setActiveMainTab(key);
+    };
 
     // Sub-tab states
     const [shopSubTab, setShopSubTab] = useState('store');
@@ -322,7 +334,7 @@ const DEMO_SEEN_KEY = 'aiome_demo_seen';
                         return (
                             <button
                                 key={tab.key}
-                                onClick={() => setActiveMainTab(tab.key)}
+                                onClick={() => handleMainTabClick(tab.key)}
                                 data-tooltip={tab.tooltip}
                                 style={{
                                     flex: 1,

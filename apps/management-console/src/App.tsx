@@ -21,7 +21,6 @@ import {
   Sparkles,
   Network,
   Crown,
-  Play,
   Library,
   Server,
   Briefcase,
@@ -29,9 +28,7 @@ import {
   LayoutDashboard,
   GitCommit,
   TrendingUp,
-  ClipboardList,
   Coins,
-  BarChart2,
   PanelLeftClose,
   PanelLeftOpen,
   Gamepad2
@@ -40,15 +37,13 @@ const LoginScreen = React.lazy(() => import("./components/LoginScreen"));
 const SetupWizard = React.lazy(() => import("./components/SetupWizard"));
 const HomePage = React.lazy(() => import("./components/home/HomePage"));
 const BiotopeView = React.lazy(() => import("./components/BiotopeView"));
-const Timeline = React.lazy(() => import("./components/Timeline"));
+const ActivityView = React.lazy(() => import("./components/ActivityView"));
 const ImmuneSystem = React.lazy(() => import("./components/ImmuneSystem"));
 const AgentConsole = React.lazy(() => import("./components/AgentConsole"));
 const SeoPulseView = React.lazy(() => import("./components/SeoPulseView"));
 const SkillVault = React.lazy(() => import("./components/SkillVault"));
 const ArtifactVault = React.lazy(() => import("./components/ArtifactVault"));
-const DiagnosticsHistory = React.lazy(() => import("./components/DiagnosticsHistory"));
 const GraphView = React.lazy(() => import("./components/GraphView"));
-const PromptStatsView = React.lazy(() => import("./components/PromptStatsView"));
 const SettingsPage = React.lazy(() => import("./components/SettingsPage"));
 const StatusPage = React.lazy(() => import("./components/StatusPage"));
 const ExpressionPipeline = React.lazy(() => import("./components/ExpressionPipeline"));
@@ -93,6 +88,73 @@ type BootMode = 'Normal' | 'Setup';
 
 /** Maps lowercase backend mode strings to typed frontend values */
 const BOOT_MODE_MAP: Readonly<Record<string, BootMode>> = Object.freeze({ normal: 'Normal', setup: 'Setup' });
+
+/**
+ * U6-1: サイドバーの情報設計（5グループ・利用頻度順）。
+ * 並び順は「毎日使う（ホーム・対話）→ 育てる → 様子を見る → 広げる → 守る・整える」。
+ * `agency` は workspacePersona.mode === 'agency' のときのみ表示（描画側で判定）。
+ */
+interface NavItemDef {
+  tab: string;
+  labelKey: string;
+  icon: React.ReactNode;
+}
+interface NavGroupDef {
+  sectionKey: string;
+  items: NavItemDef[];
+}
+const NAV_GROUPS: NavGroupDef[] = [
+  {
+    sectionKey: 'home',
+    items: [
+      { tab: 'home-v2', labelKey: 'nav.homeV2', icon: <Home size={18} /> },
+      { tab: 'agent', labelKey: 'nav.agentConsole', icon: <MessageSquare size={18} /> },
+      { tab: 'agency', labelKey: 'nav.agencyOnboarding', icon: <Briefcase size={18} /> },
+    ],
+  },
+  {
+    sectionKey: 'grow',
+    items: [
+      { tab: 'biome', labelKey: 'nav.biome', icon: <Gamepad2 size={18} /> },
+      { tab: 'lora', labelKey: 'nav.loraAutotuner', icon: <BrainCircuit size={18} /> },
+      { tab: 'vault', labelKey: 'nav.skillVault', icon: <Package size={18} /> },
+      { tab: 'cortex', labelKey: 'nav.cortex', icon: <Library size={18} /> },
+      { tab: 'expressions', labelKey: 'nav.expressions', icon: <Sparkles size={18} /> },
+    ],
+  },
+  {
+    sectionKey: 'observe',
+    items: [
+      { tab: 'dashboard', labelKey: 'nav.biotope', icon: <LayoutDashboard size={18} /> },
+      // U6-5: audit / prompt-stats はアクティビティ（karma）の内部タブに統合
+      { tab: 'karma', labelKey: 'nav.chronicle', icon: <Clock size={18} /> },
+      { tab: 'graph', labelKey: 'nav.resonanceMap', icon: <GitMerge size={18} /> },
+      { tab: 'causal', labelKey: 'nav.causalTrace', icon: <GitCommit size={18} /> },
+      { tab: 'status-page', labelKey: 'nav.statusPage', icon: <Shield size={18} /> },
+    ],
+  },
+  {
+    sectionKey: 'expand',
+    items: [
+      { tab: 'nurture', labelKey: 'nav.nurtureEconomy', icon: <Coins size={18} /> },
+      { tab: 'store', labelKey: 'nav.voiceStore', icon: <Crown size={18} /> },
+      { tab: 'buzz-approval', labelKey: 'nav.buzzApproval', icon: <Zap size={18} /> },
+      { tab: 'seo-pulse', labelKey: 'nav.seoPulse', icon: <TrendingUp size={18} /> },
+      { tab: 'commune', labelKey: 'nav.communeLab', icon: <Network size={18} /> },
+      { tab: 'workflow-builder', labelKey: 'nav.workflowBuilder', icon: <Network size={18} /> },
+      { tab: 'mcp-dashboard', labelKey: 'nav.mcpDashboard', icon: <Server size={18} /> },
+      { tab: 'artifacts', labelKey: 'nav.artifactVault', icon: <Box size={18} /> },
+    ],
+  },
+  {
+    sectionKey: 'protect',
+    items: [
+      { tab: 'immune', labelKey: 'nav.immuneSystem', icon: <Shield size={18} /> },
+      { tab: 'ban-dashboard', labelKey: 'nav.banDashboard', icon: <Shield size={18} /> },
+      { tab: 'settings', labelKey: 'nav.settings', icon: <SettingsIcon size={18} /> },
+    ],
+  },
+];
 
 function App() {
   const { t } = useTranslation();
@@ -465,12 +527,13 @@ function App() {
         />
       )}
       {viewMode === 'cockpit' && <aside className={`sidebar ${isSidebarOpen ? '' : 'closed'}`}>
-        <div className="brand">
-          <BrainCircuit size={28} color="var(--accent-cyan)" />
-          <span>Aiome</span>
-        </div>
-        <div className="sidebar-toggle-container">
-          <button 
+        <div className="brand-row">
+          <img
+            src={isSidebarOpen ? '/aiome-horizontal-white.png' : '/aiome-graphic-white.png'}
+            alt="Aiome"
+            className="brand-logo"
+          />
+          <button
             type="button"
             className="sidebar-toggle-btn"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -482,229 +545,30 @@ function App() {
         </div>
 
         <div className="sidebar-nav-container" ref={navContainerRef}>
-          <nav className="nav-group">
-          <h4>{t('nav.section.synergyHub')}</h4>
-          {isVisible("home-v2") && (
-            <NavItem
-              icon={<Home size={18} />}
-              label={t('nav.homeV2')}
-              active={activeTab === "home-v2"}
-              onClick={() => setActiveTab("home-v2")}
-            />
-          )}
-          {workspacePersona.mode === 'agency' && (
-            <NavItem
-              icon={<Briefcase size={18} />}
-              label={t('nav.agencyOnboarding')}
-              active={activeTab === "agency"}
-              onClick={() => setActiveTab("agency")}
-            />
-          )}
-          {isVisible("dashboard") && (
-            <NavItem
-              icon={<LayoutDashboard size={20} />}
-              label={t('nav.biotope')}
-              active={activeTab === "dashboard"}
-              onClick={() => setActiveTab("dashboard")}
-            />
-          )}
-          {isVisible("demo") && (
-            <NavItem
-              icon={<Play size={20} />}
-              label={t('nav.demo')}
-              active={activeTab === "demo"}
-              onClick={() => setActiveTab("demo")}
-            />
-          )}
-          {isVisible("biome") && (
-            <NavItem
-              icon={<Gamepad2 size={20} />}
-              label={t('nav.biome')}
-              active={activeTab === "biome"}
-              onClick={() => setActiveTab("biome")}
-            />
-          )}
-          {isVisible("karma") && (
-            <NavItem
-              icon={<Clock size={20} />}
-              label={t('nav.chronicle')}
-              active={activeTab === "karma"}
-              onClick={() => setActiveTab("karma")}
-            />
-          )}
-          {isVisible("graph") && (
-            <NavItem
-              icon={<GitMerge size={20} />}
-              label={t('nav.resonanceMap')}
-              active={activeTab === "graph"}
-              onClick={() => setActiveTab("graph")}
-            />
-          )}
-          {isVisible("causal") && (
-            <NavItem
-              icon={<GitCommit size={20} />}
-              label={t('nav.causalTrace')}
-              active={activeTab === "causal"}
-              onClick={() => setActiveTab("causal")}
-            />
-          )}
-          {isVisible("seo-pulse") && (
-            <NavItem
-              icon={<TrendingUp size={20} />}
-              label={t('nav.seoPulse')}
-              active={activeTab === "seo-pulse"}
-              onClick={() => setActiveTab("seo-pulse")}
-            />
-          )}
-          {isVisible("buzz-approval") && (
-            <NavItem
-              icon={<Zap size={20} />}
-              label={t('nav.buzzApproval')}
-              active={activeTab === "buzz-approval"}
-              onClick={() => setActiveTab("buzz-approval")}
-            />
-          )}
-          {isVisible("artifacts") && (
-            <NavItem
-              icon={<Box size={20} />}
-              label={t('nav.artifactVault')}
-              active={activeTab === "artifacts"}
-              onClick={() => setActiveTab("artifacts")}
-            />
-          )}
-          {isVisible("audit") && (
-            <NavItem
-              icon={<ClipboardList size={20} />}
-              label={t('nav.audit')}
-              active={activeTab === "audit"}
-              onClick={() => setActiveTab("audit")}
-            />
-          )}
-          {isVisible("expressions") && (
-            <NavItem
-              icon={<Sparkles size={20} />}
-              label={t('nav.expressions')}
-              active={activeTab === "expressions"}
-              onClick={() => setActiveTab("expressions")}
-            />
-          )}
-          {isVisible("commune") && (
-            <NavItem
-              icon={<Network size={20} />}
-              label={t('nav.communeLab')}
-              active={activeTab === "commune"}
-              onClick={() => setActiveTab("commune")}
-            />
-          )}
-          {isVisible("store") && (
-            <NavItem
-              icon={<Crown size={20} />}
-              label={t('nav.voiceStore')}
-              active={activeTab === "store"}
-              onClick={() => setActiveTab("store")}
-            />
-          )}
-          {isVisible("nurture") && (
-            <NavItem
-              icon={<Coins size={20} />}
-              label={t('nav.nurtureEconomy')}
-              active={activeTab === "nurture"}
-              onClick={() => setActiveTab("nurture")}
-            />
-          )}
-          {isVisible("workflow-builder") && (
-            <NavItem
-              icon={<Network size={20} />}
-              label={t('nav.workflowBuilder')}
-              active={activeTab === "workflow-builder"}
-              onClick={() => setActiveTab("workflow-builder")}
-            />
-          )}
-        </nav>
-
-        <nav className="nav-group">
-          <h4>{t('nav.section.control')}</h4>
-          {isVisible("status-page") && (
-            <NavItem
-              icon={<Shield size={20} />}
-              label={t('nav.statusPage')}
-              active={activeTab === "status-page"}
-              onClick={() => setActiveTab("status-page")}
-            />
-          )}
-          {isVisible("ban-dashboard") && (
-            <NavItem
-              icon={<Shield size={20} />}
-              label={t('nav.banDashboard')}
-              active={activeTab === "ban-dashboard"}
-              onClick={() => setActiveTab("ban-dashboard")}
-            />
-          )}
-          {isVisible("immune") && (
-            <NavItem
-              icon={<Shield size={20} />}
-              label={t('nav.immuneSystem')}
-              active={activeTab === "immune"}
-              onClick={() => setActiveTab("immune")}
-            />
-          )}
-          {isVisible("agent") && (
-            <NavItem
-              icon={<MessageSquare size={20} />}
-              label={t('nav.agentConsole')}
-              active={activeTab === "agent"}
-              onClick={() => setActiveTab("agent")}
-            />
-          )}
-          {isVisible("cortex") && (
-            <NavItem
-              icon={<Library size={20} />}
-              label={t('nav.cortex')}
-              active={activeTab === "cortex"}
-              onClick={() => setActiveTab("cortex")}
-            />
-          )}
-          {isVisible("vault") && (
-            <NavItem
-              icon={<Package size={20} />}
-              label={t('nav.skillVault')}
-              active={activeTab === "vault"}
-              onClick={() => setActiveTab("vault")}
-            />
-          )}
-          {isVisible("mcp-dashboard") && (
-            <NavItem
-              icon={<Server size={20} />}
-              label={t('nav.mcpDashboard')}
-              active={activeTab === "mcp-dashboard"}
-              onClick={() => setActiveTab("mcp-dashboard")}
-            />
-          )}
-          {isVisible("prompt-stats") && (
-            <NavItem
-              icon={<BarChart2 size={20} />}
-              label={t('nav.promptStats')}
-              active={activeTab === "prompt-stats"}
-              onClick={() => setActiveTab("prompt-stats")}
-            />
-          )}
-          {isVisible("lora") && (
-            <NavItem
-              icon={<BrainCircuit size={20} />}
-              label={t('nav.loraAutotuner')}
-              active={activeTab === "lora"}
-              onClick={() => setActiveTab("lora")}
-            />
-          )}
-          {isVisible("settings") && (
-            <NavItem
-              icon={<SettingsIcon size={20} />}
-              label={t('nav.settings')}
-              active={activeTab === "settings"}
-              onClick={() => setActiveTab("settings")}
-            />
-          )}
-        </nav>
+          {NAV_GROUPS.map((group) => {
+            const visibleItems = group.items.filter((item) =>
+              item.tab === 'agency'
+                ? workspacePersona.mode === 'agency'
+                : isVisible(item.tab)
+            );
+            if (visibleItems.length === 0) return null;
+            return (
+              <nav className="nav-group" key={group.sectionKey}>
+                <h4>{t(`nav.section.${group.sectionKey}`)}</h4>
+                {visibleItems.map((item) => (
+                  <NavItem
+                    key={item.tab}
+                    tab={item.tab}
+                    icon={item.icon}
+                    label={t(item.labelKey)}
+                    description={t(`nav.desc.${item.tab}`)}
+                    active={activeTab === item.tab}
+                    onClick={() => setActiveTab(item.tab)}
+                  />
+                ))}
+              </nav>
+            );
+          })}
         </div>
 
         <AnimatePresence>
@@ -756,39 +620,50 @@ function App() {
               <PanelLeftOpen size={20} />
             </button>
           )}
-          <motion.h2
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            key={activeTab}
-          >
-            {activeTab === "home-v2" && t('page.homeV2')}
-            {activeTab === "dashboard" && t('page.biotope')}
-            {activeTab === "demo" && t('page.demo')}
-            {activeTab === "biome" && t('page.biome')}
-            {activeTab === "karma" && t('page.chronicle')}
-            {activeTab === "graph" && t('page.resonanceMap')}
-            {activeTab === "immune" && t('page.immuneSystem')}
-            {activeTab === "agent" && t('page.agentConsole')}
-            {activeTab === "seo-pulse" && t('page.seoPulse')}
-            {activeTab === "cortex" && t('page.cortex')}
-            {activeTab === "vault" && t('page.skillVault')}
-            {activeTab === "artifacts" && t('page.artifactVault')}
-            {activeTab === "audit" && t('page.audit')}
-            {activeTab === "prompt-stats" && t('page.promptStats')}
-            {activeTab === "mcp-dashboard" && t('page.mcpDashboard')}
-            {activeTab === "expressions" && t('page.expressions')}
-            {activeTab === "commune" && t('page.communeLab')}
-            {activeTab === "store" && t('page.voiceStore')}
-            {activeTab === "ban-dashboard" && t('page.banDashboard')}
-            {activeTab === "nurture" && t('page.nurtureEconomy')}
-            {activeTab === "workflow-builder" && t('page.workflowBuilder')}
-            {activeTab === "causal" && t('page.causalTrace')}
-            {activeTab === "lora" && t('page.loraAutotuner')}
-            {activeTab === "settings" && t('page.settings')}
-            {activeTab === "agency" && t('page.agencyOnboarding')}
-            {activeTab === "status-page" && t('page.statusPage')}
-            {activeTab === "buzz-approval" && t('page.buzzApproval')}
-          </motion.h2>
+          <div className="header-title-block">
+            <motion.h2
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              key={activeTab}
+            >
+              {activeTab === "home-v2" && t('page.homeV2')}
+              {activeTab === "dashboard" && t('page.biotope')}
+              {activeTab === "demo" && t('page.demo')}
+              {activeTab === "biome" && t('page.biome')}
+              {activeTab === "karma" && t('page.chronicle')}
+              {activeTab === "graph" && t('page.resonanceMap')}
+              {activeTab === "immune" && t('page.immuneSystem')}
+              {activeTab === "agent" && t('page.agentConsole')}
+              {activeTab === "seo-pulse" && t('page.seoPulse')}
+              {activeTab === "cortex" && t('page.cortex')}
+              {activeTab === "vault" && t('page.skillVault')}
+              {activeTab === "artifacts" && t('page.artifactVault')}
+              {activeTab === "audit" && t('page.audit')}
+              {activeTab === "prompt-stats" && t('page.promptStats')}
+              {activeTab === "mcp-dashboard" && t('page.mcpDashboard')}
+              {activeTab === "expressions" && t('page.expressions')}
+              {activeTab === "commune" && t('page.communeLab')}
+              {activeTab === "store" && t('page.voiceStore')}
+              {activeTab === "ban-dashboard" && t('page.banDashboard')}
+              {activeTab === "nurture" && t('page.nurtureEconomy')}
+              {activeTab === "workflow-builder" && t('page.workflowBuilder')}
+              {activeTab === "causal" && t('page.causalTrace')}
+              {activeTab === "lora" && t('page.loraAutotuner')}
+              {activeTab === "settings" && t('page.settings')}
+              {activeTab === "agency" && t('page.agencyOnboarding')}
+              {activeTab === "status-page" && t('page.statusPage')}
+              {activeTab === "buzz-approval" && t('page.buzzApproval')}
+            </motion.h2>
+            {/* U6-4: 画面自己説明 — この画面で何ができるかを1行で示す */}
+            <motion.p
+              className="page-desc"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              key={`desc-${activeTab}`}
+            >
+              {t(`page.desc.${activeTab}`)}
+            </motion.p>
+          </div>
 
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <CoinChip />
@@ -832,7 +707,7 @@ function App() {
               {activeTab === "dashboard" && <BiotopeView stats={stats} isConnected={isConnected} recentEvents={recentEvents} sessionSavedChars={sessionSavedChars} />}
               {activeTab === "demo" && <DemoView stats={stats} lastEvent={lastEvent} isConnected={isConnected} />}
               {activeTab === "biome" && <BiomeGame />}
-              {activeTab === "karma" && <Timeline />}
+              {activeTab === "karma" && <ActivityView initialTab="timeline" />}
               {activeTab === "graph" && <GraphView />}
               {activeTab === "immune" && <ImmuneSystem />}
               {activeTab === "agent" && <AgentConsole sessionSavedChars={sessionSavedChars} />}
@@ -840,8 +715,8 @@ function App() {
               {activeTab === "cortex" && <CortexView />}
               {activeTab === "vault" && <SkillVault />}
               {activeTab === "artifacts" && <ArtifactVault />}
-              {activeTab === "audit" && <DiagnosticsHistory />}
-              {activeTab === "prompt-stats" && <PromptStatsView />}
+              {activeTab === "audit" && <ActivityView initialTab="audit" />}
+              {activeTab === "prompt-stats" && <ActivityView initialTab="usage" />}
               {activeTab === "mcp-dashboard" && <McpDashboard />}
               {activeTab === "expressions" && <ExpressionPipeline />}
               {activeTab === "commune" && <CommuneDialogueView />}
@@ -873,15 +748,27 @@ function App() {
   );
 }
 
-function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
+function NavItem({ tab, icon, label, description, active, onClick }: {
+  tab: string,
+  icon: React.ReactNode,
+  label: string,
+  description?: string,
+  active: boolean,
+  onClick: () => void,
+}) {
   return (
     <button
       type="button"
       className={`nav-item ${active ? 'active' : ''}`}
+      data-testid={`nav-${tab}`}
       onClick={onClick}
+      title={description}
     >
       {icon}
-      <span>{label}</span>
+      <span className="nav-item-text">
+        <span className="nav-item-label">{label}</span>
+        {description && <span className="nav-item-desc">{description}</span>}
+      </span>
       {active && <motion.div layoutId="active-pill" className="nav-active-bar" />}
     </button>
   );

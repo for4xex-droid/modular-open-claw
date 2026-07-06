@@ -21,9 +21,9 @@ test.use({
   }
 });
 
-// タブをクリックして内容ロードを待つ共通関数
-async function navigateToTab(page: Page, label: RegExp) {
-  const tab = page.locator('.nav-item').filter({ hasText: label }).first();
+// タブをクリックして内容ロードを待つ共通関数（U6-1: data-testid でラベル文言に依存しない）
+async function navigateToTab(page: Page, tabId: string) {
+  const tab = page.getByTestId(`nav-${tabId}`);
   await expect(tab).toBeVisible({ timeout: 5000 });
   await tab.click();
   await expect(page.locator('.app-container')).toBeVisible({ timeout: 10000 });
@@ -163,7 +163,7 @@ test.describe('Aiome Promo Clips', () => {
 
     await page.goto('/');
     await expect(page.locator('.app-container')).toBeVisible({ timeout: 10000 });
-    await navigateToTab(page, /AI Chat/i);
+    await navigateToTab(page, 'agent');
 
     const input = page.locator('textarea').first();
     if (await input.isVisible()) {
@@ -187,7 +187,7 @@ test.describe('Aiome Promo Clips', () => {
     });
     await page.goto('/');
     await expect(page.locator('.app-container')).toBeVisible({ timeout: 10000 });
-    await navigateToTab(page, /Knowledge Base/i);
+    await navigateToTab(page, 'cortex');
     await page.waitForTimeout(5000);
   });
 
@@ -201,7 +201,7 @@ test.describe('Aiome Promo Clips', () => {
     });
     await page.goto('/');
     await expect(page.locator('.app-container')).toBeVisible({ timeout: 10000 });
-    await navigateToTab(page, /Knowledge Graph/i);
+    await navigateToTab(page, 'graph');
     await page.waitForTimeout(8000);
   });
 
@@ -212,7 +212,7 @@ test.describe('Aiome Promo Clips', () => {
     });
     await page.goto('/');
     await expect(page.locator('.app-container')).toBeVisible({ timeout: 10000 });
-    await navigateToTab(page, /Causal Trace/i);
+    await navigateToTab(page, 'causal');
     // フォーム画面の表示
     await page.waitForTimeout(5000);
   });
@@ -230,7 +230,7 @@ test.describe('Aiome Promo Clips', () => {
     });
     await page.goto('/');
     await expect(page.locator('.app-container')).toBeVisible({ timeout: 10000 });
-    await navigateToTab(page, /Security/i);
+    await navigateToTab(page, 'immune');
     await page.mouse.wheel(0, 300);
     await page.waitForTimeout(5000);
   });
@@ -242,7 +242,7 @@ test.describe('Aiome Promo Clips', () => {
     });
     await page.goto('/');
     await expect(page.locator('.app-container')).toBeVisible({ timeout: 10000 });
-    await navigateToTab(page, /Skills/i);
+    await navigateToTab(page, 'vault');
     await page.waitForTimeout(5000);
   });
 
@@ -256,7 +256,7 @@ test.describe('Aiome Promo Clips', () => {
     });
     await page.goto('/');
     await expect(page.locator('.app-container')).toBeVisible({ timeout: 10000 });
-    await navigateToTab(page, /MCP Servers/i);
+    await navigateToTab(page, 'mcp-dashboard');
     await page.waitForTimeout(5000);
   });
 
@@ -267,7 +267,7 @@ test.describe('Aiome Promo Clips', () => {
     });
     await page.goto('/');
     await expect(page.locator('.app-container')).toBeVisible({ timeout: 10000 });
-    await navigateToTab(page, /LoRA Autotuner/i);
+    await navigateToTab(page, 'lora');
     await page.waitForTimeout(5000);
   });
 
@@ -278,7 +278,7 @@ test.describe('Aiome Promo Clips', () => {
     });
     await page.goto('/');
     await expect(page.locator('.app-container')).toBeVisible({ timeout: 10000 });
-    await navigateToTab(page, /SEO Pulse/i);
+    await navigateToTab(page, 'seo-pulse');
     await page.waitForTimeout(5000);
   });
 
@@ -292,7 +292,7 @@ test.describe('Aiome Promo Clips', () => {
     });
     await page.goto('/');
     await expect(page.locator('.app-container')).toBeVisible({ timeout: 10000 });
-    await navigateToTab(page, /Voice/i);
+    await navigateToTab(page, 'store');
     await page.waitForTimeout(5000);
   });
 
@@ -306,7 +306,7 @@ test.describe('Aiome Promo Clips', () => {
     });
     await page.goto('/');
     await expect(page.locator('.app-container')).toBeVisible({ timeout: 10000 });
-    await navigateToTab(page, /Economy/i);
+    await navigateToTab(page, 'nurture');
     await page.waitForTimeout(5000);
   });
 

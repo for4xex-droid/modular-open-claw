@@ -10,6 +10,13 @@ import { toWorkflowDefinition, WorkflowDefinition } from '../lib/workflowConvert
 import { authenticatedFetch } from '../lib/auth';
 import { API_BASE } from '../config';
 
+export interface WorkflowListItem {
+  id: string;
+  name: string;
+  description: string;
+  current_version: number;
+  updated_at: string;
+}
 
 export function useWorkflowApi() {
   const [loading, setLoading] = useState(false);
@@ -35,9 +42,58 @@ export function useWorkflowApi() {
         throw new Error(`Failed to save workflow: ${res.statusText}`);
       }
       return true;
-    } catch (e: any) {
-      setError(e.message || 'Error saving workflow');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Error saving workflow';
+      setError(message);
       return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateWorkflow = async (params: {
+    id: string;
+    name: string;
+    description: string;
+    version: number;
+    nodes: Node[];
+    edges: Edge[];
+  }): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const def = toWorkflowDefinition(params);
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/workflows/${params.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(def),
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to update workflow: ${res.statusText}`);
+      }
+      return true;
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Error updating workflow';
+      setError(message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const listWorkflows = async (): Promise<WorkflowListItem[]> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/workflows`);
+      if (!res.ok) {
+        throw new Error(`Failed to list workflows: ${res.statusText}`);
+      }
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Error listing workflows';
+      setError(message);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -52,8 +108,9 @@ export function useWorkflowApi() {
         throw new Error(`Failed to load workflow: ${res.statusText}`);
       }
       return await res.json();
-    } catch (e: any) {
-      setError(e.message || 'Error loading workflow');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Error loading workflow';
+      setError(message);
       return null;
     } finally {
       setLoading(false);
@@ -77,18 +134,35 @@ export function useWorkflowApi() {
         body: JSON.stringify(def),
       });
       if (!res.ok) {
-        throw new Error(`Failed to validate workflow: ${res.statusText}`);
+        const errText = await res.text();
+        let detail = res.statusText;
+        if (errText.trim()) {
+          try {
+            const parsed = JSON.parse(errText) as { message?: string; error?: string };
+            detail = parsed.message || parsed.error || errText;
+          } catch {
+            detail = errText;
+          }
+        }
+        throw new Error(`Failed to validate workflow: ${detail}`);
       }
-      return await res.json();
-    } catch (e: any) {
-      setError(e.message || 'Error validating workflow');
-      return { valid: false, errors: [e.message] };
+      const text = await res.text();
+      if (!text.trim()) {
+        return { valid: true };
+      }
+      return JSON.parse(text) as { valid: boolean; errors?: string[] };
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Error validating workflow';
+      setError(message);
+      return { valid: false, errors: [message] };
     } finally {
       setLoading(false);
     }
   };
 
-  const executeWorkflow = async (id: string): Promise<{ execution_id: string } | null> => {
+  const executeWorkflow = async (
+    id: string
+  ): Promise<{ execution_id: string; job_ids: string[] } | null> => {
     setLoading(true);
     setError(null);
     try {
@@ -98,9 +172,14 @@ export function useWorkflowApi() {
       if (!res.ok) {
         throw new Error(`Failed to execute workflow: ${res.statusText}`);
       }
-      return await res.json();
-    } catch (e: any) {
-      setError(e.message || 'Error executing workflow');
+      const data = await res.json();
+      return {
+        execution_id: data.execution_id,
+        job_ids: Array.isArray(data.job_ids) ? data.job_ids : [],
+      };
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Error executing workflow';
+      setError(message);
       return null;
     } finally {
       setLoading(false);
@@ -111,6 +190,8 @@ export function useWorkflowApi() {
     loading,
     error,
     saveWorkflow,
+    updateWorkflow,
+    listWorkflows,
     loadWorkflow,
     validateWorkflow,
     executeWorkflow,

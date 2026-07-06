@@ -19,9 +19,25 @@ jest.mock('./common/Toast', () => ({
   useToast: () => ({ showToast: jest.fn() })
 }));
 
-jest.mock('../i18n', () => ({
-  useTranslation: () => ({ t: () => undefined })
-}));
+jest.mock('../i18n', () => {
+  const en = jest.requireActual('../i18n/en.json');
+  const getNestedValue = (obj: Record<string, unknown>, path: string): string | undefined => {
+    const parts = path.split('.');
+    let current: unknown = obj;
+    for (const part of parts) {
+      if (current == null || typeof current !== 'object') return undefined;
+      current = (current as Record<string, unknown>)[part];
+    }
+    return typeof current === 'string' ? current : undefined;
+  };
+  return {
+    LanguageProvider: ({ children }: { children: React.ReactNode }) => children,
+    useTranslation: () => ({
+      t: (key: string) => getNestedValue(en, key) ?? key,
+    }),
+    useLanguage: () => ({ lang: 'en' as const, setLang: jest.fn() }),
+  };
+});
 
 jest.mock('../hooks/useAgentIdentity', () => ({
   useAgentIdentity: () => ({ agentId: 'agent-001', isEkycVerified: false }),

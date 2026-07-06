@@ -161,22 +161,22 @@ pub async fn upload_avatar_handler(
     }))
 }
 
-/// ユーザー自身の eKYC ステータスを取得・セッション作成
+/// ユーザー自身の eKYC ステータスを取得
+///
+/// U0-B3: セッション作成は `POST /api/v1/ekyc/session` に分離済み。
+/// status 確認のたびに Stripe Identity セッションを新規作成していた副作用
+/// （実 API 呼び出しによる遅延・失敗・セッション浪費）を除去した。
 #[utoipa::path(
     get,
     path = "/api/avatar/ekyc-status",
     responses(
-        (status = 200, description = "eKYC の現在のステータスとセッション URL", body = serde_json::Value)
+        (status = 200, description = "eKYC の現在の検証ステータス", body = serde_json::Value)
     )
 )]
 pub async fn get_ekyc_status_handler(
     State(state): State<AppState>,
     axum::extract::Extension(user): axum::extract::Extension<crate::auth::AuthenticatedUser>,
 ) -> Result<impl axum::response::IntoResponse, AppError> {
-    let session = state
-        .ekyc_engine
-        .create_verification_session(&user.0.sub)
-        .await?;
     let verified = user.0.ekyc_verified
         || state
             .ekyc_engine
@@ -190,14 +190,7 @@ pub async fn get_ekyc_status_handler(
         ("Link", "</api/v1/ekyc/session>; rel=\"successor-version\""),
     ];
 
-    Ok((
-        headers,
-        Json(serde_json::json!({
-            "verified": verified,
-            "session_url": session.url,
-            "session_id": session.session_id,
-        })),
-    ))
+    Ok((headers, Json(serde_json::json!({ "verified": verified }))))
 }
 
 /// Inochi2D アセットの安全な配信（パス・トラバーサル防御・CORS対応）

@@ -119,4 +119,31 @@ describe('CharacterPanel', () => {
             expect(window.open).toHaveBeenCalledWith('https://verify.stripe.com/test', '_blank', 'noopener,noreferrer');
         });
     });
+
+    // U0-B2: 失敗時はトースト連発ではなくパネル内エラー+再試行を表示する
+    it('should show in-panel error with retry when status fetches fail, and recover on retry', async () => {
+        (authenticatedFetch as jest.Mock).mockImplementation(async () => ({ ok: false }));
+
+        render(<CharacterPanel {...defaultProps} />);
+
+        expect(await screen.findByText('character.loadFailed')).toBeInTheDocument();
+        const retryBtn = screen.getByText('error.retry');
+
+        // 再試行で成功したらエラー表示が消える
+        (authenticatedFetch as jest.Mock).mockImplementation(async (url: string) => {
+            if (url.includes('/ekyc/status')) {
+                return { ok: true, json: async () => ({ verified: true }) };
+            }
+            if (url.includes('/soul/status')) {
+                return { ok: true, json: async () => ({ state: 'Awake', level: 5 }) };
+            }
+            return { ok: false };
+        });
+        fireEvent.click(retryBtn);
+
+        await waitFor(() => {
+            expect(screen.getByTestId('ekyc-badge')).toHaveTextContent('true');
+        });
+        expect(screen.queryByText('character.loadFailed')).not.toBeInTheDocument();
+    });
 });

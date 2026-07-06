@@ -26,6 +26,12 @@ jest.mock('../../hooks/AvatarContext', () => ({
     useAvatarCharacter: () => ({ getAssetPath: () => '/mock-model.vrm' })
 }));
 
+// U6-6: viewMode により設定タブの挙動が変わる（simple = 内蔵タブ / cockpit = 本体設定へ誘導）
+let mockViewMode = 'simple';
+jest.mock('../../hooks/useViewMode', () => ({
+    useViewMode: () => ({ viewMode: mockViewMode, setViewMode: jest.fn() })
+}));
+
 // Mock sub-components
 jest.mock('./CharacterPanel', () => (props: any) => (
     <div data-testid="character-panel">
@@ -99,7 +105,8 @@ describe('HomePage Component', () => {
         });
     });
 
-    it('changes to Settings tab and renders settings content', async () => {
+    it('changes to Settings tab and renders settings content (simple mode)', async () => {
+        mockViewMode = 'simple';
         render(<HomePage stats={mockStats} />);
         
         fireEvent.click(screen.getByText('home.mainTab.settings'));
@@ -110,6 +117,25 @@ describe('HomePage Component', () => {
             expect(screen.getByText('home.tab.general')).toBeTruthy();
             expect(screen.getByText('home.tab.security')).toBeTruthy();
         });
+    });
+
+    // U6-6: cockpit モードでは内蔵設定タブを開かず、本体の設定画面へ誘導する
+    it('redirects to cockpit settings via a2ui-navigate when in cockpit mode', async () => {
+        mockViewMode = 'cockpit';
+        const dispatched: string[] = [];
+        const listener = (e: Event) => dispatched.push((e as CustomEvent).detail?.tab);
+        window.addEventListener('a2ui-navigate', listener);
+
+        render(<HomePage stats={mockStats} />);
+        fireEvent.click(screen.getByText('home.mainTab.settings'));
+
+        expect(dispatched).toEqual(['settings']);
+        expect(screen.queryByTestId('settings-page')).toBeNull();
+        // CharacterPanel は表示されたまま（タブ遷移していない）
+        expect(screen.getByTestId('character-panel')).toBeTruthy();
+
+        window.removeEventListener('a2ui-navigate', listener);
+        mockViewMode = 'simple';
     });
 
     it('opens AvatarViewerModal when clicking on CharacterPanel viewer button', async () => {

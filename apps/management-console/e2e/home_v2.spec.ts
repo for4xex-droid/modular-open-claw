@@ -16,7 +16,7 @@ test('Home V2 (Beta) Layout Loads Correctly', async ({ page }) => {
   await page.waitForSelector('.app-container');
 
   // Click the new Home V2 tab
-  const homeV2Tab = page.locator('nav.nav-group div', { hasText: 'Home v2(Beta)' });
+  const homeV2Tab = page.getByTestId('nav-home-v2');
   await expect(homeV2Tab).toBeVisible();
   await homeV2Tab.click();
 
@@ -44,7 +44,7 @@ test('Interactive Avatar Viewer Modal opens and closes', async ({ page }) => {
 
   await page.goto('/');
 
-  const homeV2Tab = page.locator('nav.nav-group div', { hasText: 'Home v2(Beta)' });
+  const homeV2Tab = page.getByTestId('nav-home-v2');
   await expect(homeV2Tab).toBeVisible();
   await homeV2Tab.click();
 

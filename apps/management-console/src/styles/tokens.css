@@ -1,7 +1,8 @@
 /* 
  * Aiome Design System - Tokens
  * Refined Premium Dark Palette
- * Auto-generated from DESIGN.md. DO NOT EDIT DIRECTLY. 
+ * Layout SSOT: section order and comments are curated here.
+ * Value SSOT: DESIGN.md YAML — run `npm run sync:tokens` to apply values.
  */
 :root {
   /* ── Breakpoints ── */
@@ -39,6 +40,11 @@
   --accent-cyan-15: rgba(56, 189, 248, 0.15);
   --accent-cyan-10: rgba(56, 189, 248, 0.1);
   --accent-cyan-05: rgba(56, 189, 248, 0.05);
+
+  /* ── Legacy Neon Cyan (WorkflowBuilder glow) ── */
+  --accent-neon-cyan-30: rgba(0, 240, 255, 0.3);
+  --accent-neon-cyan-20: rgba(0, 240, 255, 0.2);
+  --accent-neon-cyan-15: rgba(0, 240, 255, 0.15);
 
   /* ── Secondary Accent: Violet ── */
   --accent-purple: #a78bfa;
@@ -103,7 +109,9 @@
   --white-90: rgba(255, 255, 255, 0.9);
   --black-05: rgba(0, 0, 0, 0.05);
   --black-10: rgba(0, 0, 0, 0.1);
+  --black-15: rgba(0, 0, 0, 0.15);
   --black-20: rgba(0, 0, 0, 0.2);
+  --black-25: rgba(0, 0, 0, 0.25);
   --black-30: rgba(0, 0, 0, 0.3);
   --black-40: rgba(0, 0, 0, 0.4);
   --black-50: rgba(0, 0, 0, 0.5);
@@ -229,4 +237,38 @@
   --biome-ui-element-s: #ffdd33;
   --biome-ui-element-fe: #ff5544;
   --biome-ui-element-si: #aaaaee;
+
+  /* ── Biome Rarity Colors ── */
+  --biome-rarity-legendary: #f59e0b;
+  --biome-rarity-legendary-border: rgba(245, 158, 11, 0.2);
+  --biome-rarity-legendary-glow: rgba(245, 158, 11, 0.13);
+  --biome-rarity-epic: #d946ef;
+  --biome-rarity-epic-border: rgba(217, 70, 239, 0.2);
+  --biome-rarity-epic-glow: rgba(217, 70, 239, 0.13);
+  --biome-rarity-rare: #06b6d4;
+  --biome-rarity-rare-border: rgba(6, 182, 212, 0.2);
+  --biome-rarity-rare-glow: rgba(6, 182, 212, 0.13);
+  --biome-rarity-uncommon: #10b981;
+  --biome-rarity-uncommon-border: rgba(16, 185, 129, 0.2);
+  --biome-rarity-uncommon-glow: rgba(16, 185, 129, 0.13);
+  --biome-rarity-common: #94a3b8;
+  --biome-rarity-common-border: rgba(148, 163, 184, 0.2);
+  --biome-rarity-common-glow: rgba(148, 163, 184, 0.13);
+
+  /* ── Biome Gauge Gradients ── */
+  --biome-gauge-boost-start: #06b6d4;
+  --biome-gauge-boost-end: #3b82f6;
+  --biome-gauge-pity-start: #f43f5e;
+  --biome-gauge-pity-end: #f97316;
+
+  /* ── Biome Morphology Colors ── */
+  --biome-morph-basic: #888888;
+  --biome-morph-producer: #33ff55;
+  --biome-morph-consumer: #ff9922;
+  --biome-morph-predator: #ff5544;
+  --biome-morph-decomposer: #cc44ff;
+
+  /* ── Biome HUD Glow (neonGlow keyframes) ── */
+  --biome-hud-glow-40: rgba(6, 182, 212, 0.4);
+  --biome-hud-glow-90: rgba(6, 182, 212, 0.9);
 }

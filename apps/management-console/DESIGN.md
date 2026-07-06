@@ -1,7 +1,17 @@
 ---
+breakpoints:
+  bp-sm: "480px"
+  bp-md: "768px"
+  bp-lg: "1024px"
 colors:
-  bg-primary: "#0b0b0f"
+  bg-primary: "#0b0d14"
   bg-base: "var(--bg-primary)"
+  bg-secondary: "#10131c"
+  bg-tertiary: "#181d2a"
+  bg-dark-sidebar: "rgba(11, 13, 20, 0.88)"
+  bg-glass-heavy: "rgba(14, 18, 28, 0.82)"
+  bg-glass-light: "rgba(255, 255, 255, 0.03)"
+  bg-deep-glass: "rgba(10, 12, 18, 0.92)"
   fluid-warm-ivory: "#d4c5a9"
   fluid-warm-ivory-rgb: "212, 197, 169"
   fluid-deep-gold: "#b8965a"
@@ -10,18 +20,53 @@ colors:
   fluid-obsidian-glow: "rgba(212, 197, 169, 0.04)"
   fluid-ember: "#8b6d4a"
   fluid-ember-rgb: "139, 109, 74"
-  bg-secondary: "#0f0f18"
-  bg-tertiary: "#161625"
-  bg-dark-sidebar: "rgba(11, 11, 15, 0.85)"
-  bg-glass-heavy: "rgba(16, 20, 28, 0.8)"
-  bg-glass-light: "rgba(255, 255, 255, 0.03)"
-  accent-emerald: "#10b981"
-  accent-amber: "#f59e0b"
-  accent-fuchsia: "#d946ef"
-  accent-fuchsia-rgb: "217, 70, 239"
-  accent-cyan-glass: "rgba(0, 242, 255, 0.08)"
-  accent-purple-glass: "rgba(188, 140, 255, 0.08)"
-  bg-deep-glass: "rgba(10, 10, 15, 0.9)"
+  accent-cyan: "#38bdf8"
+  accent-cyan-rgb: "56, 189, 248"
+  accent-cyan-70: "rgba(56, 189, 248, 0.7)"
+  accent-cyan-50: "rgba(56, 189, 248, 0.5)"
+  accent-cyan-30: "rgba(56, 189, 248, 0.3)"
+  accent-cyan-20: "rgba(56, 189, 248, 0.2)"
+  accent-cyan-15: "rgba(56, 189, 248, 0.15)"
+  accent-cyan-10: "rgba(56, 189, 248, 0.1)"
+  accent-cyan-05: "rgba(56, 189, 248, 0.05)"
+  accent-neon-cyan-30: "rgba(0, 240, 255, 0.3)"
+  accent-neon-cyan-20: "rgba(0, 240, 255, 0.2)"
+  accent-neon-cyan-15: "rgba(0, 240, 255, 0.15)"
+  accent-purple: "#a78bfa"
+  accent-purple-rgb: "167, 139, 250"
+  accent-purple-50: "rgba(167, 139, 250, 0.5)"
+  accent-purple-30: "rgba(167, 139, 250, 0.3)"
+  accent-purple-20: "rgba(167, 139, 250, 0.2)"
+  accent-purple-10: "rgba(167, 139, 250, 0.1)"
+  accent-purple-05: "rgba(167, 139, 250, 0.05)"
+  accent-rose: "#f472b6"
+  accent-rose-rgb: "244, 114, 182"
+  accent-rose-50: "rgba(244, 114, 182, 0.5)"
+  accent-rose-30: "rgba(244, 114, 182, 0.3)"
+  accent-rose-20: "rgba(244, 114, 182, 0.2)"
+  accent-rose-15: "rgba(244, 114, 182, 0.15)"
+  accent-rose-10: "rgba(244, 114, 182, 0.1)"
+  accent-rose-05: "rgba(244, 114, 182, 0.05)"
+  accent-emerald: "#34d399"
+  accent-emerald-05: "rgba(52, 211, 153, 0.05)"
+  accent-emerald-10: "rgba(52, 211, 153, 0.1)"
+  accent-emerald-15: "rgba(52, 211, 153, 0.15)"
+  accent-emerald-20: "rgba(52, 211, 153, 0.2)"
+  accent-amber: "#fbbf24"
+  accent-amber-05: "rgba(251, 191, 36, 0.05)"
+  accent-amber-10: "rgba(251, 191, 36, 0.1)"
+  accent-amber-15: "rgba(251, 191, 36, 0.15)"
+  accent-amber-20: "rgba(251, 191, 36, 0.2)"
+  accent-amber-30: "rgba(251, 191, 36, 0.3)"
+  accent-amber-80: "rgba(251, 191, 36, 0.8)"
+  accent-fuchsia: "#c084fc"
+  accent-fuchsia-rgb: "192, 132, 252"
+  accent-blue: "#60a5fa"
+  accent-blue-rgb: "96, 165, 250"
+  accent-orange: "#fb923c"
+  accent-orange-rgb: "251, 146, 60"
+  accent-cyan-glass: "rgba(56, 189, 248, 0.06)"
+  accent-purple-glass: "rgba(167, 139, 250, 0.06)"
   white-01: "rgba(255, 255, 255, 0.01)"
   white-02: "rgba(255, 255, 255, 0.02)"
   white-03: "rgba(255, 255, 255, 0.03)"
@@ -41,7 +86,9 @@ colors:
   white-90: "rgba(255, 255, 255, 0.9)"
   black-05: "rgba(0, 0, 0, 0.05)"
   black-10: "rgba(0, 0, 0, 0.1)"
+  black-15: "rgba(0, 0, 0, 0.15)"
   black-20: "rgba(0, 0, 0, 0.2)"
+  black-25: "rgba(0, 0, 0, 0.25)"
   black-30: "rgba(0, 0, 0, 0.3)"
   black-40: "rgba(0, 0, 0, 0.4)"
   black-50: "rgba(0, 0, 0, 0.5)"
@@ -51,15 +98,29 @@ colors:
   black-90: "rgba(0, 0, 0, 0.9)"
   black-100: "#000000"
   white-100: "#ffffff"
-  accent-cyan: "#38bdf8"
-  accent-cyan-rgb: "56, 189, 248"
-  accent-cyan-70: "rgba(56, 189, 248, 0.7)"
-  accent-cyan-50: "rgba(56, 189, 248, 0.5)"
-  accent-cyan-30: "rgba(56, 189, 248, 0.3)"
-  accent-cyan-20: "rgba(56, 189, 248, 0.2)"
-  accent-cyan-15: "rgba(56, 189, 248, 0.15)"
-  accent-cyan-10: "rgba(56, 189, 248, 0.1)"
-  accent-cyan-05: "rgba(56, 189, 248, 0.05)"
+  chart-1: "var(--accent-purple)"
+  chart-2: "var(--accent-cyan)"
+  chart-3: "var(--accent-emerald)"
+  chart-4: "var(--accent-amber)"
+  chart-5: "var(--accent-rose)"
+  text-primary: "#f1f5f9"
+  text-secondary: "#94a3b8"
+  text-muted: "#64748b"
+  text-inverse: "#0b0d14"
+  bg-inverse: "#f1f5f9"
+  border-glass: "rgba(255, 255, 255, 0.08)"
+  border-glass-bright: "rgba(255, 255, 255, 0.14)"
+  glow-cyan: "0 0 20px rgba(56, 189, 248, 0.2)"
+  glow-purple: "0 0 20px rgba(167, 139, 250, 0.2)"
+  glow-rose: "0 0 20px rgba(244, 114, 182, 0.2)"
+  glow-gold: "0 0 15px rgba(184, 150, 90, 0.25)"
+  glow-ivory: "0 0 12px rgba(212, 197, 169, 0.18)"
+  glow-amber: "0 0 20px rgba(251, 191, 36, 0.2)"
+  shadow-deep: "0 20px 50px var(--black-50)"
+  gold-glass-bg: "rgba(184, 150, 90, 0.12)"
+  gold-glass-border: "rgba(184, 150, 90, 0.28)"
+  ivory-glass-bg: "rgba(212, 197, 169, 0.08)"
+  ember-glass-bg: "rgba(139, 109, 74, 0.10)"
   accent-primary: "var(--fluid-deep-gold)"
   accent-primary-rgb: "var(--fluid-deep-gold-rgb)"
   accent-primary-70: "rgba(var(--fluid-deep-gold-rgb), 0.7)"
@@ -73,53 +134,49 @@ colors:
   accent-primary-glass: "rgba(var(--fluid-deep-gold-rgb), 0.06)"
   glow-primary: "0 0 20px rgba(var(--fluid-deep-gold-rgb), 0.25)"
   gradient-heading: "linear-gradient(135deg, var(--fluid-deep-gold), var(--fluid-warm-ivory))"
-  accent-purple: "#a78bfa"
-  accent-purple-rgb: "167, 139, 250"
-  accent-purple-50: "rgba(167, 139, 250, 0.5)"
-  accent-purple-30: "rgba(167, 139, 250, 0.3)"
-  accent-purple-20: "rgba(167, 139, 250, 0.2)"
-  accent-purple-10: "rgba(167, 139, 250, 0.1)"
-  accent-purple-05: "rgba(167, 139, 250, 0.05)"
-  accent-rose: "#f472b6"
-  accent-rose-rgb: "244, 114, 182"
-  accent-rose-50: "rgba(244, 114, 182, 0.5)"
-  accent-rose-30: "rgba(244, 114, 182, 0.3)"
-  accent-rose-20: "rgba(244, 114, 182, 0.2)"
-  accent-rose-15: "rgba(244, 114, 182, 0.15)"
-  accent-rose-10: "rgba(244, 114, 182, 0.1)"
-  accent-rose-05: "rgba(244, 114, 182, 0.05)"
-  accent-emerald-05: "rgba(16, 185, 129, 0.05)"
-  accent-emerald-10: "rgba(16, 185, 129, 0.1)"
-  accent-emerald-20: "rgba(16, 185, 129, 0.2)"
-  accent-amber-05: "rgba(245, 158, 11, 0.05)"
-  accent-amber-10: "rgba(245, 158, 11, 0.1)"
-  accent-amber-20: "rgba(245, 158, 11, 0.2)"
-  accent-amber-30: "rgba(245, 158, 11, 0.3)"
-  accent-amber-80: "rgba(245, 158, 11, 0.8)"
-  accent-blue: "#3b82f6"
-  accent-blue-rgb: "59, 130, 246"
-  accent-orange: "#f97316"
-  accent-orange-rgb: "249, 115, 22"
-  chart-1: "var(--accent-purple)"
-  chart-2: "var(--accent-cyan)"
-  chart-3: "var(--accent-emerald)"
-  chart-4: "var(--accent-amber)"
-  chart-5: "var(--accent-rose)"
-  text-primary: "#f0f2f5"
-  text-secondary: "#94a3b8"
-  text-muted: "#64748b"
-  text-inverse: "#000"
-  bg-inverse: "#fff"
-  border-glass: "rgba(255, 255, 255, 0.08)"
-  border-glass-bright: "rgba(255, 255, 255, 0.15)"
-  glow-cyan: "0 0 25px rgba(0, 242, 255, 0.25)"
-  glow-purple: "0 0 25px rgba(188, 140, 255, 0.25)"
-  glow-rose: "0 0 20px rgba(244, 114, 182, 0.2)"
-  shadow-deep: "0 20px 50px var(--black-50)"
-  speed-fast: "0.15s"
-  speed-normal: "0.3s"
-  speed-slow: "0.8s"
-  speed-genesis: "2s"
+  biome-element-c: "#4fc3f7"
+  biome-element-n: "#81c784"
+  biome-element-p: "#ffb74d"
+  biome-element-h: "#e57373"
+  biome-element-o: "#ba68c8"
+  biome-element-s: "#a1887f"
+  biome-element-fe: "#90a4ae"
+  biome-element-si: "#d4e157"
+  biome-element-fallback: "#01040a"
+  biome-ui-element-c: "#33ff55"
+  biome-ui-element-n: "#4488ff"
+  biome-ui-element-p: "#ff9922"
+  biome-ui-element-h: "#cc44ff"
+  biome-ui-element-o: "#00ddff"
+  biome-ui-element-s: "#ffdd33"
+  biome-ui-element-fe: "#ff5544"
+  biome-ui-element-si: "#aaaaee"
+  biome-rarity-legendary: "#f59e0b"
+  biome-rarity-legendary-border: "rgba(245, 158, 11, 0.2)"
+  biome-rarity-legendary-glow: "rgba(245, 158, 11, 0.13)"
+  biome-rarity-epic: "#d946ef"
+  biome-rarity-epic-border: "rgba(217, 70, 239, 0.2)"
+  biome-rarity-epic-glow: "rgba(217, 70, 239, 0.13)"
+  biome-rarity-rare: "#06b6d4"
+  biome-rarity-rare-border: "rgba(6, 182, 212, 0.2)"
+  biome-rarity-rare-glow: "rgba(6, 182, 212, 0.13)"
+  biome-rarity-uncommon: "#10b981"
+  biome-rarity-uncommon-border: "rgba(16, 185, 129, 0.2)"
+  biome-rarity-uncommon-glow: "rgba(16, 185, 129, 0.13)"
+  biome-rarity-common: "#94a3b8"
+  biome-rarity-common-border: "rgba(148, 163, 184, 0.2)"
+  biome-rarity-common-glow: "rgba(148, 163, 184, 0.13)"
+  biome-gauge-boost-start: "#06b6d4"
+  biome-gauge-boost-end: "#3b82f6"
+  biome-gauge-pity-start: "#f43f5e"
+  biome-gauge-pity-end: "#f97316"
+  biome-morph-basic: "#888888"
+  biome-morph-producer: "#33ff55"
+  biome-morph-consumer: "#ff9922"
+  biome-morph-predator: "#ff5544"
+  biome-morph-decomposer: "#cc44ff"
+  biome-hud-glow-40: "rgba(6, 182, 212, 0.4)"
+  biome-hud-glow-90: "rgba(6, 182, 212, 0.9)"
 spacing:
   space-2xs: "0.25rem"
   space-xs: "0.5rem"
@@ -147,33 +204,36 @@ typography:
   font-size-md: "1rem"
   font-size-lg: "1.125rem"
   font-size-2xl: "1.5rem"
-  font-display: "'Outfit', 'Artemis Inter', system-ui, sans-serif"
-  font-main: "'Artemis Inter', 'Inter', system-ui, -apple-system, sans-serif"
+  font-display: "'Outfit', system-ui, sans-serif"
+  font-main: "'Inter', system-ui, -apple-system, sans-serif"
   font-mono: "'JetBrains Mono', 'Fira Code', monospace"
 motion:
+  speed-fast: "0.15s"
+  speed-base: "0.35s"
+  speed-normal: "0.3s"
+  speed-slow: "0.7s"
+  speed-genesis: "2s"
   timing-soft: "cubic-bezier(0.16, 1, 0.3, 1)"
   timing-bouncy: "cubic-bezier(0.34, 1.56, 0.64, 1)"
   timing-linear: "linear"
-  speed-fast: "0.2s"
-  speed-base: "0.4s"
-  speed-slow: "0.7s"
 effects:
   blur-md: "12px"
 ---
 
+
 # Aiome Management Console — Design System
 
-Aiome's Management Console is a dark-mode-native command center for an autonomous AI operating system. The visual language draws from deep space aesthetics: an obsidian-black canvas (`var(--bg-dark-obsidian)`, #05070a) where information surfaces through layers of frosted glass and cyan-purple luminescence. Every panel breathes with subtle neural-flow animations, holographic sweeps on hover, and floating micro-interactions that make the interface feel alive — like piloting a spacecraft's bridge.
+Aiome's Management Console is a dark-mode-native command center for an autonomous AI operating system. The visual language draws from deep space aesthetics: an obsidian-black canvas (`var(--bg-primary)`, #0b0d14) where information surfaces through layers of frosted glass and cyan-purple luminescence. Every panel breathes with subtle neural-flow animations, holographic sweeps on hover, and floating micro-interactions that make the interface feel alive — like piloting a spacecraft's bridge.
 
 The design is built on three pillars: **Glassmorphism** (translucent panels with backdrop-filter blur), **Neon Accents** (cyan/purple/rose glow effects), and **Typographic Hierarchy** (Outfit for bold geometric display headings, Inter for readable body text, JetBrains Mono for technical data). The result is a premium, futuristic aesthetic that communicates intelligence, precision, and trust.
 
 **Key Characteristics:**
-- Dark-mode-native: `var(--bg-dark-obsidian)` (#05070a) as the deepest canvas, glass layers with `backdrop-filter: blur(40px)`
-- Glassmorphism everywhere: panels at `var(--bg-glass-heavy)` (rgba(16,20,28,0.8)) with blur and saturate
+- Dark-mode-native: `var(--bg-primary)` (#0b0d14) as the deepest canvas, glass layers with `backdrop-filter: blur(40px)`
+- Glassmorphism everywhere: panels at `var(--bg-glass-heavy)` (rgba(14, 18, 28, 0.82)) with blur and saturate
 - Triple-accent system: Cyan (`var(--accent-cyan)`, #38bdf8), Purple (`var(--accent-purple)`, #a78bfa), Rose (`var(--accent-rose)`, #f472b6)
 - Brand gradient: `linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))` on headings
-- Artemis Typography: Outfit (display), Inter (body), JetBrains Mono (code)
-- Neon glow effects: `var(--glow-cyan)` = `0 0 25px rgba(0, 242, 255, 0.25)`
+- Typography: Outfit (display), Inter (body), JetBrains Mono (code)
+- Neon glow effects: `var(--glow-cyan)` = `0 0 20px rgba(56, 189, 248, 0.2)`
 - Star-field background with radial gradients and pseudo-element particle effects
 - Neural-flow animations: slow gradient cycling across surfaces
 - All values referenced via CSS custom properties (var()) — never hardcoded
@@ -183,13 +243,13 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 ## Color Palette
 
 ### Background Surfaces
-- **Primary Background** — `var(--bg-primary)` (#05070a): Root background color for dynamic panels.
-- **Dark Obsidian** — `var(--bg-dark-obsidian)` (#05070a): The deepest canvas. Near-black with a cool blue undertone. Used for the root background.
-- **Sidebar** — `var(--bg-dark-sidebar)` (rgba(10, 12, 18, 0.95)): Translucent dark panel for the navigation sidebar. The 0.95 opacity allows subtle bleed-through.
-- **Glass Heavy** — `var(--bg-glass-heavy)` (rgba(16, 20, 28, 0.8)): Primary glass surface for cards, panels, and containers. Heavy enough to read over, transparent enough to feel layered.
+- **Primary Background** — `var(--bg-primary)` (#0b0d14): Root background color for dynamic panels.
+- **Dark Obsidian** — `var(--bg-primary)` (#0b0d14): The deepest canvas. Near-black with a cool blue undertone. Used for the root background.
+- **Sidebar** — `var(--bg-dark-sidebar)` (rgba(11, 13, 20, 0.88)): Translucent dark panel for the navigation sidebar. The 0.88 opacity allows subtle bleed-through.
+- **Glass Heavy** — `var(--bg-glass-heavy)` (rgba(14, 18, 28, 0.82)): Primary glass surface for cards, panels, and containers. Heavy enough to read over, transparent enough to feel layered.
 - **Glass Light** — `var(--bg-glass-light)` (rgba(255, 255, 255, 0.03)): Ultra-subtle hover state background. A whisper of white on dark surfaces.
-- **Deep Glass** — `var(--bg-deep-glass)` (rgba(10, 10, 15, 0.9)): Deep, nearly opaque glass for modals and overlays.
-- **Inverse Background** — `var(--bg-inverse)` (#fff): Pure white for contrast elements.
+- **Deep Glass** — `var(--bg-deep-glass)` (rgba(10, 12, 18, 0.92)): Deep, nearly opaque glass for modals and overlays.
+- **Inverse Background** — `var(--bg-inverse)` (#f1f5f9): Near-white for contrast elements.
 
 ### Brand Accents
 - **Primary Accent (Warm Gold)** — `var(--accent-primary)` (#b8965a): Primary interactive accent for premium warm theme. CTAs, active navigation, status indicators.
@@ -206,21 +266,21 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 - **Orange** — `var(--accent-orange)` (#fb923c): Paired interactive accent or tertiary glow.
 
 ### Chart Colors
-- **Chart 1** — `var(--chart-1)` (rgb(0, 242, 255)): Primary chart color, maps to Cyan.
-- **Chart 2** — `var(--chart-2)` (rgb(188, 140, 255)): Secondary chart color, maps to Purple.
-- **Chart 3** — `var(--chart-3)` (rgb(255, 77, 148)): Tertiary chart color, maps to Rose.
-- **Chart 4** — `var(--chart-4)` (rgb(16, 185, 129)): Quaternary chart color, maps to Emerald.
-- **Chart 5** — `var(--chart-5)` (rgb(245, 158, 11)): Quinary chart color, maps to Amber.
+- **Chart 1** — `var(--chart-1)` (var(--accent-purple)): Primary chart color, maps to Purple.
+- **Chart 2** — `var(--chart-2)` (var(--accent-cyan)): Secondary chart color, maps to Cyan.
+- **Chart 3** — `var(--chart-3)` (var(--accent-emerald)): Tertiary chart color, maps to Emerald.
+- **Chart 4** — `var(--chart-4)` (var(--accent-amber)): Quaternary chart color, maps to Amber.
+- **Chart 5** — `var(--chart-5)` (var(--accent-rose)): Quinary chart color, maps to Rose.
 
 ### Text & Content
-- **Primary Text** — `var(--text-primary)` (#f0f2f5): Near-white with a cool cast. Default text color on dark backgrounds.
+- **Primary Text** — `var(--text-primary)` (#f1f5f9): Near-white with a cool cast. Default text color on dark backgrounds.
 - **Secondary Text** — `var(--text-secondary)` (#94a3b8): Cool silver-gray for body text, descriptions, metadata.
 - **Muted Text** — `var(--text-muted)` (#64748b): Dimmed gray for labels, placeholders, de-emphasized content.
-- **Inverse Text** — `var(--text-inverse)` (#000): Pure black text used for extreme high-contrast overlays on cyan, amber, or light elements.
+- **Inverse Text** — `var(--text-inverse)` (#0b0d14): Near-black text used for extreme high-contrast overlays on cyan, amber, or light elements.
 
 ### Borders & Glass
 - **Border Glass** — `var(--border-glass)` (rgba(255, 255, 255, 0.08)): Default border on all glass surfaces. Semi-transparent white.
-- **Border Glass Bright** — `var(--border-glass-bright)` (rgba(255, 255, 255, 0.15)): Hover state border. Brighter for emphasis.
+- **Border Glass Bright** — `var(--border-glass-bright)` (rgba(255, 255, 255, 0.14)): Hover state border. Brighter for emphasis.
 
 ### Status Colors
 - Connected: `var(--accent-emerald)` with glow
@@ -231,9 +291,9 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 
 ## Typography
 
-### Font Families (Artemis Design System)
-- **Display**: `var(--font-display)` — `'Outfit', 'Artemis Inter', system-ui, sans-serif` — Geometric sans-serif for headings. Bold, wide letter-spacing reinforces precision.
-- **Main/Body**: `var(--font-main)` — `'Artemis Inter', 'Inter', system-ui, -apple-system, sans-serif` — Highly legible body text optimized for screens.
+### Font Families
+- **Display**: `var(--font-display)` — `'Outfit', system-ui, sans-serif` — Geometric sans-serif for headings. Bold, wide letter-spacing reinforces precision.
+- **Main/Body**: `var(--font-main)` — `'Inter', system-ui, -apple-system, sans-serif` — Highly legible body text optimized for screens.
 - **Monospace**: `var(--font-mono)` — `'JetBrains Mono', 'Fira Code', monospace` — Technical data, code blocks, system labels.
 
 ### Hierarchy
@@ -251,7 +311,7 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 
 ### Principles
 - **Outfit for impact**: All headings use Outfit with wide letter-spacing and `text-transform: uppercase` to maximize geometric distinction from system fonts
-- **Inter for reading**: Body text uses Inter (Artemis variant) for long-form readability
+- **Inter for reading**: Body text uses Inter for long-form readability
 - **JetBrains for truth**: All data/metrics/code use monospace to signal precision and trustworthiness
 - **Gradient as identity**: h1/h2 headings use `linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))` with `background-clip: text` as the primary brand expression
 - **Glow for hierarchy**: Display text includes `filter: drop-shadow(0 0 12px rgba(var(--accent-cyan-rgb), 0.3))` to create depth
@@ -263,12 +323,12 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 ### Buttons
 
 **Primary Button**
-- Background: `var(--accent-cyan)` (#00f2ff)
-- Text: `var(--text-inverse)` (#000) — dark on bright for maximum contrast and readability
+- Background: `var(--accent-cyan)` (#38bdf8)
+- Text: `var(--text-inverse)` (#0b0d14) — dark on bright for maximum contrast and readability
 - Padding: 0.6rem 1.2rem
 - Radius: `var(--radius-sm)` (8px)
 - Font-weight: 700
-- Hover: `filter: brightness(1.1)` + `box-shadow: 0 0 20px rgba(0, 242, 255, 0.3)`
+- Hover: `filter: brightness(1.1)` + `box-shadow: var(--glow-cyan)`
 - Use: Primary CTAs
 
 **Glass Panel Button / Nav Item**
@@ -325,14 +385,14 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 - Radius: `var(--radius-md)` (12px)
 - Color: `var(--text-primary)`
 - Padding: 0.75rem 1rem
-- Focus: border → `var(--accent-cyan)`, bg → `rgba(255, 255, 255, 0.05)`, glow shadow `0 0 15px rgba(0, 242, 255, 0.1)`
+- Focus: border → `var(--accent-cyan)`, bg → `var(--white-05)`, glow shadow `var(--accent-cyan-10)`
 - Use: All text inputs in the system
 
 ### Badges & Status
 
 **Status Badge (Connected)**
-- Background: `rgba(16, 185, 129, 0.05)`
-- Border: `1px solid rgba(16, 185, 129, 0.15)`
+- Background: `var(--accent-emerald-05)`
+- Border: `1px solid var(--accent-emerald-15)`
 - Color: `var(--accent-emerald)`
 - Radius: 20px (pill)
 - Font: 0.8rem weight 600
@@ -355,8 +415,8 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 - **Linear** — `var(--timing-linear)`: `linear` — Constant-speed loops (holographic sweep, spin).
 
 ### Speed Scale
-- **Fast** — `var(--speed-fast)`: 0.2s — Hover state transitions, focus rings
-- **Base** — `var(--speed-base)`: 0.4s — Standard transitions, slide-in animations
+- **Fast** — `var(--speed-fast)`: 0.15s — Hover state transitions, focus rings
+- **Base** — `var(--speed-base)`: 0.35s — Standard transitions, slide-in animations
 - **Slow** — `var(--speed-slow)`: 0.7s — Modal entrances, complex transitions
 
 ### Keyframe Catalog
@@ -426,8 +486,8 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 | Level 5 (Deep) | `var(--bg-deep-glass)` + heavy blur | Modals, overlays, command palette |
 
 ### Shadow System
-- **Glow Cyan** — `var(--glow-cyan)`: `0 0 25px rgba(0, 242, 255, 0.25)` — Active/focus states
-- **Glow Purple** — `var(--glow-purple)`: `0 0 25px rgba(188, 140, 255, 0.25)` — Secondary glow
+- **Glow Cyan** — `var(--glow-cyan)`: `0 0 20px rgba(56, 189, 248, 0.2)` — Active/focus states
+- **Glow Purple** — `var(--glow-purple)`: `0 0 20px rgba(167, 139, 250, 0.2)` — Secondary glow
 - **Glow Rose** — `var(--glow-rose)`: `0 0 20px rgba(244, 114, 182, 0.2)` — Error/danger glow
 - **Shadow Deep** — `var(--shadow-deep)`: `0 20px 50px rgba(0, 0, 0, 0.5)` — Panel elevation
 
@@ -447,7 +507,7 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 - Always reference CSS custom properties via `var(--xxx)` — this is the #1 rule (Golden Rule U-002)
 - Use `var(--font-display)` (Outfit) for ALL headings with `letter-spacing: 0.03em+` and `text-transform: uppercase`
 - Apply `linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))` with `background-clip: text` for brand headings
-- Build on `var(--bg-dark-obsidian)` canvas with glass layers using `backdrop-filter: blur()`
+- Build on `var(--bg-primary)` canvas with glass layers using `backdrop-filter: blur()`
 - Use `var(--border-glass)` for all surface borders — never solid colored borders
 - Apply hover transforms: `translateY(-4px)` for cards, `translateX(6px)` for nav items
 - Add glow effects (`var(--glow-cyan)`) to active/focus states
@@ -457,8 +517,8 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 
 ### Don't
 - **NEVER** use Tailwind utility classes (`flex`, `mb-4`, etc.) — this project uses Vanilla CSS only (Golden Rule U-001)
-- **NEVER** hardcode color hex values (`#00f2ff`), spacing pixels (`12px`), or layout widths (`280px`) in **CSS files or inline `style={{}}` props** — always use `var()` (Golden Rule U-002)
-- Don't use pure white (`#ffffff`) as text — `var(--text-primary)` (#f0f2f5) is the correct near-white
+- **NEVER** hardcode color hex values (`#38bdf8`), spacing pixels (`12px`), or layout widths (`280px`) in **CSS files or inline `style={{}}` props** — always use `var()` (Golden Rule U-002)
+- Don't use pure white (`#ffffff`) as text — `var(--text-primary)` (#f1f5f9) is the correct near-white
 - Don't use solid opaque backgrounds for cards — glass transparency with `backdrop-filter` is the system
 - Don't skip `backdrop-filter: blur()` on glass surfaces — without blur, it's just a dark rectangle, not glass
 - Don't use positive letter-spacing / lowercase on heading elements — Outfit uses wide tracking + uppercase
@@ -468,22 +528,22 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 - Don't add motion without using the timing scale (`--speed-fast/base/slow` + `--timing-soft/bouncy`)
 
 ### Exceptions
-- **WebGL / three.js / react-three-fiber**: `color` props on `<spotLight>`, `<pointLight>`, `<fog>`, `<meshStandardMaterial>`, and `<Sparkles>` require raw HEX strings (`"#00f2ff"`). CSS custom properties do not work in WebGL context. This does NOT violate U-002.
+- **WebGL / three.js / react-three-fiber**: `color` props on `<spotLight>`, `<pointLight>`, `<fog>`, `<meshStandardMaterial>`, and `<Sparkles>` require raw HEX strings (`"#38bdf8"`). CSS custom properties do not work in WebGL context. This does NOT violate U-002.
 - **Lucide icon `color` prop**: React icon components accept string colors. Prefer `var(--accent-cyan)` when possible, but raw HEX is tolerable for icons rendered outside CSS context.
 
 
 ## Quick Color Reference
-- Primary CTA: `var(--accent-cyan)` (#00f2ff)
-- Canvas Background: `var(--bg-dark-obsidian)` (#05070a)
-- Glass Surface: `var(--bg-glass-heavy)` (rgba(16, 20, 28, 0.8))
+- Primary CTA: `var(--accent-cyan)` (#38bdf8)
+- Canvas Background: `var(--bg-primary)` (#0b0d14)
+- Glass Surface: `var(--bg-glass-heavy)` (rgba(14, 18, 28, 0.82))
 - Heading Text: Gradient `var(--accent-cyan)` → `var(--accent-purple)`
-- Body Text: `var(--text-primary)` (#f0f2f5)
+- Body Text: `var(--text-primary)` (#f1f5f9)
 - Secondary Text: `var(--text-secondary)` (#94a3b8)
 - Muted Text: `var(--text-muted)` (#64748b)
 - Border: `var(--border-glass)` (rgba(255, 255, 255, 0.08))
-- Success: `var(--accent-emerald)` (#10b981)
+- Success: `var(--accent-emerald)` (#34d399)
 - Error: `var(--accent-rose)` (#f472b6)
-- Warning: `var(--accent-amber)` (#f59e0b)
+- Warning: `var(--accent-amber)` (#fbbf24)
 - Charts: `var(--chart-1)` to `var(--chart-5)`
 
 ---
@@ -494,9 +554,9 @@ The design is built on three pillars: **Glassmorphism** (translucent panels with
 
 - "Build a navigation sidebar: width `var(--layout-sidebar-width)`, background `var(--bg-dark-sidebar)` with `backdrop-filter: blur(40px)`. Nav items use 0.95rem `var(--text-secondary)`, radius `var(--radius-md)`. Hover: `translateX(6px)`, background `var(--bg-glass-light)`, holographic sweep animation. Active: cyan tinted bg `rgba(var(--accent-cyan-rgb), 0.08)` with left glow bar."
 
-- "Design a glass input field: background `rgba(255, 255, 255, 0.02)`, border `1px solid var(--border-glass)`, radius `var(--radius-md)`. Text `var(--text-primary)`. On focus: border glows `var(--accent-cyan)`, background shifts to `rgba(255, 255, 255, 0.05)`, shadow `0 0 15px rgba(0, 242, 255, 0.1)`."
+- "Design a glass input field: background `rgba(255, 255, 255, 0.02)`, border `1px solid var(--border-glass)`, radius `var(--radius-md)`. Text `var(--text-primary)`. On focus: border glows `var(--accent-cyan)`, background shifts to `rgba(255, 255, 255, 0.05)`, shadow `var(--accent-cyan-10)`."
 
-- "Create a status badge: pill shape (20px radius), background `rgba(16, 185, 129, 0.05)`, border `rgba(16, 185, 129, 0.15)`, text `var(--accent-emerald)`. Include animated dot with `pulse` keyframe. Disconnected variant uses `var(--accent-rose)` instead."
+- "Create a status badge: pill shape (20px radius), background `var(--accent-emerald-05)`, border `var(--accent-emerald-15)`, text `var(--accent-emerald)`. Include animated dot with `pulse` keyframe. Disconnected variant uses `var(--accent-rose)` instead."
 
 - "Build a section heading: `var(--font-display)` at 1.5rem weight 900, `letter-spacing: 0.06em`, `text-transform: uppercase`. Apply gradient fill: `linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))` with `background-clip: text` and `filter: drop-shadow(0 0 12px rgba(var(--accent-cyan-rgb), 0.3))`."
 

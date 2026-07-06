@@ -49,8 +49,13 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [notifications]);
 
   const showToast = useCallback((type: ToastType, message: string) => {
-    const id = ++nextId.current;
     setNotifications((prev) => {
+      // U0-B2: 同一 type+message の表示中トーストがある場合は積み上げない
+      // （StrictMode 二重マウントや並行 fetch 失敗による多重表示の抑止）
+      if (prev.some((n) => n.type === type && n.message === message)) {
+        return prev;
+      }
+      const id = ++nextId.current;
       const next = [...prev, { id, type, message }];
       return next.length > MAX_TOASTS ? next.slice(-MAX_TOASTS) : next;
     });

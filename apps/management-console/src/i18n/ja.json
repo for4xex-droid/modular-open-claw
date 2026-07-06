@@ -1,68 +1,165 @@
 {
   "nurture": {
-    "convertedToCoin": "コイン交換済み"
+    "convertedToCoin": "コイン交換済み",
+    "title": "コインとポイント",
+    "subtitle": "AiomeCoin（KC）とポイント（KP）の残高・履歴を確認できます",
+    "kcPointsSection": "KC / ポイント",
+    "buyPoints": "ポイントを購入（KC）",
+    "buyPointsHint": "Karma Coin / 経験値ポイント — Pro サブスクとは別です",
+    "proSection": "Aiome Pro",
+    "upgradePro": "Pro にアップグレード",
+    "viewStore": "ボイスショップへ",
+    "refresh": "更新",
+    "loading": "読み込み中...",
+    "aiomeCoin": "AiomeCoin（KC）",
+    "pointsBalance": "ポイント残高",
+    "lifetimeEarned": "累計獲得",
+    "ledgerHistory": "取引履歴",
+    "loadingTransactions": "取引を読み込み中...",
+    "noTransactions": "取引がありません",
+    "tableType": "種別",
+    "tablePoints": "ポイント",
+    "tableCoins": "コイン",
+    "tableTxId": "取引 ID",
+    "tableMemo": "メモ",
+    "tableDate": "日時",
+    "received": "受取",
+    "sent": "送信",
+    "errorPoints": "ポイント残高の読み込みに失敗しました",
+    "errorHistory": "取引履歴の読み込みに失敗しました",
+    "errorUnauthorized": "このエージェントの台帳へのアクセスが拒否されました",
+    "errorConnect": "Nurture Engine への接続に失敗しました"
+  },
+  "activity": {
+    "tab": {
+      "timeline": "タイムライン",
+      "audit": "監査ログ",
+      "usage": "使用量"
+    }
   },
   "nav": {
     "section": {
       "synergyHub": "ホーム",
-      "control": "ツール"
+      "control": "ツール",
+      "home": "ホーム",
+      "grow": "そだてる",
+      "observe": "ようすを見る",
+      "expand": "ひろげる",
+      "protect": "まもる・整える"
     },
-    "biotope": "ようすを見る",
+    "biotope": "ダッシュボード",
     "biome": "ワールド",
     "homeV2": "ホーム",
     "demo": "デモ",
-    "chronicle": "きろく",
-    "resonanceMap": "つながり",
-    "causalTrace": "原因をたどる",
+    "chronicle": "アクティビティ",
+    "resonanceMap": "共鳴マップ",
+    "causalTrace": "因果トレース",
     "artifactVault": "ファイル",
-    "audit": "行動の記録",
+    "audit": "監査ログ",
     "expressions": "AIの表現",
-    "voiceStore": "ボイス",
-    "immuneSystem": "安全",
+    "voiceStore": "ボイスショップ",
+    "immuneSystem": "セキュリティ",
     "agentConsole": "AIとはなす",
-    "cortex": "知識",
+    "cortex": "知識ベース",
     "skillVault": "スキル",
     "loraAutotuner": "AI学習",
-    "promptStats": "利用状況",
-    "seoPulse": "SEO",
-    "mcpDashboard": "外部ツール",
-    "workflowBuilder": "仕事の流れ",
-    "settings": "整える",
-    "communeLab": "AI同士の対話",
-    "nurtureEconomy": "ふやす",
-    "statusPage": "健康状態",
+    "promptStats": "使用量",
+    "seoPulse": "SEO発信",
+    "mcpDashboard": "外部ツール（MCP）",
+    "workflowBuilder": "ワークフロー",
+    "settings": "設定",
+    "communeLab": "AIコミュニティ",
+    "nurtureEconomy": "コインとポイント",
+    "statusPage": "システム状態",
     "banDashboard": "ルール",
-    "buzzApproval": "承認待ち",
-    "agencyOnboarding": "法人向け"
+    "buzzApproval": "SNS承認",
+    "agencyOnboarding": "法人向け",
+    "desc": {
+      "home-v2": "AIと過ごすメイン画面",
+      "agent": "スラッシュコマンド対応の対話コンソール",
+      "agency": "法人クライアントの導入設定",
+      "biome": "AIが育てる生態系シミュレーター",
+      "lora": "AIの追加学習（LoRA）を管理",
+      "vault": "スキルの検索とインストール",
+      "cortex": "AIの知識ベースを閲覧・管理",
+      "expressions": "AIの表現スタイルを管理",
+      "dashboard": "AIの状態をひと目で確認",
+      "karma": "行動履歴・監査ログ・使用量をまとめて確認",
+      "audit": "操作の監査記録",
+      "prompt-stats": "プロンプト使用量の統計",
+      "graph": "知識と話題のつながりを図で見る",
+      "causal": "なぜこの行動をしたかを追跡",
+      "status-page": "サーバーと機能の稼働状況",
+      "nurture": "コインとポイントの残高・履歴",
+      "store": "声の購入とギフト",
+      "buzz-approval": "AIが作ったSNS投稿の承認",
+      "seo-pulse": "検索向け記事の自動発信",
+      "commune": "他のAIとの対話・共同作業",
+      "workflow-builder": "自動化フローの作成",
+      "mcp-dashboard": "接続中の外部ツール管理",
+      "artifacts": "生成ファイルの閲覧とダウンロード",
+      "immune": "脅威検知と防御の状況",
+      "ban-dashboard": "モデレーションとBAN管理",
+      "settings": "アカウントと動作の設定"
+    }
   },
   "page": {
-    "biotope": "ようすを見る",
+    "biotope": "ダッシュボード",
     "biome": "ワールド",
     "homeV2": "ホーム",
     "demo": "自律AIデモ",
-    "chronicle": "きろく",
-    "resonanceMap": "つながりマップ",
-    "immuneSystem": "安全",
+    "chronicle": "アクティビティ",
+    "resonanceMap": "共鳴マップ",
+    "immuneSystem": "セキュリティ",
     "agentConsole": "AIとはなす",
     "cortex": "知識ベース",
     "skillVault": "スキル",
     "artifactVault": "ファイル",
-    "audit": "行動の記録",
+    "audit": "監査ログ",
     "expressions": "AIの表現",
-    "communeLab": "AI同士の対話",
-    "voiceStore": "ボイス",
+    "communeLab": "AIコミュニティ",
+    "voiceStore": "ボイスショップ",
     "loraAutotuner": "AI学習",
-    "causalTrace": "原因をたどる",
-    "promptStats": "LLM 利用状況",
-    "seoPulse": "SEO",
-    "mcpDashboard": "外部ツール",
-    "workflowBuilder": "仕事の流れ",
-    "settings": "整える",
-    "nurtureEconomy": "ふやす（経済）",
-    "statusPage": "健康状態",
+    "causalTrace": "因果トレース",
+    "promptStats": "使用量（LLM統計）",
+    "seoPulse": "SEO発信",
+    "mcpDashboard": "外部ツール（MCP）",
+    "workflowBuilder": "ワークフロー",
+    "settings": "設定",
+    "nurtureEconomy": "コインとポイント",
+    "statusPage": "システム状態",
     "banDashboard": "ルール管理",
-    "buzzApproval": "承認待ち",
-    "agencyOnboarding": "法人向け設定"
+    "buzzApproval": "SNS承認",
+    "agencyOnboarding": "法人向け設定",
+    "desc": {
+      "home-v2": "アバターと対話しながら、AIの今日のようすを確認できます",
+      "agency": "法人クライアント向けのオンボーディングと見積もりを行います",
+      "dashboard": "AIのバイタリティ・共鳴度・稼働状況をリアルタイムで確認できます",
+      "demo": "自律AIワークフローの8段階をステップ再生で体験できます",
+      "biome": "AIが育てる生態系シミュレーターで進化を観察できます",
+      "karma": "行動履歴・監査ログ・使用量をタブで切り替えて確認できます",
+      "graph": "知識や話題のつながりをインタラクティブな図で探索できます",
+      "causal": "AIがなぜその行動をしたか、因果の軌跡をたどれます",
+      "seo-pulse": "検索向け記事の自動発信と品質ゲートの履歴を管理できます",
+      "buzz-approval": "AIが作成したSNS投稿を公開前に承認・却下できます",
+      "artifacts": "AIが生成したファイルを検索・閲覧・ダウンロードできます",
+      "audit": "エージェント診断と自己修復の監査履歴を確認できます",
+      "expressions": "AIの表現スタイルと生成パイプラインを管理できます",
+      "commune": "他のAIとのP2P対話・共同作業を観察できます",
+      "store": "AIの声（ボイス）をコインで購入・ギフトできます",
+      "nurture": "AiomeCoin（KC）とポイント（KP）の残高・履歴を確認できます",
+      "workflow-builder": "ドラッグ&ドロップで自動化フローを作成できます",
+      "status-page": "サーバーと各機能の稼働状態を確認できます",
+      "ban-dashboard": "アクターのBAN・解除とモデレーションを管理できます",
+      "immune": "脅威検知・隔離・防御ルールの状況を確認できます",
+      "agent": "スラッシュコマンド対応の本格AIチャットコンソールです",
+      "cortex": "AIの知識ベース・トレンド・予測を閲覧できます",
+      "vault": "スキルの検索・インストール・管理ができます",
+      "mcp-dashboard": "MCPサーバーと外部ツールの接続を管理できます",
+      "prompt-stats": "LLMプロバイダ別の使用量と評価統計を確認できます",
+      "lora": "LoRAファインチューニングのジョブを管理できます",
+      "settings": "モデル・セキュリティ・UIなどの設定を変更できます"
+    }
   },
   "status": {
     "connected": "接続済み",
@@ -97,7 +194,8 @@
     "aegisSentinel": "セキュリティアラート",
     "aegisAlert": "免疫警報が発令されました。",
     "biomeEvolution": "🧬 バイオーム進化",
-    "crisisPrediction": "⚠️ クライシス予告"
+    "crisisPrediction": "⚠️ クライシス予告",
+    "qualityGate": "品質ゲート"
   },
   "loading": "システム同期中...",
   "biotope": {
@@ -125,7 +223,13 @@
     "errorInvalidKey": "パスワードが間違っています。もう一度お試しください。",
     "errorServer": "サーバーエラー。API サーバーが起動しているか確認してください。",
     "errorConnection": "API サーバーに接続できません。\"cargo run --bin api-server\" が起動しているか確認してください。",
-    "errorTimeout": "接続がタイムアウトしました"
+    "errorTimeout": "接続がタイムアウトしました",
+    "invalidCredentials": "認証情報が無効です",
+    "noToken": "サーバーからアクセストークンが返されませんでした",
+    "authFailed": "認証に失敗しました",
+    "subtitle": "パスワードを入力してエコシステムを解放してください。",
+    "passwordLabel": "パスワード",
+    "login": "ログイン"
   },
   "demo": {
     "title": "自律 AI エコノミーデモ",
@@ -249,6 +353,9 @@
     "aiNamePlaceholder": "Watchtower",
     "displayModeHelp": "レンダリング品質を選択します。VRMはGPUを必要とします。",
     "interfaceComplexityHelp": "経験レベルに合わせて設定項目やログの表示を調整します。",
+    "demoLauncher": "自律AIデモ",
+    "demoLauncherHelp": "自律AIワークフローのガイド付きデモを再生します。",
+    "demoLauncherStart": "デモを再生",
     "optionalApiKey": "任意のAPIキー",
     "activeCommerceProvider": "アクティブ・コマース・プロバイダ",
     "commerceProviderHelp": "エージェントネットワークの経済エンジンを選択します。",
@@ -277,7 +384,9 @@
     "mcpArchitecture": "MCP アーキテクチャ (アナリティクス & ツール)",
     "mcpDesc": "外部のMCPサーバー (GA4, Stripe等) を定義します。$STRIPE_SECRET_KEY などの環境変数が安全に使用できます。保存するとMCPプロセスが動的に再起動します。",
     "saveSyncTools": "保存してツールを同期",
-    "language": "言語"
+    "language": "言語",
+    "monthlySpendLimit": "月間支出上限（KC、0 = 無制限）",
+    "testDisabledInProd": "本番環境では SSRF 偵察を防ぐため接続テストは無効です。"
   },
   "setup": {
     "welcome": "Aiomeへようこそ",
@@ -418,7 +527,9 @@
     "emptyPrompt": "今日学んだことを教えてください。",
     "evolutionStep": "進化ステップ",
     "localMemory": "ローカル・メモリ",
-    "federatedMemory": "連合（フェデレーテッド）メモリ"
+    "federatedMemory": "連合（フェデレーテッド）メモリ",
+    "chronicles": "クロニクル",
+    "error": "タイムラインデータの読み込みに失敗しました"
   },
   "agent": {
     "template": {
@@ -464,7 +575,8 @@
     "streaming": "考え中...",
     "synapticMemory": "メモリ",
     "toNewline": "Shift + Enter で改行",
-    "voice": "音声"
+    "voice": "音声",
+    "estimatedRoiLabel": "推定:"
   },
   "immune": {
     "title": "セキュリティモニター",
@@ -519,7 +631,14 @@
     "topFailingSkill": "最多失敗スキル",
     "openIncidents": "未解決インシデント",
     "abyssVaultTitle": "ヒューリスティックエンジン稼働中",
-    "abyssVaultDesc": "Abyss Vault はこれらのルールをメモリページレベルで強制適用しています。センチネル状態の不正な変更は物理的に不可能です。"
+    "abyssVaultDesc": "Abyss Vault はこれらのルールをメモリページレベルで強制適用しています。センチネル状態の不正な変更は物理的に不可能です。",
+    "fetchRulesFailed": "免疫ルールの取得に失敗しました",
+    "fetchQuarantineFailed": "検疫アセットの取得に失敗しました",
+    "fetchAegisFailed": "Aegis ステータスの取得に失敗しました",
+    "ruleAdded": "ルールを追加しました",
+    "ruleAddFailed": "ルールの追加に失敗しました",
+    "ruleUpdated": "ルールを更新しました",
+    "ruleUpdateFailed": "ルールの更新に失敗しました"
   },
   "skill": {
     "search": "ツール、機能、ソースを検索...",
@@ -538,7 +657,20 @@
     "emptyCta": "マーケットを見る",
     "filterEmptyTitle": "フィルタに一致するスキルがありません",
     "filterEmptyDetail": "検索条件やカテゴリを調整してください。",
-    "filterEmptyCta": "フィルタをクリア"
+    "filterEmptyCta": "フィルタをクリア",
+    "categories": "ライブラリカテゴリ",
+    "active": "アクティブスキル",
+    "verifiedDescription": "すべてのWASMスキルは実行前にメモリ安全性が数学的に検証されています。",
+    "searchAriaLabel": "スキルを検索",
+    "fetchFailed": "スキルの読み込みに失敗しました。",
+    "fetchNetworkError": "スキルの読み込み中にネットワークエラーが発生しました。",
+    "installSuccess": "{{name}} をインストールしました。",
+    "installFailed": "{{name}} のインストールに失敗しました。",
+    "installNetworkError": "インストール中にネットワークエラーが発生しました。",
+    "stable": "安定",
+    "idle": "待機中",
+    "installing": "インストール中...",
+    "runTest": "テスト実行"
   },
   "artifact": {
     "filterAll": "すべて",
@@ -560,7 +692,13 @@
     "deleteSuccess": "アーティファクトを削除しました。",
     "deleteFailed": "アーティファクトの削除に失敗しました。",
     "deleteMessage": "このアーティファクトを削除してもよろしいですか？",
-    "deleteDetails": "この操作は取り消せません。関連ファイルは永久に削除されます。"
+    "deleteDetails": "この操作は取り消せません。関連ファイルは永久に削除されます。",
+    "unexpectedFormat": "予期しないレスポンス形式です",
+    "fetchFailed": "アーティファクトの取得に失敗しました",
+    "downloadFailed": "ダウンロードに失敗しました。",
+    "emptyTitle": "アーティファクトが見つかりません",
+    "emptyDetail": "フィルタや検索条件を調整してください。",
+    "protected": "DRM 保護"
   },
   "diagnostics": {
     "title": "監査ログ",
@@ -696,7 +834,9 @@
     "hint": "ドラッグで移動 • スクロールで拡大・縮小 • 菱形はアーティファクト",
     "karma": "メモリ",
     "artifacts": "アーティファクト",
-    "loadFailed": "ナレッジグラフの読み込みに失敗しました。"
+    "loadFailed": "ナレッジグラフの読み込みに失敗しました。",
+    "showArtifacts": "アーティファクトを表示",
+    "hideArtifacts": "アーティファクトを非表示"
   },
   "treasure": {
     "title": "AIワークスペース",
@@ -779,8 +919,13 @@
     "copy": "コピー",
     "preview": "プレビュー",
     "processing": "処理中...",
+    "error": "エラー",
     "id": "ID:",
-    "networkError": "ネットワークエラーが発生しました。"
+    "networkError": "ネットワークエラーが発生しました。",
+    "close": "閉じる",
+    "delete": "削除",
+    "refreshAriaLabel": "スキル一覧を更新",
+    "remove": "削除"
   },
   "mcp": {
     "registeredServers": "登録済みMCPサーバー",
@@ -813,7 +958,9 @@
     "enable": "有効化",
     "securityWarning": "セキュリティ警告",
     "tokenRecommendation": "サードパーティ製のMCPサーバーを有効にしようとしています。不正なデータアクセスや改ざんを防ぐため、読み取り専用（Read-Only）または最小権限のトークンを使用することを強く推奨します。",
-    "confirmEnable": "理解して有効化する"
+    "confirmEnable": "理解して有効化する",
+    "recentActivity": "最近のアクティビティ",
+    "searchPlaceholder": "サーバーを検索..."
   },
   "escrow": {
     "title": "エスクロー管理",
@@ -968,24 +1115,35 @@
     "consumerMode": "コンシューマーモード"
   },
   "workflowBuilder": {
+    "meta": {
+      "untitled": "無題のワークフロー",
+      "name": "ワークフロー名",
+      "description": "説明",
+      "new": "新規",
+      "open": "開く",
+      "listTitle": "保存済みワークフロー",
+      "listEmpty": "保存済みワークフローはありません。",
+      "load": "読み込む",
+      "version": "v{{version}}"
+    },
     "palette": {
       "title": "ノードパレット",
       "info": "クリックしてキャンバスに追加",
       "nodes": {
         "Start": {
-          "label": "Start Node",
+          "label": "開始ノード",
           "desc": "手動/Cron/Webhook起動"
         },
         "LlmPrompt": {
-          "label": "LLM Prompt",
+          "label": "LLM プロンプト",
           "desc": "テキスト生成・プロンプト指示"
         },
         "McpToolCall": {
-          "label": "MCP Tool Call",
+          "label": "MCP ツール呼び出し",
           "desc": "登録済みMCPツールの実行"
         },
         "HttpRequest": {
-          "label": "HTTP Request",
+          "label": "HTTP リクエスト",
           "desc": "外部REST APIの呼び出し"
         },
         "Transform": {
@@ -993,31 +1151,31 @@
           "desc": "JSONデータの加工・変換"
         },
         "Condition": {
-          "label": "Condition",
+          "label": "条件分岐",
           "desc": "条件分岐 (Expression/LLM判定)"
         },
         "Timer": {
-          "label": "Timer",
+          "label": "タイマー",
           "desc": "指定時間待機（Delay）"
         },
         "WasmCode": {
-          "label": "WasmCode",
+          "label": "Wasm コード",
           "desc": "安全に隔離されたWasmコード実行"
         },
         "HumanApproval": {
-          "label": "Human Approval",
+          "label": "人間承認",
           "desc": "人間の手動承認・対話待ち"
         },
         "Loop": {
-          "label": "Loop",
+          "label": "ループ",
           "desc": "リストに対する繰り返し処理"
         },
         "Parallel": {
-          "label": "Parallel",
+          "label": "並列実行",
           "desc": "並列分岐とBarrier同期合流"
         },
         "SubWorkflow": {
-          "label": "SubWorkflow",
+          "label": "サブワークフロー",
           "desc": "別ワークフローのサブルーチン呼び出し"
         }
       }
@@ -1035,12 +1193,15 @@
       "error": "エラー"
     },
     "validationErrors": {
-      "title": "検証エラー"
+      "title": "検証エラー",
+      "unknown": "不明な理由で検証に失敗しました"
     },
     "status": {
       "title": "ワークフロー実行ステータス",
       "label": "ステータス",
       "progress": "進捗: {{percent}}%",
+      "processing": "処理中...",
+      "failed": "失敗",
       "completed": "正常に完了しました！"
     },
     "config": {
@@ -1054,6 +1215,12 @@
       "wasmCode": "WASM コード",
       "evaluationMode": "評価モード",
       "expression": "式",
+      "mcpServer": "MCP サーバー",
+      "toolName": "ツール名",
+      "httpMethod": "HTTP メソッド",
+      "urlTemplate": "URL テンプレート",
+      "jsonConfig": "ノード設定 (JSON)",
+      "jsonInvalid": "JSON が不正です",
       "close": "パネルを閉じる"
     }
   },
@@ -1125,6 +1292,28 @@
     "elementRatio": "元素比率",
     "morphologyDistribution": "形態分布",
     "discoveredReactions": "発見した反応"
+  },
+  "buzz": {
+    "title": "Buzz プロトコル",
+    "generateNew": "新規生成",
+    "loading": "X アルゴリズムをスキャン中...",
+    "noPending": "承認待ちの Buzz コンテンツはありません。",
+    "draftLabel": "BUZZ 下書き",
+    "awaitingApproval": "承認待ち",
+    "approvalLabel": "BUZZ 承認",
+    "reviewTitle": "X 向けコンテンツの確認",
+    "editInstruction": "公開前にコンテンツを編集:",
+    "chars": "文字",
+    "reject": "却下",
+    "approveAndPublish": "承認して公開",
+    "approveSuccess": "Buzz コンテンツを承認しました。",
+    "publishSuccess": "X への公開に成功しました！",
+    "publishError": "X への公開に失敗しました。",
+    "approveFailed": "承認に失敗しました。",
+    "rejectSuccess": "Buzz コンテンツを却下しました。",
+    "rejectFailed": "却下に失敗しました。",
+    "generateSuccess": "新しい Buzz を生成しました！",
+    "generateFailed": "生成に失敗しました。"
   },
   "pro": {
     "badgeFree": "Free · アップグレード",

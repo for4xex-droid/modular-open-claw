@@ -17,7 +17,7 @@ test.describe('RTK Token Savings UI', () => {
     await page.waitForSelector('.app-container');
 
     // Make sure we are on the home-v2 tab (which renders StoryFlow)
-    const homeV2Tab = page.locator('nav.nav-group div', { hasText: 'Home v2(Beta)' }).or(page.locator('nav.nav-group div', { hasText: 'Home' }));
+    const homeV2Tab = page.getByTestId('nav-home-v2');
     if (await homeV2Tab.isVisible()) {
         await homeV2Tab.click();
     }

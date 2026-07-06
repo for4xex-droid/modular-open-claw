@@ -479,6 +479,33 @@ async fn test_ekyc_session_creation() {
     assert!(json.get("session_url").is_some());
     assert!(json.get("session_id").is_some());
 }
+
+/// U0-B1/B3 回帰テスト: `/api/v1/ekyc/status` は
+/// - JWT 付きで 200 を返す（以前は AuthenticatedUser extension 欠落で常時 500）
+/// - レスポンスは `verified` のみ（セッション作成の副作用を持たない）
+/// - JWT なしでは 401（Negative Test）
+#[serial]
+#[tokio::test]
+async fn test_ekyc_status_requires_jwt_and_has_no_session_side_effect() {
+    let (server, _state, _tmp) = create_test_server().await;
+
+    // Positive: JWT 付き → 200 + verified フィールド
+    let resp = server
+        .get("/api/v1/ekyc/status")
+        .add_header(axum::http::header::AUTHORIZATION, test_bearer())
+        .await;
+    assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
+    let json: serde_json::Value = resp.json();
+    assert!(json.get("verified").is_some(), "verified field expected");
+    assert!(
+        json.get("session_url").is_none(),
+        "U0-B3: status check must not create a Stripe session"
+    );
+
+    // Negative: JWT なし → 401
+    let resp = server.get("/api/v1/ekyc/status").await;
+    assert_eq!(resp.status_code(), axum::http::StatusCode::UNAUTHORIZED);
+}
 #[serial]
 #[tokio::test]
 async fn test_inochi2d_upload() {

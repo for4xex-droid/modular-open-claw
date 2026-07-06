@@ -1,5 +1,41 @@
 ## [Unreleased]
 
+### Added (UI 改修 U0-B + Phase U6 第1〜2弾 2026-07-07)
+- **U0-B1 (500修正)**: `GET /api/v1/ekyc/status` に `jwt_auth_middleware` を route layer として適用。ハンドラが要求する `Extension<AuthenticatedUser>` が注入されず常時 500 →「本人ステータスの読み込みに失敗しました」となっていた問題を解消（`router.rs`）。
+- **U0-B3**: `get_ekyc_status_handler` から Stripe Identity セッション作成を除去。ステータス確認のたびに実セッションを浪費していた副作用をなくし、レスポンスは `{verified}` のみに（セッション作成は既存 `POST /api/v1/ekyc/session` に分離済み）。
+- **U0-B2**: Toast に同一 type+message のデデュープを追加（StrictMode 二重マウント・並行失敗による多重表示の抑止）。`CharacterPanel` の取得失敗はトースト連発からパネル内エラー表示+再試行ボタンに変更（Jest 回帰テスト追加）。
+- **U0-B4**: `CoinChip` のハードコード rgba 2件を `--white-10` / `--black-20` トークンへ置換。hex ゲート GREEN（Negative Test で RED 検知も確認）。
+- **U6-1**: サイドバーを5グループ（ホーム / そだてる / ようすを見る / ひろげる / まもる・整える）へ再編し、データ駆動の `NAV_GROUPS` 定義に集約。全 NavItem に `data-testid="nav-<tab>"` を付与。
+- **U6-2**: ナビ/ページラベル全面改定（ja/en）。「ようすを見る」→「ダッシュボード」、「原因をたどる」→「因果トレース」、「ふやす」→「コイン・そだて」、「整える」→「設定」等の名詞化と混同ペア解消。
+- **U6-3**: `NavItem` に `description` プロップ（1行サブテキスト + tooltip）を追加。`nav.desc.*` 26キー新設。
+- **U6-4**: 全27画面のヘッダに自己説明1行（`page.desc.*`）を常設。
+- **U6-5**: 記録系3画面（karma / audit / prompt-stats）を新設 `ActivityView`（タイムライン / 監査ログ / 使用量タブ）に統合。旧 activeTab 値・A2UI `navigate:audit` 等は該当タブへ写像され互換維持。サイドバーは「アクティビティ」1項目に削減。
+- **U6-6**: cockpit モードで HomePage 内設定タブを本体設定画面へ誘導（二重ナビ解消）。simple モードは従来どおり HomePage 内で完結。
+- **U6-7**: 「デモ」をサイドバー常設から降格。設定画面の「デモを再生」ボタン + ホーム World タブの初回限定タブから到達可能。
+- **U6-8(3)(4)**: `.css` 内ハードコード色 81 件をトークン化。`test_ui_hex_violations.py` のスコープを `.css` へ拡張（`tokens.css` 除外）。`animations.css` の未使用定義 3 件（`.ani-slide-up` / `glowPulse` / `hudPulse`）を削除。`tokens.css` に Biome/neon/black 系トークン 36 件追加。
+- **U6-8(5)**: `DESIGN.md` YAML frontmatter を `tokens.css` の 211 トークンと値パリティ完全一致に再同期（追加63・修正22）。本文括弧書き実値 54 箇所を tokens.css 準拠へ更新。`syncDesignTokens.ts` を template ベース再生成に改修し `npm run sync:tokens` が curated 形式（セクションコメント・順序）を保持したまま idempotent に実行可能に（Jest 10 件 + 冪等性/Negative テスト追加）。`/reflexion` 追補: `runSync.ts` に `writeIfChanged`（Nurture 含む無差分書き込み抑止）、`missingInCss` 警告、`tokens.css` ヘッダーを Layout/Value SSOT 二層モデルに修正。
+- **U6-8(1)(2)**: UI プリミティブ新設（`Card` / `StatCard` / `SectionHeader`）+ App.css 共通フォームクラス + `@media (max-width: 480px)` 375px 対応。対象5ファイルの inline style 削減: AgentConsole 93→1、ImmuneSystem 86→0、StatusPage 74→6、SettingsPage 70→21、SetupWizard 66→19（合計 389→47、88% 削減）。
+- **E2E 追随**: 8 spec のナビゲータを文言依存（`hasText`）から `data-testid` ベースへ移行（`promo-clips` の `navigateToTab` はタブ ID 引数化）。
+
+### Added (UI 改修 U6-10 + W1 ワークフロービルダー 2026-07-07)
+- **U6-10 T1**: `dioramaHiddenTabs` blocklist を廃止し `dioramaVisibleTabs` allowlist（`biome` / `dashboard` のみ表示）へ転換。
+- **U6-10 T2**: `LockedOverlay` に `variant="panel"|"badge"` を追加。`.stat-badge` / `.locked-badge*` / `.locked-overlay-panel*` CSS を `App.css` に定義。
+- **U6-10 T3/T8**: サイドバー `sidebar-nav-container` に `padding-top`、`nav-group h4` コントラスト改善。`.brand-row` 1行統合 + LP ロゴ（`aiome-horizontal-white.png`）採用。
+- **U6-10 T4/T9**: i18n 欠落66キー（buzz/skill/immune/artifact/auth/common 他）を ja/en に追加。`t()` に `defaultValue` フォールバック対応 + `i18n.test.ts` 拡張。
+- **U6-10 T5（診断）**: `GET /api/v1/settings` は未認証で 401（正常）。`SettingsPage` の読込失敗は `sessionStorage` の `aiome_secret` 欠落/期限切れ時の想定動作。API 側の500系障害は再現せず。
+- **W1-1**: `WorkflowBuilder` — 固定 UUID 撤去、新規/一覧/読込/POST+PUT 保存、`fromWorkflowDefinition` 配線。
+- **W1-2**: `execute_workflow` レスポンスに `job_ids` 追加。フロントは SSE `job_id` を job 集合でマッチ（全 job 完了で COMPLETED）。
+- **W1-3〜5**: HttpRequest/McpToolCall 専用フォーム、残り6種 JSON エディタ、欠落 CSS + レスポンシブ、ja パレット12種日本語化。
+- **W1-6**: `WorkflowBuilder.test.tsx` を CRUD/SSE job_ids 前提に更新、`useWorkflowApi.test.ts` に `job_ids` 期待値追加（407 Jest PASS）。`e2e/workflow-builder.spec.ts` 追加・Playwright **1 PASS**。
+- **/reflexion 是正（2026-07-07）**: `WorkflowBuilder.css` の U-002 違反9件をトークン化（hex ゲート GREEN）。`validate` API が空200を返す契約不整合を修正（BE `{ valid: true }` + FE 空ボディフォールバック）。`job_ids` 空集合時は即 COMPLETED に遷移。2周目: SSE フォールバック文言の i18n 化、`validate` 400 エラーボディのパース追加。
+
+### Added (UI 改修 U6-9 文言・レイアウト修正 2026-07-07)
+- **U6-9(1)**: `DioramaView` に `DIORAMA_HIDDEN_TABS` を導入 — データ密度の高い画面（nurture / store / settings / karma 等11タブ）で常駐アバターを自動非表示。`AnimatePresence` で fade-out。
+- **U6-9(2)**: `App.css` に `.system-panel` / `.config-card` / `.ui-card` の不透明背景スタイルを追加（アバター表示タブでも可読性確保）。
+- **U6-9(3)**: `nav.nurtureEconomy` を「コインとポイント」/ "Coins & Points" に改名。`nav.desc.nurture` / `page.desc.nurture` を追随更新。
+- **U6-9(4)**: `NurtureDashboard` 全面 i18n 化（`nurture.*` 約25キー新設）。エラーバナーに日本語メッセージ + 再試行ボタン（U0-B2 パターン）。日付を `Intl.DateTimeFormat(lang)` 対応。
+- **U6-9(5)**: `VoiceStore` の `t() || 'English fallback'` パターンを除去。`common.error` キー補完。
+
 ### Added (Nurture 品質最大化計画 v4 実装 2026-07-06)
 - **ADR-052**: 法定通貨ペイアウトのスコープ除外（CP→AiomeCoin のみ、P2P ブロック根拠）。
 - **Phase A**: `nurture_payout_requests` DROP マイグレーション、`/commerce/convert-points`（`/withdraw` alias 維持）、法務文言・REMAINING_TASKS 注記、NurtureDashboard i18n。

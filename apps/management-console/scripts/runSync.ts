@@ -7,7 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { generateTokensCss } from './syncDesignTokens';
+import { diffTokenMaps, generateTokensCss } from './syncDesignTokens';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,18 +21,46 @@ const nurtureFallbackPath = path.resolve(rootDir, '../../../Project-Nurture/apps
 const nurtureUiDir = process.env.NURTURE_UI_DIR || nurtureFallbackPath;
 const nurtureTokensPath = path.join(nurtureUiDir, 'tokens.css');
 
-console.log('Reading DESIGN.md...');
+function writeIfChanged(filePath: string, content: string): boolean {
+  if (fs.existsSync(filePath)) {
+    const existing = fs.readFileSync(filePath, 'utf-8');
+    if (existing === content) {
+      console.log(`[OK] ${filePath} already up to date — skipped.`);
+      return false;
+    }
+  }
+  fs.writeFileSync(filePath, content);
+  console.log(`Wrote tokens to ${filePath}`);
+  return true;
+}
+
+console.log('Reading DESIGN.md and tokens.css template...');
 const markdown = fs.readFileSync(designMdPath, 'utf-8');
+const templateCss = fs.readFileSync(aiomeTokensPath, 'utf-8');
 
-console.log('Generating tokens.css...');
-const css = generateTokensCss(markdown);
+const parity = diffTokenMaps(markdown, templateCss);
+if (parity.missingInDesign.length > 0) {
+  console.error('[ERROR] tokens.css keys missing from DESIGN.md:', parity.missingInDesign.join(', '));
+  process.exit(1);
+}
+if (parity.missingInCss.length > 0) {
+  console.warn(
+    `[WARN] ${parity.missingInCss.length} DESIGN.md token(s) missing from template — will append before closing brace:`,
+  );
+  parity.missingInCss.slice(0, 5).forEach((key) => console.warn(`  ${key}`));
+}
+if (parity.mismatches.length > 0) {
+  console.warn(`[WARN] ${parity.mismatches.length} value mismatch(es) — sync will apply DESIGN.md values.`);
+  parity.mismatches.slice(0, 5).forEach((m) => console.warn(`  ${m}`));
+}
 
-fs.writeFileSync(aiomeTokensPath, css);
-console.log(`Wrote tokens to ${aiomeTokensPath}`);
+console.log('Generating tokens.css (structure preserved from template)...');
+const css = generateTokensCss(markdown, templateCss);
+
+writeIfChanged(aiomeTokensPath, css);
 
 if (fs.existsSync(nurtureUiDir)) {
-  fs.writeFileSync(nurtureTokensPath, css);
-  console.log(`Wrote tokens to Nurture UI: ${nurtureTokensPath}`);
+  writeIfChanged(nurtureTokensPath, css);
 } else {
   console.log(`\n[INFO] Skipped Nurture UI sync.`);
   console.log(`       Path not found: ${nurtureUiDir}`);

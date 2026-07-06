@@ -96,9 +96,10 @@ export function fromWorkflowDefinition(def: WorkflowDefinition): {
   edges: Edge[];
 } {
   const nodes: Node[] = def.nodes.map((n) => {
+    const typeName = Object.keys(n.node_type)[0];
     return {
       id: n.id,
-      type: 'default',
+      type: typeName === 'Condition' ? 'Condition' : 'default',
       position: {
         x: n.position.x,
         y: n.position.y,

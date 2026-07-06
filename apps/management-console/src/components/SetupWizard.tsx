@@ -11,6 +11,7 @@ import { useTranslation } from '../i18n';
 import { API_BASE } from '../config';
 import { setAuthToken, authenticatedFetch } from '../lib/auth';
 import { reloadApp } from '../lib/navigation';
+import { SectionHeader } from './ui/SectionHeader';
 
 interface SetupWizardProps {
     onComplete: () => void;
@@ -49,6 +50,114 @@ const PW_COLORS = [
 function isValidEmail(email: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+
+const WIZARD_OVERLAY: React.CSSProperties = {
+    position: 'fixed',
+    inset: 0,
+    background: 'var(--bg-base)',
+    height: '100vh',
+    zIndex: 9999,
+    backgroundImage: 'radial-gradient(circle at 50% -20%, var(--accent-cyan-10), transparent 60%)',
+};
+
+const WIZARD_CARD: React.CSSProperties = {
+    width: '550px',
+    minHeight: '520px',
+    textAlign: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+};
+
+const WIZARD_PROGRESS_ROW: React.CSSProperties = {
+    justifyContent: 'center',
+    marginBottom: '2rem',
+};
+
+const WIZARD_STEP_ICON_WRAP: React.CSSProperties = {
+    padding: '2rem',
+    background: 'var(--white-03)',
+    borderRadius: '50%',
+    marginBottom: '1.5rem',
+    display: 'inline-block',
+};
+
+const WIZARD_PRIMARY_BTN: React.CSSProperties = {
+    padding: '0.8rem 2.5rem',
+    background: 'var(--accent-cyan)',
+    color: 'var(--text-inverse)',
+    border: 'none',
+    borderRadius: 'var(--radius-md)',
+    fontWeight: 700,
+    cursor: 'pointer',
+};
+
+const WIZARD_TOS_SCROLL: React.CSSProperties = {
+    height: '200px',
+    overflowY: 'auto',
+    background: 'var(--black-30)',
+    textAlign: 'left',
+    fontSize: '0.9rem',
+    color: 'var(--text-secondary)',
+    marginBottom: '1.5rem',
+};
+
+const WIZARD_CENTER_ROW: React.CSSProperties = {
+    justifyContent: 'center',
+    marginBottom: '2rem',
+};
+
+const WIZARD_PASSWORD_TOGGLE: React.CSSProperties = {
+    position: 'absolute',
+    right: '0.75rem',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: 'var(--text-muted)',
+    padding: '0.25rem',
+};
+
+const WIZARD_INIT_BTN: React.CSSProperties = {
+    padding: '0.8rem 2.5rem',
+    background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
+    color: 'var(--text-inverse)',
+    border: 'none',
+    borderRadius: 'var(--radius-md)',
+    fontWeight: 700,
+    width: '100%',
+};
+
+const WIZARD_PLAYBOOK_LIST: React.CSSProperties = {
+    marginBottom: '1.5rem',
+    maxHeight: '260px',
+    overflowY: 'auto',
+};
+
+const WIZARD_PLAYBOOK_ACTIONS: React.CSSProperties = {
+    justifyContent: 'center',
+    gap: '1rem',
+};
+
+const WIZARD_SECONDARY_BTN: React.CSSProperties = {
+    padding: '0.8rem 2rem',
+    background: 'transparent',
+    color: 'var(--text-secondary)',
+    border: '1px solid var(--border-glass)',
+    borderRadius: 'var(--radius-md)',
+    fontWeight: 700,
+    cursor: 'pointer',
+};
+
+const WIZARD_PLAYBOOK_START_BTN: React.CSSProperties = {
+    padding: '0.8rem 2rem',
+    background: 'var(--accent-cyan)',
+    color: 'var(--text-inverse)',
+    border: 'none',
+    borderRadius: 'var(--radius-md)',
+    fontWeight: 700,
+    cursor: 'pointer',
+};
 
 const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
     const { t } = useTranslation();
@@ -182,34 +291,15 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
     };
 
     return (
-        <div style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'var(--bg-base)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            backgroundImage: 'radial-gradient(circle at 50% -20%, var(--accent-cyan-10), transparent 60%)'
-        }}>
+        <div className="ui-center-state" style={WIZARD_OVERLAY}>
             <motion.div
                 initial={{ scale: 0.95, opacity: 0, y: 10 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
-                style={{
-                    width: '550px',
-                    minHeight: '520px',
-                    padding: '3rem',
-                    background: 'var(--bg-glass-heavy)',
-                    border: '1px solid var(--border-glass-bright)',
-                    borderRadius: 'var(--radius-xl)',
-                    textAlign: 'center',
-                    boxShadow: 'var(--shadow-deep)',
-                    position: 'relative',
-                    overflow: 'hidden'
-                }}
+                className="glass-panel ui-card--pad-lg"
+                style={WIZARD_CARD}
             >
                 {/* Progress indicator */}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
+                <div className="ui-field-row" style={WIZARD_PROGRESS_ROW}>
                     {[0, 1, 2, 3, 4].map(i => (
                         <div key={i} style={{
                             width: i <= step ? '2rem' : '0.5rem',
@@ -225,26 +315,18 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                     {/* STEP 0: Intro */}
                     {step === 0 && (
                         <motion.div key="step0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                            <div style={{ padding: '2rem', background: 'var(--white-03)', borderRadius: '50%', marginBottom: '1.5rem', display: 'inline-block' }}>
+                            <div className="ui-section-header__icon" style={WIZARD_STEP_ICON_WRAP}>
                                 <Sparkles size={48} color="var(--accent-cyan)" />
                             </div>
-                            <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '1rem' }}>
+                            <h2 className="ui-section-header__title">
                                 {t('setup.welcome') || 'Welcome to Aiome'}
                             </h2>
-                            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '2rem' }}>
+                            <p className="ui-section-header__desc">
                                 {t('setup.welcomeDesc') || 'Your autonomous AI operating system is ready to be initialized. Let\'s set up your environment securely.'}
                             </p>
                             <button
                                 onClick={() => setStep(1)}
-                                style={{
-                                    padding: '0.8rem 2.5rem',
-                                    background: 'var(--accent-cyan)',
-                                    color: 'var(--text-inverse)',
-                                    border: 'none',
-                                    borderRadius: 'var(--radius-md)',
-                                    fontWeight: 700,
-                                    cursor: 'pointer'
-                                }}
+                                style={WIZARD_PRIMARY_BTN}
                             >
                                 {t('setup.startSetup') || 'Start Setup'}
                             </button>
@@ -254,24 +336,15 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                     {/* STEP 1: TOS */}
                     {step === 1 && (
                         <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '1rem' }}>
-                                {t('setup.tos') || 'Terms of Service'}
-                            </h2>
-                            <div style={{ 
-                                height: '200px', 
-                                overflowY: 'auto', 
-                                background: 'var(--black-30)', 
-                                padding: '1rem', 
-                                borderRadius: 'var(--radius-md)',
-                                textAlign: 'left',
-                                fontSize: '0.9rem',
-                                color: 'var(--text-secondary)',
-                                marginBottom: '1.5rem'
-                            }}>
+                            <SectionHeader
+                                title={t('setup.tos') || 'Terms of Service'}
+                                className="ui-section-header"
+                            />
+                            <div className="ui-card--pad-md" style={WIZARD_TOS_SCROLL}>
                                 <p>{t('setup.tosContent') || 'By using Aiome, you agree to local data processing. You are responsible for the actions of your autonomous agents.'}</p>
                             </div>
                             
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
+                            <div className="ui-field-row" style={WIZARD_CENTER_ROW}>
                                 <input 
                                     type="checkbox" 
                                     id="tos" 
@@ -279,19 +352,14 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                                     onChange={(e) => setTosAccepted(e.target.checked)} 
                                     style={{ accentColor: 'var(--accent-cyan)' }}
                                 />
-                                <label htmlFor="tos">{t('setup.agreeTos') || 'I agree to the Terms of Service'}</label>
+                                <label htmlFor="tos" className="ui-field-label ui-field-label--inline">{t('setup.agreeTos') || 'I agree to the Terms of Service'}</label>
                             </div>
 
                             <button
                                 onClick={() => setStep(2)}
                                 disabled={!tosAccepted}
                                 style={{
-                                    padding: '0.8rem 2.5rem',
-                                    background: 'var(--accent-cyan)',
-                                    color: 'var(--text-inverse)',
-                                    border: 'none',
-                                    borderRadius: 'var(--radius-md)',
-                                    fontWeight: 700,
+                                    ...WIZARD_PRIMARY_BTN,
                                     cursor: tosAccepted ? 'pointer' : 'not-allowed',
                                     opacity: tosAccepted ? 1 : 0.5
                                 }}
@@ -304,48 +372,30 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                     {/* STEP 2: AI Name */}
                     {step === 2 && (
                         <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                            <div style={{ padding: '2rem', background: 'var(--white-03)', borderRadius: '50%', marginBottom: '1.5rem', display: 'inline-block' }}>
+                            <div className="ui-section-header__icon" style={WIZARD_STEP_ICON_WRAP}>
                                 <User size={48} color="var(--accent-cyan)" />
                             </div>
-                            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '1rem' }}>
+                            <h2 className="ui-section-header__title">
                                 {t('setup.nameYourAi') || 'Name your AI'}
                             </h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+                            <p className="ui-section-header__desc">
                                 {t('setup.nameDesc') || 'Give your operating system an identity.'}
                             </p>
                             
                             <input
                                 id="aiName"
                                 type="text"
+                                className="ui-input"
                                 value={aiName}
                                 onChange={(e) => setAiName(e.target.value)}
                                 maxLength={64}
                                 placeholder={t('setup.namePlaceholder') || 'e.g. Watchtower'}
                                 aria-label={t('setup.nameYourAi') || 'Name your AI'}
-                                style={{
-                                    width: '100%',
-                                    background: 'var(--black-30)',
-                                    border: '1px solid var(--border-glass)',
-                                    borderRadius: 'var(--radius-md)',
-                                    padding: '1rem',
-                                    color: 'var(--text-primary)',
-                                    fontSize: '1.1rem',
-                                    outline: 'none',
-                                    marginBottom: '2rem'
-                                }}
                             />
 
                             <button
                                 onClick={() => setStep(3)}
-                                style={{
-                                    padding: '0.8rem 2.5rem',
-                                    background: 'var(--accent-cyan)',
-                                    color: 'var(--text-inverse)',
-                                    border: 'none',
-                                    borderRadius: 'var(--radius-md)',
-                                    fontWeight: 700,
-                                    cursor: 'pointer'
-                                }}
+                                style={WIZARD_PRIMARY_BTN}
                             >
                                 {t('setup.next') || 'Next'}
                             </button>
@@ -355,36 +405,38 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                     {/* STEP 3: View Mode */}
                     {step === 3 && (
                         <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '1rem' }}>
+                            <h2 className="ui-section-header__title">
                                 {t('setup.chooseExperience') || 'Choose your experience'}
                             </h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+                            <p className="ui-section-header__desc">
                                 {t('setup.chooseExperienceDesc') || 'Select how much complexity you want to see.'}
                             </p>
                             
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                            <div className="ui-field-stack">
                                 <button
+                                    type="button"
                                     onClick={() => { setViewMode('simple'); setStep(4); }}
-                                    style={{ padding: '1.5rem', background: 'var(--white-03)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left' }}
+                                    className="ui-select-card ui-card--interactive"
                                 >
-                                    <strong style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>
+                                    <strong className="ui-select-card__label">
                                         {t('setup.simpleMode') || 'Simple Mode'}
                                     </strong>
-                                    <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                    <span className="ui-help-text">
                                         {t('setup.simpleModeDesc') || 'Streamlined interface for general usage.'}
                                     </span>
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => { setViewMode('cockpit'); setStep(4); }}
-                                    style={{ padding: '1.5rem', background: 'var(--white-03)', border: '1px solid var(--accent-cyan-10)', borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', cursor: 'pointer', textAlign: 'left' }}
+                                    className="ui-select-card ui-select-card--active ui-select-card--cyan ui-card--interactive"
                                 >
-                                    <strong style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--accent-cyan)' }}>
+                                    <strong className="ui-select-card__label">
                                         {t('setup.cockpitMode') || t('setup.expertMode') || 'Cockpit Mode'}
                                         <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', background: 'var(--accent-cyan-10)', color: 'var(--accent-cyan)', padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
                                             {t('setup.recommended') || 'Recommended'}
                                         </span>
                                     </strong>
-                                    <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                    <span className="ui-help-text">
                                         {t('setup.cockpitModeDesc') || t('setup.expertModeDesc') || 'Full observability, logs, and developer tools.'}
                                     </span>
                                 </button>
@@ -395,114 +447,113 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                     {/* STEP 4: Admin Credentials */}
                     {step === 4 && (
                         <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                            <div style={{ padding: '2rem', background: 'var(--white-03)', borderRadius: '50%', marginBottom: '1.5rem', display: 'inline-block' }}>
+                            <div className="ui-section-header__icon" style={WIZARD_STEP_ICON_WRAP}>
                                 <ShieldAlert size={48} color="var(--accent-cyan)" />
                             </div>
-                            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '1rem' }}>
+                            <h2 className="ui-section-header__title">
                                 {t('setup.createAdmin') || 'Create Admin'}
                             </h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                            <p className="ui-section-header__desc">
                                 {t('setup.createAdminDesc') || 'Secure your instance with a strong password.'}
                             </p>
                             
                             {errorMsg && (
-                                <div role="alert" style={{ color: 'var(--accent-rose)', background: 'var(--accent-rose-10)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', border: '1px solid var(--accent-rose-20)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <div role="alert" className="ui-error-banner">
                                     <ShieldAlert size={16} />
                                     {errorMsg}
                                 </div>
                             )}
 
-                            <div style={{ textAlign: 'left', marginBottom: '1rem' }}>
-                                <label htmlFor="email" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                                    {t('setup.emailLabel') || 'Email'}
-                                </label>
-                                <input
-                                    id="email"
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="admin@example.com"
-                                    autoComplete="email"
-                                    style={{ width: '100%', background: 'var(--black-30)', border: `1px solid ${email && !isValidEmail(email) ? 'var(--accent-rose-50)' : 'var(--border-glass)'}`, borderRadius: 'var(--radius-md)', padding: '1rem', color: 'var(--text-primary)' }}
-                                />
-                                {email && !isValidEmail(email) && (
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-rose)', marginTop: '0.25rem', display: 'block' }}>
-                                        {t('setup.invalidEmail') || 'Please enter a valid email address'}
-                                    </span>
-                                )}
-                            </div>
-
-                            <div style={{ textAlign: 'left', marginBottom: '1rem' }}>
-                                <label htmlFor="password" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                                    {t('setup.passwordLabel') || 'Password (min 12 chars)'}
-                                </label>
-                                <div style={{ position: 'relative' }}>
+                            <div className="ui-field-stack" style={{ gap: '1rem', textAlign: 'left' }}>
+                                <div>
+                                    <label htmlFor="email" className="ui-field-label">
+                                        {t('setup.emailLabel') || 'Email'}
+                                    </label>
                                     <input
-                                        id="password"
-                                        type={showPassword ? 'text' : 'password'}
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        autoComplete="new-password"
-                                        style={{ width: '100%', background: 'var(--black-30)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', padding: '1rem', paddingRight: '3rem', color: 'var(--text-primary)' }}
+                                        id="email"
+                                        type="email"
+                                        className="ui-input"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="admin@example.com"
+                                        autoComplete="email"
+                                        style={{ borderColor: email && !isValidEmail(email) ? 'var(--accent-rose-50)' : undefined }}
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(v => !v)}
-                                        style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.25rem' }}
-                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                    >
-                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                    </button>
+                                    {email && !isValidEmail(email) && (
+                                        <span className="ui-help-text" style={{ color: 'var(--accent-rose)' }}>
+                                            {t('setup.invalidEmail') || 'Please enter a valid email address'}
+                                        </span>
+                                    )}
                                 </div>
-                                {/* Password strength meter */}
-                                {password.length > 0 && (
-                                    <div style={{ marginTop: '0.5rem' }}>
-                                        <div style={{ display: 'flex', gap: '3px', marginBottom: '0.25rem' }}>
-                                            {[1, 2, 3, 4].map(i => (
-                                                <div key={i} style={{
-                                                    flex: 1, height: '3px', borderRadius: '2px',
-                                                    background: i <= pwStrength.score ? pwStrength.color : 'var(--white-10)',
-                                                    transition: 'background 0.2s'
-                                                }} />
-                                            ))}
-                                        </div>
-                                        <span style={{ fontSize: '0.7rem', color: pwStrength.color }}>{pwStrength.label}</span>
-                                    </div>
-                                )}
-                            </div>
 
-                            <div style={{ textAlign: 'left', marginBottom: '2rem' }}>
-                                <label htmlFor="confirmPassword" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                                    {t('setup.confirmPassword') || 'Confirm Password'}
-                                </label>
-                                <input
-                                    id="confirmPassword"
-                                    type="password"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    autoComplete="new-password"
-                                    style={{ width: '100%', background: 'var(--black-30)', border: `1px solid ${confirmPassword && password !== confirmPassword ? 'var(--accent-rose-50)' : 'var(--border-glass)'}`, borderRadius: 'var(--radius-md)', padding: '1rem', color: 'var(--text-primary)' }}
-                                />
-                                {confirmPassword && password !== confirmPassword && (
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-rose)', marginTop: '0.25rem', display: 'block' }}>
-                                        {t('setup.passwordMismatch') || 'Passwords do not match'}
-                                    </span>
-                                )}
+                                <div>
+                                    <label htmlFor="password" className="ui-field-label">
+                                        {t('setup.passwordLabel') || 'Password (min 12 chars)'}
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            id="password"
+                                            type={showPassword ? 'text' : 'password'}
+                                            className="ui-input"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            autoComplete="new-password"
+                                            style={{ paddingRight: '3rem' }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(v => !v)}
+                                            style={WIZARD_PASSWORD_TOGGLE}
+                                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
+                                    {/* Password strength meter */}
+                                    {password.length > 0 && (
+                                        <div style={{ marginTop: '0.5rem' }}>
+                                            <div className="ui-field-row" style={{ gap: '3px', marginBottom: '0.25rem' }}>
+                                                {[1, 2, 3, 4].map(i => (
+                                                    <div key={i} style={{
+                                                        flex: 1, height: '3px', borderRadius: '2px',
+                                                        background: i <= pwStrength.score ? pwStrength.color : 'var(--white-10)',
+                                                        transition: 'background 0.2s'
+                                                    }} />
+                                                ))}
+                                            </div>
+                                            <span className="ui-help-text" style={{ color: pwStrength.color }}>{pwStrength.label}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label htmlFor="confirmPassword" className="ui-field-label">
+                                        {t('setup.confirmPassword') || 'Confirm Password'}
+                                    </label>
+                                    <input
+                                        id="confirmPassword"
+                                        type="password"
+                                        className="ui-input"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        autoComplete="new-password"
+                                        style={{ borderColor: confirmPassword && password !== confirmPassword ? 'var(--accent-rose-50)' : undefined }}
+                                    />
+                                    {confirmPassword && password !== confirmPassword && (
+                                        <span className="ui-help-text" style={{ color: 'var(--accent-rose)' }}>
+                                            {t('setup.passwordMismatch') || 'Passwords do not match'}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
 
                             <button
                                 onClick={handleFinalize}
                                 disabled={!canSubmit}
                                 style={{
-                                    padding: '0.8rem 2.5rem',
-                                    background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-purple))',
-                                    color: 'var(--text-inverse)',
-                                    border: 'none',
-                                    borderRadius: 'var(--radius-md)',
-                                    fontWeight: 700,
+                                    ...WIZARD_INIT_BTN,
                                     cursor: canSubmit ? 'pointer' : 'not-allowed',
-                                    opacity: canSubmit ? 1 : 0.5,
-                                    width: '100%'
+                                    opacity: canSubmit ? 1 : 0.5
                                 }}
                             >
                                 {t('setup.initialize') || 'Initialize System'}
@@ -513,13 +564,13 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                     {/* STEP 5: Finalizing */}
                     {step === 5 && (
                         <motion.div key="step5" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-                            <div style={{ padding: '2rem', marginBottom: '1rem' }}>
+                            <div className="ui-section-header__icon" style={{ padding: '2rem', marginBottom: '1rem' }}>
                                 <Loader2 size={64} color="var(--accent-cyan)" className="animate-spin" />
                             </div>
-                            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '1rem' }}>
+                            <h2 className="ui-section-header__title">
                                 {t('setup.awakening') || 'Awakening System...'}
                             </h2>
-                            <p style={{ color: 'var(--text-secondary)' }}>
+                            <p className="ui-section-header__desc">
                                 {t('setup.awakeningDesc') || 'Securing credentials and booting core modules.'}
                             </p>
                         </motion.div>
@@ -528,26 +579,30 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                     {/* STEP 6: Playbook selection (after successful init; reload on Start/Skip) */}
                     {step === 6 && (
                         <motion.div key="step6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                            <div style={{ padding: '1.5rem', background: 'var(--white-03)', borderRadius: '50%', marginBottom: '1rem', display: 'inline-block' }}>
+                            <div className="ui-section-header__icon" style={{ ...WIZARD_STEP_ICON_WRAP, padding: '1.5rem', marginBottom: '1rem' }}>
                                 <BookOpen size={40} color="var(--accent-cyan)" />
                             </div>
-                            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+                            <h2 className="ui-section-header__title">
                                 {t('setup.playbookTitle') || 'Choose a Playbook'}
                             </h2>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                            <p className="ui-section-header__desc">
                                 {t('setup.playbookDesc') || 'Install ready-made business workflows so your agent can start working today. You can skip this and add them later.'}
                             </p>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.5rem', maxHeight: '260px', overflowY: 'auto' }}>
+                            <div className="ui-field-stack" style={WIZARD_PLAYBOOK_LIST}>
                                 {playbooks.map(pb => {
                                     const installed = installedPlaybooks.includes(pb.id);
                                     const installing = installingPlaybook === pb.id;
                                     return (
-                                        <div key={pb.id} style={{ padding: '1rem', background: 'var(--white-03)', border: `1px solid ${installed ? 'var(--accent-emerald)' : 'var(--border-glass)'}`, borderRadius: 'var(--radius-md)', textAlign: 'left' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                                        <div
+                                            key={pb.id}
+                                            className={`ui-select-card${installed ? ' ui-select-card--active ui-select-card--cyan' : ''}`}
+                                            style={installed ? { borderColor: 'var(--accent-emerald)' } : undefined}
+                                        >
+                                            <div className="ui-field-row--between">
                                                 <div>
-                                                    <strong style={{ display: 'block', color: 'var(--accent-cyan)' }}>{pb.name}</strong>
-                                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{pb.description}</span>
+                                                    <strong className="ui-select-card__label">{pb.name}</strong>
+                                                    <span className="ui-help-text">{pb.description}</span>
                                                 </div>
                                                 <button
                                                     onClick={() => handleInstallPlaybook(pb.id)}
@@ -575,7 +630,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                                                 </button>
                                             </div>
                                             {playbookErrors[pb.id] && (
-                                                <div role="alert" style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--accent-rose)' }}>
+                                                <div role="alert" className="ui-error-banner">
                                                     {playbookErrors[pb.id]}
                                                 </div>
                                             )}
@@ -584,16 +639,16 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                                 })}
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                            <div className="ui-field-row" style={WIZARD_PLAYBOOK_ACTIONS}>
                                 <button
                                     onClick={() => reloadApp()}
-                                    style={{ padding: '0.8rem 2rem', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-md)', fontWeight: 700, cursor: 'pointer' }}
+                                    style={WIZARD_SECONDARY_BTN}
                                 >
                                     {t('setup.playbookSkip') || 'Skip'}
                                 </button>
                                 <button
                                     onClick={() => reloadApp()}
-                                    style={{ padding: '0.8rem 2rem', background: 'var(--accent-cyan)', color: 'var(--text-inverse)', border: 'none', borderRadius: 'var(--radius-md)', fontWeight: 700, cursor: 'pointer' }}
+                                    style={WIZARD_PLAYBOOK_START_BTN}
                                 >
                                     {t('setup.playbookStart') || 'Start Aiome'}
                                 </button>

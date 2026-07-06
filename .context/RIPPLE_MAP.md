@@ -1,3 +1,14 @@
+## 🔍 U6-10 + W1 ワークフロービルダー品質向上（2026-07-07）
+
+- **変更内容**:
+    - `apps/management-console/src/lib/dioramaVisibleTabs.ts` [NEW]: allowlist（biome/dashboard のみアバター表示）。
+    - `apps/management-console/src/components/ui/LockedOverlay.tsx` [MODIFY]: panel/badge 2モード。
+    - `apps/management-console/src/App.tsx` / `App.css` [MODIFY]: LP ロゴ `.brand-row`、stat-badge / locked-overlay CSS。
+    - `apps/management-console/src/i18n/{ja,en}.json` + `i18n/index.tsx` [MODIFY]: 欠落66キー + `defaultValue` フォールバック。
+    - `apps/management-console/src/components/WorkflowBuilder.tsx` + `WorkflowBuilder.css` + `hooks/useWorkflowApi.ts` [MODIFY]: CRUD/一覧/実行 SSE job_ids マッチ。
+    - `apps/api-server/src/routes/workflow.rs` [MODIFY]: `execute_workflow` レスポンスに `job_ids` 追加。
+- **波及効果**: WorkflowBuilder 実行ステータスは `job_ids` 集合ベース（execution_id 単体マッチは不可）。Settings 読込失敗は未認証401が主因（T5 診断）。`dioramaVisibleTabs.test.ts` / `WorkflowBuilder.test.tsx` / `i18n.test.ts` 更新必須。
+
 ## 🔍 Nurture 品質最大化計画 v4 実装（2026-07-06）
 
 - **変更内容**:
@@ -28,6 +39,9 @@
 - **v3（/perfect-plan 第2周、同日）**: 体感品質（Q-1〜5）+ 品質基盤（F-1〜6）の監査で Phase U5 を新設。波及: U3-4 が6プリミティブに拡張（U5-A の前提部品化）、`common/Toast.tsx` はキュー化予定（U5-5）、U5-B は U2 完了後に実施（ナビ確定前の a11y/レスポンシブ着手は手戻り）。
 - **v4（/perfect-plan 第3周、同日）**: 課金ジャーニー監査で M-8（ProUpgradeModal `agentId` 未配線 = `App.tsx` L782 の実バグ）・M-9（決済後着地 UI 不在）・M-10（支払い→Pro 閉ループ不存在）を発見し U0-6/U1-8 を起票。計画横断監査で OP-029→U3-1 一本化・implementation_plan P3 包含を確定（§4.6）。波及: OPEN.md の OP-029/OP-066 注記更新、`useCheckoutSession.ts` の success_url が U1-8 で変更予定。
 - **v5（/perfect-plan 第4周、同日）**: 未決定分岐5件を決定に固定し Appendix A（実装コントラクト）を新設。重要な事実修正: management-console のテストは **Jest**（計画中の Vitest 表記を全修正）。U4-1 のナビ action は `navigate:` prefix + `isVisible()` 登録タブのホワイトリスト検証 + フロントローカル実行と契約化。波及: U2-6 で `ModelSetupStep.tsx` 削除予定、U4-0 で `feature_flag.a2ui_generative_ui` トグルが SettingsPage に追加予定。
+- **v6（実地レビュー反映 + /perfect-plan 第5周、2026-07-07）**: ユーザー実地レビューで「まだ分かりにくい」判定を受け §12（U0-B 即修正バグ + Phase U6 情報設計確定）と §13（検証結果）を新設。**U0-B1: `GET /api/v1/ekyc/status` が常時 500**（`router.rs` L597 のルートが `jwt_auth_middleware` 未適用なのにハンドラが `Extension<AuthenticatedUser>` を要求 — OP-071、認証隣接のため人間承認待ち）。U2 の完了判定を「ラベル置換のみ完了」に訂正（サイドバーは2グループのまま）。hex ゲート回帰（`CoinChip.tsx` rgba 2件 = U0-B4）。波及: U6-5（karma/audit/prompt-stats 統合）は `lib/a2uiTabs.ts` の `A2UI_NAV_TABS`・`validator.rs` L540 / `A2uiRenderer.test.tsx` / `e2e/a2ui.spec.ts` の `navigate:audit`・**E2E 7 spec（英語ラベル hasText でナビ特定）**に波及するため写像+ラベル追随必須。hex 実残債は 71件（スクリプトが .css 非スキャンの盲点、最悪 `WorkflowBuilder.css` 46件）。OPEN.md に OP-071/OP-072 起票。
+- **v6 第6周（同日）**: §12/§13 の記載事項を実測照合し §14 を新設。判定 PASS・**検証打ち切り宣言**（収穫逓減）。実測確定: 全27タブのページタイトルは `App.tsx` L764–790 の単一 h2 + `page.*` 27キー実在（U6-4 挿入点1箇所）、`.nav-item` は固定 height なし（U6-3 ブロッカーなし）、`npm run lint:design` は 99 errors の**偽陽性 RED**（Appendix A の U3 DoD から除外）、`data-testid` は App.tsx に0件（U6-1 冒頭で付与し E2E 追随を1回化）。**DESIGN.md ⇔ tokens.css 211 トークン値パリティ確立**（U6-8(5)）。`syncDesignTokens.ts` を template ベース再生成に改修し `npm run sync:tokens` が curated 形式を保持したまま idempotent 実行可能に（2026-07-07 追補）。
+- **U6-9（2026-07-07）**: ユーザー実地レビューで「コイン・そだて」文言不適切 + アバター重なり指摘。**`lib/dioramaHiddenTabs.ts`** でデータ画面11タブ非表示、**`NurtureDashboard`** 全面 i18n + 再試行、**`nav.nurtureEconomy`** →「コインとポイント」、`App.css` `.system-panel`/`.config-card` 不透明化。
 
 ## 🔍 Pro 価格改定 $19.99/月（2026-07-05）
 
@@ -832,6 +846,14 @@
     - `aiome.dev` 公式ランディングページのファーストビュー（Heroセクション）が静的なグラデーションから、インタラクティブでプレミアム感の高い WebGL 流体背景へとアップグレード。
     - 動的インポートの採用により、初回ページロード時の JavaScript バンドルサイズ肥大化とローディング遅延を回避。
     - ユーザーのアクセシビリティ設定（Reduced Motion）を尊重し、不要なアニメーションを確実にスキップしつつ、美しい CSS フォールバックグラデーションを表示。
+
+### sync:tokens template ベース再生成（U6-8 追補 2026-07-07）
+- **変更内容**:
+    - `apps/management-console/scripts/syncDesignTokens.ts` [MODIFY]: flat 全置換から「既存 `tokens.css` をテンプレートに値のみ DESIGN.md から注入」方式へ改修。`parseDesignTokenMap` / `diffTokenMaps` 追加。
+    - `apps/management-console/scripts/runSync.ts` [MODIFY]: 同期前パリティ検証、冪等時は書き込みスキップ。
+    - `apps/management-console/scripts/syncDesignTokens.test.ts` [MODIFY]: 8 件（冪等性・Negative・on-disk round-trip）。
+- **波及効果**:
+    - `npm run sync:tokens` がセクションコメント・トークン順序を破壊せず実行可能。DESIGN.md が値 SSOT、tokens.css がレイアウト SSOT の二層モデルに確定。
 
 ### 1. `--bg-base` 未定義バグの修正と流体トークンの追加
 - **変更内容**:
@@ -4674,3 +4696,29 @@ graph TD
     - **workflows テーブル**: Playbook install/import による書込が増加（テンプレートワークフローの一括投入）
     - **SetupWizard 完了フロー**: 初期化成功後の reload が Playbook 選択ステップ（step 6）経由に変更（スキップ可）
 
+## 🎨 UI 改修 U0-B + Phase U6 第1〜2弾 (2026-07-07)
+
+- **変更内容**:
+    - `apps/api-server/src/router.rs` [MODIFY]: `/api/v1/ekyc/status` に `jwt_auth_middleware` route layer（U0-B1、承認済み）
+    - `apps/api-server/src/routes/avatar.rs` [MODIFY]: `get_ekyc_status_handler` から Stripe セッション作成除去、レスポンス `{verified}` のみ（U0-B3）
+    - `apps/management-console/src/components/common/Toast.tsx` [MODIFY]: 同一 type+message デデュープ（U0-B2）
+    - `apps/management-console/src/components/home/CharacterPanel.tsx` [MODIFY]: 失敗時パネル内エラー + 再試行（トースト廃止）
+    - `apps/management-console/src/components/commerce/CoinChip.tsx` [MODIFY]: rgba → `--white-10` / `--black-20`（U0-B4）
+    - `apps/management-console/src/App.tsx` [MODIFY]: `NAV_GROUPS` データ駆動サイドバー（5グループ）、NavItem に `tab`/`description`、`data-testid="nav-<tab>"`、ヘッダに `page.desc.*`、Timeline/DiagnosticsHistory/PromptStatsView 直接描画を ActivityView に置換、demo をサイドバーから除外
+    - `apps/management-console/src/components/ActivityView.tsx` [NEW]: karma/audit/prompt-stats 統合ビュー（内部タブ: timeline/audit/usage、`activity-tab-*` testid）
+    - `apps/management-console/src/components/home/HomePage.tsx` [MODIFY]: cockpit 時の settings タブは `a2ui-navigate` で本体設定へ誘導（U6-6、`useViewMode` 依存追加）
+    - `apps/management-console/src/components/SettingsPage.tsx` [MODIFY]: 「デモを再生」ボタン（`settings-launch-demo`、U6-7 受け皿）
+    - `apps/management-console/src/i18n/{ja,en}.json` [MODIFY]: nav/page ラベル改定、`nav.section.*` 5キー、`nav.desc.*` 26キー、`page.desc.*` 27キー、`activity.tab.*`、`settings.demoLauncher*`
+    - `apps/management-console/src/App.css` [MODIFY]: `.nav-item-text/.nav-item-label/.nav-item-desc`、`.header-title-block/.page-desc`
+    - `apps/management-console/e2e/*` [MODIFY]: 8 spec を `data-testid` ベースへ（demo.spec は `a2ui-navigate` 遷移に変更）
+- **波及効果**:
+    - **activeTab 互換**: `audit` / `prompt-stats` / `demo` はサイドバー非表示だが activeTab・A2UI whitelist（`lib/a2uiTabs.ts`）としては有効のまま。`navigate:audit`（`validator.rs` L540 例）は ActivityView の監査タブに到達
+    - **E2E**: ナビゲーション特定はラベル文言非依存化。今後のラベル変更で E2E が壊れない
+    - **旧 i18n キー**: `nav.section.synergyHub` / `nav.section.control` は未参照化（キー自体は ja/en 両方に残置、パリティ維持）
+    - **`/api/avatar/ekyc-status`（deprecated）**: 同一ハンドラ共有のためレスポンスから `session_url`/`session_id` が消失。FE 消費箇所ゼロを確認済み（セッションは `POST /api/v1/ekyc/session`）
+## 🎨 U6-8(1)(2) UI プリミティブ + inline style 移行 (2026-07-07)
+
+- **新規**: `components/ui/Card.tsx`, `StatCard.tsx`, `SectionHeader.tsx`
+- **App.css**: `.ui-*` 共通フォームクラス、`agent-console-*`, `immune-*`, `@media (max-width: 480px)` 375px 対応
+- **inline style 削減（style={{ 件数）**: AgentConsole 93→1, ImmuneSystem 86→0, StatusPage 74→6, SettingsPage 70→21, SetupWizard 66→19
+- **波及**: 設定/セットアップ/ステータス/チャット/セキュリティ画面の DOM クラス名変更（E2E は data-testid ベースのため影響小）

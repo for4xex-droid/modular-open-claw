@@ -1,68 +1,165 @@
 {
   "nurture": {
-    "convertedToCoin": "Converted to Coin"
+    "convertedToCoin": "Converted to Coin",
+    "title": "Coins & Points",
+    "subtitle": "View AiomeCoin (KC) and point (KP) balances and transaction history",
+    "kcPointsSection": "KC / Points",
+    "buyPoints": "Buy Points (KC)",
+    "buyPointsHint": "Karma Coin / experience points — separate from Pro subscription",
+    "proSection": "Aiome Pro",
+    "upgradePro": "Upgrade to Pro",
+    "viewStore": "View Store",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "aiomeCoin": "AiomeCoin (KC)",
+    "pointsBalance": "Points Balance",
+    "lifetimeEarned": "Lifetime Earned",
+    "ledgerHistory": "Ledger History",
+    "loadingTransactions": "Loading transactions...",
+    "noTransactions": "No transactions found.",
+    "tableType": "Type",
+    "tablePoints": "Points",
+    "tableCoins": "Coins",
+    "tableTxId": "Transaction ID",
+    "tableMemo": "Memo",
+    "tableDate": "Date",
+    "received": "Received",
+    "sent": "Sent",
+    "errorPoints": "Failed to load points balance.",
+    "errorHistory": "Failed to load transaction history.",
+    "errorUnauthorized": "Unauthorized: Access denied to this agent's ledger.",
+    "errorConnect": "Failed to connect to Nurture Engine."
+  },
+  "activity": {
+    "tab": {
+      "timeline": "Timeline",
+      "audit": "Audit Log",
+      "usage": "Usage"
+    }
   },
   "nav": {
     "section": {
       "synergyHub": "Home",
-      "control": "Tools"
+      "control": "Tools",
+      "home": "Home",
+      "grow": "Grow",
+      "observe": "Observe",
+      "expand": "Expand",
+      "protect": "Protect & Settings"
     },
-    "biotope": "Overview",
+    "biotope": "Dashboard",
     "biome": "World",
     "homeV2": "Home",
     "demo": "Demo",
     "chronicle": "Activity",
-    "resonanceMap": "Connections",
-    "causalTrace": "Trace Causes",
+    "resonanceMap": "Resonance Map",
+    "causalTrace": "Causal Trace",
     "artifactVault": "Files",
-    "audit": "Activity Log",
+    "audit": "Audit Log",
     "expressions": "Expressions",
-    "voiceStore": "Voice",
-    "immuneSystem": "Safety",
-    "agentConsole": "Chat",
-    "cortex": "Knowledge",
+    "voiceStore": "Voice Shop",
+    "immuneSystem": "Security",
+    "agentConsole": "Chat with AI",
+    "cortex": "Knowledge Base",
     "skillVault": "Skills",
     "loraAutotuner": "AI Training",
     "promptStats": "Usage",
-    "seoPulse": "SEO",
-    "mcpDashboard": "External Tools",
+    "seoPulse": "SEO Publishing",
+    "mcpDashboard": "External Tools (MCP)",
     "workflowBuilder": "Workflows",
     "settings": "Settings",
-    "communeLab": "Multi-Agent",
-    "nurtureEconomy": "Economy",
-    "statusPage": "Health",
+    "communeLab": "AI Community",
+    "nurtureEconomy": "Coins & Points",
+    "statusPage": "System Status",
     "banDashboard": "Rules",
-    "buzzApproval": "Approvals",
-    "agencyOnboarding": "Agency Setup"
+    "buzzApproval": "Social Approvals",
+    "agencyOnboarding": "Agency Setup",
+    "desc": {
+      "home-v2": "Your main screen with the AI",
+      "agent": "Full chat console with slash commands",
+      "agency": "Onboarding for agency clients",
+      "biome": "Ecosystem simulator grown by your AI",
+      "lora": "Manage AI fine-tuning (LoRA)",
+      "vault": "Find and install skills",
+      "cortex": "Browse and manage the knowledge base",
+      "expressions": "Manage AI expression styles",
+      "dashboard": "See the AI's status at a glance",
+      "karma": "Timeline, audit log, and usage in one place",
+      "audit": "Audit records of operations",
+      "prompt-stats": "Prompt usage statistics",
+      "graph": "Explore knowledge connections visually",
+      "causal": "Trace why the AI took an action",
+      "status-page": "Server and feature health",
+      "nurture": "Coin and point balances and history",
+      "store": "Buy and gift AI voices",
+      "buzz-approval": "Approve AI-drafted social posts",
+      "seo-pulse": "Automated SEO article publishing",
+      "commune": "Dialogue and teamwork with other AIs",
+      "workflow-builder": "Build automation flows",
+      "mcp-dashboard": "Manage connected external tools",
+      "artifacts": "Browse and download generated files",
+      "immune": "Threat detection and defenses",
+      "ban-dashboard": "Moderation and ban management",
+      "settings": "Account and behavior settings"
+    }
   },
   "page": {
-    "biotope": "System Overview",
+    "biotope": "Dashboard",
     "biome": "World",
     "homeV2": "Home",
     "demo": "Autonomous Demo",
-    "chronicle": "Activity Log",
-    "resonanceMap": "Knowledge Connections",
-    "immuneSystem": "Safety Monitor",
+    "chronicle": "Activity",
+    "resonanceMap": "Resonance Map",
+    "immuneSystem": "Security",
     "agentConsole": "Chat with AI",
     "cortex": "Knowledge Base",
     "skillVault": "Skills",
     "artifactVault": "Files",
-    "audit": "Activity Log",
+    "audit": "Audit Log",
     "expressions": "AI Expressions",
-    "communeLab": "Multi-Agent Lab",
-    "voiceStore": "Voice Store",
+    "communeLab": "AI Community",
+    "voiceStore": "Voice Shop",
     "loraAutotuner": "AI Training",
-    "causalTrace": "Cause Analysis",
-    "promptStats": "LLM Usage",
-    "seoPulse": "SEO Dashboard",
-    "mcpDashboard": "External Tools",
-    "workflowBuilder": "Workflow Builder",
+    "causalTrace": "Causal Trace",
+    "promptStats": "Usage (LLM Stats)",
+    "seoPulse": "SEO Publishing",
+    "mcpDashboard": "External Tools (MCP)",
+    "workflowBuilder": "Workflows",
     "settings": "Settings",
-    "nurtureEconomy": "Economy",
-    "statusPage": "System Health",
+    "nurtureEconomy": "Coins & Points",
+    "statusPage": "System Status",
     "banDashboard": "Rules & Governance",
-    "buzzApproval": "Approval Queue",
-    "agencyOnboarding": "Agency Onboarding"
+    "buzzApproval": "Social Approvals",
+    "agencyOnboarding": "Agency Onboarding",
+    "desc": {
+      "home-v2": "Talk with your AI's avatar and check on its day",
+      "agency": "Onboarding and quotes for agency clients",
+      "dashboard": "Live view of the AI's vitality, resonance, and health",
+      "demo": "Step through the 8 stages of an autonomous AI workflow",
+      "biome": "Watch the ecosystem your AI grows and evolves",
+      "karma": "Switch between timeline, audit log, and usage tabs",
+      "graph": "Explore knowledge and topic connections interactively",
+      "causal": "Trace the causal path behind the AI's decisions",
+      "seo-pulse": "Manage automated SEO publishing and quality gates",
+      "buzz-approval": "Approve or reject AI-drafted social posts before publishing",
+      "artifacts": "Search, view, and download files the AI generated",
+      "audit": "Review agent diagnostics and self-healing audit history",
+      "expressions": "Manage AI expression styles and generation pipelines",
+      "commune": "Observe P2P dialogue and teamwork with other AIs",
+      "store": "Buy and gift AI voices with coins",
+      "nurture": "View AiomeCoin (KC) and point (KP) balances and transaction history",
+      "workflow-builder": "Build automation flows with drag & drop",
+      "status-page": "Check server and feature health",
+      "ban-dashboard": "Manage actor bans and moderation",
+      "immune": "Review threat detection, quarantine, and defenses",
+      "agent": "Full-featured AI chat console with slash commands",
+      "cortex": "Browse the AI's knowledge base, trends, and predictions",
+      "vault": "Find, install, and manage skills",
+      "mcp-dashboard": "Manage MCP servers and external tool connections",
+      "prompt-stats": "Usage and evaluation stats per LLM provider",
+      "lora": "Manage LoRA fine-tuning jobs",
+      "settings": "Change model, security, and UI settings"
+    }
   },
   "status": {
     "connected": "Connected",
@@ -97,7 +194,8 @@
     "aegisSentinel": "Security Alert",
     "aegisAlert": "Immune system alert triggered.",
     "biomeEvolution": "🧬 Biome Evolution",
-    "crisisPrediction": "⚠️ Crisis Imminent"
+    "crisisPrediction": "⚠️ Crisis Imminent",
+    "qualityGate": "Quality Gate"
   },
   "loading": "SYSTEM SYNC...",
   "biotope": {
@@ -125,7 +223,13 @@
     "errorInvalidKey": "Password is incorrect. Please try again.",
     "errorServer": "Server error: {{status}}",
     "errorConnection": "Connection failed. Is the API server running?",
-    "errorTimeout": "Connection timed out"
+    "errorTimeout": "Connection timed out",
+    "invalidCredentials": "Invalid credentials",
+    "noToken": "Server did not return an access token",
+    "authFailed": "Authentication failed",
+    "subtitle": "Provide credentials to unlock the ecosystem.",
+    "passwordLabel": "Password",
+    "login": "Login"
   },
   "demo": {
     "title": "Autonomous AI Economy Demo",
@@ -249,6 +353,9 @@
     "aiNamePlaceholder": "Watchtower",
     "displayModeHelp": "Choose rendering fidelity. VRM requires GPU.",
     "interfaceComplexityHelp": "Adjusts available settings and logs based on your experience level.",
+    "demoLauncher": "Autonomous AI Demo",
+    "demoLauncherHelp": "Replay the guided demo of the autonomous AI workflow.",
+    "demoLauncherStart": "Play Demo",
     "optionalApiKey": "Optional API Key",
     "activeCommerceProvider": "Active Commerce Provider",
     "commerceProviderHelp": "Select the economic engine powering your agent network.",
@@ -277,7 +384,9 @@
     "mcpArchitecture": "MCP Architecture (Analytics & Tools)",
     "mcpDesc": "Define external MCP servers (GA4, Stripe, etc). Safe to use environment variables like $STRIPE_SECRET_KEY. Saving will restart MCP processes dynamically.",
     "saveSyncTools": "Save & Sync Tools",
-    "language": "Language"
+    "language": "Language",
+    "monthlySpendLimit": "Monthly spend limit (KC, 0 = unlimited)",
+    "testDisabledInProd": "Connection testing is disabled in production to protect against SSRF reconnaissance."
   },
   "setup": {
     "welcome": "Welcome to Aiome",
@@ -418,7 +527,9 @@
     "emptyPrompt": "Tell me what you learned today.",
     "evolutionStep": "Evolution Step",
     "localMemory": "Local Memory",
-    "federatedMemory": "Federated Memory"
+    "federatedMemory": "Federated Memory",
+    "chronicles": "CHRONICLES",
+    "error": "Failed to load timeline data"
   },
   "agent": {
     "template": {
@@ -464,7 +575,8 @@
     "streaming": "Thinking...",
     "synapticMemory": "Memory",
     "toNewline": "Shift + Enter for newline",
-    "voice": "Voice"
+    "voice": "Voice",
+    "estimatedRoiLabel": "Estimated:"
   },
   "immune": {
     "title": "Security Monitor",
@@ -519,7 +631,14 @@
     "topFailingSkill": "TOP FAILING SKILL",
     "openIncidents": "Open Incidents",
     "abyssVaultTitle": "Heuristic Engine Running",
-    "abyssVaultDesc": "The Abyss Vault enforces these rules at the memory-page level. Unauthorized modifications to the sentinel state are physically impossible."
+    "abyssVaultDesc": "The Abyss Vault enforces these rules at the memory-page level. Unauthorized modifications to the sentinel state are physically impossible.",
+    "fetchRulesFailed": "Failed to fetch immune rules",
+    "fetchQuarantineFailed": "Failed to fetch quarantined assets",
+    "fetchAegisFailed": "Failed to fetch Aegis status",
+    "ruleAdded": "Rule added successfully",
+    "ruleAddFailed": "Failed to add rule",
+    "ruleUpdated": "Rule updated successfully",
+    "ruleUpdateFailed": "Failed to update rule"
   },
   "skill": {
     "search": "Search for tools, capabilities, or sources...",
@@ -538,7 +657,20 @@
     "emptyCta": "Browse Marketplace",
     "filterEmptyTitle": "No skills match your filters",
     "filterEmptyDetail": "Try adjusting your search or category filters.",
-    "filterEmptyCta": "Clear Filters"
+    "filterEmptyCta": "Clear Filters",
+    "categories": "LIBRARY CATEGORIES",
+    "active": "Active Skills",
+    "verifiedDescription": "All WASM skills are mathematically verified for memory safety before execution.",
+    "searchAriaLabel": "Search skills",
+    "fetchFailed": "Failed to load skills.",
+    "fetchNetworkError": "Network error while loading skills.",
+    "installSuccess": "{{name}} installed successfully.",
+    "installFailed": "Failed to install {{name}}.",
+    "installNetworkError": "Network error during installation.",
+    "stable": "STABLE",
+    "idle": "IDLE",
+    "installing": "Installing...",
+    "runTest": "Run Test"
   },
   "artifact": {
     "filterAll": "All",
@@ -560,7 +692,13 @@
     "deleteSuccess": "Artifact deleted successfully.",
     "deleteFailed": "Failed to delete artifact.",
     "deleteMessage": "Are you sure you want to delete this artifact?",
-    "deleteDetails": "This action cannot be undone. Associated files will be permanently removed."
+    "deleteDetails": "This action cannot be undone. Associated files will be permanently removed.",
+    "unexpectedFormat": "Unexpected response format",
+    "fetchFailed": "Failed to fetch artifacts",
+    "downloadFailed": "Download failed.",
+    "emptyTitle": "No artifacts found",
+    "emptyDetail": "Try adjusting your filters or search terms.",
+    "protected": "DRM Protected"
   },
   "diagnostics": {
     "title": "Audit Log",
@@ -696,7 +834,9 @@
     "hint": "Drag to pan • Scroll to zoom • Diamonds are Artifacts",
     "karma": "MEMORY",
     "artifacts": "ARTIFACTS",
-    "loadFailed": "Failed to load knowledge graph."
+    "loadFailed": "Failed to load knowledge graph.",
+    "showArtifacts": "Show Artifacts",
+    "hideArtifacts": "Hide Artifacts"
   },
   "treasure": {
     "title": "AI Workspace",
@@ -779,8 +919,13 @@
     "copy": "Copy",
     "preview": "Preview",
     "processing": "Processing...",
+    "error": "Error",
     "id": "ID:",
-    "networkError": "A network error occurred."
+    "networkError": "A network error occurred.",
+    "close": "Close",
+    "delete": "Delete",
+    "refreshAriaLabel": "Refresh skill list",
+    "remove": "Remove"
   },
   "mcp": {
     "registeredServers": "Registered MCP Servers",
@@ -813,7 +958,9 @@
     "enable": "Enable",
     "securityWarning": "Security Warning",
     "tokenRecommendation": "You are about to enable a third-party MCP server. We strongly recommend using Read-Only or minimum privilege tokens to prevent unauthorized data access or modification.",
-    "confirmEnable": "I understand, Enable"
+    "confirmEnable": "I understand, Enable",
+    "recentActivity": "Recent Activity",
+    "searchPlaceholder": "Search servers..."
   },
   "escrow": {
     "title": "Escrow Management",
@@ -968,6 +1115,17 @@
     "consumerMode": "Consumer Mode"
   },
   "workflowBuilder": {
+    "meta": {
+      "untitled": "Untitled Workflow",
+      "name": "Workflow Name",
+      "description": "Description",
+      "new": "New",
+      "open": "Open",
+      "listTitle": "Saved Workflows",
+      "listEmpty": "No saved workflows yet.",
+      "load": "Load",
+      "version": "v{{version}}"
+    },
     "palette": {
       "title": "Node Palette",
       "info": "Click to add to canvas",
@@ -1035,12 +1193,15 @@
       "error": "Error"
     },
     "validationErrors": {
-      "title": "Validation Errors"
+      "title": "Validation Errors",
+      "unknown": "Validation failed with unknown error"
     },
     "status": {
       "title": "Workflow Execution Status",
       "label": "Status",
       "progress": "Progress: {{percent}}%",
+      "processing": "Processing...",
+      "failed": "Failed",
       "completed": "Completed successfully!"
     },
     "config": {
@@ -1054,6 +1215,12 @@
       "wasmCode": "WASM Code",
       "evaluationMode": "Evaluation Mode",
       "expression": "Expression",
+      "mcpServer": "MCP Server",
+      "toolName": "Tool Name",
+      "httpMethod": "HTTP Method",
+      "urlTemplate": "URL Template",
+      "jsonConfig": "Node Config (JSON)",
+      "jsonInvalid": "Invalid JSON",
       "close": "Close Panel"
     }
   },
@@ -1125,6 +1292,28 @@
     "elementRatio": "Element Ratio",
     "morphologyDistribution": "Morphology Distribution",
     "discoveredReactions": "Discovered Reactions"
+  },
+  "buzz": {
+    "title": "Buzz Protocol",
+    "generateNew": "Generate New",
+    "loading": "Scanning X algorithms...",
+    "noPending": "No pending buzz content to approve.",
+    "draftLabel": "BUZZ DRAFT",
+    "awaitingApproval": "Awaiting Approval",
+    "approvalLabel": "BUZZ APPROVAL",
+    "reviewTitle": "Review Content for X",
+    "editInstruction": "Edit content before publishing:",
+    "chars": "chars",
+    "reject": "Reject",
+    "approveAndPublish": "Approve & Publish",
+    "approveSuccess": "Buzz content approved.",
+    "publishSuccess": "Published to X successfully!",
+    "publishError": "Failed to publish to X.",
+    "approveFailed": "Failed to approve.",
+    "rejectSuccess": "Buzz content rejected.",
+    "rejectFailed": "Failed to reject.",
+    "generateSuccess": "New Buzz generated!",
+    "generateFailed": "Generation failed."
   },
   "pro": {
     "badgeFree": "Free · Upgrade",

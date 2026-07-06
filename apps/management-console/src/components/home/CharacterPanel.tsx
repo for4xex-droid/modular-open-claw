@@ -36,26 +36,33 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
     const [ekycStatus, setEkycStatus] = React.useState<boolean | null>(null);
     const [soulState, setSoulState] = React.useState<string>('Awake');
     const [fetchedLevel, setFetchedLevel] = React.useState<number | null>(null);
+    // U0-B2: 失敗はトースト連発ではなくパネル内表示+再試行で伝える
+    const [statusLoadFailed, setStatusLoadFailed] = React.useState<boolean>(false);
+    const [retryCounter, setRetryCounter] = React.useState<number>(0);
 
     React.useEffect(() => {
-        authenticatedFetch(`${API_BASE}/api/v1/ekyc/status`)
+        let cancelled = false;
+        setStatusLoadFailed(false);
+        const ekycFetch = authenticatedFetch(`${API_BASE}/api/v1/ekyc/status`)
             .then(r => r.ok ? r.json() : Promise.reject('Status not ok'))
-            .then(d => setEkycStatus(d.verified))
-            .catch(e => {
-                console.error('EKYC fetch error', e);
-                showToast('error', t('character.loadFailed', { defaultValue: 'Failed to load identity status.' }));
-            });
-        authenticatedFetch(`${API_BASE}/api/v1/soul/status`)
+            .then(d => { if (!cancelled) setEkycStatus(d.verified); });
+        const soulFetch = authenticatedFetch(`${API_BASE}/api/v1/soul/status`)
             .then(r => r.ok ? r.json() : Promise.reject('Status not ok'))
             .then(d => {
+                if (cancelled) return;
                 setSoulState(d.state || 'Awake');
                 if (d.level) setFetchedLevel(d.level);
-            })
-            .catch(e => {
-                console.error('Soul state fetch error', e);
-                showToast('error', t('character.loadFailed', { defaultValue: 'Failed to load identity status.' }));
             });
-    }, [showToast, t]);
+        Promise.allSettled([ekycFetch, soulFetch]).then(results => {
+            if (cancelled) return;
+            const failures = results.filter(r => r.status === 'rejected');
+            if (failures.length > 0) {
+                failures.forEach(f => console.error('Status fetch error', (f as PromiseRejectedResult).reason));
+                setStatusLoadFailed(true);
+            }
+        });
+        return () => { cancelled = true; };
+    }, [retryCounter]);
 
     const handleVerifyEkyc = async () => {
         try {
@@ -149,6 +156,38 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
                     }} />
                 </div>
             </div>
+
+            {statusLoadFailed && (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
+                    padding: '0.5rem 0.75rem',
+                    background: 'var(--accent-rose-10, var(--black-20))',
+                    border: '1px solid var(--accent-rose-30)',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.8rem',
+                    color: 'var(--accent-rose)',
+                }}>
+                    <span>{t('character.loadFailed', { defaultValue: 'Failed to load identity status.' })}</span>
+                    <button
+                        onClick={() => setRetryCounter(c => c + 1)}
+                        style={{
+                            background: 'transparent',
+                            border: '1px solid var(--accent-rose-50)',
+                            borderRadius: 'var(--radius-sm)',
+                            color: 'var(--accent-rose)',
+                            padding: '0.15rem 0.6rem',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        {t('error.retry', { defaultValue: 'Retry' })}
+                    </button>
+                </div>
+            )}
 
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 <SoulStatusBadge level={fetchedLevel ?? stats.level} state={soulState} />

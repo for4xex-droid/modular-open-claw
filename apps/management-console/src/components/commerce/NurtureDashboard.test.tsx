@@ -9,6 +9,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import NurtureDashboard from './NurtureDashboard';
 import { authenticatedFetch } from '../../lib/auth';
 import { CoinBalanceProvider } from '../../hooks/useCoinBalance';
+import { LanguageProvider } from '../../i18n';
 
 // Mock the auth and config
 jest.mock('../../lib/auth', () => ({
@@ -67,9 +68,11 @@ describe('NurtureDashboard Commerce Integration', () => {
     });
 
     render(
-      <CoinBalanceProvider>
-        <NurtureDashboard />
-      </CoinBalanceProvider>,
+      <LanguageProvider>
+        <CoinBalanceProvider>
+          <NurtureDashboard />
+        </CoinBalanceProvider>
+      </LanguageProvider>,
     );
 
     // Wait for the balance to load

@@ -5,11 +5,13 @@
  * Licensed under the Business Source License 1.1.
  */
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import AiomeAvatar from '../AiomeAvatar';
 import VrmRenderer from '../../lib/vrm/VrmRenderer';
 import InxRenderer from '../../lib/inx/InxRenderer';
 import ErrorBoundary from '../common/ErrorBoundary';
 import { useAvatarCharacter } from '../../hooks/AvatarContext';
+import { isDioramaVisible } from '../../lib/dioramaVisibleTabs';
 
 interface DioramaViewProps {
     status: 'idle' | 'thinking' | 'speaking' | 'learning' | 'meditating' | 'awakened';
@@ -17,63 +19,91 @@ interface DioramaViewProps {
     activeTab: string;
 }
 
+const containerStyleBase: React.CSSProperties = {
+    position: 'fixed',
+    top: 0,
+    bottom: 0,
+    zIndex: 0,
+    pointerEvents: 'none',
+    transform: 'translateY(11vh)',
+};
+
 const DioramaView: React.FC<DioramaViewProps> = ({ status, mode, activeTab }) => {
     const [hasError, setHasError] = useState(false);
     const { getAssetPath } = useAvatarCharacter();
     const modelUrl = mode === 'vrm' ? getAssetPath('vrm') : (mode === 'inx' ? getAssetPath('inx') : '');
 
-    // Layout offsets are derived from CSS custom properties defined in tokens.css.
-    // This ensures DioramaView always aligns with the main content area
-    // regardless of layout changes. Only tokens.css needs to be updated.
-    const isDashboard = activeTab === "dashboard";
-    const leftOffset = "calc(var(--layout-sidebar-width) + var(--layout-main-padding))";
+    const isDashboard = activeTab === 'dashboard';
+    const leftOffset = 'calc(var(--layout-sidebar-width) + var(--layout-main-padding))';
     const rightOffset = isDashboard
-        ? "calc(var(--layout-main-padding) + var(--layout-right-panel-width) + var(--layout-panel-gap))"
-        : "var(--layout-main-padding)";
+        ? 'calc(var(--layout-main-padding) + var(--layout-right-panel-width) + var(--layout-panel-gap))'
+        : 'var(--layout-main-padding)';
 
-    // Reset error state when mode is manually changed by user
     React.useEffect(() => {
         setHasError(false);
     }, [mode]);
 
-    if (activeTab === 'home-v2') return null;
-    if (mode === 'off') return null;
+    const hidden = mode === 'off' || !isDioramaVisible(activeTab);
 
-    if (mode === 'lite' || hasError) {
-        const liteStatus: 'idle' | 'thinking' | 'awakened' =
-            (status === 'thinking' || status === 'learning' || status === 'speaking') ? 'thinking' :
-                (status === 'awakened') ? 'awakened' : 'idle';
+    const containerStyle: React.CSSProperties = {
+        ...containerStyleBase,
+        left: leftOffset,
+        right: rightOffset,
+    };
+
+    const renderAvatar = () => {
+        if (mode === 'lite' || hasError) {
+            const liteStatus: 'idle' | 'thinking' | 'awakened' =
+                (status === 'thinking' || status === 'learning' || status === 'speaking') ? 'thinking' :
+                    (status === 'awakened') ? 'awakened' : 'idle';
+            return (
+                <div style={{ ...containerStyle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <AiomeAvatar status={liteStatus} size={400} />
+                </div>
+            );
+        }
+
         return (
-            <div style={{ position: 'fixed', top: 0, bottom: 0, left: leftOffset, right: rightOffset, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 0, pointerEvents: 'none', transform: 'translateY(11vh)' }}>
-                <AiomeAvatar status={liteStatus} size={400} />
+            <div style={{ ...containerStyle, overflow: 'hidden' }}>
+                <ErrorBoundary
+                    fallback={null}
+                    onError={() => {
+                        console.error('Canvas crash detected, falling back to lite mode');
+                        setHasError(true);
+                    }}
+                >
+                    {mode === 'vrm' && (
+                        <VrmRenderer
+                            modelUrl={modelUrl}
+                            avatarState={status}
+                        />
+                    )}
+                    {mode === 'inx' && (
+                        <InxRenderer
+                            modelUrl={modelUrl}
+                            avatarState={status}
+                        />
+                    )}
+                </ErrorBoundary>
             </div>
         );
-    }
+    };
 
-    // Billboard mode
     return (
-        <div style={{ position: 'fixed', top: 0, bottom: 0, left: leftOffset, right: rightOffset, zIndex: 0, overflow: 'hidden', pointerEvents: 'none', transform: 'translateY(11vh)' }}>
-            <ErrorBoundary
-                fallback={null}
-                onError={() => {
-                    console.error('Canvas crash detected, falling back to lite mode');
-                    setHasError(true);
-                }}
-            >
-                {mode === 'vrm' && (
-                    <VrmRenderer
-                        modelUrl={modelUrl}
-                        avatarState={status}
-                    />
-                )}
-                {mode === 'inx' && (
-                    <InxRenderer
-                        modelUrl={modelUrl}
-                        avatarState={status}
-                    />
-                )}
-            </ErrorBoundary>
-        </div>
+        <AnimatePresence>
+            {!hidden && (
+                <motion.div
+                    key="diorama-overlay"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ pointerEvents: 'none' }}
+                >
+                    {renderAvatar()}
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 };
 

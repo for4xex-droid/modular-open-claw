@@ -18,6 +18,10 @@ interface LanguageContextType {
   t: (key: string, params?: Record<string, string | number>) => string;
 }
 
+export type TranslationParams = Record<string, string | number> & {
+  defaultValue?: string;
+};
+
 const LanguageContext = createContext<LanguageContextType>({
   lang: 'en',
   setLang: () => {},
@@ -49,16 +53,16 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('aiome_lang', newLang);
   }, []);
 
-  const t = useCallback((key: string, params?: Record<string, string | number>): string => {
+  const t = useCallback((key: string, params?: TranslationParams): string => {
+    const { defaultValue, ...interpolation } = params ?? {};
     let value = getNestedValue(translations[lang], key)
       ?? getNestedValue(translations['en'], key)
+      ?? defaultValue
       ?? key;
 
-    if (params) {
-      Object.entries(params).forEach(([k, v]) => {
-        value = value.replace(`{{${k}}}`, String(v));
-      });
-    }
+    Object.entries(interpolation).forEach(([k, v]) => {
+      value = value.replace(`{{${k}}}`, String(v));
+    });
     return value;
   }, [lang]);
 

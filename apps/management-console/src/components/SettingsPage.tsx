@@ -25,6 +25,7 @@ import { VaultSecretsManager } from './VaultSecretsManager';
 import { VaultKeyStatus } from './VaultKeyStatus';
 import { useToast } from './common/Toast';
 import { LoadingState } from './ui/LoadingState';
+import { SectionHeader } from './ui/SectionHeader';
 
 
 const SettingsPage: React.FC = () => {
@@ -149,7 +150,7 @@ const SettingsPage: React.FC = () => {
 
     if (loadError) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', height: '50vh' }}>
+            <div className="ui-center-state">
                 <AlertTriangle size={40} color="var(--accent-rose)" />
                 <p style={{ color: 'var(--text-secondary)' }}>{loadError}</p>
                 <button className="primary-button" onClick={() => { setLoading(true); fetchSettings(); }}>
@@ -164,7 +165,7 @@ const SettingsPage: React.FC = () => {
     return (
         <div className="settings-page">
             {globalError && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '1rem', marginBottom: '1.5rem', backgroundColor: 'var(--accent-rose-10)', color: 'var(--accent-rose)', border: '1px solid var(--accent-rose-30)', borderRadius: 'var(--radius-md)' }}>
+                <div className="ui-error-banner">
                     <AlertTriangle size={20} />
                     {globalError}
                 </div>
@@ -172,13 +173,10 @@ const SettingsPage: React.FC = () => {
             <div className="settings-grid">
 
                 {/* 1. Appearance Section */}
-                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                        <Monitor size={24} color="var(--accent-cyan)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.appearance')}</h3>
-                    </div>
+                <section className="glass-panel ui-card--pad-lg">
+                    <SectionHeader icon={<Monitor size={24} color="var(--accent-cyan)" />} title={t('settings.appearance')} />
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    <div className="ui-field-stack">
                         <SettingInput
                             label={t('settings.aiName')}
                             value={getSetting('ai_name')}
@@ -188,42 +186,48 @@ const SettingsPage: React.FC = () => {
                         />
 
                         <div>
-                            <label style={labelStyle}>{t('settings.avatarCharacter')}</label>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div onClick={() => setCharacter('female')} style={charCardStyle(character === 'female', 'purple')}>
-                                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>♀</div>
-                                    <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{t('settings.female')}</div>
+                            <label className="ui-field-label">{t('settings.avatarCharacter')}</label>
+                            <div className="ui-char-grid">
+                                <div onClick={() => setCharacter('female')} className={`ui-select-card${character === "female" ? " ui-select-card--active ui-select-card--purple" : ""}`}>
+                                    <div className="ui-select-card__emoji">♀</div>
+                                    <div className="ui-select-card__label">{t('settings.female')}</div>
                                 </div>
-                                <div onClick={() => setCharacter('male')} style={charCardStyle(character === 'male', 'cyan')}>
-                                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>♂</div>
-                                    <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{t('settings.male')}</div>
+                                <div onClick={() => setCharacter('male')} className={`ui-select-card${character === "male" ? " ui-select-card--active ui-select-card--cyan" : ""}`}>
+                                    <div className="ui-select-card__emoji">♂</div>
+                                    <div className="ui-select-card__label">{t('settings.male')}</div>
                                 </div>
                             </div>
                         </div>
 
                         <div>
-                            <label style={labelStyle}>{t('settings.avatarStyle')}</label>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div onClick={() => setProportion('chibi')} style={styleCardStyle(proportion === 'chibi', character)}>
+                            <label className="ui-field-label">{t('settings.avatarStyle')}</label>
+                            <div className="ui-char-grid">
+                                <div
+                                    onClick={() => setProportion('chibi')}
+                                    className={`ui-style-card${proportion === 'chibi' ? ` ui-style-card--active ui-style-card--${character === 'male' ? 'male' : 'female'}` : ''}`}
+                                >
                                     {t('settings.cuteChibi')}
                                 </div>
-                                <div onClick={() => setProportion('taller')} style={styleCardStyle(proportion === 'taller', character)}>
+                                <div
+                                    onClick={() => setProportion('taller')}
+                                    className={`ui-style-card${proportion === 'taller' ? ` ui-style-card--active ui-style-card--${character === 'male' ? 'male' : 'female'}` : ''}`}
+                                >
                                     {t('settings.modernTaller')}
                                 </div>
                             </div>
                         </div>
 
                         <div>
-                            <label style={labelStyle}>{t('settings.displayMode')}</label>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>
+                            <label className="ui-field-label">{t('settings.displayMode')}</label>
+                            <div className="ui-help-text">
                                 {t('settings.displayModeHelp', { defaultValue: 'Choose rendering fidelity. VRM requires GPU.' })}
                             </div>
-                            <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--white-05)', padding: '4px', borderRadius: '10px' }}>
+                            <div className="ui-segment-group">
                                 {['vrm', 'lite', 'off'].map((m) => (
                                     <button
                                         key={m}
                                         onClick={() => setMode(m as 'vrm' | 'lite' | 'off')}
-                                        style={modeBtnStyle(mode === m)}
+                                        className={`ui-segment-btn${mode === m ? " ui-segment-btn--active" : ""}`}
                                     >
                                         {m === 'vrm' ? '🌟 ' : m === 'lite' ? '⚡ ' : '🚫 '}{m}
                                     </button>
@@ -232,23 +236,23 @@ const SettingsPage: React.FC = () => {
                         </div>
 
                         <div>
-                            <label style={labelStyle}>{t('settings.language')}</label>
-                            <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--white-05)', padding: '4px', borderRadius: '10px' }}>
-                                <button onClick={() => setLang('en')} style={modeBtnStyle(lang === 'en')}>
+                            <label className="ui-field-label">{t('settings.language')}</label>
+                            <div className="ui-segment-group">
+                                <button onClick={() => setLang('en')} className={`ui-segment-btn${lang === 'en' ? " ui-segment-btn--active" : ""}`}>
                                     🇺🇸 {t('language.en')}
                                 </button>
-                                <button onClick={() => setLang('ja')} style={modeBtnStyle(lang === 'ja')}>
+                                <button onClick={() => setLang('ja')} className={`ui-segment-btn${lang === 'ja' ? " ui-segment-btn--active" : ""}`}>
                                     🇯🇵 {t('language.ja')}
                                 </button>
                             </div>
                         </div>
 
                         <div>
-                            <label style={labelStyle}>{t('settings.interfaceComplexity')}</label>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>
+                            <label className="ui-field-label">{t('settings.interfaceComplexity')}</label>
+                            <div className="ui-help-text">
                                 {t('settings.interfaceComplexityHelp', { defaultValue: 'Adjusts available settings and logs based on your experience level.' })}
                             </div>
-                            <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--white-05)', padding: '4px', borderRadius: '10px' }}>
+                            <div className="ui-segment-group">
                                 {([
                                     { value: 'simple' as ViewMode, labelKey: 'settings.viewMode_beginner' },
                                     { value: 'cockpit' as ViewMode, labelKey: 'settings.viewMode_advanced' },
@@ -256,30 +260,44 @@ const SettingsPage: React.FC = () => {
                                     <button
                                         key={value}
                                         onClick={() => setViewMode(value)}
-                                        style={{ ...modeBtnStyle(viewMode === value), textTransform: 'capitalize' as const }}
+                                        className={`ui-segment-btn${viewMode === value ? ' ui-segment-btn--active' : ''}`}
+                                        style={{ textTransform: 'capitalize' }}
                                     >
                                         {t(labelKey)}
                                     </button>
                                 ))}
                             </div>
                         </div>
+
+                        {/* U6-7: デモはサイドバー常設から降格し、設定から再生できるようにする */}
+                        <div>
+                            <label className="ui-field-label">{t('settings.demoLauncher', { defaultValue: 'Autonomous AI Demo' })}</label>
+                            <div className="ui-help-text">
+                                {t('settings.demoLauncherHelp', { defaultValue: 'Replay the guided demo of the autonomous AI workflow.' })}
+                            </div>
+                            <button
+                                type="button"
+                                data-testid="settings-launch-demo"
+                                onClick={() => window.dispatchEvent(new CustomEvent('a2ui-navigate', { detail: { tab: 'demo' } }))}
+                                className={`ui-segment-btn${false ? " ui-segment-btn--active" : ""}`}
+                            >
+                                ▶ {t('settings.demoLauncherStart', { defaultValue: 'Play Demo' })}
+                            </button>
+                        </div>
                     </div>
                 </section>
 
                 {/* 2. LLM Configuration Section */}
-                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                        <Database size={24} color="var(--accent-purple)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.llmEngine')}</h3>
-                    </div>
+                <section className="glass-panel ui-card--pad-lg">
+                    <SectionHeader icon={<Database size={24} color="var(--accent-purple)" />} title={t('settings.llmEngine')} />
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div className="ui-field-stack ui-field-stack--compact">
                         <div>
-                            <label style={labelStyle}>{t('settings.llmProvider')}</label>
+                            <label className="ui-field-label">{t('settings.llmProvider')}</label>
                             <select
                                 value={getSetting('llm_provider') || 'ollama'}
                                 onChange={(e) => update_setting_handler(e.target.value, 'llm_provider', 'llm')}
-                                style={selectStyle}
+                                className="ui-select"
                             >
                                 <option value="ollama" style={{ background: 'var(--bg-primary)' }}>Ollama (Local)</option>
                                 <option value="lmstudio" style={{ background: 'var(--bg-primary)' }}>LM Studio (Local)</option>
@@ -317,13 +335,13 @@ const SettingsPage: React.FC = () => {
                         <button 
                             onClick={() => testConnection('llm', getSetting('llm_api_url'), getSetting('ollama_model'))}
                             disabled={testResults['llm']?.loading}
-                            style={testBtnStyle}
+                            className="ui-test-btn"
                         >
                             {testResults['llm']?.loading ? <Loader2 size={16} className="ani-spin" /> : <Shield size={16} />}
                             {t('settings.testLlmConnection')}
                         </button>
                         {testResults['llm'] && (
-                            <div style={testResultStyle(testResults['llm'].success)}>
+                            <div className={`ui-test-result ${(testResults['llm'].success) ? "ui-test-result--success" : "ui-test-result--error"}`}>
                                 {testResults['llm'].success ? <Check size={14} /> : <X size={14} />}
                                 {testResults['llm'].message}
                             </div>
@@ -333,22 +351,19 @@ const SettingsPage: React.FC = () => {
 
                 {/* Commerce Integration Section */}
                 {viewMode === 'cockpit' && (
-                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                        <Shield size={24} color="var(--accent-emerald)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.commerceEconomicBase')}</h3>
-                    </div>
+                <section className="glass-panel ui-card--pad-lg">
+                    <SectionHeader icon={<Shield size={24} color="var(--accent-emerald)" />} title={t('settings.commerceEconomicBase')} />
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div className="ui-field-stack ui-field-stack--compact">
                         <div>
-                            <label style={labelStyle}>{t('settings.activeCommerceProvider', { defaultValue: 'Active Commerce Provider' })}</label>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.8rem' }}>
+                            <label className="ui-field-label">{t('settings.activeCommerceProvider', { defaultValue: 'Active Commerce Provider' })}</label>
+                            <div className="ui-help-text">
                                 {t('settings.commerceProviderHelp', { defaultValue: 'Select the economic engine powering your agent network.' })}
                             </div>
                             <select
                                 value={getSetting('commerce_provider') || 'mock'}
                                 onChange={(e) => update_setting_handler(e.target.value, 'commerce_provider', 'commerce')}
-                                style={selectStyle}
+                                className="ui-select"
                             >
                                 <option value="mock" style={{ background: 'var(--bg-primary)' }}>{t('settings.commerceMock', { defaultValue: 'Mock (Local Only)' })}</option>
                                 <option value="stripe" style={{ background: 'var(--bg-primary)' }}>{t('settings.commerceStripe', { defaultValue: 'Stripe (Global MoR)' })}</option>
@@ -366,7 +381,7 @@ const SettingsPage: React.FC = () => {
 
                         {getSetting('commerce_provider') === 'stripe' && (
                             <>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
+                                <div className="ui-field-stack ui-field-stack--xs ui-field-stack--mb-md">
                                     <SettingInput 
                                         label={t('settings.stripeApiKey', { defaultValue: 'Stripe API Key' }) as string} 
                                         value={getSetting('stripe_api_key')}
@@ -377,7 +392,7 @@ const SettingsPage: React.FC = () => {
                                     />
                                     <VaultKeyStatus isSet={isVaultSet('STRIPE_API_KEY')} />
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
+                                <div className="ui-field-stack ui-field-stack--xs ui-field-stack--mb-md">
                                     <SettingInput 
                                         label={t('settings.stripeWebhookSecret', { defaultValue: 'Stripe Webhook Secret' }) as string} 
                                         value={getSetting('stripe_webhook_secret')}
@@ -393,7 +408,7 @@ const SettingsPage: React.FC = () => {
 
                         {getSetting('commerce_provider') === 'polar' && (
                             <>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
+                                <div className="ui-field-stack ui-field-stack--xs ui-field-stack--mb-md">
                                     <SettingInput 
                                         label={t('settings.polarApiKey', { defaultValue: 'Polar API Key' }) as string} 
                                         value={getSetting('polar_api_key')}
@@ -404,7 +419,7 @@ const SettingsPage: React.FC = () => {
                                     />
                                     <VaultKeyStatus isSet={isVaultSet('POLAR_API_KEY')} />
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
+                                <div className="ui-field-stack ui-field-stack--xs ui-field-stack--mb-md">
                                     <SettingInput 
                                         label={t('settings.polarWebhookSecret', { defaultValue: 'Polar Webhook Secret' }) as string} 
                                         value={getSetting('polar_webhook_secret')}
@@ -423,13 +438,10 @@ const SettingsPage: React.FC = () => {
 
                 {/* Channel Bridges Section */}
                 {viewMode === 'cockpit' && (
-                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                        <Share2 size={24} color="var(--accent-cyan)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.channelBridges')}</h3>
-                    </div>
+                <section className="glass-panel ui-card--pad-lg">
+                    <SectionHeader icon={<Share2 size={24} color="var(--accent-cyan)" />} title={t('settings.channelBridges')} />
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div className="ui-field-stack ui-field-stack--compact">
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
                             <SettingInput 
                                 label={t('settings.xBearerToken')} 
@@ -449,18 +461,15 @@ const SettingsPage: React.FC = () => {
                 )}
 
                 {/* 🔐 Vault Secrets Manager — 全モードで常時表示 */}
-                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
+                <section className="glass-panel ui-card--pad-lg">
                     <VaultSecretsManager />
                 </section>
 
                 {/* 3. Security & Infrastructure */}
                 {viewMode === 'cockpit' && (
-                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                        <Lock size={24} color="var(--accent-amber)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.securityInfrastructure')}</h3>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <section className="glass-panel ui-card--pad-lg">
+                    <SectionHeader icon={<Lock size={24} color="var(--accent-amber)" />} title={t('settings.securityInfrastructure')} />
+                    <div className="ui-field-stack ui-field-stack--compact">
                         <SecretUpdater />
                         <OriginManager 
                             value={getSetting('allowed_origins')} 
@@ -477,13 +486,10 @@ const SettingsPage: React.FC = () => {
                 )}
 
                 {viewMode === 'cockpit' && (
-                <section className="glass-panel" style={{ padding: 'var(--space-lg)', borderRadius: 'var(--radius-lg)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                        <Shield size={24} color="var(--accent-emerald)" />
-                        <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{t('settings.featureFlags')}</h3>
-                    </div>
+                <section className="glass-panel ui-card--pad-lg">
+                    <SectionHeader icon={<Shield size={24} color="var(--accent-emerald)" />} title={t('settings.featureFlags')} />
                     
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div className="ui-field-stack ui-field-stack--compact">
                         <FeatureToggle 
                             label={t('settings.ffSeoPublishing', { defaultValue: 'SEO Publishing' }) as string} 
                             current={getSetting('feature_flag.seo_publish')} 
@@ -587,21 +593,21 @@ const SecretUpdater: React.FC = () => {
 
     return (
         <div>
-            <label style={labelStyle}>{t('settings.updateApiSecret')}</label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <label className="ui-field-label">{t('settings.updateApiSecret')}</label>
+            <div className="ui-field-row">
                 <input
                     type="password" value={newSecret} placeholder={t('settings.enterNewSecret')}
                     onChange={(e) => { setNewSecret(e.target.value); setResult(null); }}
                     onKeyDown={(e) => { if (e.nativeEvent.isComposing) return; if (e.key === 'Enter') handleUpdate(); }}
-                    style={{ ...inputStyle, flex: 1 }}
+                    className="ui-input ui-input--flex"
                 />
-                <button onClick={handleUpdate} disabled={testing} style={{ ...testBtnStyle, padding: '0.5rem 0.8rem' }}>
+                <button onClick={handleUpdate} disabled={testing} className="ui-test-btn ui-test-btn--compact">
                     {testing ? <Loader2 size={14} className="ani-spin" /> : <Check size={14} />}
                     {t('settings.verify')}
                 </button>
             </div>
             {result && (
-                <div style={testResultStyle(result.success)}>
+                <div className={`ui-test-result ${(result.success) ? "ui-test-result--success" : "ui-test-result--error"}`}>
                     {result.success ? <Check size={12} /> : <X size={12} />}
                     {result.message}
                 </div>
@@ -618,8 +624,8 @@ const SettingInput: React.FC<{ label: string, value: string, placeholder?: strin
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                <label style={{ ...labelStyle, marginBottom: 0 }}>{label}</label>
+            <div className="ui-field-row ui-field-row--between">
+                <label className="ui-field-label ui-field-label--inline">{label}</label>
                 {saving && <Loader2 size={12} className="ani-spin" color="var(--accent-cyan)" />}
             </div>
             <input
@@ -628,7 +634,7 @@ const SettingInput: React.FC<{ label: string, value: string, placeholder?: strin
                 placeholder={placeholder}
                 onChange={(e) => setLocal(e.target.value)}
                 onBlur={() => onBlur(local)}
-                style={inputStyle}
+                className="ui-input"
             />
         </div>
     );
@@ -664,100 +670,5 @@ const FeatureToggle: React.FC<{ label: string, current: string, onUpdate: (v: st
     );
 };
 
-// --- Styles ---
-
-const labelStyle: React.CSSProperties = {
-    display: 'block',
-    color: 'var(--text-secondary)',
-    fontSize: '0.8rem',
-    marginBottom: '0.8rem',
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em'
-};
-
-const inputStyle: React.CSSProperties = {
-    width: '100%',
-    background: 'var(--white-03)',
-    border: '1px solid var(--border-glass)',
-    borderRadius: 'var(--radius-sm)',
-    padding: '0.8rem',
-    color: 'var(--text-primary)',
-    fontSize: '0.85rem',
-    outline: 'none',
-    transition: 'all var(--speed-normal)',
-    boxSizing: 'border-box'
-};
-
-const selectStyle: React.CSSProperties = {
-    ...inputStyle,
-    cursor: 'pointer'
-};
-
-const charCardStyle = (active: boolean, tint: 'purple' | 'cyan'): React.CSSProperties => ({
-    padding: '1.2rem',
-    borderRadius: 'var(--radius-md)',
-    background: active ? `var(--accent-${tint}-glass)` : 'var(--bg-glass-light)',
-    border: `1px solid ${active ? `var(--accent-${tint})` : 'var(--border-glass)'}`,
-    cursor: 'pointer',
-    transition: 'all var(--speed-normal)',
-    textAlign: 'center',
-    boxShadow: active ? `var(--glow-${tint})` : 'var(--shadow-shallow)'
-});
-
-const styleCardStyle = (active: boolean, character: string): React.CSSProperties => ({
-    padding: '0.8rem',
-    borderRadius: 'var(--radius-md)',
-    background: active ? 'var(--white-06)' : 'transparent',
-    border: `1px solid ${active ? (character === 'male' ? 'var(--accent-cyan)' : 'var(--accent-purple)') : 'var(--border-glass)'}`,
-    cursor: 'pointer',
-    textAlign: 'center',
-    fontSize: '0.8rem',
-    transition: 'all var(--speed-normal)',
-    color: active ? 'var(--text-primary)' : 'var(--text-muted)'
-});
-
-const modeBtnStyle = (active: boolean): React.CSSProperties => ({
-    flex: 1,
-    padding: '10px',
-    border: 'none',
-    background: active ? 'var(--accent-cyan)' : 'transparent',
-    color: active ? 'var(--bg-primary)' : 'var(--text-muted)',
-    borderRadius: 'var(--radius-sm)',
-    cursor: 'pointer',
-    fontSize: '0.8rem',
-    fontWeight: active ? 800 : 400,
-    textTransform: 'capitalize',
-    transition: 'all var(--speed-normal)'
-});
-
-const testBtnStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.6rem 1rem',
-    background: 'var(--bg-glass-light)',
-    border: '1px solid var(--border-glass)',
-    borderRadius: 'var(--radius-sm)',
-    color: 'var(--text-primary)',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    transition: 'all var(--speed-normal)',
-    fontWeight: 600
-};
-
-const testResultStyle = (success: boolean): React.CSSProperties => ({
-    marginTop: '0.6rem',
-    fontSize: '0.7rem',
-    color: success ? 'var(--accent-emerald)' : 'var(--accent-rose)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.4rem',
-    background: success ? 'var(--accent-emerald-10)' : 'var(--accent-rose-10)',
-    padding: '0.5rem',
-    borderRadius: 'var(--radius-sm)',
-    border: `1px solid ${success ? 'var(--accent-emerald-20)' : 'var(--accent-rose-20)'}`,
-    fontWeight: 700
-});
 
 export default SettingsPage;

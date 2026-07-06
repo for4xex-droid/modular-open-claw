@@ -596,7 +596,15 @@ pub fn build_app(
         )
         .route(
             "/api/v1/ekyc/status",
-            get(routes::avatar::get_ekyc_status_handler),
+            // U0-B1: このハンドラは `Extension<AuthenticatedUser>` を要求するため、
+            // extension を注入する jwt_auth_middleware を明示的に適用する
+            // （internal_router の auth_middleware は検証のみで extension を注入しない）
+            get(routes::avatar::get_ekyc_status_handler).route_layer(
+                axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    crate::auth::jwt_auth_middleware,
+                ),
+            ),
         )
         .route(
             "/api/expression/status",

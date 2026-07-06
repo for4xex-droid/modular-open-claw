@@ -15,6 +15,8 @@ import { useTranslation } from '../i18n';
 import ConfirmModal from './common/ConfirmModal';
 import { useToast } from './common/Toast';
 import { LoadingState } from './ui/LoadingState';
+import { StatCard } from './ui/StatCard';
+import { SectionHeader } from './ui/SectionHeader';
 
 interface QuarantinedAsset {
     id: string;
@@ -214,20 +216,10 @@ const ImmuneSystem: React.FC = () => {
         setReleasingAssetId(id);
     };
 
-    const inputStyle = {
-        background: 'var(--black-30)',
-        border: '1px solid var(--border-glass)',
-        borderRadius: 'var(--radius-md)',
-        padding: '0.75rem',
-        color: 'var(--text-primary)',
-        width: '100%',
-        outline: 'none',
-        fontSize: '0.9rem',
-        transition: 'border-color var(--speed-normal)'
-    };
+    const unresolvedCount = aegisStatus?.stats?.unresolved || 0;
 
     return (
-        <div className="main-panel ani-fade" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        <div className="main-panel ani-fade immune-panel">
             <ConfirmModal
                 isOpen={!!deletingRuleId}
                 type="danger"
@@ -249,40 +241,28 @@ const ImmuneSystem: React.FC = () => {
                 onCancel={() => setReleasingAssetId(null)}
             />
 
-            <div className="panel-header" style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-glass-light)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+            <div className="panel-header">
+                <div className="immune-header-title">
                     <Shield size={20} color="var(--accent-rose)" />
-                    <h3 style={{ margin: 0 }}>{t('immune.title')}</h3>
+                    <h3>{t('immune.title')}</h3>
                 </div>
-                <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', background: 'var(--black-30)', borderRadius: 'var(--radius-md)', padding: '0.2rem' }}>
+                <div className="immune-header-actions">
+                    <div className="immune-tab-bar">
                         <button
                             onClick={() => setActiveTab('RULES')}
-                            style={{
-                                background: activeTab === 'RULES' ? 'var(--accent-cyan)' : 'transparent',
-                                color: activeTab === 'RULES' ? 'var(--bg-primary)' : 'var(--text-muted)',
-                                border: 'none', borderRadius: '4px', padding: '0.4rem 1rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.75rem', transition: 'all var(--speed-normal)'
-                            }}
+                            className={`immune-tab-btn immune-tab-btn--rules${activeTab === 'RULES' ? ' immune-tab-btn--active' : ''}`}
                         >
                             {t('immune.tabRules')}
                         </button>
                         <button
                             onClick={() => setActiveTab('QUARANTINE')}
-                            style={{
-                                background: activeTab === 'QUARANTINE' ? 'var(--accent-rose)' : 'transparent',
-                                color: activeTab === 'QUARANTINE' ? 'var(--bg-primary)' : 'var(--text-muted)',
-                                border: 'none', borderRadius: '4px', padding: '0.4rem 1rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.75rem', transition: 'all var(--speed-normal)'
-                            }}
+                            className={`immune-tab-btn immune-tab-btn--quarantine${activeTab === 'QUARANTINE' ? ' immune-tab-btn--active' : ''}`}
                         >
                             {t('immune.tabQuarantine')}
                         </button>
                         <button
                             onClick={() => setActiveTab('AEGIS')}
-                            style={{
-                                background: activeTab === 'AEGIS' ? 'var(--accent-amber)' : 'transparent',
-                                color: activeTab === 'AEGIS' ? 'var(--bg-primary)' : 'var(--text-muted)',
-                                border: 'none', borderRadius: '4px', padding: '0.4rem 1rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.75rem', transition: 'all var(--speed-normal)'
-                            }}
+                            className={`immune-tab-btn immune-tab-btn--aegis${activeTab === 'AEGIS' ? ' immune-tab-btn--active' : ''}`}
                         >
                             {t('immune.tabAegis')}
                         </button>
@@ -290,32 +270,23 @@ const ImmuneSystem: React.FC = () => {
                 </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-lg)' }}>
+            <div className="immune-content">
                 {loading ? (
                     <LoadingState messageKey="loading" />
                 ) : (
                 <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-                    <div style={{ display: 'flex', gap: 'var(--space-sm)', flex: 1, maxWidth: '600px' }}>
-                        <div style={{
-                            flex: 1,
-                            background: 'var(--white-03)',
-                            border: '1px solid var(--border-glass)',
-                            borderRadius: 'var(--radius-md)',
-                            padding: '0.6rem 1rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem'
-                        }}>
+                <div className="immune-toolbar">
+                    <div className="immune-search-row">
+                        <div className="immune-search-box">
                             <Search size={18} color="var(--text-muted)" />
                             <input
+                                className="immune-search-input"
                                 placeholder={t('immune.searchPlaceholder')}
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                style={{ background: 'none', border: 'none', color: 'var(--text-primary)', outline: 'none', width: '100%', fontSize: '0.9rem' }}
                             />
                         </div>
-                        <button className="secondary-button" style={{ padding: '0.6rem' }}>
+                        <button className="secondary-button immune-filter-btn">
                             <Filter size={18} />
                         </button>
                     </div>
@@ -329,11 +300,7 @@ const ImmuneSystem: React.FC = () => {
                                     setNewRule({ pattern: '', severity: 50, action: 'BLOCK' });
                                 }
                             }}
-                            className="primary-button"
-                            style={{ 
-                                background: isAdding ? 'var(--accent-rose)' : 'var(--accent-cyan)', 
-                                display: 'flex', alignItems: 'center', gap: '0.5rem'
-                            }}
+                            className={`primary-button immune-forge-btn${isAdding ? ' immune-forge-btn--cancel' : ''}`}
                         >
                             {isAdding ? <X size={18} /> : <Plus size={18} />}
                             {isAdding ? t('immune.cancel') : t('immune.forgeNewRule')}
@@ -347,43 +314,42 @@ const ImmuneSystem: React.FC = () => {
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            style={{ overflow: 'hidden', marginBottom: '2rem' }}
+                            className="immune-form-collapse"
                         >
-                            <div style={{ background: 'var(--bg-glass-light)', border: `1px solid ${editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)'}`, borderRadius: 'var(--radius-lg)', padding: '1.5rem', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '1rem', alignItems: 'flex-end' }}>
+                            <div className={`immune-rule-form${editingId ? ' immune-rule-form--edit' : ''}`}>
                                 <div className="input-group">
-                                    <label style={{ fontSize: '0.7rem', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', display: 'block', marginBottom: '0.4rem', fontWeight: 700 }}>{t('immune.patternLabel')}</label>
+                                    <label className={`immune-form-label${editingId ? ' immune-form-label--edit' : ''}`}>{t('immune.patternLabel')}</label>
                                     <input
+                                        className="ui-input"
                                         value={newRule.pattern}
                                         onChange={e => setNewRule({ ...newRule, pattern: e.target.value })}
                                         placeholder="e.g. /etc/passwd"
-                                        style={inputStyle}
                                     />
                                 </div>
                                 <div className="input-group">
-                                    <label style={{ fontSize: '0.7rem', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', display: 'block', marginBottom: '0.4rem', fontWeight: 700 }}>{t('immune.severityLabel')}</label>
+                                    <label className={`immune-form-label${editingId ? ' immune-form-label--edit' : ''}`}>{t('immune.severityLabel')}</label>
                                     <input
+                                        className="ui-input"
                                         type="number"
                                         value={newRule.severity}
                                         onChange={e => setNewRule({ ...newRule, severity: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) })}
-                                        style={inputStyle}
                                     />
                                 </div>
                                 <div className="input-group">
-                                    <label style={{ fontSize: '0.7rem', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', display: 'block', marginBottom: '0.4rem', fontWeight: 700 }}>{t('immune.actionLabel')}</label>
+                                    <label className={`immune-form-label${editingId ? ' immune-form-label--edit' : ''}`}>{t('immune.actionLabel')}</label>
                                     <select
+                                        className="ui-select"
                                         value={newRule.action}
                                         onChange={e => setNewRule({ ...newRule, action: e.target.value })}
-                                        style={inputStyle}
                                     >
-                                        <option value="BLOCK" style={{ background: 'var(--bg-primary)' }}>BLOCK</option>
-                                        <option value="QUARANTINE" style={{ background: 'var(--bg-primary)' }}>QUARANTINE</option>
-                                        <option value="WARN" style={{ background: 'var(--bg-primary)' }}>WARN</option>
+                                        <option value="BLOCK">BLOCK</option>
+                                        <option value="QUARANTINE">QUARANTINE</option>
+                                        <option value="WARN">WARN</option>
                                     </select>
                                 </div>
                                 <button
                                     onClick={editingId ? handleUpdateRule : handleAddRule}
-                                    className="primary-button"
-                                    style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', height: '44px' }}
+                                    className={`primary-button immune-submit-btn${editingId ? ' immune-submit-btn--edit' : ''}`}
                                 >
                                     {editingId ? t('immune.updateRule') : t('immune.activateRule')}
                                 </button>
@@ -392,7 +358,7 @@ const ImmuneSystem: React.FC = () => {
                     )}
                 </AnimatePresence>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                <div className="immune-list">
                     <AnimatePresence>
                         {activeTab === 'RULES' ? (
                             rules.length > 0 ? rules.filter(r => !searchTerm || r.pattern.toLowerCase().includes(searchTerm.toLowerCase()) || r.action.toLowerCase().includes(searchTerm.toLowerCase())).map((rule, i) => (
@@ -401,92 +367,47 @@ const ImmuneSystem: React.FC = () => {
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.05 }}
-                                className="card-hover"
-                                style={{
-                                    background: 'var(--bg-glass-heavy)',
-                                    border: editingId === rule.id ? '1px solid var(--accent-amber)' : '1px solid var(--border-glass)',
-                                    borderRadius: 'var(--radius-md)',
-                                    padding: 'var(--space-md)',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    boxShadow: 'var(--shadow-deep)',
-                                    position: 'relative'
-                                }}
+                                className={`card-hover immune-threat-card${editingId === rule.id ? ' immune-threat-card--editing' : ''}`}
                             >
-                                <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center' }}>
-                                    <div style={{
-                                        width: '42px',
-                                        height: '42px',
-                                        borderRadius: 'var(--radius-sm)',
-                                        background: rule.risk === 'CRITICAL' ? 'var(--accent-rose-10)' : 'var(--accent-amber-10)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: rule.risk === 'CRITICAL' ? 'var(--accent-rose)' : 'var(--accent-amber)'
-                                    }}>
+                                <div className="immune-threat-row">
+                                    <div className={`immune-threat-icon ${rule.risk === 'CRITICAL' ? 'immune-threat-icon--critical' : 'immune-threat-icon--high'}`}>
                                         <AlertTriangle size={20} />
                                     </div>
                                     <div>
-                                        <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', marginBottom: '0.4rem' }}>
-                                            <code className="font-mono" style={{
-                                                fontSize: '0.9rem',
-                                                fontWeight: 700,
-                                                color: 'var(--text-primary)',
-                                                background: 'var(--black-20)',
-                                                padding: '0.1rem 0.4rem',
-                                                borderRadius: '4px'
-                                            }}>
+                                        <div className="immune-threat-title-row">
+                                            <code className="font-mono immune-pattern-code">
                                                 {rule.pattern}
                                             </code>
-                                            <span style={{
-                                                fontSize: '0.65rem',
-                                                fontWeight: 800,
-                                                color: rule.risk === 'CRITICAL' ? 'var(--accent-rose)' : 'var(--accent-amber)',
-                                                border: `1px solid currentColor`,
-                                                padding: '1px 6px',
-                                                borderRadius: '4px'
-                                            }}>
+                                            <span className={`immune-risk-badge ${rule.risk === 'CRITICAL' ? 'immune-risk-badge--critical' : 'immune-risk-badge--high'}`}>
                                                 {rule.risk}
                                             </span>
                                         </div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                            {t('immune.activeShields')}: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{rule.action}</span> • Status: <span style={{ color: rule.active ? 'var(--accent-emerald)' : 'var(--accent-amber)' }}>{rule.approval_status}</span>
+                                        <div className="immune-meta-text">
+                                            {t('immune.activeShields')}: <span className="immune-meta-emphasis">{rule.action}</span> • Status: <span className={rule.active ? 'immune-status--active' : 'immune-status--inactive'}>{rule.approval_status}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
+                                <div className="immune-actions">
                                     <button
                                         onClick={() => handleEditRule(rule)}
-                                        className="secondary-button"
-                                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}
+                                        className="secondary-button immune-edit-btn"
                                     >
                                         {t('immune.editButton')}
                                     </button>
                                     <button
                                         onClick={() => handleDeleteRule(rule.id)}
-                                        className="card-hover"
-                                        style={{ 
-                                            background: 'var(--accent-rose-10)', 
-                                            border: '1px solid var(--accent-rose-20)', 
-                                            color: 'var(--accent-rose)',
-                                            padding: '0.4rem 0.8rem',
-                                            borderRadius: 'var(--radius-sm)',
-                                            fontSize: '0.75rem',
-                                            cursor: 'pointer',
-                                            fontWeight: 700
-                                        }}
+                                        className="card-hover immune-delete-btn"
                                     >
                                         {t('immune.deleteButton')}
                                     </button>
                                 </div>
                             </motion.div>
                         )) : (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: 'var(--space-2xl)', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-glass)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)' }}>
-                                <Shield size={48} style={{ opacity: 0.2, margin: '0 auto var(--space-md) auto', display: 'block' }} color="var(--accent-cyan)" />
-                                <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: 'var(--space-xs)' }}>{t('immune.noActiveRules')}</div>
-                                <div style={{ fontSize: '0.9rem' }}>{t('immune.noActiveRulesDesc')}</div>
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="immune-empty-state">
+                                <Shield size={48} className="immune-empty-icon" color="var(--accent-cyan)" />
+                                <div className="immune-empty-title">{t('immune.noActiveRules')}</div>
+                                <div className="immune-empty-desc">{t('immune.noActiveRulesDesc')}</div>
                             </motion.div>
                         )) : activeTab === 'QUARANTINE' ? (
                             quarantinedAssets.length > 0 ? quarantinedAssets.filter(a => !searchTerm || a.asset_name.toLowerCase().includes(searchTerm.toLowerCase()) || a.reason.toLowerCase().includes(searchTerm.toLowerCase())).map((asset, i) => (
@@ -495,100 +416,67 @@ const ImmuneSystem: React.FC = () => {
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.05 }}
-                                className="card-hover"
-                                style={{
-                                    background: 'var(--bg-glass-heavy)',
-                                    border: '1px solid var(--accent-rose-30)',
-                                    borderRadius: 'var(--radius-md)',
-                                    padding: 'var(--space-md)',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    boxShadow: 'var(--glow-rose)',
-                                    position: 'relative'
-                                }}
+                                className="card-hover immune-threat-card immune-threat-card--quarantine"
                             >
-                                <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center' }}>
-                                    <div style={{
-                                        width: '42px',
-                                        height: '42px',
-                                        borderRadius: 'var(--radius-sm)',
-                                        background: 'var(--accent-rose-10)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: 'var(--accent-rose)'
-                                    }}>
+                                <div className="immune-threat-row">
+                                    <div className="immune-threat-icon immune-threat-icon--rose">
                                         <Lock size={20} />
                                     </div>
                                     <div>
-                                        <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', marginBottom: '0.4rem' }}>
-                                            <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                        <div className="immune-threat-title-row">
+                                            <span className="immune-item-title">
                                                 {asset.asset_name}
                                             </span>
-                                            <span style={{
-                                                fontSize: '0.65rem',
-                                                fontWeight: 800,
-                                                color: 'var(--accent-rose)',
-                                                border: `1px solid currentColor`,
-                                                padding: '1px 6px',
-                                                borderRadius: '4px'
-                                            }}>
+                                            <span className="immune-risk-badge immune-risk-badge--quarantine">
                                                 QUARANTINED
                                             </span>
                                         </div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                            {t('immune.quarantine')}: <span style={{ color: 'var(--accent-amber)', fontWeight: 600 }}>{asset.reason}</span> • Hash: <span className="font-mono" style={{ fontSize: '0.7rem' }}>{asset.image_hash.substring(0, 16)}...</span>
+                                        <div className="immune-meta-text">
+                                            {t('immune.quarantine')}: <span className="immune-meta-reason">{asset.reason}</span> • Hash: <span className="font-mono immune-meta-hash">{asset.image_hash.substring(0, 16)}...</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <button
                                     onClick={() => handleReleaseQuarantine(asset.id)}
-                                    className="primary-button"
-                                    style={{ background: 'var(--accent-emerald)', padding: '0.5rem 1rem', fontSize: '0.75rem' }}
+                                    className="primary-button immune-release-btn"
                                 >
                                     {t('immune.releaseException')}
                                 </button>
                             </motion.div>
                         )) : (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: 'var(--space-2xl)', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-glass)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)' }}>
-                                <Lock size={48} style={{ opacity: 0.2, margin: '0 auto var(--space-md) auto', display: 'block' }} color="var(--accent-rose)" />
-                                <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: 'var(--space-xs)' }}>{t('immune.quarantineClean')}</div>
-                                <div style={{ fontSize: '0.9rem' }}>{t('immune.quarantineCleanDesc')}</div>
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="immune-empty-state">
+                                <Lock size={48} className="immune-empty-icon" color="var(--accent-rose)" />
+                                <div className="immune-empty-title">{t('immune.quarantineClean')}</div>
+                                <div className="immune-empty-desc">{t('immune.quarantineCleanDesc')}</div>
                             </motion.div>
                         )) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)', width: '100%' }}>
-                                <div style={{
-                                    background: 'var(--black-20)',
-                                    borderRadius: 'var(--radius-lg)',
-                                    border: '1px solid var(--border-glass)',
-                                    padding: 'var(--space-lg)',
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(4, 1fr)',
-                                    gap: 'var(--space-md)'
-                                }}>
-                                    <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>{t('immune.totalIncidents7d')}</div>
-                                        <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>{aegisStatus?.stats?.total_incidents_7d || 0}</div>
-                                    </div>
-                                    <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-glass)' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>{t('immune.unresolved')}</div>
-                                        <div style={{ fontSize: '2rem', fontWeight: 800, color: aegisStatus?.stats?.unresolved && aegisStatus.stats.unresolved > 0 ? 'var(--accent-rose)' : 'var(--accent-emerald)' }}>
-                                            {aegisStatus?.stats?.unresolved || 0}
-                                        </div>
-                                    </div>
-                                    <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-glass)' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>{t('immune.affectedSkills')}</div>
-                                        <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-amber)' }}>{aegisStatus?.stats?.distinct_skills || 0}</div>
-                                    </div>
-                                    <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-glass)' }}>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>{t('immune.topFailingSkill')}</div>
-                                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.8rem' }}>{aegisStatus?.stats?.top_failing_skill || 'None'}</div>
-                                    </div>
+                            <div className="immune-aegis-section">
+                                <div className="grid-stats immune-aegis-stats">
+                                    <StatCard
+                                        label={t('immune.totalIncidents7d')}
+                                        value={<span className="immune-stat-value--cyan">{aegisStatus?.stats?.total_incidents_7d || 0}</span>}
+                                    />
+                                    <StatCard
+                                        label={t('immune.unresolved')}
+                                        value={
+                                            <span className={unresolvedCount > 0 ? 'immune-stat-value--rose' : 'immune-stat-value--emerald'}>
+                                                {unresolvedCount}
+                                            </span>
+                                        }
+                                    />
+                                    <StatCard
+                                        label={t('immune.affectedSkills')}
+                                        value={<span className="immune-stat-value--amber">{aegisStatus?.stats?.distinct_skills || 0}</span>}
+                                    />
+                                    <StatCard
+                                        label={t('immune.topFailingSkill')}
+                                        className="immune-stat-card--compact"
+                                        value={aegisStatus?.stats?.top_failing_skill || 'None'}
+                                    />
                                 </div>
 
-                                <h4 style={{ margin: 'var(--space-md) 0 0 0', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem' }}>{t('immune.openIncidents')}</h4>
+                                <SectionHeader title={t('immune.openIncidents')} className="immune-section-title" />
                                 
                                 {aegisStatus && Array.isArray(aegisStatus.open_incidents) && aegisStatus.open_incidents.length > 0 ? aegisStatus.open_incidents.map((incident, i) => (
                                     <motion.div
@@ -596,62 +484,35 @@ const ImmuneSystem: React.FC = () => {
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: i * 0.05 }}
-                                        className="card-hover"
-                                        style={{
-                                            background: 'var(--bg-glass-heavy)',
-                                            border: '1px solid var(--accent-amber-30)',
-                                            borderRadius: 'var(--radius-md)',
-                                            padding: 'var(--space-md)',
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            boxShadow: 'var(--glow-amber)',
-                                            position: 'relative'
-                                        }}
+                                        className="card-hover immune-threat-card immune-threat-card--incident"
                                     >
-                                        <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center' }}>
-                                            <div style={{
-                                                width: '42px',
-                                                height: '42px',
-                                                borderRadius: 'var(--radius-sm)',
-                                                background: 'var(--accent-amber-10)',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                color: 'var(--accent-amber)'
-                                            }}>
+                                        <div className="immune-threat-row">
+                                            <div className="immune-threat-icon immune-threat-icon--amber">
                                                 <Activity size={20} />
                                             </div>
                                             <div>
-                                                <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', marginBottom: '0.4rem' }}>
-                                                    <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                                <div className="immune-threat-title-row">
+                                                    <span className="immune-item-title">
                                                         {incident.skill_name}
                                                     </span>
-                                                    <span style={{
-                                                        fontSize: '0.65rem',
-                                                        fontWeight: 800,
-                                                        color: 'var(--bg-primary)',
-                                                        background: incident.status === 'Open' ? 'var(--accent-rose)' : 'var(--accent-amber)',
-                                                        padding: '2px 6px',
-                                                        borderRadius: '4px'
-                                                    }}>
+                                                    <span className={`immune-risk-badge immune-risk-badge--status ${incident.status === 'Open' ? 'immune-risk-badge--open' : 'immune-risk-badge--closed'}`}>
                                                         {incident.status.toUpperCase()}
                                                     </span>
                                                 </div>
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                    <span className="font-mono" style={{ background: 'var(--black-30)', padding: '2px 4px', borderRadius: '4px' }}>
+                                                <div className="immune-meta-text">
+                                                    <span className="font-mono immune-payload-chip">
                                                         {(incident.input_payload || '').substring(0, 40)}{(incident.input_payload || '').length > 40 ? '...' : ''}
                                                     </span>
-                                                    <span style={{ marginLeft: '1rem', opacity: 0.6 }}>Reported: {new Date(incident.created_at).toLocaleString()}</span>
+                                                    <span className="immune-meta-timestamp">Reported: {new Date(incident.created_at).toLocaleString()}</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </motion.div>
                                 )) : (
-                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: 'var(--space-2xl)', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-glass)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)' }}>
-                                        <Shield size={48} style={{ opacity: 0.2, margin: '0 auto var(--space-md) auto', display: 'block' }} color="var(--accent-emerald)" />
-                                        <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-primary)', marginBottom: 'var(--space-xs)' }}>{t('immune.zeroIncidents')}</div>
-                                        <div style={{ fontSize: '0.9rem' }}>{t('immune.zeroIncidentsDesc')}</div>
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="immune-empty-state">
+                                        <Shield size={48} className="immune-empty-icon" color="var(--accent-emerald)" />
+                                        <div className="immune-empty-title">{t('immune.zeroIncidents')}</div>
+                                        <div className="immune-empty-desc">{t('immune.zeroIncidentsDesc')}</div>
                                     </motion.div>
                                 )}
                             </div>
@@ -659,29 +520,16 @@ const ImmuneSystem: React.FC = () => {
                     </AnimatePresence>
                 </div>
 
-                <div className="info-box-glass" style={{ marginTop: '3rem', padding: '2rem', textAlign: 'center' }}>
-                    <Shield size={32} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                    <h4 style={{ color: 'var(--text-secondary)', margin: 0 }}>{t('immune.abyssVaultTitle')}</h4>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem', lineHeight: 1.6 }}>
+                <div className="info-box-glass immune-vault-box">
+                    <Shield size={32} className="immune-vault-icon" />
+                    <h4 className="immune-vault-title">{t('immune.abyssVaultTitle')}</h4>
+                    <p className="immune-vault-desc">
                         {t('immune.abyssVaultDesc')}
                     </p>
                 </div>
                 </>
                 )}
             </div>
-
-            <style>{`
-                @media (max-width: 1024px) {
-                    .panel-header {
-                        flex-direction: column;
-                        align-items: flex-start !important;
-                        gap: 1rem;
-                    }
-                    .lora-view-container {
-                        grid-template-columns: 1fr;
-                    }
-                }
-            `}</style>
         </div>
     );
 };

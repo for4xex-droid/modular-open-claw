@@ -35,7 +35,7 @@ test.describe('A2UI Generative UI (U4)', () => {
     await page.goto('/');
     await page.waitForSelector('.app-container');
 
-    const agentTab = page.locator('nav.nav-group div', { hasText: 'Agent Console' }).first();
+    const agentTab = page.getByTestId('nav-agent');
     await expect(agentTab).toBeVisible({ timeout: 10000 });
     await agentTab.click();
 
@@ -75,7 +75,7 @@ test.describe('A2UI Generative UI (U4)', () => {
     await page.goto('/');
     await page.waitForSelector('.app-container');
 
-    const agentTab = page.locator('nav.nav-group div', { hasText: 'Agent Console' }).first();
+    const agentTab = page.getByTestId('nav-agent');
     await agentTab.click();
 
     const input = page.locator('textarea, input[type="text"]').filter({ hasNot: page.locator('[type="password"]') }).last();

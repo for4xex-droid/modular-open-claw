@@ -14,11 +14,12 @@ test.describe('Autonomous AI Economy Demo', () => {
 
     await page.goto('/');
 
-    const demoTab = page.locator('.nav-item').filter({ hasText: 'Synergy Demo' });
-    
-    // We expect this to fail (RED) since it doesn't exist yet
-    await expect(demoTab).toBeVisible();
-    await demoTab.click();
+    // U6-7: デモはサイドバー常設から降格したため、A2UI ナビゲーションで遷移する
+    // （設定画面の「デモを再生」ボタンと同じ経路）
+    await expect(page.locator('.app-container')).toBeVisible({ timeout: 10000 });
+    await page.evaluate(() => {
+      window.dispatchEvent(new CustomEvent('a2ui-navigate', { detail: { tab: 'demo' } }));
+    });
   });
 
   test('should navigate to the demo page, render the UI, and start the demo', async ({ page }) => {

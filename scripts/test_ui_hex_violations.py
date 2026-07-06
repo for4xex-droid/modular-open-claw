@@ -12,6 +12,11 @@ def run_test():
     extra_files = [
         "apps/management-console/src/App.tsx",
     ]
+    # .css もスキャン対象（src 全域）。ただしトークン定義ファイル自体は生値を持つのが正しいため除外
+    css_root = "apps/management-console/src"
+    css_excludes = {
+        os.path.normpath("apps/management-console/src/styles/tokens.css"),
+    }
 
     hex_pattern = re.compile(r'#[0-9a-fA-F]{3,8}')
     # rgba(r, g, b, a) / rgb(r, g, b) および hsl(h, s, l) / hsla(h, s, l, a) ハードコードも U-002 違反として検出
@@ -65,6 +70,16 @@ def run_test():
         if os.path.isfile(filepath):
             scan_file(filepath, os.path.basename(filepath))
 
+    # Scan .css files (tokens.css excluded)
+    if os.path.isdir(css_root):
+        for root, _, files in os.walk(css_root):
+            for file in files:
+                if file.endswith('.css'):
+                    filepath = os.path.join(root, file)
+                    if os.path.normpath(filepath) in css_excludes:
+                        continue
+                    scan_file(filepath, file)
+
     if failed:
         print(f"\n[RED] Test Failed! Found {violations} violations across {file_count} files.")
         print("Golden Rule U-002: Replace hardcoded colors with CSS tokens (var(--token)).")
@@ -75,6 +90,6 @@ def run_test():
 
 if __name__ == "__main__":
     print("Running UI Theme Enforcement Test (U-002)...")
-    print("Scope: components/ + lib/ + App.tsx | Patterns: HEX + rgba/rgb")
+    print("Scope: components/ + lib/ + App.tsx + src/**/*.css (tokens.css excluded) | Patterns: HEX + rgba/rgb")
     print("=" * 60)
     run_test()

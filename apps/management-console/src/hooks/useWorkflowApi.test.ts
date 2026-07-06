@@ -81,6 +81,7 @@ describe('useWorkflowApi Hook', () => {
       ok: true,
       status: 200,
       json: async () => mockResponse,
+      text: async () => JSON.stringify(mockResponse),
     });
 
     const { result } = renderHook(() => useWorkflowApi());
@@ -100,8 +101,58 @@ describe('useWorkflowApi Hook', () => {
     expect(validation).toEqual(mockResponse);
   });
 
-  it('handles execution and returns execution_id (FIND-1)', async () => {
-    const mockResponse = { execution_id: 'exec-123' };
+  it('treats empty 200 validate response as valid (API contract)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () => '',
+    });
+
+    const { result } = renderHook(() => useWorkflowApi());
+
+    let validation;
+    await act(async () => {
+      validation = await result.current.validateWorkflow({
+        id: 'w-1',
+        name: 'Test',
+        description: 'Desc',
+        version: 1,
+        nodes: [],
+        edges: [],
+      });
+    });
+
+    expect(validation).toEqual({ valid: true });
+  });
+
+  it('surfaces API error body on validate failure', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      text: async () => JSON.stringify({ message: 'Workflow is invalid: missing start node' }),
+    });
+
+    const { result } = renderHook(() => useWorkflowApi());
+
+    let validation;
+    await act(async () => {
+      validation = await result.current.validateWorkflow({
+        id: 'w-1',
+        name: 'Test',
+        description: 'Desc',
+        version: 1,
+        nodes: [],
+        edges: [],
+      });
+    });
+
+    expect(validation.valid).toBe(false);
+    expect(validation.errors?.[0]).toContain('missing start node');
+  });
+
+  it('handles execution and returns execution_id with job_ids (FIND-1)', async () => {
+    const mockResponse = { execution_id: 'exec-123', job_ids: ['job-a', 'job-b'] };
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -118,5 +169,22 @@ describe('useWorkflowApi Hook', () => {
 
     expect(execResult).toEqual(mockResponse);
     expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/v1/workflows/w-1/execute', expect.any(Object));
+  });
+
+  it('defaults job_ids to empty array when API omits the field', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ execution_id: 'exec-legacy' }),
+    });
+
+    const { result } = renderHook(() => useWorkflowApi());
+
+    let execResult;
+    await act(async () => {
+      execResult = await result.current.executeWorkflow('w-1');
+    });
+
+    expect(execResult).toEqual({ execution_id: 'exec-legacy', job_ids: [] });
   });
 });

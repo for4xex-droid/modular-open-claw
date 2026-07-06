@@ -16,7 +16,7 @@ test.describe('UI Endpoint Fixes (TDD)', () => {
   });
 
   test('AgentConsole should use /api/stream/chat', async ({ page }) => {
-    const agentTab = page.locator('.nav-item').filter({ hasText: 'AI Chat' });
+    const agentTab = page.getByTestId('nav-agent');
     await expect(agentTab).toBeVisible();
     await agentTab.click();
 
@@ -40,7 +40,7 @@ test.describe('UI Endpoint Fixes (TDD)', () => {
   });
 
   test('VoiceStore should use absolute API_BASE for commerce/balance', async ({ page }) => {
-    const voiceTab = page.locator('.nav-item').filter({ hasText: 'Voice' });
+    const voiceTab = page.getByTestId('nav-store');
     await expect(voiceTab).toBeVisible();
     // It should hit http://localhost:3015/api/v1/commerce/balance/agent-001
     // It should hit the commerce/balance endpoint using absolute or relative paths correctly

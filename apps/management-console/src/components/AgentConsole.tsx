@@ -146,33 +146,37 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
 
     useEffect(scrollToBottom, [history, streamingText]);
 
+    const karmaNotFound = relevantKarma
+        ? relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('not found')
+        : false;
+
     // Shared ReactMarkdown component overrides (DRY: used in both history and streaming renders)
     const markdownComponents = {
-        h1: ({node, ...props}: React.ComponentPropsWithoutRef<'h1'> & { node?: unknown }) => <h1 style={{color: 'var(--accent-cyan)', fontSize: 'var(--font-size-2xl)', marginTop: 'var(--space-sm)', marginBottom: 'var(--space-xs)'}} {...props} />,
-        h2: ({node, ...props}: React.ComponentPropsWithoutRef<'h2'> & { node?: unknown }) => <h2 style={{color: 'var(--accent-purple)', fontSize: 'var(--font-size-lg)', marginTop: 'var(--space-sm)', marginBottom: 'var(--space-xs)'}} {...props} />,
-        h3: ({node, ...props}: React.ComponentPropsWithoutRef<'h3'> & { node?: unknown }) => <h3 style={{fontSize: 'var(--font-size-base)', marginTop: 'var(--space-sm)', marginBottom: 'var(--space-xs)'}} {...props} />,
-        a: ({node, ...props}: React.ComponentPropsWithoutRef<'a'> & { node?: unknown }) => <a style={{color: 'var(--accent-cyan)', textDecoration: 'underline'}} {...props} />,
+        h1: ({node, ...props}: React.ComponentPropsWithoutRef<'h1'> & { node?: unknown }) => <h1 className="agent-console-md-h1" {...props} />,
+        h2: ({node, ...props}: React.ComponentPropsWithoutRef<'h2'> & { node?: unknown }) => <h2 className="agent-console-md-h2" {...props} />,
+        h3: ({node, ...props}: React.ComponentPropsWithoutRef<'h3'> & { node?: unknown }) => <h3 className="agent-console-md-h3" {...props} />,
+        a: ({node, ...props}: React.ComponentPropsWithoutRef<'a'> & { node?: unknown }) => <a className="agent-console-md-a" {...props} />,
         code: ({node, className, children, ...props}: React.ComponentPropsWithoutRef<'code'> & { node?: unknown; children?: React.ReactNode }) => {
             const match = /language-(\w+)/.exec(className || '');
             if (match && match[1] === 'mermaid') {
                 return (
-                    <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'var(--font-size-sm)', padding:'var(--space-sm)', border:'1px solid var(--accent-rose-30)'}}>Failed to render mermaid diagram (React error)</div>}>
+                    <ErrorBoundary fallback={<div className="agent-console-md-error">Failed to render mermaid diagram (React error)</div>}>
                         <MermaidRenderer code={String(children).replace(/\n$/, '')} />
                     </ErrorBoundary>
                 );
             }
-            return <code style={{background: 'var(--black-40)', padding: '0.2em 0.4em', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-sm)'}} className={className} {...props}>{children}</code>;
+            return <code className={`agent-console-md-code ${className || ''}`} {...props}>{children}</code>;
         },
-        pre: ({node, ...props}: React.ComponentPropsWithoutRef<'pre'> & { node?: unknown }) => <pre style={{background: 'var(--black-60)', padding: 'var(--space-sm)', borderRadius: 'var(--radius-md)', overflowX: 'auto', marginBottom: 'var(--space-sm)'}} {...props} />
+        pre: ({node, ...props}: React.ComponentPropsWithoutRef<'pre'> & { node?: unknown }) => <pre className="agent-console-md-pre" {...props} />
     };
 
     return (
-        <div className="main-panel ani-fade" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', position: 'relative', flex: 1, minHeight: 0 }}>
+        <div className="main-panel ani-fade agent-console-root">
             <ActivityFeed maxItems={5} />
             {/* Header */}
-            <div className="panel-header" style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-glass)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                    <div style={{ position: 'relative' }}>
+            <div className="panel-header agent-console-header">
+                <div className="agent-console-header__identity">
+                    <div className="agent-console-header__avatar-wrap">
                         <Bot size={24} color="var(--accent-cyan)" />
                         {isTyping && (
                             <motion.div
@@ -183,65 +187,36 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         )}
                     </div>
                     <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>{t('agent.title')}</h3>
-                        <div style={{ fontSize: '0.7rem', color: isTyping ? 'var(--accent-cyan)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: isTyping ? 'var(--accent-cyan)' : 'var(--accent-emerald)' }} />
+                        <h3 className="agent-console-header__title">{t('agent.title')}</h3>
+                        <div className={`agent-console-header__status${isTyping ? ' agent-console-header__status--typing' : ''}`}>
+                            <span className={`agent-console-header__status-dot${isTyping ? ' agent-console-header__status-dot--typing' : ''}`} />
                             {status}
                         </div>
                     </div>
                 </div>
 
                 {mode === 'agency' && (
-                    <div style={{ display: 'flex', gap: '1rem', flex: 1, justifyContent: 'center' }}>
+                    <div className="agent-console-header__tabs">
                         <button
                             onClick={() => setActiveTab('chat')}
-                            style={{
-                                background: activeTab === 'chat' ? 'var(--accent-cyan-20)' : 'transparent',
-                                border: 'none',
-                                color: activeTab === 'chat' ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                                padding: '0.4rem 1rem',
-                                borderRadius: 'var(--radius-sm)',
-                                cursor: 'pointer',
-                                fontWeight: 600,
-                                fontSize: '0.85rem'
-                            }}
+                            className={`agent-console-tab-btn${activeTab === 'chat' ? ' agent-console-tab-btn--active' : ''}`}
                         >
                             {t('agent.copilotChat') || 'Copilot Chat'}
                         </button>
                         <button
                             onClick={() => setActiveTab('automations')}
-                            style={{
-                                background: activeTab === 'automations' ? 'var(--accent-cyan-20)' : 'transparent',
-                                border: 'none',
-                                color: activeTab === 'automations' ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                                padding: '0.4rem 1rem',
-                                borderRadius: 'var(--radius-sm)',
-                                cursor: 'pointer',
-                                fontWeight: 600,
-                                fontSize: '0.85rem'
-                            }}
+                            className={`agent-console-tab-btn${activeTab === 'automations' ? ' agent-console-tab-btn--active' : ''}`}
                         >
                             {t('agent.automationsTab') || 'Automations (ROI)'}
                         </button>
                     </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-                    <LockedOverlay featureNameKey="pro.featureTts">
+                <div className="agent-console-header__actions">
+                    <LockedOverlay featureNameKey="pro.featureTts" variant="badge">
                     <button 
                         onClick={() => setAutoTts(!autoTts)}
-                        className="stat-badge" 
-                        style={{ 
-                            fontSize: '0.7rem', 
-                            background: autoTts ? 'var(--accent-cyan-10)' : 'var(--white-03)',
-                            border: `1px solid ${autoTts ? 'var(--accent-cyan)' : 'transparent'}`,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.4rem',
-                            color: autoTts ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                            transition: 'all var(--speed-normal)'
-                        }}
+                        className={`stat-badge agent-console-tts-btn${autoTts ? ' agent-console-tts-btn--on' : ''}`}
                     >
                         {autoTts ? <Volume2 size={12} /> : <VolumeX size={12} />}
                         {t('agent.voice')}: {autoTts ? 'ON' : 'OFF'}
@@ -249,63 +224,57 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                     </LockedOverlay>
                     <ProofPowerIndicator variant="compact" />
                     <TokenSavingsIndicator savedChars={sessionSavedChars} variant="compact" />
-                    <div className="stat-badge" style={{ fontSize: '0.7rem', background: 'var(--white-03)' }}>{t('agent.modelBadge') || '3.5B MODEL'}</div>
+                    <div className="stat-badge agent-console-model-badge">{t('agent.modelBadge') || '3.5B MODEL'}</div>
                 </div>
             </div>
 
             {activeTab === 'automations' && mode === 'agency' ? (
-                <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', background: 'var(--black-20)' }}>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div className="agent-console-scroll-panel">
+                    <h2 className="agent-console-page-title">
                         <Activity size={24} color="var(--accent-cyan)" />
                         {t('agent.scheduledAutomations') || 'Scheduled Automations'}
                     </h2>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-                        <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><Clock size={16} /> {t('agent.tasksExecuted') || 'Tasks Executed'}</div>
-                            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>{stats ? stats.tasksExecuted.toLocaleString() : '...'}</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('agent.lifetimeMetrics') || 'Lifetime metrics'}</div>
+                    <div className="agent-console-stat-grid">
+                        <div className="glass-panel agent-console-stat-card">
+                            <div className="agent-console-stat-label"><Clock size={16} /> {t('agent.tasksExecuted') || 'Tasks Executed'}</div>
+                            <div className="agent-console-stat-value agent-console-stat-value--cyan">{stats ? stats.tasksExecuted.toLocaleString() : '...'}</div>
+                            <div className="agent-console-stat-caption">{t('agent.lifetimeMetrics') || 'Lifetime metrics'}</div>
                         </div>
-                        <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><DollarSign size={16} /> {t('agent.estimatedSavings') || 'Estimated Savings'} (推定値)</div>
-                            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-emerald)' }}>${stats ? stats.savings.toLocaleString() : '...'}</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--accent-emerald)' }}>{t('agent.basedOnVolume') || 'Based on task volume'}</div>
+                        <div className="glass-panel agent-console-stat-card">
+                            <div className="agent-console-stat-label"><DollarSign size={16} /> {t('agent.estimatedSavings') || 'Estimated Savings'} (推定値)</div>
+                            <div className="agent-console-stat-value agent-console-stat-value--emerald">${stats ? stats.savings.toLocaleString() : '...'}</div>
+                            <div className="agent-console-stat-caption agent-console-stat-caption--emerald">{t('agent.basedOnVolume') || 'Based on task volume'}</div>
                         </div>
-                        <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}><TrendingUp size={16} /> {t('agent.activeBlueprints') || 'Active Blueprints'}</div>
-                            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--accent-purple)' }}>{stats ? stats.activeBlueprints : '...'}</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('agent.runningFlawlessly') || 'Running flawlessly'}</div>
+                        <div className="glass-panel agent-console-stat-card">
+                            <div className="agent-console-stat-label"><TrendingUp size={16} /> {t('agent.activeBlueprints') || 'Active Blueprints'}</div>
+                            <div className="agent-console-stat-value agent-console-stat-value--purple">{stats ? stats.activeBlueprints : '...'}</div>
+                            <div className="agent-console-stat-caption">{t('agent.runningFlawlessly') || 'Running flawlessly'}</div>
                         </div>
                     </div>
 
-                    <div className="glass-panel" style={{ padding: '1.5rem', flex: 1 }}>
-                        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem' }}>{t('agent.blueprintInstances') || 'Active Blueprint Instances'}</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div className="glass-panel agent-console-instances-panel">
+                        <h3 className="agent-console-instances-title">{t('agent.blueprintInstances') || 'Active Blueprint Instances'}</h3>
+                        <div className="agent-console-instances-list">
                             {!stats ? (
-                                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>{t('common.loading') || 'Loading instances...'}</div>
+                                <div className="agent-console-empty-state">{t('common.loading') || 'Loading instances...'}</div>
                             ) : stats.instances.length === 0 ? (
-                                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '1rem' }}>{t('agent.noBlueprintInstances') || 'No active blueprint instances found.'}</div>
+                                <div className="agent-console-empty-state">{t('agent.noBlueprintInstances') || 'No active blueprint instances found.'}</div>
                             ) : (
                                 stats.instances.map(bp => (
-                                    <div key={bp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'var(--white-03)', borderRadius: 'var(--radius-md)' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                            <div style={{ fontWeight: 600 }}>{bp.name}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {bp.id} • Next: {bp.nextRun}</div>
+                                    <div key={bp.id} className="agent-console-instance-row">
+                                        <div className="agent-console-instance-info">
+                                            <div className="agent-console-instance-name">{bp.name}</div>
+                                            <div className="agent-console-instance-meta">ID: {bp.id} • Next: {bp.nextRun}</div>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                                            <div style={{ fontWeight: 600, color: 'var(--accent-emerald)' }}>
-                                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: '4px' }}>
+                                        <div className="agent-console-instance-actions">
+                                            <div className="agent-console-instance-roi">
+                                                 <span className="agent-console-instance-roi-label">
                                                      {t('agent.estimatedRoiLabel') || 'Estimated:'}
                                                  </span>
                                                  {bp.roi}
                                              </div>
-                                            <div style={{ 
-                                                padding: '0.2rem 0.6rem', 
-                                                borderRadius: '1rem', 
-                                                fontSize: '0.75rem',
-                                                background: bp.status.includes('Running') ? 'var(--accent-emerald-10)' : 'var(--accent-rose-10)',
-                                                color: bp.status.includes('Running') ? 'var(--accent-emerald)' : 'var(--accent-rose)'
-                                            }}>
+                                            <div className={`agent-console-status-badge ${bp.status.includes('Running') ? 'agent-console-status-badge--running' : 'agent-console-status-badge--stopped'}`}>
                                                 {bp.status}
                                             </div>
                                         </div>
@@ -318,14 +287,14 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
             ) : (
                 <>
             {/* Chat Area */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', background: 'var(--black-20)' }}>
+            <div className="agent-console-chat">
                 {history.length === 0 && !streamingText && (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', textAlign: 'center', padding: '2rem' }}>
-                        <Cpu size={48} style={{ opacity: 0.1, marginBottom: '1.5rem' }} />
-                        <h4 style={{ fontWeight: 600, color: 'var(--white-20)', marginBottom: '0.5rem' }}>{t('agent.ready') || 'How can I help you today?'}</h4>
-                        <p style={{ fontSize: '0.85rem', maxWidth: '300px', marginBottom: '2rem' }}>{t('agent.issueCommands') || 'Choose a template below or type your own command.'}</p>
+                    <div className="agent-console-welcome">
+                        <Cpu size={48} className="agent-console-welcome__icon" />
+                        <h4 className="agent-console-welcome__title">{t('agent.ready') || 'How can I help you today?'}</h4>
+                        <p className="agent-console-welcome__desc">{t('agent.issueCommands') || 'Choose a template below or type your own command.'}</p>
                         
-                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '800px' }}>
+                        <div className="agent-console-template-grid">
                             {[
                                 { icon: <Sparkles size={20} color="var(--accent-cyan)" />, title: t('agent.template.writeCode') || 'Write code', desc: t('agent.template.writeCodeDesc') || 'Create a new React component', prompt: 'Create a new React component with Tailwind CSS.' },
                                 { icon: <Brain size={20} color="var(--accent-purple)" />, title: t('agent.template.analyzeData') || 'Analyze data', desc: t('agent.template.analyzeDataDesc') || 'Find trends in recent logs', prompt: 'Analyze the system logs from the past 24 hours and identify any anomalies.' },
@@ -337,18 +306,11 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                                     onClick={() => {
                                         setInput(card.prompt);
                                     }}
-                                    style={{
-                                        display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem',
-                                        padding: '1rem', background: 'var(--white-03)', border: '1px solid var(--border-glass)',
-                                        borderRadius: 'var(--radius-md)', cursor: 'pointer', textAlign: 'left',
-                                        width: '180px', transition: 'all var(--speed-normal)'
-                                    }}
-                                    onMouseOver={(e) => e.currentTarget.style.background = 'var(--white-05)'}
-                                    onMouseOut={(e) => e.currentTarget.style.background = 'var(--white-03)'}
+                                    className="agent-console-template-card"
                                 >
                                     {card.icon}
-                                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{card.title}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{card.desc}</div>
+                                    <div className="agent-console-template-card__title">{card.title}</div>
+                                    <div className="agent-console-template-card__desc">{card.desc}</div>
                                 </button>
                             ))}
                         </div>
@@ -359,24 +321,13 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="glass-panel"
-                        style={{
-                            padding: '1.2rem',
-                            background: relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('not found')
-                                ? 'var(--accent-rose-10)'
-                                : 'var(--accent-cyan-05)',
-                            border: `1px solid ${relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('not found') ? 'var(--accent-rose-20)' : 'var(--accent-cyan-10)'}`,
-                            borderLeftWidth: '4px',
-                            borderLeftColor: relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('not found') ? 'var(--accent-rose)' : 'var(--accent-cyan)',
-                            fontSize: '0.8rem',
-                            marginBottom: '1rem',
-                        }}
+                        className={`glass-panel agent-console-karma-panel ${karmaNotFound ? 'agent-console-karma-panel--missing' : 'agent-console-karma-panel--found'}`}
                     >
-                        <div style={{ fontWeight: 800, fontSize: '0.7rem', color: 'var(--white-50)', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.6rem', letterSpacing: '0.1em' }}>
-                            <Brain size={14} color={relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('not found') ? 'var(--accent-rose)' : 'var(--accent-cyan)'} />
-                            {relevantKarma.includes('見つかりませんでした') || relevantKarma.includes('not found') ? t('agent.outOfDomain') : t('agent.synapticMemory')}
+                        <div className="agent-console-karma-header">
+                            <Brain size={14} color={karmaNotFound ? 'var(--accent-rose)' : 'var(--accent-cyan)'} />
+                            {karmaNotFound ? t('agent.outOfDomain') : t('agent.synapticMemory')}
                         </div>
-                        <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, color: 'var(--white-80)' }}>
+                        <div className="agent-console-karma-body">
                             {relevantKarma}
                         </div>
                     </motion.div>
@@ -386,20 +337,13 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        style={{
-                            padding: '1rem',
-                            background: 'var(--accent-amber-10)',
-                            border: '1px solid var(--accent-amber-20)',
-                            borderLeft: '4px solid var(--accent-amber)',
-                            borderRadius: 'var(--radius-sm) var(--radius-md) var(--radius-md) var(--radius-sm)',
-                            marginBottom: '1rem',
-                        }}
+                        className="agent-console-knowledge-panel"
                     >
-                        <div style={{ fontWeight: 800, fontSize: '0.7rem', color: 'var(--accent-amber-80)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', letterSpacing: '0.1em' }}>
+                        <div className="agent-console-knowledge-header">
                             <BookOpen size={14} />
                             {t('agent.knowledgeAccessed')}
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--white-90)', fontWeight: 500 }}>
+                        <div className="agent-console-knowledge-body">
                             {activeKnowledge}
                         </div>
                     </motion.div>
@@ -410,29 +354,12 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         key={i}
                         initial={{ opacity: 0, x: m.role === 'user' ? 20 : -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        style={{
-                            alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                            maxWidth: '85%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
-                            gap: '0.5rem'
-                        }}
+                        className={`agent-console-msg-wrap agent-console-msg-wrap--${m.role === 'user' ? 'user' : 'assistant'}`}
                     >
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                        <div className="agent-console-msg-role">
                             {m.role === 'user' ? t('agent.roleUser') : t('agent.roleAiome')}
                         </div>
-                        <div style={{
-                            padding: '1.25rem',
-                            borderRadius: m.role === 'user' ? 'var(--radius-lg) var(--radius-lg) 4px var(--radius-lg)' : '4px var(--radius-lg) var(--radius-lg) var(--radius-lg)',
-                            background: m.role === 'user' ? 'var(--accent-cyan-glass)' : 'var(--bg-glass-heavy)',
-                            border: m.role === 'user' ? '1px solid var(--accent-cyan-30)' : '1px solid var(--border-glass)',
-                            color: m.isError ? 'var(--accent-rose)' : 'var(--text-primary)',
-                            fontSize: '0.95rem',
-                            lineHeight: 1.6,
-                            boxShadow: 'var(--shadow-shallow)',
-                            whiteSpace: 'pre-wrap'
-                        }}>
+                        <div className={`agent-console-msg-bubble agent-console-msg-bubble--${m.role === 'user' ? 'user' : 'assistant'}${m.isError ? ' agent-console-msg-bubble--error' : ''}`}>
                             {m.content && (
                                 <ReactMarkdown
                                     rehypePlugins={[rehypeSanitize]}
@@ -442,32 +369,32 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                                 </ReactMarkdown>
                             )}
                             {m.reasoning && (
-                                <details style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                    <summary style={{ cursor: 'pointer', fontWeight: 600 }}>{t('agent.thinkingProcess') || '🧠 Thinking Process'}</summary>
-                                    <div style={{ padding: '0.5rem', background: 'var(--black-20)', borderRadius: 'var(--radius-sm)', marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}>
+                                <details className="agent-console-reasoning">
+                                    <summary className="agent-console-reasoning__summary">{t('agent.thinkingProcess') || '🧠 Thinking Process'}</summary>
+                                    <div className="agent-console-reasoning__body">
                                         {m.reasoning}
                                     </div>
                                 </details>
                             )}
                             {m.a2uiEnvelope && (
-                                <ErrorBoundary fallback={<div style={{color: 'var(--accent-rose)', fontSize:'0.75rem'}}>{t('error.a2uiFailed') || 'A2UI render failed — invalid surface data'}</div>}>
+                                <ErrorBoundary fallback={<div className="agent-console-a2ui-error">{t('error.a2uiFailed') || 'A2UI render failed — invalid surface data'}</div>}>
                                     <A2uiRenderer envelope={m.a2uiEnvelope} />
                                 </ErrorBoundary>
                             )}
                         </div>
 
                         {m.role === 'assistant' && !m.isError && i === history.length - 1 && (relevantKarmaData?.entries?.length ?? 0) > 0 && (
-                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem', opacity: 0.6 }}>
+                            <div className="agent-console-feedback">
                                 <button
                                     onClick={() => handleFeedback(i, 'positive')}
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                                    className="agent-console-feedback-btn"
                                     title={t('agent.helpfulLesson')}
                                 >
                                     <ThumbsUp size={14} />
                                 </button>
                                 <button
                                     onClick={() => handleFeedback(i, 'negative')}
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                                    className="agent-console-feedback-btn"
                                     title={t('agent.notHelpfulLesson')}
                                 >
                                     <ThumbsDown size={14} />
@@ -481,19 +408,10 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        style={{ alignSelf: 'flex-start', maxWidth: '85%', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
+                        className="agent-console-stream-wrap"
                     >
-                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>AIOME ({t('agent.streaming')})</div>
-                        <div style={{
-                            padding: '1.25rem',
-                            borderRadius: '4px var(--radius-lg) var(--radius-lg) var(--radius-lg)',
-                            background: 'var(--bg-glass-heavy)',
-                            border: '1px solid var(--accent-cyan-glass)',
-                            fontSize: '0.95rem',
-                            lineHeight: 1.6,
-                            whiteSpace: 'pre-wrap',
-                            boxShadow: 'var(--shadow-shallow)'
-                        }}>
+                        <div className="agent-console-stream-label">AIOME ({t('agent.streaming')})</div>
+                        <div className="agent-console-stream-bubble">
                             <ReactMarkdown
                                 rehypePlugins={[rehypeSanitize]}
                                 components={markdownComponents}
@@ -503,7 +421,7 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                             <motion.span
                                 animate={{ opacity: [0, 1, 0] }}
                                 transition={{ duration: 0.8, repeat: Infinity }}
-                                style={{ display: 'inline-block', width: '8px', height: '1.2em', background: 'var(--accent-cyan)', marginLeft: '4px', verticalAlign: 'middle' }}
+                                className="agent-console-stream-cursor"
                             />
                         </div>
                     </motion.div>
@@ -514,32 +432,21 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
 
             {/* Slash Command Suggestions */}
             {showSlash && filteredCmds.length > 0 && (
-                <div style={{ padding: '0 2rem', background: 'var(--black-40)' }}>
-                    <div style={{
-                        background: 'var(--bg-glass-heavy)',
-                        backdropFilter: 'blur(16px)', border: '1px solid var(--border-glass)',
-                        borderRadius: 'var(--radius-lg)', padding: '0.5rem',
-                        boxShadow: 'var(--shadow-deep)', marginBottom: '0.5rem',
-                        display: 'flex', flexDirection: 'column', gap: '0.25rem'
-                    }}>
+                <div className="agent-console-slash-wrap">
+                    <div className="agent-console-slash-panel">
                         {filteredCmds.map((cmd, i) => (
                             <div key={cmd.cmd}
                                 onClick={() => {
                                     setInput(cmd.cmd);
                                     setTimeout(() => sendMessage(cmd.cmd), 0);
                                 }}
-                                style={{
-                                    padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
-                                    cursor: 'pointer', borderRadius: 'var(--radius-sm)',
-                                    background: i === slashIndex ? 'var(--accent-cyan-20)' : 'transparent',
-                                    borderLeft: i === slashIndex ? '3px solid var(--accent-cyan)' : '3px solid transparent'
-                                }}
+                                className={`agent-console-slash-item${i === slashIndex ? ' agent-console-slash-item--active' : ''}`}
                                 onMouseEnter={() => setSlashIndex(i)}
                             >
-                                <div style={{ color: i === slashIndex ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>{cmd.icon}</div>
+                                <div className={`agent-console-slash-icon${i === slashIndex ? ' agent-console-slash-icon--active' : ''}`}>{cmd.icon}</div>
                                 <div>
-                                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{cmd.label} <span style={{color:'var(--text-muted)', fontSize:'0.8rem', marginLeft:'0.5rem'}}>{cmd.cmd}</span></div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{cmd.desc}</div>
+                                    <div className="agent-console-slash-label">{cmd.label} <span className="agent-console-slash-cmd">{cmd.cmd}</span></div>
+                                    <div className="agent-console-slash-desc">{cmd.desc}</div>
                                 </div>
                             </div>
                         ))}
@@ -548,8 +455,8 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
             )}
 
             {/* Input Area */}
-            <div style={{ padding: '1.5rem 2rem', background: 'var(--black-40)', borderTop: '1px solid var(--border-glass)' }}>
-                <div style={{ position: 'relative' }}>
+            <div className="agent-console-input-area">
+                <div className="agent-console-input-wrap">
                     <textarea
                         value={input}
                         onChange={e => {
@@ -584,51 +491,23 @@ const AgentConsole: React.FC<AgentConsoleProps> = ({ sessionSavedChars = 0 }) =>
                         }}
                         placeholder={t('agent.chatPlaceholder') || "Ask agent or type '/' for commands..."}
                         rows={1}
-                        style={{
-                            width: '100%',
-                            background: 'var(--white-03)',
-                            border: '1px solid var(--border-glass)',
-                            borderRadius: 'var(--radius-lg)',
-                            padding: '1.2rem 4.5rem 1.2rem 1.5rem',
-                            color: 'var(--text-primary)',
-                            outline: 'none',
-                            fontSize: '1rem',
-                            resize: 'none',
-                            transition: 'all var(--speed-normal)',
-                            boxShadow: 'var(--shadow-inset)'
-                        }}
+                        className="agent-console-textarea"
                     />
                     <button
                         onClick={() => sendMessage()}
                         disabled={!input.trim() || isTyping}
-                        style={{
-                            position: 'absolute',
-                            right: '0.75rem',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            width: '44px',
-                            height: '44px',
-                            borderRadius: 'var(--radius-md)',
-                            background: input.trim() && !isTyping ? 'var(--accent-cyan)' : 'var(--white-05)',
-                            color: input.trim() && !isTyping ? 'var(--bg-primary)' : 'var(--white-20)',
-                            border: 'none',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all var(--speed-fast)'
-                        }}
+                        className={`agent-console-send-btn ${input.trim() && !isTyping ? 'agent-console-send-btn--enabled' : 'agent-console-send-btn--disabled'}`}
                     >
                         <Send size={20} />
                     </button>
                 </div>
-                <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0.5rem' }}>
-                    <div style={{ display: 'flex', gap: 'var(--space-md)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                            <kbd style={{ background: 'var(--white-10)', padding: '2px 4px', borderRadius: '4px' }}>Shift+Enter</kbd> {t('agent.toNewline')}
+                <div className="agent-console-input-footer">
+                    <div className="agent-console-input-hints">
+                        <div className="agent-console-kbd-hint">
+                            <kbd className="agent-console-kbd">Shift+Enter</kbd> {t('agent.toNewline')}
                         </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    <div className="agent-console-enhance-hint">
                         <Sparkles size={12} color="var(--accent-purple)" /> {t('agent.promptEnhancement')}
                     </div>
                 </div>

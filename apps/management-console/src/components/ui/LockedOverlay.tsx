@@ -12,9 +12,15 @@ import { useSubscriptionStatus, openProUpgradeModal } from '../../hooks/useSubsc
 export interface LockedOverlayProps {
   featureNameKey: string;
   children: React.ReactNode;
+  /** panel: full-area lock overlay; badge: compact inline Pro pill (small controls) */
+  variant?: 'panel' | 'badge';
 }
 
-export const LockedOverlay: React.FC<LockedOverlayProps> = ({ featureNameKey, children }) => {
+export const LockedOverlay: React.FC<LockedOverlayProps> = ({
+  featureNameKey,
+  children,
+  variant = 'panel',
+}) => {
   const { t } = useTranslation();
   const { isPro, isLoading } = useSubscriptionStatus();
 
@@ -23,34 +29,41 @@ export const LockedOverlay: React.FC<LockedOverlayProps> = ({ featureNameKey, ch
   }
 
   const featureName = t(featureNameKey);
+  const lockedTitle = t('pro.lockedTitle', { feature: featureName });
+  const unlockHint = t('pro.unlockHint');
+
+  if (variant === 'badge') {
+    return (
+      <span className="locked-badge-wrap">
+        <span className="locked-badge-wrap__content" aria-hidden="true">
+          {children}
+        </span>
+        <button
+          type="button"
+          className="locked-badge"
+          onClick={() => openProUpgradeModal(featureNameKey)}
+          aria-label={lockedTitle}
+          data-tooltip={`${lockedTitle} — ${unlockHint}`}
+        >
+          <Lock size={12} />
+          Pro
+        </button>
+      </span>
+    );
+  }
 
   return (
-    <div style={{ position: 'relative' }}>
-      <div style={{ opacity: 0.45, pointerEvents: 'none', filter: 'grayscale(0.3)' }}>{children}</div>
+    <div className="locked-overlay-panel">
+      <div className="locked-overlay-panel__content">{children}</div>
       <button
         type="button"
+        className="locked-overlay-panel__cta"
         onClick={() => openProUpgradeModal(featureNameKey)}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0.5rem',
-          background: 'var(--black-40)',
-          border: '1px dashed var(--accent-purple-30)',
-          borderRadius: 'var(--radius-md)',
-          cursor: 'pointer',
-          padding: '1rem',
-        }}
-        aria-label={t('pro.unlockHint', { feature: featureName })}
+        aria-label={unlockHint}
       >
         <Lock size={24} color="var(--accent-purple)" />
-        <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.9rem' }}>
-          {t('pro.lockedTitle', { feature: featureName })}
-        </span>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{t('pro.unlockHint')}</span>
+        <span className="locked-overlay-panel__title">{lockedTitle}</span>
+        <span className="locked-overlay-panel__hint">{unlockHint}</span>
       </button>
     </div>
   );

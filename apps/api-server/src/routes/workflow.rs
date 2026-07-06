@@ -247,7 +247,9 @@ pub async fn execute_workflow(
         .map_err(|e| AppError::internal(format!("Transpilation failed: {:?}", e)))?;
 
     // 4. JobQueue への登録
-    for job in jobs {
+    let mut job_ids: Vec<String> = Vec::new();
+    for job in &jobs {
+        job_ids.push(job.id.clone());
         let _ = state
             .job_queue
             .enqueue(
@@ -280,6 +282,7 @@ pub async fn execute_workflow(
         StatusCode::OK,
         axum::Json(serde_json::json!({
             "execution_id": execution_id.to_string(),
+            "job_ids": job_ids,
         })),
     ))
 }
@@ -297,7 +300,7 @@ pub async fn validate_workflow(
         .await
         .map_err(|e| AppError::bad_request(format!("Validation failed: {:?}", e)))?;
 
-    Ok(StatusCode::OK)
+    Ok((StatusCode::OK, Json(serde_json::json!({ "valid": true }))))
 }
 
 /// [POST] /api/v1/workflows/:id/fork
