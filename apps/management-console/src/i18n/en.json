@@ -1219,6 +1219,10 @@
       "toolName": "Tool Name",
       "httpMethod": "HTTP Method",
       "urlTemplate": "URL Template",
+      "prompt": "Prompt",
+      "promptPlaceholder": "Enter the LLM prompt (supports {{ input }})",
+      "promptMessage": "Approval Message",
+      "timeoutSeconds": "Timeout (seconds)",
       "jsonConfig": "Node Config (JSON)",
       "jsonInvalid": "Invalid JSON",
       "close": "Close Panel"

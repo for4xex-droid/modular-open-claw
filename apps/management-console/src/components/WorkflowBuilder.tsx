@@ -44,7 +44,6 @@ const PALETTE_NODES = [
 const JSON_CONFIG_TYPES = new Set([
   'Start',
   'Transform',
-  'HumanApproval',
   'Loop',
   'Parallel',
   'SubWorkflow',
@@ -58,11 +57,11 @@ function ConditionNode({ data }: { data: { label?: string } }) {
       <div className="condition-handles">
         <div className="handle-wrapper true-handle">
           <span>True</span>
-          <Handle type="source" position={Position.Bottom} id="handle-true" />
+          <Handle type="source" position={Position.Bottom} id="true" />
         </div>
         <div className="handle-wrapper false-handle">
           <span>False</span>
-          <Handle type="source" position={Position.Bottom} id="handle-false" />
+          <Handle type="source" position={Position.Bottom} id="false" />
         </div>
       </div>
     </div>
@@ -87,6 +86,8 @@ interface NodeConfigDetails {
   tool_name?: string;
   method?: string;
   url_template?: string;
+  prompt_message?: string;
+  timeout_seconds?: number;
 }
 
 interface WorkflowMeta {
@@ -150,6 +151,7 @@ export default function WorkflowBuilder() {
     updateWorkflow,
     listWorkflows,
     loadWorkflow,
+    listExecutions,
     executeWorkflow,
     loading,
     error: apiError,
@@ -158,7 +160,7 @@ export default function WorkflowBuilder() {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const { lastEvent } = useSystemVitality();
+  const { lastEvent, connectionStatus } = useSystemVitality();
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
   const [trackedJobIds, setTrackedJobIds] = useState<Set<string>>(new Set());
   const [, setCompletedJobIds] = useState<Set<string>>(new Set());
@@ -206,6 +208,39 @@ export default function WorkflowBuilder() {
       setExecutionMessage(eventData.error || t('workflowBuilder.status.failed'));
     }
   }, [lastEvent, trackedJobIds, t]);
+
+  useEffect(() => {
+    if (executionStatus !== 'running' || !currentExecutionId || !isPersisted) return;
+    if (connectionStatus === 'connected') return;
+
+    const poll = async () => {
+      const executions = await listExecutions(workflowMeta.id);
+      const current = executions.find((e) => e.id === currentExecutionId);
+      if (!current) return;
+      if (current.status === 'Completed') {
+        setExecutionStatus('completed');
+        setExecutionProgress(100);
+        setExecutionMessage(t('workflowBuilder.status.completed'));
+      } else if (current.status === 'Failed') {
+        setExecutionStatus('failed');
+        setExecutionMessage(t('workflowBuilder.status.failed'));
+      }
+    };
+
+    void poll();
+    const timer = setInterval(() => {
+      void poll();
+    }, 10_000);
+    return () => clearInterval(timer);
+  }, [
+    executionStatus,
+    currentExecutionId,
+    workflowMeta.id,
+    isPersisted,
+    connectionStatus,
+    listExecutions,
+    t,
+  ]);
 
   const handleValidate = async () => {
     setSuccessMessage(null);
@@ -388,9 +423,33 @@ export default function WorkflowBuilder() {
     );
   };
 
+  const getNodeConfig = (node: Node): Record<string, unknown> => {
+    const cfg = node.data?.config;
+    if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) {
+      return cfg as Record<string, unknown>;
+    }
+    return {};
+  };
+
+  const updateNodeConfig = (updates: Record<string, unknown>) => {
+    if (!selectedNode) return;
+    const nextConfig = { ...getNodeConfig(selectedNode), ...updates };
+    setNodes((nds) =>
+      nds.map((node) =>
+        node.id === selectedNode.id
+          ? { ...node, data: { ...node.data, config: nextConfig } }
+          : node
+      )
+    );
+    setSelectedNode((prev) =>
+      prev ? { ...prev, data: { ...prev.data, config: nextConfig } } : null
+    );
+  };
+
   const { typeName, details } = selectedNode
     ? getNodeTypeInfo(selectedNode)
     : { typeName: '', details: {} as NodeConfigDetails };
+  const nodeConfig = selectedNode ? getNodeConfig(selectedNode) : {};
 
   useEffect(() => {
     if (!selectedNode || !JSON_CONFIG_TYPES.has(typeName)) {
@@ -577,6 +636,15 @@ export default function WorkflowBuilder() {
             {typeName === 'LlmPrompt' && (
               <>
                 <div className="form-group">
+                  <label>{t('workflowBuilder.config.prompt')}</label>
+                  <textarea
+                    value={detailStr(nodeConfig.prompt)}
+                    onChange={(e) => updateNodeConfig({ prompt: e.target.value })}
+                    rows={4}
+                    placeholder={t('workflowBuilder.config.promptPlaceholder')}
+                  />
+                </div>
+                <div className="form-group">
                   <label>{t('workflowBuilder.config.llmModel')}</label>
                   <input
                     type="text"
@@ -699,6 +767,32 @@ export default function WorkflowBuilder() {
                     type="text"
                     value={detailStr(details.expression)}
                     onChange={(e) => updateNodeTypeDetails({ expression: e.target.value })}
+                  />
+                </div>
+              </>
+            )}
+
+            {typeName === 'HumanApproval' && (
+              <>
+                <div className="form-group">
+                  <label>{t('workflowBuilder.config.promptMessage')}</label>
+                  <textarea
+                    value={detailStr(details.prompt_message)}
+                    onChange={(e) => updateNodeTypeDetails({ prompt_message: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{t('workflowBuilder.config.timeoutSeconds')}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={detailNum(details.timeout_seconds, 3600)}
+                    onChange={(e) =>
+                      updateNodeTypeDetails({
+                        timeout_seconds: parseInt(e.target.value, 10) || 0,
+                      })
+                    }
                   />
                 </div>
               </>

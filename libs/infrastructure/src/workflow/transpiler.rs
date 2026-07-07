@@ -25,7 +25,16 @@ impl WorkflowTranspiler {
         definition: &WorkflowDefinition,
         execution_id: Uuid,
     ) -> Result<Vec<Job>, TranspilerError> {
-        Self::transpile_with_depth(definition, execution_id, 0)
+        Self::transpile_with_resolver(definition, execution_id, &HashMap::new())
+    }
+
+    /// 事前解決済みサブワークフローを使ってトランスパイルする
+    pub fn transpile_with_resolver(
+        definition: &WorkflowDefinition,
+        execution_id: Uuid,
+        resolved: &HashMap<Uuid, WorkflowDefinition>,
+    ) -> Result<Vec<Job>, TranspilerError> {
+        Self::transpile_inner(definition, execution_id, 0, resolved)
     }
 
     /// 再帰の深さを追跡しながらトランスパイルを実行する
@@ -33,6 +42,15 @@ impl WorkflowTranspiler {
         definition: &WorkflowDefinition,
         execution_id: Uuid,
         depth: usize,
+    ) -> Result<Vec<Job>, TranspilerError> {
+        Self::transpile_inner(definition, execution_id, depth, &HashMap::new())
+    }
+
+    fn transpile_inner(
+        definition: &WorkflowDefinition,
+        execution_id: Uuid,
+        depth: usize,
+        resolved: &HashMap<Uuid, WorkflowDefinition>,
     ) -> Result<Vec<Job>, TranspilerError> {
         if depth > 5 {
             return Err(TranspilerError::RecursionLimitExceeded);
@@ -124,24 +142,22 @@ impl WorkflowTranspiler {
                     let mut last_job_id = String::new();
                     for i in 0..count {
                         let job_id = Uuid::new_v4().to_string();
-                        let parent_job_id =
-                            find_parent_job_id(&node.id, &definition.edges, &node_to_job_id);
-
-                        let karma_directives = json!({
-                            "workflow_execution_id": execution_id.to_string(),
-                            "node_id": node.id.clone(),
-                            "loop_index": i,
-                            "parent_job_id": parent_job_id,
-                        });
+                        let karma_directives = build_karma_directives(
+                            execution_id,
+                            &node.id,
+                            &definition.edges,
+                            &node_to_job_id,
+                            json!({ "loop_index": i }),
+                        );
 
                         let job = Job {
                             id: job_id.clone(),
                             category: "wf_loop".to_string(),
-                            topic: node.config.to_string(),
+                            topic: build_job_topic(node),
                             style: String::new(),
                             status: JobStatus::Pending,
                             priority: 0,
-                            karma_directives: Some(karma_directives.to_string()),
+                            karma_directives: Some(karma_directives),
                             created_at: chrono::Utc::now().to_rfc3339(),
                             updated_at: chrono::Utc::now().to_rfc3339(),
                             ..Default::default()
@@ -179,22 +195,26 @@ impl WorkflowTranspiler {
                         }
                     };
 
-                    let karma_directives = json!({
-                        "workflow_execution_id": execution_id.to_string(),
-                        "node_id": node.id.clone(),
-                        "parent_job_ids": parent_job_ids,
-                        "wait_mode": wait_mode_str,
-                        "wait_mode_n": wait_mode_n,
-                    });
+                    let karma_directives = build_karma_directives(
+                        execution_id,
+                        &node.id,
+                        &definition.edges,
+                        &node_to_job_id,
+                        json!({
+                            "parent_job_ids": parent_job_ids,
+                            "wait_mode": wait_mode_str,
+                            "wait_mode_n": wait_mode_n,
+                        }),
+                    );
 
                     let job = Job {
                         id: job_id.clone(),
                         category: "wf_parallel".to_string(),
-                        topic: node.config.to_string(),
+                        topic: build_job_topic(node),
                         style: String::new(),
                         status: JobStatus::Pending,
                         priority: 0,
-                        karma_directives: Some(karma_directives.to_string()),
+                        karma_directives: Some(karma_directives),
                         created_at: chrono::Utc::now().to_rfc3339(),
                         updated_at: chrono::Utc::now().to_rfc3339(),
                         ..Default::default()
@@ -204,67 +224,35 @@ impl WorkflowTranspiler {
                 }
                 NodeType::SubWorkflow {
                     workflow_id,
-                    version,
+                    version: _version,
                 } => {
-                    // テストケースの RecursionLimitExceeded 検証のために、
-                    // 循環をシミュレートする簡易定義をロードして再帰呼び出しを行う
-                    let sub_def = WorkflowDefinition {
-                        id: *workflow_id,
-                        name: "Recursive Mock Subworkflow".to_string(),
-                        description: "Used to verify recursion limit".to_string(),
-                        version: version.unwrap_or(1),
-                        nodes: vec![
-                            super::schema::WorkflowNode {
-                                id: "start-sub".to_string(),
-                                node_type: NodeType::Start {
-                                    trigger: super::schema::TriggerType::Manual,
-                                },
-                                label: "Start Sub".to_string(),
-                                config: json!({}),
-                                position: super::schema::Position { x: 0.0, y: 0.0 },
-                            },
-                            super::schema::WorkflowNode {
-                                id: "sub-child".to_string(),
-                                node_type: NodeType::SubWorkflow {
-                                    workflow_id: *workflow_id,
-                                    version: None,
-                                },
-                                label: "Recursive Child".to_string(),
-                                config: json!({}),
-                                position: super::schema::Position { x: 0.0, y: 0.0 },
-                            },
-                        ],
-                        edges: vec![super::schema::WorkflowEdge {
-                            source: "start-sub".to_string(),
-                            target: "sub-child".to_string(),
-                            source_handle: None,
-                            target_handle: None,
-                        }],
-                        variables: HashMap::new(),
-                        created_at: String::new(),
-                        updated_at: String::new(),
-                    };
-                    let sub_jobs = Self::transpile_with_depth(&sub_def, execution_id, depth + 1)?;
+                    let sub_def = resolved.get(workflow_id).ok_or_else(|| {
+                        TranspilerError::ValidationError(format!(
+                            "SubWorkflow {} is not resolved",
+                            workflow_id
+                        ))
+                    })?;
+                    let sub_jobs =
+                        Self::transpile_inner(sub_def, execution_id, depth + 1, resolved)?;
                     jobs.extend(sub_jobs);
                 }
-                NodeType::Timer { delay_seconds } => {
+                NodeType::Timer { .. } => {
                     let job_id = Uuid::new_v4().to_string();
-                    let parent_job_id =
-                        find_parent_job_id(&node.id, &definition.edges, &node_to_job_id);
-                    let karma_directives = json!({
-                        "workflow_execution_id": execution_id.to_string(),
-                        "node_id": node.id.clone(),
-                        "parent_job_id": parent_job_id,
-                    });
-                    let topic = json!({ "delay_seconds": delay_seconds }).to_string();
+                    let karma_directives = build_karma_directives(
+                        execution_id,
+                        &node.id,
+                        &definition.edges,
+                        &node_to_job_id,
+                        json!({}),
+                    );
                     let job = Job {
                         id: job_id.clone(),
                         category: "wf_timer".to_string(),
-                        topic,
+                        topic: build_job_topic(node),
                         style: String::new(),
                         status: JobStatus::Pending,
                         priority: 0,
-                        karma_directives: Some(karma_directives.to_string()),
+                        karma_directives: Some(karma_directives),
                         created_at: chrono::Utc::now().to_rfc3339(),
                         updated_at: chrono::Utc::now().to_rfc3339(),
                         ..Default::default()
@@ -272,24 +260,23 @@ impl WorkflowTranspiler {
                     jobs.push(job);
                     node_to_job_id.insert(node.id.clone(), job_id);
                 }
-                NodeType::WasmCode { code, language } => {
+                NodeType::WasmCode { .. } => {
                     let job_id = Uuid::new_v4().to_string();
-                    let parent_job_id =
-                        find_parent_job_id(&node.id, &definition.edges, &node_to_job_id);
-                    let karma_directives = json!({
-                        "workflow_execution_id": execution_id.to_string(),
-                        "node_id": node.id.clone(),
-                        "parent_job_id": parent_job_id,
-                    });
-                    let topic = json!({ "code": code, "language": language }).to_string();
+                    let karma_directives = build_karma_directives(
+                        execution_id,
+                        &node.id,
+                        &definition.edges,
+                        &node_to_job_id,
+                        json!({}),
+                    );
                     let job = Job {
                         id: job_id.clone(),
                         category: "wf_wasm".to_string(),
-                        topic,
+                        topic: build_job_topic(node),
                         style: String::new(),
                         status: JobStatus::Pending,
                         priority: 0,
-                        karma_directives: Some(karma_directives.to_string()),
+                        karma_directives: Some(karma_directives),
                         created_at: chrono::Utc::now().to_rfc3339(),
                         updated_at: chrono::Utc::now().to_rfc3339(),
                         ..Default::default()
@@ -299,8 +286,6 @@ impl WorkflowTranspiler {
                 }
                 other => {
                     let job_id = Uuid::new_v4().to_string();
-                    let parent_job_id =
-                        find_parent_job_id(&node.id, &definition.edges, &node_to_job_id);
 
                     let category = match other {
                         NodeType::LlmPrompt { .. } => "wf_llm",
@@ -308,23 +293,26 @@ impl WorkflowTranspiler {
                         NodeType::McpToolCall { .. } => "wf_mcp",
                         NodeType::Transform { .. } => "wf_transform",
                         NodeType::HumanApproval { .. } => "wf_approval",
+                        NodeType::Condition { .. } => "wf_condition",
                         _ => "wf_generic",
                     };
 
-                    let karma_directives = json!({
-                        "workflow_execution_id": execution_id.to_string(),
-                        "node_id": node.id.clone(),
-                        "parent_job_id": parent_job_id,
-                    });
+                    let karma_directives = build_karma_directives(
+                        execution_id,
+                        &node.id,
+                        &definition.edges,
+                        &node_to_job_id,
+                        json!({}),
+                    );
 
                     let job = Job {
                         id: job_id.clone(),
                         category: category.to_string(),
-                        topic: node.config.to_string(),
+                        topic: build_job_topic(node),
                         style: String::new(),
                         status: JobStatus::Pending,
                         priority: 0,
-                        karma_directives: Some(karma_directives.to_string()),
+                        karma_directives: Some(karma_directives),
                         created_at: chrono::Utc::now().to_rfc3339(),
                         updated_at: chrono::Utc::now().to_rfc3339(),
                         ..Default::default()
@@ -349,4 +337,154 @@ fn find_parent_job_id(
         .find(|e| e.target == node_id)
         .and_then(|e| node_to_job_id.get(&e.source))
         .cloned()
+}
+
+fn find_incoming_edge<'a>(
+    node_id: &str,
+    edges: &'a [super::schema::WorkflowEdge],
+) -> Option<&'a super::schema::WorkflowEdge> {
+    edges.iter().find(|e| e.target == node_id)
+}
+
+/// karma_directives JSON を構築する（branch / parent_job_id を含む）
+fn build_karma_directives(
+    execution_id: Uuid,
+    node_id: &str,
+    edges: &[super::schema::WorkflowEdge],
+    node_to_job_id: &HashMap<String, String>,
+    extra: serde_json::Value,
+) -> String {
+    let mut obj = serde_json::Map::new();
+    obj.insert(
+        "workflow_execution_id".to_string(),
+        json!(execution_id.to_string()),
+    );
+    obj.insert("node_id".to_string(), json!(node_id));
+
+    if let Some(extra_obj) = extra.as_object() {
+        for (k, v) in extra_obj {
+            obj.insert(k.clone(), v.clone());
+        }
+    }
+
+    if !obj.contains_key("parent_job_id") && !obj.contains_key("parent_job_ids") {
+        if let Some(pid) = find_parent_job_id(node_id, edges, node_to_job_id) {
+            obj.insert("parent_job_id".to_string(), json!(pid));
+        }
+    }
+
+    if let Some(branch) = find_incoming_edge(node_id, edges).and_then(|e| e.source_handle.as_ref())
+    {
+        obj.entry("branch".to_string()).or_insert(json!(branch));
+    }
+
+    serde_json::Value::Object(obj).to_string()
+}
+
+/// node_type フィールドと node.config をマージした topic JSON を生成する
+fn build_job_topic(node: &super::schema::WorkflowNode) -> String {
+    use super::schema::NodeType;
+
+    let mut obj = node.config.as_object().cloned().unwrap_or_default();
+
+    match &node.node_type {
+        NodeType::LlmPrompt { model, temperature } => {
+            if let Some(m) = model {
+                obj.insert("model".to_string(), json!(m));
+            }
+            if let Some(t) = temperature {
+                obj.insert("temperature".to_string(), json!(t));
+            }
+        }
+        NodeType::HttpRequest {
+            method,
+            url_template,
+        } => {
+            obj.insert("method".to_string(), json!(method));
+            obj.insert("url_template".to_string(), json!(url_template));
+        }
+        NodeType::McpToolCall {
+            server_name,
+            tool_name,
+        } => {
+            obj.insert("server_name".to_string(), json!(server_name));
+            obj.insert("tool_name".to_string(), json!(tool_name));
+        }
+        NodeType::Transform { expression } => {
+            obj.insert("expression".to_string(), json!(expression));
+        }
+        NodeType::Condition { expression, mode } => {
+            obj.insert("expression".to_string(), json!(expression));
+            obj.insert(
+                "mode".to_string(),
+                serde_json::to_value(mode).unwrap_or(json!("Expression")),
+            );
+        }
+        NodeType::HumanApproval {
+            prompt_message,
+            timeout_seconds,
+        } => {
+            obj.insert("prompt_message".to_string(), json!(prompt_message));
+            if let Some(t) = timeout_seconds {
+                obj.insert("timeout_seconds".to_string(), json!(t));
+            }
+        }
+        NodeType::Loop {
+            iterator_expression,
+            max_iterations,
+        } => {
+            obj.insert(
+                "iterator_expression".to_string(),
+                json!(iterator_expression),
+            );
+            if let Some(m) = max_iterations {
+                obj.insert("max_iterations".to_string(), json!(m));
+            }
+        }
+        NodeType::Parallel { wait_mode } => {
+            obj.insert(
+                "wait_mode".to_string(),
+                serde_json::to_value(wait_mode).unwrap_or(json!("All")),
+            );
+        }
+        NodeType::Timer { delay_seconds } => {
+            obj.insert("delay_seconds".to_string(), json!(delay_seconds));
+        }
+        NodeType::WasmCode { code, language } => {
+            obj.insert("code".to_string(), json!(code));
+            obj.insert("language".to_string(), json!(language));
+        }
+        NodeType::Start { .. } | NodeType::SubWorkflow { .. } => {}
+    }
+
+    serde_json::Value::Object(obj).to_string()
+}
+
+/// enqueue 後の実ジョブ ID で karma_directives 内の親参照を書き換える
+pub fn remap_karma_directives(
+    karma_directives: Option<&str>,
+    id_map: &HashMap<String, String>,
+) -> Option<String> {
+    let raw = karma_directives?;
+    let Ok(mut v) = serde_json::from_str::<serde_json::Value>(raw) else {
+        return Some(raw.to_string());
+    };
+
+    if let Some(parent) = v.get("parent_job_id").and_then(|x| x.as_str()) {
+        if let Some(mapped) = id_map.get(parent) {
+            v["parent_job_id"] = json!(mapped);
+        }
+    }
+
+    if let Some(parents) = v.get_mut("parent_job_ids").and_then(|x| x.as_array_mut()) {
+        for item in parents.iter_mut() {
+            if let Some(pid) = item.as_str() {
+                if let Some(mapped) = id_map.get(pid) {
+                    *item = json!(mapped);
+                }
+            }
+        }
+    }
+
+    Some(v.to_string())
 }

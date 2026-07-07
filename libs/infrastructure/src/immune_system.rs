@@ -352,7 +352,10 @@ mod tests {
     #[tokio::test]
     async fn test_verify_intent_baseline() {
         let system = AdaptiveImmuneSystem::new(Arc::new(MockLlm { reply: "".into() }));
-        let jq = MockJQ { rules: vec![] };
+        let jq = MockJQ {
+            rules: vec![],
+            ..Default::default()
+        };
         let res = system.verify_intent("rm -rf /", &jq).await.unwrap();
         assert!(res.is_some());
         assert_eq!(res.unwrap().id, "sentinel-baseline");
@@ -361,7 +364,10 @@ mod tests {
     #[tokio::test]
     async fn test_verify_intent_vibe_coding_safety() {
         let system = AdaptiveImmuneSystem::new(Arc::new(MockLlm { reply: "".into() }));
-        let jq = MockJQ { rules: vec![] };
+        let jq = MockJQ {
+            rules: vec![],
+            ..Default::default()
+        };
 
         // Positive Cases
         let danger_inputs = vec![
@@ -443,7 +449,10 @@ mod tests {
             input_constraints: Some(constraint),
         };
 
-        let jq = MockJQ { rules: vec![rule] };
+        let jq = MockJQ {
+            rules: vec![rule],
+            ..Default::default()
+        };
 
         // Test 1: Violate forbidden_keys
         let input = serde_json::json!({

@@ -8,6 +8,7 @@
 use super::dispatcher::{TaskDispatcher, MAX_GIG_BUDGET};
 use super::types::{compute_soul_hash, TaskEvent};
 use crate::invariant_dag::InvariantDag;
+use aiome_core::error::AiomeError;
 use aiome_core_contracts::traits::JobStatus;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -449,6 +450,41 @@ impl TaskDispatcher {
                                             }
                                         }
                                         Err(e) => {
+                                            // W2-4: HumanApproval — リトライ/Watchtower をスキップ
+                                            if matches!(&e, AiomeError::AwaitingApproval { .. }) {
+                                                let reason = match &e {
+                                                    AiomeError::AwaitingApproval { reason } => reason.clone(),
+                                                    _ => e.to_string(),
+                                                };
+                                                if let Err(db_err) = job_queue_clone
+                                                    .update_job_status(
+                                                        &job_id,
+                                                        JobStatus::AwaitingInput,
+                                                    )
+                                                    .await
+                                                {
+                                                    error!(
+                                                        "Failed to update job {} to AwaitingInput: {}",
+                                                        job_id, db_err
+                                                    );
+                                                }
+                                                if let Err(send_err) = progress_tx
+                                                    .send(TaskEvent::AwaitingInput {
+                                                        job_id: job_id.clone(),
+                                                        reason,
+                                                    })
+                                                    .await
+                                                {
+                                                    tracing::warn!(
+                                                        "Failed to send AwaitingInput for {}: {}",
+                                                        job_id, send_err
+                                                    );
+                                                }
+                                                let mut active = active_jobs_clone.write().await;
+                                                active.remove(&job_id);
+                                                return;
+                                            }
+
                                             error!("Task {} failed: {:?}", job_id, e);
                                             let is_poisoned = job_queue_clone.increment_job_retry_count(&job_id).await.unwrap_or(true);
 

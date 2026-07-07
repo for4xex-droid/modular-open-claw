@@ -224,11 +224,11 @@ async fn test_workflow_validate_api() {
 #[serial]
 #[tokio::test]
 async fn test_workflow_execute_api() {
-    let (server, _state, _tmp) = create_test_server_with_limit(100).await;
+    let (server, state, _tmp) = create_test_server_with_limit(100).await;
     let bearer = test_bearer();
     let workflow_id = Uuid::new_v4();
 
-    // 最初にワークフローを作成
+    // LLM ノードを含むワークフローを作成（job_ids 検証用）
     let payload = serde_json::json!({
         "id": workflow_id.to_string(),
         "name": "Execution Test Workflow",
@@ -237,17 +237,22 @@ async fn test_workflow_execute_api() {
         "nodes": [
             {
                 "id": "start-1",
-                "node_type": {
-                    "Start": {
-                        "trigger": "Manual"
-                    }
-                },
+                "node_type": { "Start": { "trigger": "Manual" } },
                 "label": "Start Node",
                 "config": {},
                 "position": { "x": 100.0, "y": 100.0 }
+            },
+            {
+                "id": "llm-1",
+                "node_type": { "LlmPrompt": { "model": null, "temperature": null } },
+                "label": "LLM Node",
+                "config": { "prompt": "Say hello" },
+                "position": { "x": 200.0, "y": 100.0 }
             }
         ],
-        "edges": [],
+        "edges": [
+            { "source": "start-1", "target": "llm-1", "source_handle": null, "target_handle": null }
+        ],
         "variables": {},
         "created_at": "2026-06-13T00:00:00Z",
         "updated_at": "2026-06-13T00:00:00Z"
@@ -271,6 +276,23 @@ async fn test_workflow_execute_api() {
         .as_str()
         .expect("execution_id should be returned in JSON response");
     assert!(!execution_id.is_empty());
+
+    let job_ids = body["job_ids"]
+        .as_array()
+        .expect("job_ids should be returned as array");
+    assert_eq!(job_ids.len(), 1, "LLM node should produce one job");
+    let actual_job_id = job_ids[0].as_str().expect("job_id should be string");
+    let fetched = state
+        .job_queue
+        .fetch_job(actual_job_id)
+        .await
+        .expect("fetch_job should succeed");
+    assert!(
+        fetched.is_some(),
+        "returned job_id {} must exist in jobs table",
+        actual_job_id
+    );
+    assert_eq!(fetched.unwrap().category, "wf_llm");
 
     // 実行履歴が作成されたか検証
     let resp = server

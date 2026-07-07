@@ -985,6 +985,18 @@ pub trait McpToolSource: Send + Sync {
     async fn discover_mcp_tools(&self) -> Result<Vec<serde_json::Value>, AiomeError>;
 }
 
+/// MCPツールの実行 (Workflow wf_mcp ノード用)
+#[async_trait]
+pub trait McpToolInvoker: Send + Sync {
+    /// 指定サーバー上のツールを呼び出し、結果文字列を返す
+    async fn invoke_tool(
+        &self,
+        server_name: &str,
+        tool_name: &str,
+        arguments: serde_json::Value,
+    ) -> Result<String, AiomeError>;
+}
+
 /// 戦略的計画エンジン (Phase 13: Strategic Planning)
 ///
 /// 抽象的な Goal を具体的な TrajectoryStep のリスト（ツリー）に分解し、

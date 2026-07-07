@@ -1,3 +1,19 @@
+## 🔍 W2 ワークフロー実行エンジン OP-073（2026-07-08）
+
+- **変更内容**:
+    - `libs/infrastructure/src/workflow/transpiler.rs` [MODIFY]: `build_job_topic`、job ID リマップ、SubWorkflow BFS 解決、branch 記録。
+    - `libs/infrastructure/src/task_orchestrator/workflow_runtime.rs` [NEW]: `await_parents`、minijinja、SSRF 実行時ガード、HTTP 実行。
+    - `libs/infrastructure/src/task_orchestrator/workflow_conductor.rs` [MODIFY]: `WorkflowConductorDeps`、全 wf_* ノード本実装。
+    - `libs/infrastructure/src/testing/mock_jq.rs` [MODIFY]: `stored_jobs` + `fetch_job`。
+    - `libs/aiome-core-contracts/src/traits.rs` [MODIFY]: `McpToolInvoker` トレイト。
+    - `apps/api-server/src/mcp/invoker.rs` [NEW]: `McpProcessManagerInvoker`。
+    - `apps/api-server/src/workflow_execution_tracker.rs` [NEW]: execution ステータス確定。
+    - `apps/api-server/src/bootstrap/core_services.rs` [MODIFY]: Conductor DI + tracker spawn。
+    - `apps/api-server/src/routes/workflow.rs` [MODIFY]: enqueue ID リマップ、SubWorkflow 解決。
+    - `apps/management-console/src/components/WorkflowBuilder.tsx` [MODIFY]: prompt/approval フォーム、execution ポーリング。
+    - `apps/management-console/src/hooks/useWorkflowApi.ts` [MODIFY]: `listExecutions`。
+- **波及効果**: `AiomeError::AwaitingApproval` は dispatch_loop がインターセプト。SSRF は `SecurityPolicy::validate_url` ではなく `WorkflowValidator::assert_resolved_url_safe` を使用。`workflow_executions.status` は `"Completed"`/`"Failed"`（DB CHECK 準拠）。LlmPrompt の prompt は `node.config.prompt`（node_type ではない）。
+
 ## 🔍 U6-10 + W1 ワークフロービルダー品質向上（2026-07-07）
 
 - **変更内容**:

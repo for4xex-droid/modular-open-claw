@@ -772,9 +772,28 @@ pub async fn init_core_services(
     task_dispatcher.register_conductor(seo_conductor);
 
     // Register dedicated WorkflowConductor for no-code workflow execution
-    let workflow_conductor =
-        Arc::new(infrastructure::task_orchestrator::workflow_conductor::WorkflowConductor::new());
+    let workflow_conductor = Arc::new(
+        infrastructure::task_orchestrator::workflow_conductor::WorkflowConductor::with_deps(
+            infrastructure::task_orchestrator::workflow_conductor::WorkflowConductorDeps {
+                llm: bg_provider.clone(),
+                job_queue: job_queue.clone(),
+                wasm_manager: Some(wasm_skill_manager.clone()),
+                mcp_invoker: Some(Arc::new(mcp::invoker::McpProcessManagerInvoker::new(
+                    mcp_manager.clone(),
+                ))),
+                http_client: aiome_core::http::get_http_client().clone(),
+            },
+        ),
+    );
     task_dispatcher.register_conductor(workflow_conductor);
+
+    let workflow_execution_tracker =
+        Arc::new(crate::workflow_execution_tracker::WorkflowExecutionTracker::new());
+    crate::workflow_execution_tracker::WorkflowExecutionTracker::spawn_listener(
+        workflow_execution_tracker.clone(),
+        event_sender.subscribe(),
+        db_pool.clone(),
+    );
 
     let task_dispatcher = Arc::new(task_dispatcher);
 
@@ -921,5 +940,6 @@ pub async fn init_core_services(
                 workflows_dir,
             )) as Arc<dyn infrastructure::spec_provider::SpecProvider>
         },
+        workflow_execution_tracker,
     })
 }

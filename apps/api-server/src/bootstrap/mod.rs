@@ -143,6 +143,8 @@ pub struct CoreServicesResult {
     pub prompt_registry: Arc<dyn infrastructure::prompt_registry::PromptRegistry>,
     pub spec_provider: Arc<dyn infrastructure::spec_provider::SpecProvider>,
     pub tokens_css: String,
+    pub workflow_execution_tracker:
+        Arc<crate::workflow_execution_tracker::WorkflowExecutionTracker>,
 }
 
 pub struct BootContext {

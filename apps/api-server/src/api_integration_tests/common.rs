@@ -891,6 +891,9 @@ pub async fn create_test_server_with_limit(
         biome_engine: Component::new(std::sync::Arc::new(tokio::sync::RwLock::new(
             biome_engine::BiomeEngine::new(42),
         ))),
+        workflow_execution_tracker: Component::new(std::sync::Arc::new(
+            crate::workflow_execution_tracker::WorkflowExecutionTracker::new(),
+        )),
     };
 
     let cors_layer = CorsLayer::new().allow_origin(AllowOrigin::any());

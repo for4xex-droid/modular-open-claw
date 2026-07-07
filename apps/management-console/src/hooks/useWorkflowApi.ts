@@ -18,6 +18,18 @@ export interface WorkflowListItem {
   updated_at: string;
 }
 
+export interface WorkflowExecutionRecord {
+  id: string;
+  workflow_id: string;
+  version: number;
+  status: string;
+  input_variables: string;
+  output_result: string | null;
+  root_job_id: string | null;
+  started_at: string;
+  completed_at: string | null;
+}
+
 export function useWorkflowApi() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -160,6 +172,19 @@ export function useWorkflowApi() {
     }
   };
 
+  const listExecutions = async (workflowId: string): Promise<WorkflowExecutionRecord[]> => {
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/api/v1/workflows/${workflowId}/executions`);
+      if (!res.ok) {
+        return [];
+      }
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
+  };
+
   const executeWorkflow = async (
     id: string
   ): Promise<{ execution_id: string; job_ids: string[] } | null> => {
@@ -193,6 +218,7 @@ export function useWorkflowApi() {
     updateWorkflow,
     listWorkflows,
     loadWorkflow,
+    listExecutions,
     validateWorkflow,
     executeWorkflow,
   };

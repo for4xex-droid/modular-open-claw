@@ -350,4 +350,123 @@ impl WorkflowValidator {
 
         Ok(())
     }
+
+    /// 実行時 SSRF ガード（テンプレート展開済み URL 用）
+    pub async fn assert_resolved_url_safe(url: &str) -> Result<(), ValidationError> {
+        if url.contains("{{") || url.contains("}}") {
+            return Err(ValidationError::SecurityViolation(
+                "URL contains unresolved template variables".to_string(),
+            ));
+        }
+        check_resolved_url_ssrf(url).await
+    }
+}
+
+async fn check_resolved_url_ssrf(url_template: &str) -> Result<(), ValidationError> {
+    let mut is_malicious = false;
+    let mut error_msg = String::new();
+
+    if let Ok(parsed_url) = url::Url::parse(url_template) {
+        if let Some(host) = parsed_url.host_str() {
+            let host_lower = host.to_lowercase();
+
+            if host_lower == "localhost"
+                || host_lower.ends_with(".local")
+                || host_lower.ends_with(".localhost")
+                || host_lower.ends_with(".test")
+                || host_lower.ends_with(".example")
+                || host_lower.ends_with(".invalid")
+            {
+                is_malicious = true;
+                error_msg = format!("Blocked reserved domain: {}", host);
+            } else if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+                if is_private_ip(ip) {
+                    is_malicious = true;
+                    error_msg = format!("Blocked private IP: {}", ip);
+                }
+            } else {
+                let dev_mode = std::env::var("AIOME_DEV_MODE")
+                    .map(|v| v == "true")
+                    .unwrap_or(false)
+                    || std::env::var("CI").map(|v| v == "true").unwrap_or(false);
+
+                let host_to_resolve = host.to_string();
+                let resolve_result = tokio::time::timeout(
+                    std::time::Duration::from_millis(1000),
+                    tokio::task::spawn_blocking(move || {
+                        use std::net::ToSocketAddrs;
+                        format!("{}:80", host_to_resolve).to_socket_addrs()
+                    }),
+                )
+                .await;
+
+                match resolve_result {
+                    Ok(Ok(Ok(addrs))) => {
+                        for addr in addrs {
+                            if is_private_ip(addr.ip()) {
+                                is_malicious = true;
+                                error_msg = format!(
+                                    "Blocked private resolved IP: {} for host {}",
+                                    addr.ip(),
+                                    host
+                                );
+                                break;
+                            }
+                        }
+                    }
+                    _ => {
+                        if !dev_mode {
+                            is_malicious = true;
+                            error_msg =
+                                format!("DNS resolution failed or timed out for host: {}", host);
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        is_malicious = true;
+        error_msg = format!("Invalid URL: {}", url_template);
+    }
+
+    if !is_malicious {
+        let url_lower = url_template.to_lowercase();
+        if url_lower.contains("localhost")
+            || url_lower.contains("127.0.0.1")
+            || url_lower.contains("0.0.0.0")
+            || url_lower.contains("10.")
+            || url_lower.contains("192.168.")
+            || url_lower.contains("172.16.")
+            || url_lower.contains("172.17.")
+            || url_lower.contains("172.18.")
+            || url_lower.contains("172.19.")
+            || url_lower.contains("172.20.")
+            || url_lower.contains("172.21.")
+            || url_lower.contains("172.22.")
+            || url_lower.contains("172.23.")
+            || url_lower.contains("172.24.")
+            || url_lower.contains("172.25.")
+            || url_lower.contains("172.26.")
+            || url_lower.contains("172.27.")
+            || url_lower.contains("172.28.")
+            || url_lower.contains("172.29.")
+            || url_lower.contains("172.30.")
+            || url_lower.contains("172.31.")
+        {
+            is_malicious = true;
+            error_msg = format!(
+                "Fallback blocked potentially private address: {}",
+                url_template
+            );
+        }
+    }
+
+    if is_malicious {
+        Err(ValidationError::SecurityViolation(format!(
+            "SSRF vulnerability detected: {}",
+            error_msg
+        )))
+    } else {
+        Ok(())
+    }
 }

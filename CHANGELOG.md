@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+### Added (W2 ワークフロー実行エンジン OP-073 2026-07-08)
+- **W2-0 契約バグ修正**: `execute_workflow` が `enqueue` 返却 ID を採用し `karma_directives` 親参照をリマップ。`build_job_topic` で node_type + config をマージ。Condition を `wf_condition` 化、branch 記録を追加。
+- **W2-1 DI 化**: `McpToolInvoker` トレイト（contracts）、`McpProcessManagerInvoker`（api-server）、`WorkflowConductorDeps` + `with_deps()`、`core_services.rs` 本番登録。
+- **W2-2 依存ゲート**: `workflow_runtime.rs` — `await_parents`、Parallel All/Any/N、`__skipped__` マーカー、minijinja テンプレート展開。MockJQ `stored_jobs` + `fetch_job` 実装。
+- **W2-3 ノード本実装**: `wf_llm` / `wf_http` / `wf_mcp` / `wf_transform` / `wf_condition` / `wf_approval` / `wf_wasm` / pass-through。実行時 SSRF ガード（`assert_resolved_url_safe`）。`AiomeError::AwaitingApproval` 追加。
+- **W2-4 HumanApproval**: `dispatch_loop` で `AwaitingApproval` → `AwaitingInput` インターセプト。承認マーカー検出で再開。
+- **W2-5 SubWorkflow**: ハードコード再帰モック撤去、`resolve_subworkflows` BFS 事前解決 + 循環検出。
+- **W2-6 実行ステータス**: `WorkflowExecutionTracker` + `event_sender` 監視、`workflow_executions.status` を `Completed`/`Failed` に確定。
+- **W2-7 フロント**: LlmPrompt `config.prompt` textarea、HumanApproval 専用フォーム、`listExecutions` + SSE 断絶時 10s ポーリング、Condition ハンドル ID を `true`/`false` に統一、i18n 4キー追加。
+
 ### Added (UI 改修 U0-B + Phase U6 第1〜2弾 2026-07-07)
 - **U0-B1 (500修正)**: `GET /api/v1/ekyc/status` に `jwt_auth_middleware` を route layer として適用。ハンドラが要求する `Extension<AuthenticatedUser>` が注入されず常時 500 →「本人ステータスの読み込みに失敗しました」となっていた問題を解消（`router.rs`）。
 - **U0-B3**: `get_ekyc_status_handler` から Stripe Identity セッション作成を除去。ステータス確認のたびに実セッションを浪費していた副作用をなくし、レスポンスは `{verified}` のみに（セッション作成は既存 `POST /api/v1/ekyc/session` に分離済み）。

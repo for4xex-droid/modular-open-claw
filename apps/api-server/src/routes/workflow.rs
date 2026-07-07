@@ -11,11 +11,76 @@ use crate::error::AppError;
 use aiome_core_contracts::TaskRegistry;
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use infrastructure::validator::DefaultConstitutionalValidator;
-use infrastructure::workflow::schema::WorkflowDefinition;
+use infrastructure::workflow::schema::{NodeType, WorkflowDefinition};
 use infrastructure::workflow::store::WorkflowStore;
-use infrastructure::workflow::transpiler::WorkflowTranspiler;
+use infrastructure::workflow::transpiler::{remap_karma_directives, WorkflowTranspiler};
 use infrastructure::workflow::validator::WorkflowValidator;
+use std::collections::{HashMap, HashSet, VecDeque};
 use uuid::Uuid;
+
+async fn resolve_subworkflows(
+    store: &WorkflowStore,
+    root: &WorkflowDefinition,
+) -> Result<HashMap<Uuid, WorkflowDefinition>, AppError> {
+    let mut resolved = HashMap::new();
+    let mut queue = VecDeque::new();
+    let mut loading = HashSet::new();
+
+    for node in &root.nodes {
+        if let NodeType::SubWorkflow { workflow_id, .. } = &node.node_type {
+            queue.push_back(*workflow_id);
+        }
+    }
+
+    while let Some(wf_id) = queue.pop_front() {
+        if resolved.contains_key(&wf_id) {
+            continue;
+        }
+        if !loading.insert(wf_id) {
+            return Err(AppError::bad_request(format!(
+                "Circular SubWorkflow reference detected at {}",
+                wf_id
+            )));
+        }
+        if wf_id == root.id {
+            return Err(AppError::bad_request(
+                "Workflow cannot reference itself as SubWorkflow".to_string(),
+            ));
+        }
+
+        let record = store
+            .get_workflow(wf_id)
+            .await
+            .map_err(|e| AppError::internal(format!("Failed to fetch subworkflow: {}", e)))?
+            .ok_or_else(|| AppError::not_found(format!("SubWorkflow {} not found", wf_id)))?;
+
+        let version = record.current_version as u32;
+        let sub_def = store
+            .get_version(wf_id, version)
+            .await
+            .map_err(|e| AppError::internal(format!("Failed to fetch subworkflow version: {}", e)))?
+            .ok_or_else(|| {
+                AppError::not_found(format!(
+                    "SubWorkflow {} version {} not found",
+                    wf_id, version
+                ))
+            })?;
+
+        for node in &sub_def.nodes {
+            if let NodeType::SubWorkflow {
+                workflow_id: nested,
+                ..
+            } = &node.node_type
+            {
+                queue.push_back(*nested);
+            }
+        }
+
+        resolved.insert(wf_id, sub_def);
+    }
+
+    Ok(resolved)
+}
 
 /// [POST] /api/v1/workflows
 pub async fn create_workflow(
@@ -243,26 +308,30 @@ pub async fn execute_workflow(
 
     // 3. 実行IDの作成と transpiler による Job 変換
     let execution_id = Uuid::new_v4();
-    let jobs = WorkflowTranspiler::transpile(&def, execution_id)
+    let resolved = resolve_subworkflows(&store, &def).await?;
+    let jobs = WorkflowTranspiler::transpile_with_resolver(&def, execution_id, &resolved)
         .map_err(|e| AppError::internal(format!("Transpilation failed: {:?}", e)))?;
 
-    // 4. JobQueue への登録
+    // 4. JobQueue への登録（enqueue が返す実 ID を job_ids / karma_directives に反映）
     let mut job_ids: Vec<String> = Vec::new();
+    let mut id_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     for job in &jobs {
-        job_ids.push(job.id.clone());
-        let _ = state
+        let remapped_karma = remap_karma_directives(job.karma_directives.as_deref(), &id_map);
+        let actual_id = state
             .job_queue
             .enqueue(
                 &job.category,
                 &job.topic,
                 &job.style,
-                job.karma_directives.as_deref(),
+                remapped_karma.as_deref(),
                 None, // permission_manifest
                 Some(auth.agent_id),
                 job.priority,
             )
             .await
             .map_err(|e| AppError::internal(format!("Failed to enqueue job: {}", e)))?;
+        id_map.insert(job.id.clone(), actual_id.clone());
+        job_ids.push(actual_id);
     }
 
     // 5. 実行履歴レコードを作成
@@ -277,6 +346,10 @@ pub async fn execute_workflow(
         .map_err(|e| {
             AppError::internal(format!("Failed to create workflow execution record: {}", e))
         })?;
+
+    if let Some(tracker) = state.workflow_execution_tracker.as_opt() {
+        tracker.register(execution_id, id, job_ids.clone()).await;
+    }
 
     Ok((
         StatusCode::OK,

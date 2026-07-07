@@ -187,4 +187,56 @@ describe('useWorkflowApi Hook', () => {
 
     expect(execResult).toEqual({ execution_id: 'exec-legacy', job_ids: [] });
   });
+
+  it('lists workflow executions successfully', async () => {
+    const mockExecutions = [
+      {
+        id: 'exec-1',
+        workflow_id: 'w-1',
+        version: 1,
+        status: 'Completed',
+        input_variables: '{}',
+        output_result: null,
+        root_job_id: null,
+        started_at: '2026-07-08T00:00:00Z',
+        completed_at: '2026-07-08T00:01:00Z',
+      },
+    ];
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockExecutions,
+    });
+
+    const { result } = renderHook(() => useWorkflowApi());
+
+    let executions;
+    await act(async () => {
+      executions = await result.current.listExecutions('w-1');
+    });
+
+    expect(executions).toEqual(mockExecutions);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:3000/api/v1/workflows/w-1/executions',
+      expect.any(Object)
+    );
+  });
+
+  it('returns empty array when listExecutions fails', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    });
+
+    const { result } = renderHook(() => useWorkflowApi());
+
+    let executions;
+    await act(async () => {
+      executions = await result.current.listExecutions('w-1');
+    });
+
+    expect(executions).toEqual([]);
+  });
 });

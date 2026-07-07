@@ -1219,6 +1219,10 @@
       "toolName": "ツール名",
       "httpMethod": "HTTP メソッド",
       "urlTemplate": "URL テンプレート",
+      "prompt": "プロンプト",
+      "promptPlaceholder": "LLM プロンプトを入力（{{ input }} 対応）",
+      "promptMessage": "承認メッセージ",
+      "timeoutSeconds": "タイムアウト（秒）",
       "jsonConfig": "ノード設定 (JSON)",
       "jsonInvalid": "JSON が不正です",
       "close": "パネルを閉じる"

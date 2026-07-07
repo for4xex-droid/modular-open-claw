@@ -9,6 +9,7 @@ pub mod client;
 pub mod config;
 pub mod discovery;
 pub mod http_client;
+pub mod invoker;
 pub mod oauth;
 pub mod server;
 pub mod types;

@@ -21,9 +21,10 @@ use async_trait::async_trait;
 use serde_json::Value;
 use uuid::Uuid;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct MockJQ {
     pub(crate) rules: Vec<ImmuneRule>,
+    pub(crate) stored_jobs: std::sync::Mutex<std::collections::HashMap<String, Job>>,
 }
 #[async_trait]
 impl aiome_core_contracts::traits::SystemStateOps for MockJQ {
@@ -146,8 +147,13 @@ impl TaskRegistry for MockJQ {
     async fn dequeue(&self, _: &[&str]) -> Result<Option<Job>, AiomeError> {
         Ok(None)
     }
-    async fn fetch_job(&self, _: &str) -> Result<Option<Job>, AiomeError> {
-        Ok(None)
+    async fn fetch_job(&self, job_id: &str) -> Result<Option<Job>, AiomeError> {
+        Ok(self
+            .stored_jobs
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(job_id)
+            .cloned())
     }
     async fn complete_job(&self, _: &str, _: Option<&str>) -> Result<(), AiomeError> {
         Ok(())

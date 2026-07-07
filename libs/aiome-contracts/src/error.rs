@@ -129,6 +129,10 @@ pub enum AiomeError {
     #[error("入力値エラー: {reason}")]
     Validation { reason: String },
 
+    /// ワークフロー HumanApproval ノード: 人間の承認待ち
+    #[error("人間の承認待ち: {reason}")]
+    AwaitingApproval { reason: String },
+
     #[error("サブスクリプションが必要です: {reason}")]
     PaymentRequired { reason: String },
 

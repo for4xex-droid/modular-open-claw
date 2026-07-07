@@ -400,6 +400,7 @@ pub async fn assemble_app_state(
         biome_engine: Component::new(std::sync::Arc::new(tokio::sync::RwLock::new(
             biome_engine::BiomeEngine::new(42),
         ))),
+        workflow_execution_tracker: Component::new(core.workflow_execution_tracker.clone()),
     };
 
     Ok(state)

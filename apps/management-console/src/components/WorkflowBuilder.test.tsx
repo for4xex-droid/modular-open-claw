@@ -145,7 +145,8 @@ describe('WorkflowBuilder Component', () => {
     // 設定パネルが表示されることを確認
     expect(screen.getByText('Node Configuration')).toBeInTheDocument();
 
-    // LLM Prompt 固有の入力欄（Model, Temperature）が存在することを確認
+    // LLM Prompt 固有の入力欄（Prompt, Model, Temperature）が存在することを確認
+    expect(screen.getByText('Prompt')).toBeInTheDocument();
     expect(screen.getByText('LLM Model')).toBeInTheDocument();
     expect(screen.getByText('Temperature')).toBeInTheDocument();
   });
@@ -278,7 +279,7 @@ describe('WorkflowBuilder Component', () => {
     fireEvent.click(condButton!);
 
     // 追加された Condition ノードのラッパー内に、true/false 用の出力ハンドルが存在することを確認
-    expect(screen.getByTestId('rf-handle-handle-true')).toBeInTheDocument();
-    expect(screen.getByTestId('rf-handle-handle-false')).toBeInTheDocument();
+    expect(screen.getByTestId('rf-handle-true')).toBeInTheDocument();
+    expect(screen.getByTestId('rf-handle-false')).toBeInTheDocument();
   });
 });

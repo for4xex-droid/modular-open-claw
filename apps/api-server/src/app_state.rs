@@ -190,6 +190,8 @@ pub struct AppState {
     pub alert_manager: Component<Arc<infrastructure::alerts::AlertManager>>,
     // --- Biome Engine (Phase 3) ---
     pub biome_engine: Component<Arc<tokio::sync::RwLock<biome_engine::BiomeEngine>>>,
+    pub workflow_execution_tracker:
+        Component<Arc<crate::workflow_execution_tracker::WorkflowExecutionTracker>>,
 }
 
 impl AppState {

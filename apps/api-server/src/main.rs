@@ -51,6 +51,7 @@ mod stream;
 pub mod system_instructions;
 pub mod tool_call_processor;
 pub mod tool_call_router;
+mod workflow_execution_tracker;
 
 pub use app_state::AppState;
 pub use router::build_app;

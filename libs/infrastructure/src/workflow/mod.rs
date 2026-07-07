@@ -632,6 +632,8 @@ mod tests {
         // 最初の Job (LLM)
         let job1 = &jobs[0];
         assert_eq!(job1.category, "wf_llm");
+        let topic1: serde_json::Value = serde_json::from_str(&job1.topic).unwrap();
+        assert!(topic1.is_object());
         let directives1: serde_json::Value =
             serde_json::from_str(job1.karma_directives.as_ref().unwrap()).unwrap();
         assert_eq!(
@@ -643,6 +645,9 @@ mod tests {
         // 2番目の Job (HTTP)
         let job2 = &jobs[1];
         assert_eq!(job2.category, "wf_http");
+        let topic2: serde_json::Value = serde_json::from_str(&job2.topic).unwrap();
+        assert_eq!(topic2["method"], "GET");
+        assert_eq!(topic2["url_template"], "https://api.example.com");
         let directives2: serde_json::Value =
             serde_json::from_str(job2.karma_directives.as_ref().unwrap()).unwrap();
         assert_eq!(
@@ -651,6 +656,92 @@ mod tests {
         );
         assert_eq!(directives2["node_id"], "http-1");
         assert_eq!(directives2["parent_job_id"], job1.id); // 依存関係
+    }
+
+    #[test]
+    fn test_transpile_condition_node_and_branch() {
+        let mut cond_node = create_test_node(
+            "cond-1",
+            NodeType::Condition {
+                expression: "$.ok == true".to_string(),
+                mode: ConditionMode::Expression,
+            },
+        );
+        cond_node.config = serde_json::json!({ "prompt": "fallback" });
+
+        let nodes = vec![
+            create_test_node(
+                "start-1",
+                NodeType::Start {
+                    trigger: TriggerType::Manual,
+                },
+            ),
+            cond_node,
+            create_test_node(
+                "http-true",
+                NodeType::HttpRequest {
+                    method: "GET".to_string(),
+                    url_template: "https://example.com/true".to_string(),
+                },
+            ),
+        ];
+        let edges = vec![
+            create_test_edge("start-1", "cond-1"),
+            WorkflowEdge {
+                source: "cond-1".to_string(),
+                target: "http-true".to_string(),
+                source_handle: Some("true".to_string()),
+                target_handle: None,
+            },
+        ];
+
+        let wf = WorkflowDefinition {
+            id: Uuid::new_v4(),
+            name: "Condition".to_string(),
+            description: "Condition branch test".to_string(),
+            version: 1,
+            nodes,
+            edges,
+            variables: HashMap::new(),
+            created_at: "2026".to_string(),
+            updated_at: "2026".to_string(),
+        };
+
+        let execution_id = Uuid::new_v4();
+        let jobs = WorkflowTranspiler::transpile(&wf, execution_id).expect("Transpile failed");
+        assert_eq!(jobs.len(), 2);
+
+        let cond_job = &jobs[0];
+        assert_eq!(cond_job.category, "wf_condition");
+        let cond_topic: serde_json::Value = serde_json::from_str(&cond_job.topic).unwrap();
+        assert_eq!(cond_topic["expression"], "$.ok == true");
+        assert_eq!(cond_topic["mode"], "Expression");
+
+        let http_job = &jobs[1];
+        let http_directives: serde_json::Value =
+            serde_json::from_str(http_job.karma_directives.as_ref().unwrap()).unwrap();
+        assert_eq!(http_directives["branch"], "true");
+        assert_eq!(http_directives["parent_job_id"], cond_job.id);
+    }
+
+    #[test]
+    fn test_remap_karma_directives() {
+        let mut id_map = HashMap::new();
+        id_map.insert("transpiler-parent".to_string(), "actual-parent".to_string());
+        id_map.insert("transpiler-p1".to_string(), "actual-p1".to_string());
+
+        let raw = serde_json::json!({
+            "parent_job_id": "transpiler-parent",
+            "parent_job_ids": ["transpiler-p1", "unknown"],
+            "node_id": "child"
+        })
+        .to_string();
+
+        let remapped = remap_karma_directives(Some(&raw), &id_map).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&remapped).unwrap();
+        assert_eq!(v["parent_job_id"], "actual-parent");
+        assert_eq!(v["parent_job_ids"][0], "actual-p1");
+        assert_eq!(v["parent_job_ids"][1], "unknown");
     }
 
     #[test]
@@ -802,7 +893,9 @@ mod tests {
         };
 
         let execution_id = Uuid::new_v4();
-        let result = WorkflowTranspiler::transpile_with_depth(&wf, execution_id, 6); // 深さ6で呼び出す
+        let mut resolved = HashMap::new();
+        resolved.insert(wf_id, wf.clone());
+        let result = WorkflowTranspiler::transpile_with_resolver(&wf, execution_id, &resolved);
         assert!(result.is_err());
         match result.err().unwrap() {
             TranspilerError::RecursionLimitExceeded => {}
@@ -823,6 +916,8 @@ mod tests {
         assert!(categories.contains(&"wf_mcp".to_string()));
         assert!(categories.contains(&"wf_loop".to_string()));
         assert!(categories.contains(&"wf_parallel".to_string()));
+        assert!(categories.contains(&"wf_condition".to_string()));
+        assert!(categories.contains(&"wf_generic".to_string()));
     }
 
     #[tokio::test]
@@ -1285,7 +1380,7 @@ mod tests {
         let res_wasm = conductor.conduct(job_wasm, tx).await;
         assert!(res_wasm.is_ok());
         let (output, _) = res_wasm.unwrap();
-        assert_eq!(output, "WASM execution simulated successfully");
+        assert_eq!(output, "Workflow node executed");
 
         // イベントが送られているか確認
         let mut events = vec![];
