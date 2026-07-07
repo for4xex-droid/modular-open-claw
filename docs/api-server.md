@@ -11,6 +11,7 @@ Detailed documentation for the `api-server` crate.
 - `src/job_management_tests.rs`
 - `src/plugin_loader.rs`
 - `src/skill_handler.rs`
+- `src/workflow_execution_tracker.rs`
 - `src/logging.rs`
 - `src/commerce_e2e_tests.rs`
 - `src/audit_auth_tests.rs`
@@ -27,6 +28,7 @@ Detailed documentation for the `api-server` crate.
 - `src/error.rs`
 - `src/tool_call_router.rs`
 - `src/api.rs`
+- `src/mcp/invoker.rs`
 - `src/mcp/types.rs`
 - `src/mcp/server.rs`
 - `src/mcp/config.rs`
