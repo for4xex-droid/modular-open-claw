@@ -68,7 +68,7 @@ import { SoTProgressBar } from "./components/SoTProgressBar";
 import { useWorkspacePersona } from "./hooks/useWorkspacePersona";
 import { AiaaOnboardingWizard } from "./components/AiaaOnboardingWizard";
 
-import { isAuthenticated } from "./lib/auth";
+import { isAuthenticated, clearAuthToken, AUTH_UNAUTHORIZED_EVENT } from "./lib/auth";
 import { useAvatarState } from "./hooks/useAvatarState";
 import { AiomeSkeleton } from "./components/common/AiomeSkeleton";
 import { useDisplayMode } from "./hooks/useDisplayMode";
@@ -211,6 +211,15 @@ function App() {
     };
     window.addEventListener('a2ui-navigate', onA2uiNavigate);
     return () => window.removeEventListener('a2ui-navigate', onA2uiNavigate);
+  }, []);
+
+  useEffect(() => {
+    const onUnauthorized = () => {
+      clearAuthToken();
+      setIsAuth(false);
+    };
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, onUnauthorized);
   }, []);
 
   const { events: vitalityEvents, lastEvent, connectionStatus, toggleConnection, lastPingMs } = useSystemVitality();

@@ -151,6 +151,8 @@ jest.mock('./lib/auth', () => ({
   __esModule: true,
   isAuthenticated: () => true,
   getAuthToken: () => 'mock-token',
+  clearAuthToken: jest.fn(),
+  AUTH_UNAUTHORIZED_EVENT: 'auth-401-unauthorized',
   authenticatedFetch: jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve([]) }))
 }));
 jest.mock('./hooks/AvatarContext', () => ({
@@ -311,6 +313,29 @@ describe('App - Global Token Health', () => {
         // Assert
         expect(screen.getByTestId('login-screen-mock')).toBeInTheDocument();
         expect(screen.queryByTestId('setup-wizard-mock')).not.toBeInTheDocument();
+    });
+
+    it('should show LoginScreen when auth-401-unauthorized event is dispatched', async () => {
+        mockUseTokenHealth.mockReturnValue({
+            isExpired: false,
+            lastChecked: null,
+            checkHealth: jest.fn(),
+            dismiss: jest.fn()
+        });
+
+        render(<App />);
+
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 10));
+        });
+
+        expect(screen.queryByTestId('login-screen-mock')).not.toBeInTheDocument();
+
+        await act(async () => {
+            window.dispatchEvent(new CustomEvent('auth-401-unauthorized'));
+        });
+
+        expect(screen.getByTestId('login-screen-mock')).toBeInTheDocument();
     });
 
     it('should fall back to Normal mode when bootstrap fetch fails', async () => {

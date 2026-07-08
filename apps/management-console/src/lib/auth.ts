@@ -10,6 +10,21 @@
  * - sessionStorage を使用（ブラウザ閉鎖で自動消去）
  * - 本番環境での 'dev_secret' フォールバックを廃止
  */
+
+/** App.tsx が購読し LoginScreen へ遷移する CustomEvent 名 */
+export const AUTH_UNAUTHORIZED_EVENT = 'auth-401-unauthorized';
+
+const isAuthTokenEndpoint = (url: string): boolean => {
+    const normalized = url.includes('://')
+        ? url
+        : `http://localhost${url.startsWith('/') ? url : `/${url}`}`;
+    try {
+        return new URL(normalized).pathname.endsWith('/api/v1/auth/token');
+    } catch {
+        return url.includes('/api/v1/auth/token');
+    }
+};
+
 export const getAuthToken = (): string | null => {
     return sessionStorage.getItem('aiome_secret');
 };
@@ -49,12 +64,23 @@ export const authenticatedFetch = async (url: string, options: RequestInit = {})
         headers['Content-Type'] = 'application/json';
     }
 
+    const hadToken = token !== null;
     const response = await fetch(url, { ...options, headers });
 
     if (response.status === 402) {
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('stripe-402-payment-required'));
         }
+    }
+
+    if (
+        response.status === 401
+        && hadToken
+        && !isAuthTokenEndpoint(url)
+        && typeof window !== 'undefined'
+    ) {
+        clearAuthToken();
+        window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
     }
 
     return response;

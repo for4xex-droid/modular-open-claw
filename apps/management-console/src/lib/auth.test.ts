@@ -12,6 +12,7 @@ import {
     isAuthenticated,
     getAuthHeaders,
     authenticatedFetch,
+    AUTH_UNAUTHORIZED_EVENT,
 } from './auth';
 
 describe('auth utility', () => {
@@ -154,6 +155,75 @@ describe('auth utility', () => {
             );
             expect(eventCall).toBeDefined();
             
+            dispatchSpy.mockRestore();
+        });
+
+        it('should clear token and dispatch auth-401-unauthorized when receiving 401 with token', async () => {
+            global.fetch = jest.fn().mockImplementation(() =>
+                Promise.resolve({
+                    ok: false,
+                    status: 401,
+                    statusText: 'Unauthorized',
+                } as unknown as Response)
+            );
+
+            const token = 'expired-token';
+            setAuthToken(token);
+            const dispatchSpy = jest.spyOn(window, 'dispatchEvent');
+
+            const response = await authenticatedFetch('/api/v1/workflows');
+
+            expect(response.status).toBe(401);
+            expect(getAuthToken()).toBeNull();
+            const eventCall = dispatchSpy.mock.calls.find(
+                (call) => call[0].type === AUTH_UNAUTHORIZED_EVENT
+            );
+            expect(eventCall).toBeDefined();
+
+            dispatchSpy.mockRestore();
+        });
+
+        it('should NOT dispatch auth-401-unauthorized when receiving 401 without token', async () => {
+            global.fetch = jest.fn().mockImplementation(() =>
+                Promise.resolve({
+                    ok: false,
+                    status: 401,
+                    statusText: 'Unauthorized',
+                } as unknown as Response)
+            );
+
+            const dispatchSpy = jest.spyOn(window, 'dispatchEvent');
+
+            await authenticatedFetch('/api/v1/workflows');
+
+            const eventCall = dispatchSpy.mock.calls.find(
+                (call) => call[0].type === AUTH_UNAUTHORIZED_EVENT
+            );
+            expect(eventCall).toBeUndefined();
+
+            dispatchSpy.mockRestore();
+        });
+
+        it('should NOT dispatch auth-401-unauthorized for login endpoint 401', async () => {
+            global.fetch = jest.fn().mockImplementation(() =>
+                Promise.resolve({
+                    ok: false,
+                    status: 401,
+                    statusText: 'Unauthorized',
+                } as unknown as Response)
+            );
+
+            setAuthToken('stale-token');
+            const dispatchSpy = jest.spyOn(window, 'dispatchEvent');
+
+            await authenticatedFetch('/api/v1/auth/token', { method: 'POST' });
+
+            const eventCall = dispatchSpy.mock.calls.find(
+                (call) => call[0].type === AUTH_UNAUTHORIZED_EVENT
+            );
+            expect(eventCall).toBeUndefined();
+            expect(getAuthToken()).toBe('stale-token');
+
             dispatchSpy.mockRestore();
         });
     });

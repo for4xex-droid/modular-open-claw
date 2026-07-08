@@ -11,6 +11,9 @@
 - **W2-7 フロント**: LlmPrompt `config.prompt` textarea、HumanApproval 専用フォーム、`listExecutions` + SSE 断絶時 10s ポーリング、Condition ハンドル ID を `true`/`false` に統一、i18n 4キー追加。
 - **W2-8 検証**: `workflow-builder.spec.ts` に Execute スモーク + execute 500 Negative を追加。`test_workflow_validate_ssrf_negative` / `test_workflow_execute_ssrf_negative` API 統合テスト追加。
 
+### Fixed (管理コンソール認証 2026-07-09)
+- **401 → LoginScreen 遷移**: `authenticatedFetch` が Bearer 付きリクエストで 401 を受信した際、`clearAuthToken()` + `auth-401-unauthorized` CustomEvent を発火。`App.tsx` が購読して `LoginScreen` へ切替。ログイン試行 `POST /api/v1/auth/token` の 401 は除外。
+
 ### Added (UI 改修 U0-B + Phase U6 第1〜2弾 2026-07-07)
 - **U0-B1 (500修正)**: `GET /api/v1/ekyc/status` に `jwt_auth_middleware` を route layer として適用。ハンドラが要求する `Extension<AuthenticatedUser>` が注入されず常時 500 →「本人ステータスの読み込みに失敗しました」となっていた問題を解消（`router.rs`）。
 - **U0-B3**: `get_ekyc_status_handler` から Stripe Identity セッション作成を除去。ステータス確認のたびに実セッションを浪費していた副作用をなくし、レスポンスは `{verified}` のみに（セッション作成は既存 `POST /api/v1/ekyc/session` に分離済み）。
