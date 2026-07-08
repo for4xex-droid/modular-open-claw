@@ -9,6 +9,7 @@
 - **W2-5 SubWorkflow**: ハードコード再帰モック撤去、`resolve_subworkflows` BFS 事前解決 + 循環検出。
 - **W2-6 実行ステータス**: `WorkflowExecutionTracker` + `event_sender` 監視、`workflow_executions.status` を `Completed`/`Failed` に確定。
 - **W2-7 フロント**: LlmPrompt `config.prompt` textarea、HumanApproval 専用フォーム、`listExecutions` + SSE 断絶時 10s ポーリング、Condition ハンドル ID を `true`/`false` に統一、i18n 4キー追加。
+- **W2-8 検証**: `workflow-builder.spec.ts` に Execute スモーク + execute 500 Negative を追加。`test_workflow_validate_ssrf_negative` / `test_workflow_execute_ssrf_negative` API 統合テスト追加。
 
 ### Added (UI 改修 U0-B + Phase U6 第1〜2弾 2026-07-07)
 - **U0-B1 (500修正)**: `GET /api/v1/ekyc/status` に `jwt_auth_middleware` を route layer として適用。ハンドラが要求する `Extension<AuthenticatedUser>` が注入されず常時 500 →「本人ステータスの読み込みに失敗しました」となっていた問題を解消（`router.rs`）。

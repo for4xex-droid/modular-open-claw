@@ -395,3 +395,95 @@ async fn test_workflow_fork_api() {
         .await;
     assert_eq!(invalid_fork_resp.status_code(), StatusCode::NOT_FOUND);
 }
+
+fn ssrf_workflow_payload(workflow_id: Uuid) -> serde_json::Value {
+    serde_json::json!({
+        "id": workflow_id.to_string(),
+        "name": "SSRF Negative Test",
+        "description": "127.0.0.1 must be blocked",
+        "version": 1,
+        "nodes": [
+            {
+                "id": "start-1",
+                "node_type": { "Start": { "trigger": "Manual" } },
+                "label": "Start",
+                "config": {},
+                "position": { "x": 100.0, "y": 100.0 }
+            },
+            {
+                "id": "http-1",
+                "node_type": {
+                    "HttpRequest": {
+                        "method": "GET",
+                        "url_template": "http://127.0.0.1:8080/sensitive"
+                    }
+                },
+                "label": "HTTP SSRF",
+                "config": {},
+                "position": { "x": 200.0, "y": 100.0 }
+            }
+        ],
+        "edges": [
+            { "source": "start-1", "target": "http-1", "source_handle": null, "target_handle": null }
+        ],
+        "variables": {},
+        "created_at": "2026-07-08T00:00:00Z",
+        "updated_at": "2026-07-08T00:00:00Z"
+    })
+}
+
+#[serial]
+#[tokio::test]
+async fn test_workflow_validate_ssrf_negative() {
+    let (server, _state, _tmp) = create_test_server_with_limit(100).await;
+    let bearer = test_bearer();
+    let workflow_id = Uuid::new_v4();
+    let payload = ssrf_workflow_payload(workflow_id);
+
+    let resp = server
+        .post(&format!("/api/v1/workflows/{}/validate", workflow_id))
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::BAD_REQUEST);
+    let body = resp.text();
+    assert!(
+        body.contains("SSRF") || body.contains("127.0.0.1") || body.contains("private"),
+        "Expected SSRF rejection message, got: {}",
+        body
+    );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_workflow_execute_ssrf_negative() {
+    let (server, _state, _tmp) = create_test_server_with_limit(100).await;
+    let bearer = test_bearer();
+    let workflow_id = Uuid::new_v4();
+    let payload = ssrf_workflow_payload(workflow_id);
+
+    let resp = server
+        .post("/api/v1/workflows")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+    assert_eq!(resp.status_code(), StatusCode::OK);
+
+    let resp = server
+        .post(&format!("/api/v1/workflows/{}/execute", workflow_id))
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(
+        resp.status_code(),
+        StatusCode::BAD_REQUEST,
+        "execute must reject SSRF workflow at validation gate"
+    );
+    let body = resp.text();
+    assert!(
+        body.contains("SSRF") || body.contains("127.0.0.1") || body.contains("Validation"),
+        "Expected validation failure body, got: {}",
+        body
+    );
+}
