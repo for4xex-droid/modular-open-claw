@@ -22,6 +22,31 @@ use tracing::error;
 
 use super::*;
 
+/// Stripe 本番設定の事前検証。引数は呼び出し元が環境変数から読み取った値を渡す（テスト容易性のため純粋関数化）。
+pub(crate) fn validate_stripe_production_price_id(
+    stripe_api_key: Option<&str>,
+    stripe_test_mode: Option<&str>,
+    stripe_price_subscription_monthly: Option<&str>,
+) -> anyhow::Result<()> {
+    let stripe_key_configured = stripe_api_key
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .is_some();
+    let is_test_mode = stripe_test_mode
+        .map(|v| v.to_lowercase() == "true" || v == "1")
+        .unwrap_or(true);
+    let stripe_price_sub_monthly = stripe_price_subscription_monthly
+        .map(str::trim)
+        .filter(|v| !v.is_empty());
+
+    if !is_test_mode && stripe_key_configured && stripe_price_sub_monthly.is_none() {
+        return Err(anyhow::anyhow!(
+            "STRIPE_PRICE_SUBSCRIPTION_MONTHLY must be set in production mode"
+        ));
+    }
+    Ok(())
+}
+
 pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
     // 1. Initial attempt from CWD (essential for dev environments to catch AIOME_DEV_MODE)
     dotenvy::dotenv().ok();
@@ -99,18 +124,19 @@ pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
     let stripe_key_raw = std::env::var("STRIPE_API_KEY").ok();
     shared::security::scrub_env("STRIPE_API_KEY");
 
-    let is_test_mode = std::env::var("STRIPE_TEST_MODE")
-        .map(|v| v.to_lowercase() == "true" || v == "1")
-        .unwrap_or(true);
-    let stripe_price_sub_monthly = std::env::var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY")
-        .ok()
-        .filter(|v| !v.trim().is_empty());
+    let stripe_test_mode = std::env::var("STRIPE_TEST_MODE").ok();
+    let stripe_price_sub_monthly_env = std::env::var("STRIPE_PRICE_SUBSCRIPTION_MONTHLY").ok();
+    validate_stripe_production_price_id(
+        stripe_key_raw.as_deref(),
+        stripe_test_mode.as_deref(),
+        stripe_price_sub_monthly_env.as_deref(),
+    )?;
 
-    if !is_test_mode && stripe_key_raw.is_some() && stripe_price_sub_monthly.is_none() {
-        return Err(anyhow::anyhow!(
-            "STRIPE_PRICE_SUBSCRIPTION_MONTHLY must be set in production mode"
-        ));
-    }
+    let stripe_price_sub_monthly = stripe_price_sub_monthly_env
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(|v| v.to_string());
 
     let nurture_secret_raw = std::env::var("NURTURE_INTERNAL_SECRET").ok();
     shared::security::scrub_env("NURTURE_INTERNAL_SECRET");
@@ -304,6 +330,38 @@ pub async fn init_env_and_preflight() -> anyhow::Result<PreflightResult> {
 mod tests {
     use super::*;
     use serial_test::serial;
+
+    #[test]
+    fn test_validate_stripe_production_price_id_rejects_missing_price() {
+        let result = validate_stripe_production_price_id(Some("sk_test_key"), Some("false"), None);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("STRIPE_PRICE_SUBSCRIPTION_MONTHLY must be set in production mode"));
+    }
+
+    #[test]
+    fn test_validate_stripe_production_price_id_allows_test_mode() {
+        assert!(
+            validate_stripe_production_price_id(Some("sk_test_key"), Some("true"), None).is_ok()
+        );
+    }
+
+    #[test]
+    fn test_validate_stripe_production_price_id_allows_missing_api_key() {
+        assert!(validate_stripe_production_price_id(None, Some("false"), None).is_ok());
+    }
+
+    #[test]
+    fn test_validate_stripe_production_price_id_allows_production_with_price() {
+        assert!(validate_stripe_production_price_id(
+            Some("sk_live_key"),
+            Some("false"),
+            Some("price_123"),
+        )
+        .is_ok());
+    }
 
     #[tokio::test]
     #[serial]
