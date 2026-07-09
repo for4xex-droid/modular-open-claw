@@ -794,6 +794,15 @@ pub async fn init_core_services(
         event_sender.subscribe(),
         db_pool.clone(),
     );
+    if let Err(e) = workflow_execution_tracker
+        .recover_orphan_executions(db_pool)
+        .await
+    {
+        tracing::error!(
+            "🚨 Failed to recover orphan workflow executions on startup: {}",
+            e
+        );
+    }
 
     let task_dispatcher = Arc::new(task_dispatcher);
 

@@ -96,3 +96,40 @@ fn test_no_pending_placeholders_in_readme() -> Result<(), Box<dyn std::error::Er
     );
     Ok(())
 }
+
+#[test]
+fn test_official_ogp_assets_are_present_and_valid_png() -> Result<(), Box<dyn std::error::Error>> {
+    let root = workspace_root();
+    let assets = [
+        (
+            root.join("docs/assets/logo/Aiome(OGP画像）.png"),
+            "ruri-ogp master",
+        ),
+        (
+            root.join("docs/assets/logo/Aiome(OGP画像）反転.png"),
+            "white-ogp master",
+        ),
+        (
+            root.join("docs/landing/public/ogp.png"),
+            "LP og:image deploy",
+        ),
+        (
+            root.join("docs/landing/public/aiome-hero-white.png"),
+            "LP hero white-ogp",
+        ),
+    ];
+
+    for (path, label) in assets {
+        assert!(path.exists(), "{label} missing at {}", path.display());
+        let header = fs::read(&path)?;
+        assert!(
+            header.starts_with(b"\x89PNG\r\n\x1a\n"),
+            "{label} must be PNG, not a mislabeled JPEG"
+        );
+        assert!(
+            header.len() > 24,
+            "{label} is too small to be a valid OGP asset"
+        );
+    }
+    Ok(())
+}

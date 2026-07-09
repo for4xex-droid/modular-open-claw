@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-07**
+**最終更新: 2026-07-09**
 
 ## 運用ルール
 
@@ -56,8 +56,8 @@
 - [ ] **OP-064**: ベータユーザー 5〜10 人の獲得と実名テスティモニアル収集。launch（本格トラフィック獲得）の前提条件。バイラル32原則 #14/#29 対応（ユーザー実施、2026-07-05）
 - [x] **OP-065**: Pro 価格改定 $9.99 → **$19.99/月**（2026-07-05 ユーザー決定）。MESSAGING.md / LP i18n / README / ProUpgradeModal 表示 / stripe-setup.md / .env.example を同期。Stripe Payment Link・Price ID の実体差し替えは OP-057 に統合。
 - [x] **OP-066**: UI 全体改善計画 — **2026-07-05 R1 完了**（U0–U5-B + U4 A2UI。Jest 392 PASS / hex 0 / deep-scan 0）。残: U2-4 の `variant` props 統合（任意・Context 化で履歴分断は解消済み）、U1-3 ギフト/ギルド（FE 未実装のため対象外）、OP-002 目視（Human）。
-- [x] **OP-073**: **W2 ワークフロー実行エンジン本実装** — W2-0〜W2-8 完了（2026-07-08）。E2E 3本 PASS、`cargo test --workspace` PASS。Human 実走（Positive フルチェーン / Approval UI）は任意。
-- [ ] **OP-074**: **WorkflowExecutionTracker 再起動復旧** — api-server 再起動後、Running 状態の `workflow_executions` を orphan 検知し Failed 確定または job 状態から再同期する仕組みが未実装。
+- [x] **OP-073**: **W2 ワークフロー実行エンジン本実装** — W2-0〜W2-8 完了（2026-07-08）。E2E 3本 PASS、`cargo test --workspace` PASS。Human SSRF Walkthrough A/B/C PASSED（2026-07-09）。
+- [x] **OP-074**: **WorkflowExecutionTracker 再起動復旧** — **2026-07-09 完了**（`recover_orphan_executions` + store クエリ + 起動時呼び出し。CHANGELOG [Unreleased] 参照）
 
 ## 🔵 Upstream 待ち（scripts/watch_upstream_blockers.py で監視中）
 
@@ -73,7 +73,7 @@
 
 ## ⏸️ 凍結（解除条件つき）
 
-- [ ] **OP-040**: OGP 画像（og:image）・プロモーション動画の埋め込み — **完全凍結**。解除条件: ユーザーから完成版ロゴ・音声素材の提供。仮画像・プレースホルダーでの代用は厳禁（HANDOVER.md より）
+- [ ] **OP-040**: OGP 画像（og:image）・プロモーション動画の埋め込み — **OGP 画像は 2026-07-09 解除・配置完了**（`docs/assets/logo/` + `docs/landing/public/ogp.png` / `aiome-hero-white.png`）。**プロモーション動画は凍結継続**（音声素材提供待ち）。
 - [ ] **OP-057-R**: OP-057 残タスク。**(1)** 本番ホストへの env 反映 — **Human 待ち** **(2)** 決済→Pro 自動有効化 — **2026-07-05 コード完了**（subscription checkout Webhook + customer upsert + MCP unlock + integration test）。本番デプロイ前に人間レビュー推奨。
 
 ## ✅ 解決（直近のみ保持）

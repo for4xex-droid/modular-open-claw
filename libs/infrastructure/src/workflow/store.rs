@@ -475,6 +475,63 @@ impl WorkflowStore {
 
         Ok(records)
     }
+
+    /// ステータスが Running の実行履歴を全件取得（再起動時の orphan 復旧用）
+    pub async fn list_running_executions(&self) -> Result<Vec<ExecutionRecord>, AiomeError> {
+        let q = "SELECT id, workflow_id, version, status, input_variables, output_result, root_job_id, started_at, completed_at FROM workflow_executions WHERE status = 'Running' ORDER BY started_at ASC";
+
+        let rows = crate::sql_fetch_all!(
+            &self.pool,
+            (
+                String,
+                String,
+                i64,
+                String,
+                String,
+                Option<String>,
+                Option<String>,
+                String,
+                Option<String>
+            ),
+            sqlite: q,
+            pg: q
+        )?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| ExecutionRecord {
+                id: row.0,
+                workflow_id: row.1,
+                version: row.2,
+                status: row.3,
+                input_variables: row.4,
+                output_result: row.5,
+                root_job_id: row.6,
+                started_at: row.7,
+                completed_at: row.8,
+            })
+            .collect())
+    }
+
+    /// karma_directives.workflow_execution_id に紐づくジョブ ID とステータスを取得
+    pub async fn list_jobs_for_execution(
+        &self,
+        execution_id: Uuid,
+    ) -> Result<Vec<(String, String)>, AiomeError> {
+        let exec_id = execution_id.to_string();
+        let pattern = format!("%\"workflow_execution_id\":\"{exec_id}\"%");
+        let q = "SELECT id, status FROM jobs WHERE karma_directives LIKE ?";
+
+        let rows = crate::sql_fetch_all!(
+            &self.pool,
+            (String, String),
+            sqlite: q,
+            pg: q,
+            &pattern
+        )?;
+
+        Ok(rows)
+    }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

@@ -11,6 +11,10 @@
 - **W2-7 フロント**: LlmPrompt `config.prompt` textarea、HumanApproval 専用フォーム、`listExecutions` + SSE 断絶時 10s ポーリング、Condition ハンドル ID を `true`/`false` に統一、i18n 4キー追加。
 - **W2-8 検証**: `workflow-builder.spec.ts` に Execute スモーク + execute 500 Negative を追加。`test_workflow_validate_ssrf_negative` / `test_workflow_execute_ssrf_negative` API 統合テスト追加。
 
+### Added (OGP + ワークフロー復旧 2026-07-09)
+- **OP-040 OGP 画像**: ユーザー提供の完成版ロゴ（`Aiome(OGP画像）.png` / 反転版）を `docs/assets/logo/` に配置。LP 公開用に `docs/landing/public/ogp.png`（瑠璃色・SNS シェア用）と `aiome-hero-white.png`（白色・Hero 用）へ同期。1200×630 PNG を確認済み。
+- **OP-074 再起動復旧**: `WorkflowExecutionTracker::recover_orphan_executions` — 起動時に DB 上 `Running` の execution を走査し、紐づく job が全 terminal なら `Completed`/`Failed` に確定、未完了 job があればトラッカーへ再登録。`WorkflowStore::list_running_executions` / `list_jobs_for_execution` 追加。
+
 ### Fixed (管理コンソール認証 2026-07-09)
 - **401 → LoginScreen 遷移**: `authenticatedFetch` が Bearer 付きリクエストで 401 を受信した際、`clearAuthToken()` + `auth-401-unauthorized` CustomEvent を発火。`App.tsx` が購読して `LoginScreen` へ切替。ログイン試行 `POST /api/v1/auth/token` の 401 は除外。
 
