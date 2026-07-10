@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
-#![cfg(test)]
+// `main.rs` の `#[cfg(test)] mod test_helpers;` でゲート済み（内側の #![cfg(test)] は duplicated_attributes）
 
 use crate::app_state::{AppState, Component};
 use async_trait::async_trait;

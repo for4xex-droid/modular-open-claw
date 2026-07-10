@@ -275,7 +275,6 @@ pub(crate) async fn read_app_data_file(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app_state::Component;
     use aiome_core::traits::SettingsOps;
     use infrastructure::registry::{AssetManifest, AssetType};
 
