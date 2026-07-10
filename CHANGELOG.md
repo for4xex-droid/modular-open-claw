@@ -5,6 +5,7 @@
 - **stripe OXP**: `StripeCommerceEngine::require_oxp_header()` を追加し、Nurture 向け全リクエストで OXP 生成失敗時は送信しない（fail-closed）。16 箇所の `if let Some(cert)` を置換。
 - **/reflexion**: 旧 `implementation_plan.md` が forget を `API_SERVER_SECRET` に戻すよう誘導していた記述を OP-061 正本へ更新。`SECURITY_DESIGN.md` RTBF 行を同期。delete_account テストに panic-safe `NurtureEnvGuard` を追加。
 - **/docs-sync**: OPERATIONS_MANUAL v3.6、SECURITY_WHITEPAPER、AIOME_NURTURE_SYNERGY（§5.4.0 forget シーケンス）、INFRASTRUCTURE_MODULES、release_master_plan、`.env.example`、README / README_en を Wave 1/2（OP-024/060/061/067/069）に同期。
+- **test flake**: `MockCommerceEngine::verify_signature` が HMAC hex 内の `"bad"` 部分一致で誤拒否していた問題を修正（`"invalid"` は Negative 用に維持）。
 
 ### Added (Wave 2 Safety-Critical OP-061/060 2026-07-09)
 - **OP-061 OXP 統一**: `libs/aiome-commerce/src/stripe/mod.rs` の `generate_oxp_header` と `routes/auth.rs` の forget 経路を `OxiLeanProofCertificate::generate_header` に委譲（stripe/relay: `aiome-edge-node` + `nurture_internal_secret`）。auth forget の鍵は 2026-07-10 追完で `NURTURE_INTERNAL_SECRET` に統一（下記 Fixed 参照）。
