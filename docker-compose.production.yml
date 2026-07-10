@@ -98,6 +98,11 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - NURTURE_API_URL=http://nurture-api:3020
       - NURTURE_INTERNAL_SECRET=${NURTURE_INTERNAL_SECRET}
+      # Stripe secrets (STRIPE_API_KEY / preferred STRIPE_WEBHOOK_SECRET) come from
+      # key-proxy via fetch_and_inject_secrets — do NOT add STRIPE_API_KEY here.
+      # Non-secrets below are Vault-excluded and required for production preflight.
+      - STRIPE_TEST_MODE=${STRIPE_TEST_MODE:-false}
+      - STRIPE_PRICE_SUBSCRIPTION_MONTHLY=${STRIPE_PRICE_SUBSCRIPTION_MONTHLY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - GEO_OPTIMIZER_URL=http://geo-optimizer:8080
       - GEO_ENABLED=${GEO_ENABLED:-true}

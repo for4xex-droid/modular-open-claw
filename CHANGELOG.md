@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+### Fixed (Public Beta NT-0b / docs 2026-07-10)
+- **NT-0b**: `docker-compose.production.yml` の api-server に Vault 対象外の `STRIPE_TEST_MODE` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` をパススルー追加。`STRIPE_API_KEY` は追加しない（key-proxy 注入が正経路）。
+- **stripe-production-setup.md**: 秘密は AbyssVault（`abyss-vault set`）、非秘密は env/compose と分離。compose への API キー直書きを禁止として明記。未設定 Price ID が空文字になることと preflight Fail-Closed を注記。
+- **api_key_rotation.md**: 一般シークレット例を api-server 正本の `STRIPE_API_KEY` に是正（Nurture の `STRIPE_SECRET_KEY` は別系統と注記）。
+- **/reflexion**（×4）: near_term §1/§5/Phase B 陳腐化解消、CHANGELOG 自己矛盾解消、`api_key_rotation.md` の `file://` リンクを相対化、OPEN OP-057 文言是正、空 Webhook/Nurture 別系統の注記追加、`release_master_plan` の「R2-1（env）」表記を Vault+非秘密に是正、`stripe-setup.md` から本番正本へ誘導。第4回は再監査のみ（新規欠陥なし・97点 PASS）。
+
+### Verified (OP-013 / NT-4 2026-07-10)
+- **Stripe E2E**: `cargo test -p api-server api_integration_tests::commerce` 28 PASS、`commerce_e2e_tests` 2 PASS、`cargo test -p aiome-commerce` 65 PASS。Positive: subscription checkout unlock / signature green。Negative: missing signature / production rejects test secrets。
+
+### Changed (docs 2026-07-10)
+- **直近 Public Beta 計画**: [`docs/roadmaps/near_term_public_beta_plan.md`](docs/roadmaps/near_term_public_beta_plan.md) **v5.1**（`/perfect-plan` + `/reflexion`）。v4 の NT-0（compose へ `STRIPE_API_KEY` 追加）を撤回。本番正経路は `abyss-vault` → `fetch_and_inject_secrets`。NT-0b（非秘密パススルー）・`stripe-production-setup.md` Vault 正本化・NT-4/OP-013 E2E は同日完了。
+
 ### Fixed (Safety-Critical OP-061 follow-up 2026-07-10)
 - **auth forget**: Nurture `/internal/forget` 呼び出しを `NURTURE_INTERNAL_SECRET` で OXP 署名し、`Authorization: Bearer` を付与。URL は coin-charge と同じ `state.nurture_url`（`NURTURE_API_URL`）。secret 未設定時はローカル削除前に 500（fail-closed）。
 - **stripe OXP**: `StripeCommerceEngine::require_oxp_header()` を追加し、Nurture 向け全リクエストで OXP 生成失敗時は送信しない（fail-closed）。16 箇所の `if let Some(cert)` を置換。

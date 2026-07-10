@@ -2,13 +2,14 @@
 
 Stripe の本番アカウント申請承認に伴い、Aiome 課金システムを本番（実決済）モードへ切り替えるための設定手順です。
 
-**最終更新: 2026-07-06** — release_master_plan **R2-1** 手順書（Human 作業の正本）。凍結台帳 **OP-057-R** チェックリストと対応。
+**最終更新: 2026-07-10** — release_master_plan **R2-1** / near_term **NT-1** 手順書（Human 作業の正本）。凍結台帳 **OP-057-R** チェックリストと対応。
 
-> **OP-057-R チェックリスト（本番 env 反映）**
-> 1. [ ] api-server 本番ホストに `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_TEST_MODE=false` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` を設定（§2）
-> 2. [ ] management-console 本番ビルドに `VITE_STRIPE_PRICE_ID` を設定（§2.1）— **api-server と同一 Price ID**
-> 3. [ ] Stripe Dashboard Webhook 登録（§3）
-> 4. [ ] 本番 API が実 Price ID を返すことを確認（DoD: release_master_plan R2-1）
+> **OP-057-R チェックリスト（本番反映）**
+> 1. [ ] **秘密**: AbyssVault に `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` を格納し、api-server を再起動（§2.A）
+> 2. [ ] **非秘密**: `STRIPE_TEST_MODE=false` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` をホスト env または compose パススルーで設定（§2.B）
+> 3. [ ] management-console 本番ビルドに `VITE_STRIPE_PRICE_ID` を設定（§2.1）— **api-server と同一 Price ID**
+> 4. [ ] Stripe Dashboard Webhook 登録（§3）
+> 5. [ ] 本番 API が実 Price ID を返すこと + **テスト決済 1 件で Pro unlock**（DoD: R2-1 / NT-1）
 >
 > 決済→Pro 自動有効化（OP-057-R (2)）は 2026-07-05 コード完了。デプロイ前の人間レビューは `OPEN.md` OP-057-R を参照。
 
@@ -29,24 +30,57 @@ Stripe の本番アカウント申請承認に伴い、Aiome 課金システム�
 
 ---
 
-## 2. 環境変数の設定 (`.env`)
+## 2. 秘密情報と非秘密設定の分離
 
-本番環境のサーバーで `.env` ファイルに以下の本番用設定を追記・変更します。
-セキュリティ担保のため、ライブ API キー (`sk_live_` など) やシークレットの取り扱いには十分注意してください。
+本番 compose（`docker-compose.production.yml`）は **「No API keys in environment」** 設計です。  
+api-server は起動時に `shared::security::fetch_and_inject_secrets()` で key-proxy（AbyssVault）から許可キーを注入します（`ALLOWED_VAULT_SECRETS` に `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` 済み）。
+
+| 種別 | 変数 | 正本の格納先 | compose への直書き |
+|---|---|---|---|
+| **秘密** | `STRIPE_API_KEY` | **AbyssVault**（`abyss-vault set`） | **禁止**（Zero-Trust） |
+| **秘密** | `STRIPE_WEBHOOK_SECRET` | **AbyssVault**（推奨） | フォールバックとして env 可 |
+| **非秘密** | `STRIPE_TEST_MODE` | ホスト `.env` / compose パススルー | 可（Vault 対象外） |
+| **非秘密** | `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` | ホスト `.env` / compose パススルー | 可（Vault 対象外） |
+
+詳細な Vault 操作は [api_key_rotation.md](api_key_rotation.md) を参照してください。
+
+### 2.A 秘密（必須・AbyssVault）
 
 ```bash
-# === Stripe Production Configuration ===
-# 本番実決済を有効化するための本番用シークレットキー (v2 thin event 自動解決に必要)
-STRIPE_API_KEY="sk_live_xxxx" # gitleaks:allow
+# 本番 live キーを Vault に格納（値はシェル履歴に残さないよう対話入力推奨）
+cargo run --bin abyss-vault -- set STRIPE_API_KEY
+cargo run --bin abyss-vault -- set STRIPE_WEBHOOK_SECRET
 
-# Webhook 署名検証用のシークレット (移行時はカンマ区切りで複数指定可能)
-STRIPE_WEBHOOK_SECRET="whsec_live_xxxx" # gitleaks:allow
+# 確認（値は表示されない想定の status / list）
+cargo run --bin abyss-vault -- status
+```
 
-# 本番モードをオンにするため、必ず false に設定
+反映は **起動時のみ**です。格納後は api-server（および key-proxy 依存サービス）を **再起動**してください。
+
+> [!CAUTION]
+> 本番 compose の `api-server.environment` に `STRIPE_API_KEY` を追加しないでください。既存の Zero-Trust 設計（key-proxy 経由）と矛盾し、平文キー拡散のリスクがあります。
+
+### 2.B 非秘密（必須・env / compose）
+
+ホストの `.env`、または `docker-compose.production.yml` の api-server パススルーに以下を設定します。
+
+```bash
+# === Stripe Production — non-secrets ===
 STRIPE_TEST_MODE="false"
-
-# Stripe Dashboard で取得した月額サブスクの価格 ID
 STRIPE_PRICE_SUBSCRIPTION_MONTHLY="price_xxxx"
+```
+
+> [!IMPORTANT]
+> compose で `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` を未設定のまま起動すると、変数は空文字 `""` としてコンテナに入ります。`STRIPE_TEST_MODE=false` かつ Stripe キー注入済みの場合、api-server の preflight が起動を拒否します（Fail-Closed）。必ず実 Price ID をホスト env に入れてから `docker compose up` してください。
+>
+> `STRIPE_WEBHOOK_SECRET` も同様に、Vault 未設定かつ compose/host env が空だと署名検証不能になります。Vault に値がある場合は起動時 `fetch_and_inject_secrets` が空の compose env を上書きします。Nurture（`STRIPE_SECRET_KEY`）は別系統のため、本手順の api-server Vault 設定だけでは Nurture 側は埋まりません。
+
+（任意）開発・非 compose ホスト向けのフォールバックとして `.env` に秘密を書く場合は、平文の長期保管を避け、可能な限り Vault へ移行してください。
+
+```bash
+# 非推奨（本番 compose）: 平文 .env への live キー直書き
+# STRIPE_API_KEY="sk_live_xxxx"   # → 代わりに §2.A
+# STRIPE_WEBHOOK_SECRET="whsec_live_xxxx"  # → 代わりに §2.A
 ```
 
 ### 2.1 management-console フロントエンド（`VITE_STRIPE_PRICE_ID`）
@@ -55,7 +89,7 @@ Pro アプリ内 Checkout（`ProUpgradeModal` / `useCheckoutSession`）はビル
 
 | 環境変数 | 設定先 | 用途 |
 |---|---|---|
-| `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` | api-server 本番 `.env` | Checkout Session 作成・Webhook 照合 |
+| `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` | api-server 非秘密 env / compose | Checkout Session 作成・Webhook 照合 |
 | `VITE_STRIPE_PRICE_ID` | `apps/management-console/.env` または CI secrets | フロント Checkout リクエストの `price_id` |
 
 ```bash
@@ -71,7 +105,7 @@ VITE_STRIPE_PRICE_ID="price_xxxx"   # STRIPE_PRICE_SUBSCRIPTION_MONTHLY と同�
 > [!CAUTION]
 > - `STRIPE_TEST_MODE="false"` に設定されると、起動時プリフライトチェックで `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` が未設定の場合は**サーバーの起動を拒否**する安全ガードが稼働します。
 > - 本番モード下では、テスト用のモック署名 (`whsec_test`) による Webhook リクエストはすべて**厳格に拒否**されます。
-> - **Webhook シークレットの移行・ローテーション**: `STRIPE_WEBHOOK_SECRET` はカンマ区切りでの複数設定に対応しています（例: `whsec_live_old...,whsec_live_new...`）。Stripe 側で Webhook 宛先を切り替える際、両方の署名を同時に有効にすることで、ダウンタイムなしに安全にキーのローテーションが行えます。詳細な手順は [api_key_rotation.md](file:///Users/motista/Desktop/antigravity/aiome/docs/operations/api_key_rotation.md) を参照してください。
+> - **Webhook シークレットの移行・ローテーション**: `STRIPE_WEBHOOK_SECRET` はカンマ区切りでの複数設定に対応しています。詳細は [api_key_rotation.md](api_key_rotation.md) を参照してください。
 
 ---
 

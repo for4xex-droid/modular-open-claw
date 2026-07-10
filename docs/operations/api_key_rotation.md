@@ -11,7 +11,7 @@
 | 分類 | 対象キー例 | 格納先（macOS / 開発機） | 格納先（本番 / Linux） |
 | :--- | :--- | :--- | :--- |
 | **ブートストラップ・キー**<br>(基本となる最重要シークレット) | `VAULT_MASTER_PASSWORD`<br>`VAULT_SECRET`<br>`GEMINI_API_KEY` | **macOS Keychain**<br>(セキュアストレージ) | **環境変数**<br>(起動プロセスへの直接指定) |
-| **一般シークレット**<br>(サードパーティAPIキーなど) | `STRIPE_SECRET_KEY`<br>その他のAPIキーなど | **AbyssVault (SQLite DB)**<br>(XChaCha20-Poly1305暗号化) | **AbyssVault (SQLite DB)**<br>(XChaCha20-Poly1305暗号化) |
+| **一般シークレット**<br>(サードパーティAPIキーなど) | `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET`<br>（api-server 正本。Nurture 側の `STRIPE_SECRET_KEY` は別系統）<br>その他のAPIキーなど | **AbyssVault (SQLite DB)**<br>(XChaCha20-Poly1305暗号化) | **AbyssVault (SQLite DB)**<br>(XChaCha20-Poly1305暗号化) |
 
 ---
 
@@ -91,7 +91,7 @@ cargo run --bin abyss-vault -- setup
 `.env.secret` などのファイルからシークレットを一括で読み込んで更新します。
 
 1. **テンプレートの用意**:
-   プロジェクトルートにあるテンプレートファイル [.env.secret.example](file:///Users/motista/Desktop/antigravity/aiome/.env.secret.example) をコピーして `.env.secret` を作成します。
+   プロジェクトルートにあるテンプレートファイル [`.env.secret.example`](../../.env.secret.example) をコピーして `.env.secret` を作成します。
    ```bash
    cp .env.secret.example .env.secret
    ```

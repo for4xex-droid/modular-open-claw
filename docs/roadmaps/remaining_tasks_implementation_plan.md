@@ -1,8 +1,9 @@
 # 残存タスク Foolproof 実装計画（v6・実装コピペ確定版）
 
 > **作成**: 2026-07-09  
+> **改訂**: 2026-07-10（§10 着手テンプレ更新。Wave 1/2 完了を反映）  
 > **改訂**: 2026-07-09 **v6**（v5 再監査。sql_exec 確定形・死んだヘルパー・commerce 既存モック再利用を固定）  
-> **ステータス**: 計画フェーズ（実装はユーザー明示許可後）  
+> **ステータス**: Wave 1/2 **完了**（2026-07-09〜10）。Wave 3（OP-054/051）は設計承認待ち。直近 Public Beta は [`near_term_public_beta_plan.md`](near_term_public_beta_plan.md)  
 > **タスク正本**: [`OPEN.md`](../../OPEN.md)
 
 ---
@@ -345,7 +346,22 @@ URL/secret 未設定かつ DLQ 行がある場合は `error!` ログ + 行保持
 
 ## 10. 実装開始テンプレ
 
+### Wave 1/2（完了・再着手禁止）
+
+OP-024 / OP-067 / OP-069 / OP-061 / OP-060 は 2026-07-09〜10 に完了済み。本節の旧テンプレ（「Wave 1 の OP-024 から着手」）は破棄。
+
+### 直近（Public Beta）
+
+正本: [`near_term_public_beta_plan.md`](near_term_public_beta_plan.md)（NT-1〜NT-7）。
+
 ```
-現在は実装フェーズです。Wave 1 の OP-024 から着手します。
-OP-061/060 および OP-051 には触れません。
+現在は Public Beta 閉ループ計画です。NT-*（Human ゲート中心）に従います。
+Wave 3（OP-054/OP-051）およびメタバース/CCI News には触れません。
+```
+
+### Wave 3（設計承認後のみ）
+
+```
+現在は Wave 3 実装フェーズです。OP-054 から着手します（OP-051 は設計承認後）。
+NT-* / Safety-Critical commerce には触れません。
 ```

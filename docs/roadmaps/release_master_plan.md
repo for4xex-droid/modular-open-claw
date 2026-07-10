@@ -17,7 +17,7 @@
 |---|---|
 | G1. 新規ユーザーが README だけで5分セットアップ→ログイン→チャットまで到達 | クリーン環境で Quick Start 実走 |
 | G2. Free→Pro の課金導線が Day 1 で機能（LP決済 or アプリ内 Checkout → Pro 有効化） | R2 の E2E 手順 |
-| G3. `/release-preflight` 全8ステップ PASS | ワークフロー完走ログ |
+| G3. `/release-preflight` 全ステップ PASS（0 / 0.5 / 1–8 / 5.5 / 7.5） | ワークフロー完走ログ |
 | G4. 既知のリリースブロッカー（P0/P1 台帳）ゼロ | OPEN.md 照合 |
 
 **スコープ外（ポストリリース、本計画で追わない）**:
@@ -100,10 +100,10 @@ R0 台帳照合 ──→ R1 コード完成（UI残 + 小粒P1） ──→ R2 
 
 | ID | タスク | 対応 OP | 担当 | DoD |
 |---|---|---|---|---|
-| R2-1 | 本番ホストへの env 反映（`STRIPE_PRICE_SUBSCRIPTION_MONTHLY` / `VITE_STRIPE_PRICE_ID`） | OP-057-R (1) | **Human**（手順書 ✅ `stripe-production-setup.md` 2026-07-06） | 本番 API が実 Price ID を返す |
+| R2-1 | 本番ホストへの秘密・非秘密反映（Vault: `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET`、非秘密: `STRIPE_TEST_MODE` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` / `VITE_STRIPE_PRICE_ID`） | OP-057-R (1) | **Human**（手順書 ✅ `stripe-production-setup.md` Vault 正本化 2026-07-10） | 本番 API が実 Price ID を返す + テスト決済 Pro unlock |
 | R2-2 | 決済→セルフホスト Pro ライセンス自動有効化（Stripe Webhook → `register_license`） | OP-057-R (2) | Main + **人間レビュー** | Positive: テスト決済→Pro 反映 / Negative: 不正署名 Webhook 拒否 / Revert 確認 |
 | R2-3 | 月間支出上限（W-7d）: DB マイグレーション（**要 ADR**）+ Settings UI 入力欄 | OP-059 残 | Main + **人間レビュー** | 上限超過購入がインターセプタで拒否される Negative Test |
-| R2-4 | Stripe E2E の実行・結合確認（R2-2 完了後に一括） | OP-013 | Main | E2E スイート PASS |
+| R2-4 | ✅ Stripe E2E の実行・結合確認 → **2026-07-10 PASS**（NT-4） | OP-013 | Main | 済（commerce 28 / e2e 2 / aiome-commerce 65） |
 | R2-5 | ✅ Stripe Customer Portal 統合の要否判定 — **OP-010 CLOSED**（実 Stripe Billing Portal API。Mock ではない） | OP-010 | Main | 済（2026-07-06、ADR-051） |
 
 **検証プロトコル**: 各項目とも AGENTS.md Verification Protocol の3段階（Positive / Negative 注入 / Revert）を必須とし、結果を CHANGELOG に記録する。
@@ -137,7 +137,7 @@ R0 台帳照合 ──→ R1 コード完成（UI残 + 小粒P1） ──→ R2 
 
 | ID | タスク | 担当 | DoD |
 |---|---|---|---|
-| R5-1 | `/release-preflight` 全8ステップ実行（DAG・gitleaks・衛生・ローカルパス・ビルド・ゲートテスト・サイズ・LICENSE） | Main | 全ステップ OK |
+| R5-1 | `/release-preflight` 全ステップ実行（0 / 0.5 / 1–8 / 5.5 / 7.5 — DAG・gitleaks・衛生・ローカルパス・URL・ビルド・ゲートテスト・サイズ・About・CHANGELOG・LICENSE）。実行順の正本は [`near_term_public_beta_plan.md`](near_term_public_beta_plan.md) NT-6 | Main | 全ステップ OK |
 | R5-2 | CHANGELOG [Unreleased] のバージョン切り出し（現在200行超過 → ステップ7.5 必須） | Sub | [Unreleased] 200行以下 |
 | R5-3 | ロールバック計画の明文化（Feature Flag 無効化・`git revert`・DB ダウングレード手順） | Main | リリースノートに記載 |
 | R5-4 | ドキュメント最終同期（README/README_en・RIPPLE_MAP・OPEN.md クローズ処理） | Sub | docs-sync チェック PASS |
@@ -152,7 +152,7 @@ R0 台帳照合 ──→ R1 コード完成（UI残 + 小粒P1） ──→ R2 
 | R0 | 0.5日 | なし | 即時（照合サブエージェント実行中） |
 | R1 | 3〜4日 | R0 | R1-A と R1-B は並行。Sub 委譲比率 ~60% |
 | R2 | 2〜3日 + レビュー | R1-B（R2 詳細設計は R1 中に先行提出） | 人間レビューが律速 |
-| R3 | 2日 | R2-1（env） | R3-1/2 は R1 と並行可 |
+| R3 | 2日 | R2-1（Vault+非秘密） | R3-1/2 は R1 と並行可 |
 | R4 | 5日 | なし | 全期間並行（Human 主導） |
 | R5 | 0.5日 | R1〜R4 全完了 | — |
 | **合計** | **実働 8〜10日**（並行込みカレンダー ~2週間） | | |

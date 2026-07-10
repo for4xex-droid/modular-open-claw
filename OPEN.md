@@ -2,14 +2,19 @@
 
 **最終更新: 2026-07-10**
 
-> **実装手順の正本**: 残存タスクの詳細実装計画は [`docs/roadmaps/remaining_tasks_implementation_plan.md`](docs/roadmaps/remaining_tasks_implementation_plan.md)（**v6・実装コピペ確定** 2026-07-09）。Wave 0〜4・ファイル:行アンカー・確定 API 仕様・Verification Protocol・DoD を定義。本台帳は「何が未解決か」のみを管理する。
+> **実装手順の正本**:
+> - **直近 Public Beta（Human ゲート中心）**: [`docs/roadmaps/near_term_public_beta_plan.md`](docs/roadmaps/near_term_public_beta_plan.md)（**v5.1**・2026-07-10・`/perfect-plan`+`/reflexion` 検証済み。秘密は AbyssVault、compose への API キー追加は禁止）
+> - **技術負債 Wave 3 以降**: [`docs/roadmaps/remaining_tasks_implementation_plan.md`](docs/roadmaps/remaining_tasks_implementation_plan.md)（v6。Wave 1/2 完了済み）
+> - **リリース全体**: [`docs/roadmaps/release_master_plan.md`](docs/roadmaps/release_master_plan.md)
+>
+> 本台帳は「何が未解決か」のみを管理する。手順の複製はしない。
 
 ## 運用ルール
 
 - 未解決タスクは**このファイルのみ**で管理する（`memory/` の Open は当日分の追記メモであり、翌日以降はここへ反映する）。
 - 各行は `- [ ] **ID**: 内容（初出日）` 形式。解決時はチェックを付け「✅ 解決」セクションへ移し、解決日と根拠（コミット/CHANGELOG）を1行添える。四半期ごとに解決済みを削除する。
 - 凍結タスクは「⏸️ 凍結」セクションで管理し、解除条件を明記する。
-- 実装の進め方・順序は `docs/roadmaps/remaining_tasks_implementation_plan.md` に従う（本ファイルに手順を複製しない）。
+- 実装の進め方・順序は直近は [`docs/roadmaps/near_term_public_beta_plan.md`](docs/roadmaps/near_term_public_beta_plan.md)、技術負債は [`docs/roadmaps/remaining_tasks_implementation_plan.md`](docs/roadmaps/remaining_tasks_implementation_plan.md) に従う（本ファイルに手順を複製しない）。
 
 ## 🔴 P0 / ブロッカー
 
@@ -20,11 +25,10 @@
 
 ## 🟠 P1 / 次期リリース
 
-- [ ] **OP-070**: **リリース・本番化マスタープラン**（`docs/roadmaps/release_master_plan.md` v1）の実行。**R0/R1/R2 コード完了**（2026-07-05〜06）。**R3-1 OP-012 ✅** / **R3-2 OP-014 ✅** / **R3-4 チェックリスト ✅**（2026-07-06）。残: R2-1 本番 env（Human）/ R3-4 実走（Human）/ R4 ローンチ資材（Human）/ R5 preflight + 公開。
+- [ ] **OP-070**: **リリース・本番化マスタープラン**（`docs/roadmaps/release_master_plan.md` v1）の実行。**R0/R1/R2 コード完了**（2026-07-05〜06）。**R3-1 OP-012 ✅** / **R3-2 OP-014 ✅** / **R3-4 チェックリスト ✅** / **R2-4 OP-013 ✅**（2026-07-10）。残: R2-1 本番 Vault+非秘密（Human）/ R3-4 実走（Human）/ R4 ローンチ資材（Human）/ R5 preflight + 公開。
 - [x] **OP-010**: Stripe Customer Portal 統合 — クレート追加、ポータル URL 生成エンドポイント新設（2026-05-28、HANDOVER.md P1-1）→ **2026-07-06 クローズ**（R2-5 照合: 実 Stripe Billing Portal API 実装済み。ADR-051）
 - [ ] **OP-011**: `execute_autonomous_purchase` の封印解除 — Nurture /internal/purchase へのプロキシ実装（2026-05-28、HANDOVER.md P1-4）→ **R3-3 リリース判定（2026-07-06）: Public Beta では封印維持。自律購買（実通貨 A2C 購入）はポストリリーススコープ。コード変更なし**
 - [x] **OP-012**: PostgreSQL 本番環境での統合デプロイ検証（BAN 統合含む）→ **2026-07-06 完了**（R3-1: `docker-compose.production-verify.yml` + `scripts/verify-production-postgres.sh` + `postgres_production_verify.rs` — 3 DB マイグレーション + BAN ラウンドトリップ）
-- [ ] **OP-013**: Stripe E2E テストの実行と結合挙動の継続確認（P2-2）（2026-05-29）
 - [x] **OP-014**: CLI ツールを用いたローカル Keychain 移行動作検証 → **2026-07-06 完了**（R3-2: `scripts/verify-keychain-cli.sh` — abyss-vault set/get/delete + 非 whitelist 拒否 + macOS Keychain smoke）
 
 ## 🟡 P2 / 継続課題（技術的負債は REMAINING_TASKS.md 2026-07-02 版から吸収）
@@ -46,7 +50,7 @@
 - [ ] **OP-054**: JobQueue トレイトの API 乖離解消（補助メソッドのトレイト引き上げ or private 化）（2026-07-02）
 - [x] **OP-055**: `immune_system.rs` 内 MockJQ（約700行）の共有化 → 2026-07-03 完了（新クレートではなく `infrastructure::testing::mock_jq` クレート内モジュールとして抽出）
 - [x] **OP-056**: フロント `useWorkflowApi` の `POST /api/v1/workflows/validate` とバックエンド `/api/v1/workflows/:id/validate` のパス不整合 → **2026-07-05 完了**（release_master_plan R1-13）
-- [x] **OP-057**: LP Stripe 決済基盤（Payment Link URL・Price ID・ローカル `.env`）→ 2026-07-05 完了（`plink_1TpXHCBcUTwo5TwLnO1BJneY` / `price_1TpXFpBcUTwo5TwLmK9SQbKL`）。**残（本番 env・決済→Pro 自動有効化）は ⏸️ 凍結 OP-057-R へ移管**（Biome ブラッシュアップと同一バッチ）
+- [x] **OP-057**: LP Stripe 決済基盤（Payment Link URL・Price ID・ローカル `.env`）→ 2026-07-05 完了（`plink_1TpXHCBcUTwo5TwLnO1BJneY` / `price_1TpXFpBcUTwo5TwLmK9SQbKL`）。**本番反映・Human 作業は ⏸️ 凍結 OP-057-R へ移管**（(2) 決済→Pro コードは 2026-07-05 完了済み）
 - [x] **OP-058**: `ProUpgradeModal`（402→アップグレード導線）→ 2026-07-04 解消（`App.tsx` ルートマウント + `STRIPE_PRICE_ID`）
 - [ ] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠 + ✅ W-1 OXP relay 修正 + ✅ **R2-3 月間支出上限**（ADR-050、DB マイグレーション、インターセプタ、Settings UI `economy.monthly_spend_limit`、2026-07-06）
 - [ ] **OP-062**: Tauri `NurtureMode::InProcess` variant — sidecar 起動と in-process の排他（ADR-012 残タスク）（2026-07-04）
@@ -73,10 +77,11 @@
 ## ⏸️ 凍結（解除条件つき）
 
 - [ ] **OP-040**: OGP 画像（og:image）・プロモーション動画の埋め込み — **OGP 画像は 2026-07-09 解除・配置完了**（`docs/assets/logo/` + `docs/landing/public/ogp.png` / `aiome-hero-white.png`）。**プロモーション動画は凍結継続**（音声素材提供待ち）。
-- [ ] **OP-057-R**: OP-057 残タスク。**(1)** 本番ホストへの env 反映 — **Human 待ち** **(2)** 決済→Pro 自動有効化 — **2026-07-05 コード完了**（subscription checkout Webhook + customer upsert + MCP unlock + integration test）。本番デプロイ前に人間レビュー推奨。
+- [ ] **OP-057-R**: OP-057 残タスク。**(1)** 本番ホストへの秘密・非秘密反映 — **Human 待ち**（2026-07-10: 手順書を Vault 正本化、compose に非秘密 `STRIPE_TEST_MODE` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` パススルー追加。秘密は `abyss-vault set`）。**(2)** 決済→Pro 自動有効化 — **2026-07-05 コード完了**。本番デプロイ前に人間レビュー推奨。
 
 ## ✅ 解決（直近のみ保持）
 
+- [x] **OP-013**: Stripe E2E テストの実行と結合挙動の継続確認（P2-2）→ **2026-07-10 完了**（NT-4: commerce 28 PASS / commerce_e2e 2 PASS / aiome-commerce 65 PASS。Positive: subscription checkout unlock・signature green。Negative: missing signature・production rejects test secrets）
 - [x] **OP-061**: OXP `generate_header` 統一 + forget Bearer/`NURTURE_INTERNAL_SECRET` + stripe `require_oxp_header` fail-closed — **2026-07-10 完了**（ユーザー明示「修正」承認。CHANGELOG Fixed 2026-07-10、delete_account 5テスト + aiome-commerce generate_oxp_header 3テスト PASS。forget URL は `state.nurture_url`/`NURTURE_API_URL` 正本）
 - [x] **OP-060**: coin-charge DLQ 自動再送 — **2026-07-09 完了**（`coin_charge_dlq_worker` + poison 隔離）
 - [x] **OP-067**: html2md → htmd — **2026-07-09 完了**

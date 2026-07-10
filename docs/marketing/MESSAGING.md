@@ -124,9 +124,9 @@ A. ありません。MCP（Model Context Protocol）対応で外部ツールと�
 
 - **About 欄（日本語不可のため英語）**: `The sovereign OS for autonomous AI agents — self-hosted, fully auditable, with a built-in agent economy. Own it, govern it, let it earn.`
 - **トピックタグ案**: `ai-agents` `autonomous-agents` `self-hosted` `sovereign-ai` `mcp` `rust` `agent-economy` `local-first` `ai-os` `tauri`
-- **ソーシャルプレビュー**: 既存の完成版 `docs/assets/logo/Aiome(OGP画像）.png` の利用をユーザーに提案（**新規画像生成は OP-040 凍結中のため禁止**）。設定手順: Settings → General → Social preview → Upload。
+- **ソーシャルプレビュー**: 完成版 `docs/assets/logo/Aiome(OGP画像）.png` および LP 用 `docs/landing/public/ogp.png`（2026-07-09 配置済み）を使用。**OGP の新規生成は不要**。設定手順: Settings → General → Social preview → Upload。**プロモーション動画のみ OP-040 凍結継続**（音声素材待ち）。
 
-## 8. 証拠ビジュアルのショットリスト（PR-8、撮影は OP-040 解除後）
+## 8. 証拠ビジュアルのショットリスト（PR-8 = OP-063、撮影は Human）
 
 優先順（Governed / Earning の柱を裏付ける画面から）:
 

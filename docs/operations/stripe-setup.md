@@ -2,14 +2,16 @@
 
 Aiomeの自律経済圏（Commerce）機能でStripeを利用するための設定手順です。
 
-**最終更新: 2026-07-05**
+**最終更新: 2026-07-10**
+
+> **本番（live）**: 秘密は AbyssVault、非秘密は env/compose。手順の正本は [`stripe-production-setup.md`](stripe-production-setup.md)（near_term NT-1）。本ドキュメントは主に **開発・テストモード** 向けです。
 
 ## 1. Stripeアカウントの準備とAPIキーの取得
 1. [Stripeダッシュボード](https://dashboard.stripe.com/)にログインします（開発時はテストモードを使用してください）。
 2. **「開発者」 > 「APIキー」** に移動します。
 3. 以下のキーを取得します。
    - **公開可能キー (Publishable key)**
-   - **シークレットキー (Secret key)**: `sk_test_...` (テスト用) または `sk_live_...` (本番用)
+   - **シークレットキー (Secret key)**: `sk_test_...` (テスト用) または `sk_live_...` (本番用。本番格納は Vault — 上記リンク)
 
 ## 2. 商品と価格 (Price ID) の作成
 Proプラン（$19.99/月）の定期支払い用の価格IDを作成します。

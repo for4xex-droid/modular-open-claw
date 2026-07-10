@@ -254,7 +254,7 @@ RUST_LOG=info cargo run -p api-server
 - [ ] **PostgreSQL 本番検証 (OP-012)**: `bash scripts/verify-production-postgres.sh` が Positive / Negative / Revert すべて PASS すること（`docker-compose.production-verify.yml`、ポート `127.0.0.1:5434`）
 - [ ] **Keychain CLI 検証 (OP-014)**: `bash scripts/verify-keychain-cli.sh` が PASS すること（`abyss-vault` set/get/delete + 非 whitelist 拒否）
 - [ ] **Quick Start 実走 (G1)**: Human が [`docs/guides/QUICK_START_VERIFICATION.md`](QUICK_START_VERIFICATION.md) に沿って 5 分以内に完走すること
-- [ ] **Stripe 本番 env (R2-1)**: [`docs/operations/stripe-production-setup.md`](../operations/stripe-production-setup.md) の手順どおり `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` / `VITE_STRIPE_PRICE_ID` を反映
+- [ ] **Stripe 本番反映 (R2-1)**: [`docs/operations/stripe-production-setup.md`](../operations/stripe-production-setup.md) どおり — 秘密は AbyssVault（`abyss-vault set STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET`）、非秘密は `STRIPE_TEST_MODE=false` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` / `VITE_STRIPE_PRICE_ID`
 
 ### 8.1 Release Verification Scripts（リリース前検証）
 
