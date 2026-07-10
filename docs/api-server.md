@@ -7,6 +7,7 @@ Detailed documentation for the `api-server` crate.
 
 ### 📂 Source Files
 - `src/federation_e2e_tests.rs`
+- `src/test_helpers.rs`
 - `src/stream.rs`
 - `src/job_management_tests.rs`
 - `src/plugin_loader.rs`
@@ -60,6 +61,7 @@ Detailed documentation for the `api-server` crate.
 - `src/internal_services/dream.rs`
 - `src/internal_services/commune_ws.rs`
 - `src/internal_services/watchtower.rs`
+- `src/internal_services/coin_charge_dlq_worker.rs`
 - `src/internal_services/oxilean_poller.rs`
 - `src/internal_services/mod.rs`
 - `src/internal_services/heartbeat.rs`
