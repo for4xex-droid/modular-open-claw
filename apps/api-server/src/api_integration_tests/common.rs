@@ -263,7 +263,14 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
         _payload: &str,
         sig_header: &str,
     ) -> Result<(), aiome_core::error::AiomeError> {
-        if sig_header.contains("invalid") || sig_header.contains("bad") {
+        // 意図的な Negative マーカーのみ拒否。HMAC hex に "bad"/"invalid" が
+        // 部分一致するだけで落とすとフレークする（pre-push で実測）。
+        let marker = sig_header.trim();
+        if marker == "invalid"
+            || marker == "bad"
+            || marker.starts_with("invalid_")
+            || marker.starts_with("bad_")
+        {
             return Err(aiome_core::error::AiomeError::Unauthorized {
                 reason: "Invalid signature".into(),
             });
