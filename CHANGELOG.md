@@ -1,5 +1,29 @@
 ## [Unreleased]
 
+### Changed (/docs-sync 2026-07-10 Top5)
+- **SECURITY_DESIGN / SECURITY_WHITEPAPER / ADR-033**: OP-075 Immune Fail-Closed（`evaluate_security` 共有経路）を同期。
+- **error_handling.md**: ADR-054（OP-051 三階層・Proposed）へのリンクを追加。
+- **OPERATIONS_MANUAL v3.7**: MCP 節に `$STRIPE_API_KEY`（api-server 正本 / Nurture 別系統注記）。
+- **INFRASTRUCTURE_MODULES / release_master_plan / remaining_tasks**: OP-075/054/029/076 完了と OP-051 ADR 起草状態を反映。
+- **RIPPLE_MAP**: Top5 影響エントリ追加。
+
+### Fixed (TECH_DEBT Top5 v1.3 実装 2026-07-10)
+- **OP-075 Fail-Closed**: `evaluate_security` で Immune `Err` を拒否。`stream` 初期と `agent_engine` を同 API に集約（`security_block` / `Ok(block_msg)`）。Negative: router N1 + `test_agent_engine_immune_db_error_fail_closed`（N3）+ sentinel Ok 文字列。SSE 初期は同一 `evaluate_security`（N2 は共有経路で担保）。運用注意: `immune_rules` DB 障害時はチャット/MCP 入力を拒否（baseline 正規表現は継続）。
+- **/reflexion**: `cargo fmt` 適用、agent_engine N3/Positive テスト追加、計画 DoD と CHANGELOG を同期。第2回: OPEN OP-075 の N3 記載漏れ、`TECH_DEBT_AUDIT` の HEX REGRESSED 残存、hex ゲート Scope 表示を是正（コード変更なし・ドキュメント整合）。
+- **OP-029**: `biome-popup-entry.tsx` を `var(--bg-base)`、`biome-popup.html` を transparent、HEX ゲートに entry を追加。
+- **OP-076**: MCP discovery / i18n / `McpConfigManager` / `mcp_servers.json.example` / `.env.example` を `$STRIPE_API_KEY` に統一（Nurture 別系統は維持）。
+- **OP-054**: `with_llm` / `get_embedding_provider` を `pub(crate)`。
+- **QW-21..23**: `docs/licenses.json` 再生成（html2md 除去）、webhook SSE ログ（stripe dispute/checkout + polar）、KC allowance 読取失敗時 `warn!`。
+- **ADR-054**: Error 3 階層 Decision 起草案（Proposed・コード置換なし）。
+
+### Changed (docs /perfect-plan Top5 2026-07-10)
+- **`tech_debt_top5_plan.md` v1.3**: 再検証。stream `provider` 削除禁止（L251/464）、agent_engine に `ToolCallRouter` import 必須、OPEN OP-075 から degraded 除去・agent_engine 追加、ADR-031 で ISP/AppState 抽象化を禁止、BeggingSupervisor を OP-075 対象外に固定。判定 ✅ PASS。
+- **`tech_debt_top5_plan.md` v1.2**: OP-054-B 削除、SSE `security_block`、agent_engine 集約。
+- **`tech_debt_top5_plan.md` v1.1 / v1.0**: 初版〜誤前提修正。
+
+### Changed (docs /tech-debt-audit 2026-07-10)
+- **`TECH_DEBT_AUDIT.md` v11.0**: Wave 1/2 完了後の差分監査。Top 5 = Immune Fail-Open（P1）/ OP-054 / OP-051 / 依存 ignore+scc / App.tsx+biome-popup HEX。OP-029 を `#030712` 残存で再オープン。OPEN に OP-075 / OP-076 を追加。
+
 ### Fixed (Public Beta NT-0b / docs 2026-07-10)
 - **NT-0b**: `docker-compose.production.yml` の api-server に Vault 対象外の `STRIPE_TEST_MODE` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` をパススルー追加。`STRIPE_API_KEY` は追加しない（key-proxy 注入が正経路）。
 - **stripe-production-setup.md**: 秘密は AbyssVault（`abyss-vault set`）、非秘密は env/compose と分離。compose への API キー直書きを禁止として明記。未設定 Price ID が空文字になることと preflight Fail-Closed を注記。

@@ -23,6 +23,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::agent_engine::{build_system_instructions, parse_tool_calls};
 use crate::routes::agent::AgentChatRequest;
+use crate::tool_call_router::{DefaultToolCallRouter, ToolCallRouter};
 use crate::AppState;
 
 pub async fn trigger_agent_chat_stream(
@@ -40,35 +41,11 @@ pub async fn trigger_agent_chat_stream(
     let provider = (*state.provider).clone();
 
     let stream = async_stream::stream! {
-        // Discovery H: Guardrails check (Security Layer 0)
-        if let shared::guardrails::ValidationResult::Blocked(reason) = shared::guardrails::validate_input(&payload.prompt) {
-            yield Ok::<Event, Infallible>(Event::default().event("security_block").data(format!("🚨 [GUARDRAIL BLOCK] {}", reason)));
+        // Security Layer 0–1: Guardrails + Immune (Fail-Closed via ToolCallRouter)
+        let router = DefaultToolCallRouter;
+        if let Err(block_msg) = router.evaluate_security(&payload.prompt, &state).await {
+            yield Ok::<Event, Infallible>(Event::default().event("security_block").data(block_msg));
             return;
-        }
-
-        // Discovery B: Immune System check (Security Layer 1)
-        let immune_system = infrastructure::immune_system::AdaptiveImmuneSystem::new(provider.clone());
-        match immune_system.verify_intent(&payload.prompt, state.job_queue.as_ref()).await {
-            Ok(Some(rule)) => {
-                tracing::warn!("Sentinel Block activated in SSE: pattern `{}`", rule.pattern);
-                let stats = state.job_queue.get_agent_stats().await.unwrap_or_default();
-                if let Err(e) = state.job_queue.record_evolution_event(
-                    stats.level,
-                    "ImmuneAlert",
-                    &format!("Block: {} (Pattern: {})", rule.action, rule.pattern),
-                    None,
-                    None
-                ).await {
-                    tracing::warn!("Failed to record ImmuneAlert evolution event in SSE: {}", e);
-                }
-                yield Ok::<Event, Infallible>(Event::default().event("security_block").data(format!("🚨 [SENTINEL BLOCK] {}\nPattern: {}", rule.action, rule.pattern)));
-                return;
-            }
-            Err(e) => {
-                tracing::error!("Adaptive Immune System evaluation failed in SSE: {:?}", e);
-                // fail-open: proceed with caution
-            }
-            _ => {}
         }
 
         let soul_hash = state.get_system_soul_hash().await;

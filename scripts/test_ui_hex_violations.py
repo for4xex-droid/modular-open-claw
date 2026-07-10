@@ -8,9 +8,10 @@ def run_test():
         "apps/management-console/src/components",
         "apps/management-console/src/lib",
     ]
-    # App.tsx は単独ファイルとして追加
+    # App.tsx / biome-popup-entry は単独ファイルとして追加
     extra_files = [
         "apps/management-console/src/App.tsx",
+        "apps/management-console/src/biome-popup-entry.tsx",
     ]
     # .css もスキャン対象（src 全域）。ただしトークン定義ファイル自体は生値を持つのが正しいため除外
     css_root = "apps/management-console/src"
@@ -90,6 +91,6 @@ def run_test():
 
 if __name__ == "__main__":
     print("Running UI Theme Enforcement Test (U-002)...")
-    print("Scope: components/ + lib/ + App.tsx + src/**/*.css (tokens.css excluded) | Patterns: HEX + rgba/rgb")
+    print("Scope: components/ + lib/ + App.tsx + biome-popup-entry.tsx + src/**/*.css (tokens.css excluded) | Patterns: HEX + rgba/rgb")
     print("=" * 60)
     run_test()

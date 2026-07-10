@@ -88,7 +88,13 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 ));
             }
             Err(e) => {
-                tracing::error!("Adaptive Immune System evaluation failed: {:?}", e);
+                tracing::error!(
+                    error = %e,
+                    "[Security] immune verify_intent failed; denying request (fail-closed)"
+                );
+                return Err(
+                    "🚨 [SECURITY BLOCK] Unable to verify immune status. Request denied.".into(),
+                );
             }
             _ => {}
         }
@@ -207,7 +213,11 @@ impl ToolCallRouter for DefaultToolCallRouter {
                                             for addr in addrs {
                                                 if is_private_ip(addr.ip()) {
                                                     found_private = true;
-                                                    error_msg = format!("Blocked private resolved IP: {} for host {}", addr.ip(), host);
+                                                    error_msg = format!(
+                                                        "Blocked private resolved IP: {} for host {}",
+                                                        addr.ip(),
+                                                        host
+                                                    );
                                                     break;
                                                 }
                                             }
@@ -218,9 +228,15 @@ impl ToolCallRouter for DefaultToolCallRouter {
                                         _ => {
                                             if !dev_mode {
                                                 is_malicious = true;
-                                                error_msg = format!("DNS resolution failed or timed out for host: {}", host);
+                                                error_msg = format!(
+                                                    "DNS resolution failed or timed out for host: {}",
+                                                    host
+                                                );
                                             } else {
-                                                tracing::warn!("⚠️ DNS resolution failed or timed out for host '{}' in dev mode. Passing anyway.", host);
+                                                tracing::warn!(
+                                                    "⚠️ DNS resolution failed or timed out for host '{}' in dev mode. Passing anyway.",
+                                                    host
+                                                );
                                             }
                                         }
                                     }
@@ -413,7 +429,8 @@ impl ToolCallRouter for DefaultToolCallRouter {
                                                 // to prevent memory accumulation and stale state.
                                                 tracing::warn!(
                                                     "⏰ MCP tool '{}' on server '{}' timed out after 30s — evicting client to prevent resource leak",
-                                                    sn, cid
+                                                    sn,
+                                                    cid
                                                 );
                                                 state_rc.mcp_manager.remove_client(&cid).await;
                                                 "Error: MCP tool execution timed out after 30s"
@@ -775,6 +792,27 @@ mod tests {
             "must not reach mock executor (Fail-Open regression)"
         );
     }
+
+    #[tokio::test]
+    async fn test_tool_call_router_immune_db_error_fail_closed() {
+        let router = DefaultToolCallRouter;
+        let (state, _guard) = setup_mock_state().await;
+
+        infrastructure::sql_exec!(&state.job_queue.pool, "DROP TABLE immune_rules")
+            .expect("drop immune_rules for negative test");
+
+        let res = router.evaluate_security("hello status check", &state).await;
+        assert!(res.is_err(), "immune DB error must fail-closed");
+        let msg = res.unwrap_err();
+        assert!(
+            msg.contains("Unable to verify immune"),
+            "unexpected message: {msg}"
+        );
+    }
+
+    /// N2 coverage note: SSE initial path (`stream.rs`) calls the same
+    /// `evaluate_security` and yields `security_block`. Full SSE harness is
+    /// omitted; fail-closed logic is asserted here and in agent_engine N3.
 
     #[tokio::test]
     async fn test_tool_call_router_mcp_validate_activity() {

@@ -78,7 +78,9 @@ pub async fn stripe_webhook(
         // related_object は nullable — null の場合は処理せず 200 OK で応答
         let related_obj = &event_val["related_object"];
         if related_obj.is_null() || related_obj["url"].as_str().is_none() {
-            warn!("⚠️ [StripeWebhook] v2 thin event without related_object — acknowledging without processing");
+            warn!(
+                "⚠️ [StripeWebhook] v2 thin event without related_object — acknowledging without processing"
+            );
             return Ok(StatusCode::OK);
         }
         // 借用チェッカー対策: event_val への不変参照を owned String に変換してから可変書き込みを行う
@@ -338,11 +340,21 @@ pub async fn stripe_webhook(
     // `customer.subscription.updated` では付与しない（ステータス変更のたびに発火するため）。
     if event_type == "invoice.paid" {
         if let Some(ref agent_id_str) = pending_unlock_agent {
+            // Fail-soft: DB read errors skip KC grant (same as missing setting). Fail-closed needs separate approval.
             let allowance = super::invoice::parse_monthly_allowance(
-                job_queue
+                match job_queue
                     .get_setting_value("pro_monthly_kc_allowance")
                     .await
-                    .unwrap_or(None),
+                {
+                    Ok(v) => v,
+                    Err(e) => {
+                        warn!(
+                            error = %e,
+                            "[StripeWebhook] pro_monthly_kc_allowance read failed; skipping KC grant"
+                        );
+                        None
+                    }
+                },
             );
             if allowance > 0 {
                 match uuid::Uuid::parse_str(agent_id_str) {
@@ -417,7 +429,10 @@ pub async fn stripe_webhook(
                                 description: format!("Stripe event ID: {}", event_id),
                             })
                         {
-                            warn!("⚠️ [StripeWebhook] Failed to broadcast invoice.payment_failed: {:?}", e);
+                            warn!(
+                                "⚠️ [StripeWebhook] Failed to broadcast invoice.payment_failed: {:?}",
+                                e
+                            );
                         }
                         metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "invoice.payment_failed").increment(1);
                     }
@@ -437,14 +452,19 @@ pub async fn stripe_webhook(
         if let Some(ref agent_id_str) = pending_suspend_agent {
             if let Ok(agent_id) = uuid::Uuid::parse_str(agent_id_str) {
                 if let Some(sender) = state.event_sender.as_opt() {
-                    let _ = sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
-                        event_type: "dispute_received".to_string(),
-                        agent_id,
-                        amount: 0,
-                        currency: "jpy".to_string(),
-                        description: format!("Stripe event ID: {}", event_id),
-                    });
-                    metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "charge.dispute.created").increment(1);
+                    if let Err(e) =
+                        sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
+                            event_type: "dispute_received".to_string(),
+                            agent_id,
+                            amount: 0,
+                            currency: "jpy".to_string(),
+                            description: format!("Stripe event ID: {}", event_id),
+                        })
+                    {
+                        error!("Failed to broadcast dispute_received commerce event: {}", e);
+                    } else {
+                        metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "charge.dispute.created").increment(1);
+                    }
                 }
             }
         }
@@ -467,14 +487,20 @@ pub async fn stripe_webhook(
 
         // 📢 Broadcast CommerceEvent to SSE (Phase B)
         if let Some(sender) = state.event_sender.as_opt() {
-            let _ = sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
+            if let Err(e) = sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
                 event_type: "checkout.session.completed".to_string(),
                 agent_id: agent_uuid,
                 amount,
                 currency: "jpy".to_string(),
                 description: format!("Stripe event ID: {}", ev_id),
-            });
-            metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "checkout.session.completed").increment(1);
+            }) {
+                error!(
+                    "Failed to broadcast checkout.session.completed commerce event: {}",
+                    e
+                );
+            } else {
+                metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "checkout.session.completed").increment(1);
+            }
         }
     }
 

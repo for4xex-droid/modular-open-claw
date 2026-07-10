@@ -245,12 +245,12 @@ impl UniversalJobQueue {
         *p = Some(provider);
     }
 
-    pub async fn get_embedding_provider(&self) -> Option<Arc<dyn EmbeddingProvider>> {
+    pub(crate) async fn get_embedding_provider(&self) -> Option<Arc<dyn EmbeddingProvider>> {
         let p = self.embed_provider.read().await;
         p.clone()
     }
 
-    pub fn with_llm(mut self, llm: Arc<dyn LlmProvider>) -> Self {
+    pub(crate) fn with_llm(mut self, llm: Arc<dyn LlmProvider>) -> Self {
         self.llm = Some(llm);
         self
     }

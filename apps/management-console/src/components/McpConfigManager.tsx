@@ -82,7 +82,7 @@ export const McpConfigManager: React.FC = () => {
             {loading ? <div style={{ padding: '2rem', textAlign: 'center' }}><Loader2 className="ani-spin" size={24} color="var(--accent-amber)" /></div> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        {t('settings.mcpDesc', { defaultValue: 'Define external MCP servers (GA4, Stripe, etc). Safe to use environment variables like $STRIPE_SECRET_KEY. Saving will restart MCP processes dynamically.' })}
+                        {t('settings.mcpDesc', { defaultValue: 'Define external MCP servers (GA4, Stripe, etc). Safe to use environment variables like $STRIPE_API_KEY. Saving will restart MCP processes dynamically.' })}
                     </div>
                     <textarea 
                         className="font-mono"

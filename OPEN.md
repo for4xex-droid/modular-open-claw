@@ -5,6 +5,7 @@
 > **実装手順の正本**:
 > - **直近 Public Beta（Human ゲート中心）**: [`docs/roadmaps/near_term_public_beta_plan.md`](docs/roadmaps/near_term_public_beta_plan.md)（**v5.1**・2026-07-10・`/perfect-plan`+`/reflexion` 検証済み。秘密は AbyssVault、compose への API キー追加は禁止）
 > - **技術負債 Wave 3 以降**: [`docs/roadmaps/remaining_tasks_implementation_plan.md`](docs/roadmaps/remaining_tasks_implementation_plan.md)（v6。Wave 1/2 完了済み）
+> - **TECH_DEBT Top 5（OP-075/054/051/068/029+QW）**: [`docs/roadmaps/tech_debt_top5_plan.md`](docs/roadmaps/tech_debt_top5_plan.md)（**v1.3**・2026-07-10・`/perfect-plan` ✅ PASS。OP-054=可視性のみ）
 > - **リリース全体**: [`docs/roadmaps/release_master_plan.md`](docs/roadmaps/release_master_plan.md)
 >
 > 本台帳は「何が未解決か」のみを管理する。手順の複製はしない。
@@ -42,12 +43,14 @@
 - [ ] **OP-026**: X Signal Probe 設定画面 UI（SettingsPage.tsx, settings.rs）（2026-04-07）
 - [ ] **OP-027**: Stripe API 実装追加時の一元化モック拡充（2026-06-01）
 - [x] **OP-028**: フロントエンド `as any` 型キャスト4箇所の解消（WorkflowBuilder.tsx ×3, workflowConverter.ts ×1）→ **2026-07-05 完了**（release_master_plan R1-14）
-- [x] **OP-029**: `biome-popup-entry.tsx` HEX カラー直書きの解消（U-002 違反）→ **2026-07-05 完了**（OP-066 U3-1 として `lib/biome/*` 含む 13 ファイル・58 違反を一括トークン化。`test_ui_hex_violations.py` 0 violations）
+- [x] **OP-029**: `biome-popup-entry.tsx` HEX → `var(--bg-base)` + ゲート `extra_files` 追加 + html transparent → **2026-07-10 完了**（`test_ui_hex_violations.py` GREEN）
 - [x] **OP-050**: `skills/mod.rs`（1,134行）God Module の責務分解 → 2026-07-03 完了（599行に縮小、code_mode.rs / host_fns.rs / types.rs へ分離。refactor/skills-god-module ブランチ）
-- [ ] **OP-051**: Error 型定義の統一（thiserror/anyhow 混在 10種類 → 3階層）（2026-07-02）
+- [ ] **OP-051**: Error 3 階層 — **ADR-054 起草済み**（`docs/decisions/054-error-hierarchy.md` Proposed）。コード一括置換は承認後（2026-07-02）
 - [x] **OP-052**: `deep-scan.sh` CRATES 設定修正（廃止済み `apps/watchtower` の除外）→ **2026-07-05 完了**（release_master_plan R1-15）
 - [x] **OP-053**: `skills/mod.rs` L163 `unwrap_or_else(|_| loop {})` の安全なエラー伝搬への修正（Dim 10 違反） → 2026-07-03 完了（DUMMY_REGEX 削除、`LazyLock<Option<Regex>>` 化）
-- [ ] **OP-054**: JobQueue トレイトの API 乖離解消（補助メソッドのトレイト引き上げ or private 化）（2026-07-02）
+- [x] **OP-054**: JobQueue 補助 API 可視性（`with_llm` / `get_embedding_provider` → `pub(crate)`）→ **2026-07-10 完了**（計画 v1.3。契約ギャップ DI は除外）
+- [x] **OP-075**: Immune Fail-Closed — `evaluate_security` + stream 初期 / agent_engine 集約。N1 router + N3 agent_engine（`immune_db_error_fail_closed`）+ Positive sentinel。N2 は共有経路で担保。→ **2026-07-10 完了**（運用注意: DB 障害時チャット拒否）
+- [x] **OP-076**: MCP/i18n/example を `$STRIPE_API_KEY` に統一（Nurture `STRIPE_SECRET_KEY` は非変更）→ **2026-07-10 完了**
 - [x] **OP-055**: `immune_system.rs` 内 MockJQ（約700行）の共有化 → 2026-07-03 完了（新クレートではなく `infrastructure::testing::mock_jq` クレート内モジュールとして抽出）
 - [x] **OP-056**: フロント `useWorkflowApi` の `POST /api/v1/workflows/validate` とバックエンド `/api/v1/workflows/:id/validate` のパス不整合 → **2026-07-05 完了**（release_master_plan R1-13）
 - [x] **OP-057**: LP Stripe 決済基盤（Payment Link URL・Price ID・ローカル `.env`）→ 2026-07-05 完了（`plink_1TpXHCBcUTwo5TwLnO1BJneY` / `price_1TpXFpBcUTwo5TwLmK9SQbKL`）。**本番反映・Human 作業は ⏸️ 凍結 OP-057-R へ移管**（(2) 決済→Pro コードは 2026-07-05 完了済み）

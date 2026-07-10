@@ -33,7 +33,7 @@ async function boot() {
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                background: '#030712',
+                background: 'var(--bg-base)',
                 overflow: 'hidden'
               }}>
                 <BiomeGame standalone={true} />

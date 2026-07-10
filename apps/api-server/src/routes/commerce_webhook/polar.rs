@@ -200,14 +200,22 @@ pub async fn polar_webhook(
     if let Some(agent_id_str) = pending_unlock_agent {
         if let Ok(agent_id) = uuid::Uuid::parse_str(&agent_id_str) {
             if let Some(sender) = state.event_sender.as_opt() {
-                let _ = sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
-                    event_type: "invoice.paid".to_string(),
-                    agent_id,
-                    amount: 0,
-                    currency: "jpy".to_string(),
-                    description: format!("Polar event ID: {}", event_id),
-                });
-                metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "invoice.paid").increment(1);
+                if let Err(e) =
+                    sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
+                        event_type: "invoice.paid".to_string(),
+                        agent_id,
+                        amount: 0,
+                        currency: "jpy".to_string(),
+                        description: format!("Polar event ID: {}", event_id),
+                    })
+                {
+                    error!(
+                        "Failed to broadcast Polar invoice.paid commerce event: {}",
+                        e
+                    );
+                } else {
+                    metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "invoice.paid").increment(1);
+                }
             }
         }
     }
@@ -215,14 +223,22 @@ pub async fn polar_webhook(
     if let Some(agent_id_str) = pending_suspend_agent {
         if let Ok(agent_id) = uuid::Uuid::parse_str(&agent_id_str) {
             if let Some(sender) = state.event_sender.as_opt() {
-                let _ = sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
-                    event_type: "invoice.payment_failed".to_string(),
-                    agent_id,
-                    amount: 0,
-                    currency: "jpy".to_string(),
-                    description: format!("Polar event ID: {}", event_id),
-                });
-                metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "invoice.payment_failed").increment(1);
+                if let Err(e) =
+                    sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
+                        event_type: "invoice.payment_failed".to_string(),
+                        agent_id,
+                        amount: 0,
+                        currency: "jpy".to_string(),
+                        description: format!("Polar event ID: {}", event_id),
+                    })
+                {
+                    error!(
+                        "Failed to broadcast Polar invoice.payment_failed commerce event: {}",
+                        e
+                    );
+                } else {
+                    metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "invoice.payment_failed").increment(1);
+                }
             }
         }
     }
@@ -243,14 +259,20 @@ pub async fn polar_webhook(
         .await;
 
         if let Some(sender) = state.event_sender.as_opt() {
-            let _ = sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
+            if let Err(e) = sender.send(aiome_core_contracts::events::CoreEvent::CommerceEvent {
                 event_type: "checkout.completed".to_string(),
                 agent_id: agent_uuid,
                 amount,
                 currency: "jpy".to_string(),
                 description: format!("Polar event ID: {}", ev_id),
-            });
-            metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "checkout.session.completed").increment(1);
+            }) {
+                error!(
+                    "Failed to broadcast Polar checkout.completed commerce event: {}",
+                    e
+                );
+            } else {
+                metrics::counter!("aiome_commerce_events_broadcast_total", "type" => "checkout.session.completed").increment(1);
+            }
         }
     }
 

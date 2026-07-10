@@ -1,9 +1,9 @@
 # 残存タスク Foolproof 実装計画（v6・実装コピペ確定版）
 
 > **作成**: 2026-07-09  
-> **改訂**: 2026-07-10（§10 着手テンプレ更新。Wave 1/2 完了を反映）  
+> **改訂**: 2026-07-10（§10 着手テンプレ更新。Wave 1/2 完了・OP-054 可視性完了・ADR-054 起草を反映）  
 > **改訂**: 2026-07-09 **v6**（v5 再監査。sql_exec 確定形・死んだヘルパー・commerce 既存モック再利用を固定）  
-> **ステータス**: Wave 1/2 **完了**（2026-07-09〜10）。Wave 3（OP-054/051）は設計承認待ち。直近 Public Beta は [`near_term_public_beta_plan.md`](near_term_public_beta_plan.md)  
+> **ステータス**: Wave 1/2 **完了**。OP-054（可視性）**完了**（2026-07-10）。OP-051 は **ADR-054 Proposed**（コード置換は Accepted 後）。直近 Public Beta は [`near_term_public_beta_plan.md`](near_term_public_beta_plan.md)  
 > **タスク正本**: [`OPEN.md`](../../OPEN.md)
 
 ---
@@ -44,8 +44,8 @@
 | OP-069 | create_test_app_state（3 置換 + 1 削除）+ ADR-053 | 1 |
 | OP-061 | OXP generate_header 統一 🔐 | 2 |
 | OP-060 | outbox_dead_letters 再送 🔐 | 2 |
-| OP-054 | JobQueue 補助 API | 3 |
-| OP-051 | Error 3 階層（設計承認後） | 3 |
+| OP-054 | JobQueue 補助 API 可視性 | 3 ✅ 2026-07-10 |
+| OP-051 | Error 3 階層（ADR-054 Accepted 後） | 3（ADR 起草済） |
 
 ```
 OP-024 → OP-067 → OP-069 →（承認）OP-061 → OP-060 → OP-054 →（設計承認）OP-051
@@ -309,18 +309,21 @@ URL/secret 未設定かつ DLQ 行がある場合は `error!` ログ + 行保持
 
 ## 7. Wave 3
 
-### OP-054
+> **拡張正本（TECH_DEBT Top 5）**: [`tech_debt_top5_plan.md`](tech_debt_top5_plan.md) **v1.3**（`/perfect-plan` PASS）— OP-054 は **可視性のみ・完了**（旧 B 削除・ADR-031 ISP 非対象）。OP-075 / OP-029 / OP-076 も同計画で **完了**（2026-07-10）。OP-051 は ADR-054 Proposed。
 
-| メソッド | 方針 |
-|----------|------|
-| `with_llm` | 呼び出しゼロ → `pub(crate)` |
-| `from_pool` | `pub` 維持 |
-| `set_embedding_provider` | `pub` 維持（api-server） |
-| `get_embedding_provider` | `pub(crate)` 候補 |
+### OP-054 — ✅ 完了（2026-07-10）
 
-### OP-051
+| メソッド | 方針 | 結果 |
+|----------|------|------|
+| `with_llm` | 呼び出しゼロ → `pub(crate)` | ✅ |
+| `from_pool` | `pub` 維持 | 維持 |
+| `set_embedding_provider` | `pub` 維持（api-server） | 維持 |
+| `get_embedding_provider` | `pub(crate)` | ✅ |
+| （旧 B）Federation / Evaluation DI | **やらない** — `main.rs` は既に `FederationOps` 経由 | 除外確定 |
 
-`error_handling.md` §2 を正本に 3 階層 Decision（ADR-054 等）。一括置換禁止。設計承認後。
+### OP-051 — ADR 起草済（コード未着手）
+
+`error_handling.md` §2 を正本に 3 階層 Decision（[`ADR-054`](../decisions/054-error-hierarchy.md) **Proposed**）。一括置換禁止。**Accepted 後**に実装計画を別途。詳細は [`tech_debt_top5_plan.md`](tech_debt_top5_plan.md) §4。
 
 ---
 
@@ -359,9 +362,9 @@ OP-024 / OP-067 / OP-069 / OP-061 / OP-060 は 2026-07-09〜10 に完了済み�
 Wave 3（OP-054/OP-051）およびメタバース/CCI News には触れません。
 ```
 
-### Wave 3（設計承認後のみ）
+### Wave 3（OP-054 完了・OP-051 は ADR Accepted 後）
 
 ```
-現在は Wave 3 実装フェーズです。OP-054 から着手します（OP-051 は設計承認後）。
+OP-054 は完了済み。OP-051 は ADR-054 Accepted 後のみ着手。
 NT-* / Safety-Critical commerce には触れません。
 ```

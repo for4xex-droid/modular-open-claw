@@ -69,7 +69,7 @@ pub async fn discover_and_connect(
                     "args": [],
                     "url": "http://mcp-server:3000/mcp",
                     "headers": {
-                        "Authorization": "Bearer $STRIPE_SECRET_KEY"
+                        "Authorization": "Bearer $STRIPE_API_KEY"
                     }
                 },
                 "firecrawl": {

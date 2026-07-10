@@ -1,3 +1,16 @@
+## 🔍 TECH_DEBT Top5 OP-075/054/029/076 + ADR-054（2026-07-10）
+
+- **変更内容**:
+    - `apps/api-server/src/tool_call_router.rs` [MODIFY]: Immune `verify_intent` `Err` → Fail-Closed（`evaluate_security`）。
+    - `apps/api-server/src/stream.rs` / `agent_engine.rs` [MODIFY]: 初期経路を同一 `evaluate_security` に集約。
+    - `libs/infrastructure/src/job_queue/mod.rs` [MODIFY]: `with_llm` / `get_embedding_provider` → `pub(crate)`（OP-054）。
+    - UI HEX（OP-029）: `biome-popup-entry.tsx` / `biome-popup.html` + hex ゲート。
+    - MCP Stripe 命名（OP-076）: discovery / i18n / example / `.env.example` → `$STRIPE_API_KEY`。
+    - `docs/decisions/054-error-hierarchy.md` [NEW]: OP-051 三階層（Proposed・コード未置換）。
+    - `docs/roadmaps/tech_debt_top5_plan.md` [NEW]: v1.3 実装正本。
+- **波及効果**: `immune_rules` DB 障害時はチャット/MCP 入力拒否（baseline 正規表現は継続）。Nurture `STRIPE_SECRET_KEY` は非変更。ADR-031 ISP / AppState `dyn JobQueue` は対象外。
+- **ドキュメント同期 (2026-07-10 /docs-sync)**: SECURITY_DESIGN / WHITEPAPER / ADR-033 / error_handling（ADR-054 リンク）/ OPERATIONS_MANUAL v3.7 / INFRASTRUCTURE_MODULES / release_master_plan / remaining_tasks / CHANGELOG。
+
 ## 🔍 Wave 2 OP-060/061（2026-07-09 / reflexion 2026-07-10）
 
 - **変更内容**:

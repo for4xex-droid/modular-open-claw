@@ -6,14 +6,14 @@
  */
 
 use crate::error::AppError;
+use crate::tool_call_router::{DefaultToolCallRouter, ToolCallRouter};
 use crate::AppState;
 use aiome_core::error::AiomeError;
 use aiome_core::traits::{ChatStore, KarmaRegistry, SettingsOps};
 use aiome_core_contracts::events::CoreEvent;
-use shared::guardrails;
 use std::time::Duration;
 use tokio::time::timeout;
-use tracing::{error, warn};
+use tracing::error;
 
 // --- Backward compatibility exports ---
 pub(crate) use crate::system_instructions::*;
@@ -68,37 +68,13 @@ impl AgentEngine {
         channel_id: Option<String>,
         user_agent_id: uuid::Uuid,
     ) -> Result<String, AppError> {
-        // 1. Guardrails & Security
-        if let guardrails::ValidationResult::Blocked(reason) = guardrails::validate_input(prompt) {
-            return Ok(format!("🚨 [GUARDRAIL BLOCK] {}", reason));
+        // 1. Guardrails & Immune (Fail-Closed via ToolCallRouter)
+        let router = DefaultToolCallRouter;
+        if let Err(block_msg) = router.evaluate_security(prompt, state).await {
+            return Ok(block_msg);
         }
 
         let provider = state.provider.get_inner().clone();
-        let immune_system =
-            infrastructure::immune_system::AdaptiveImmuneSystem::new(provider.clone());
-        match immune_system
-            .verify_intent(prompt, &**state.job_queue.get_inner())
-            .await
-        {
-            Ok(Some(rule)) => {
-                warn!(
-                    "Sentinel Block activated in AgentEngine: pattern `{}`",
-                    rule.pattern
-                );
-                return Ok(format!(
-                    "🚨 [SENTINEL BLOCK] Security violation detected. Pattern: {}",
-                    rule.pattern
-                ));
-            }
-            Err(e) => {
-                error!(
-                    "Adaptive Immune System evaluation failed in AgentEngine: {:?}",
-                    e
-                );
-                // fail-open: proceed with caution
-            }
-            _ => {}
-        }
 
         let actual_channel_id = channel_id.unwrap_or_else(|| "default_console".to_string());
 
@@ -294,7 +270,7 @@ impl AgentEngine {
                     return Err(AiomeError::Infrastructure {
                         reason: "LLM Timeout".into(),
                     }
-                    .into())
+                    .into());
                 }
             }
         }
@@ -362,7 +338,10 @@ impl AgentEngine {
                             } else {
                                 tracing::info!(
                                     "💳 [Billing] Deducted {} coins for autonomous_inference (Model: {}, Tokens In/Out: {}/{})",
-                                    cost, model_name, token_in, token_out
+                                    cost,
+                                    model_name,
+                                    token_in,
+                                    token_out
                                 );
                             }
                         }
@@ -392,8 +371,12 @@ impl AgentEngine {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::app_state::Component;
     use crate::routes::agent::should_trigger_diagnostics;
     use aiome_core::trajectory::TrajectoryStep;
+    use serial_test::serial;
+    use std::sync::Arc;
 
     #[test]
     fn test_should_trigger_diagnostics() {
@@ -410,6 +393,73 @@ mod tests {
         assert!(
             should_trigger_diagnostics(&[step2.clone()]),
             "Critical failure should trigger"
+        );
+    }
+
+    #[serial]
+    #[tokio::test]
+    async fn test_agent_engine_immune_db_error_fail_closed() {
+        let (_server, state, _tmp) = crate::api_integration_tests::create_test_server().await;
+
+        infrastructure::sql_exec!(&state.job_queue.pool, "DROP TABLE immune_rules")
+            .expect("drop immune_rules for negative test");
+
+        let reply = AgentEngine::chat(
+            &state,
+            "hello status check",
+            Some("reflexion-n3".into()),
+            uuid::Uuid::new_v4(),
+        )
+        .await
+        .expect("chat returns Ok(block string), not AppError");
+
+        assert!(
+            reply.contains("Unable to verify immune") || reply.contains("[SECURITY BLOCK]"),
+            "expected fail-closed security block, got: {reply}"
+        );
+    }
+
+    #[serial]
+    #[tokio::test]
+    async fn test_agent_engine_sentinel_block_ok_string() {
+        let (_server, mut state, _tmp) = crate::api_integration_tests::create_test_server().await;
+
+        #[derive(Debug)]
+        struct DummyLlm;
+        #[async_trait::async_trait]
+        impl aiome_core::llm_provider::LlmProvider for DummyLlm {
+            async fn complete(
+                &self,
+                _prompt: &str,
+                _sys: Option<&str>,
+            ) -> Result<aiome_core_contracts::llm::LlmResponse, AiomeError> {
+                Ok(aiome_core_contracts::llm::LlmResponse {
+                    content: "should not run".into(),
+                    stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
+                    ..Default::default()
+                })
+            }
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+            fn name(&self) -> &str {
+                "DummyLlm"
+            }
+        }
+        state.provider = Component::new(Arc::new(DummyLlm));
+
+        let reply = AgentEngine::chat(
+            &state,
+            "please run rm -rf / now",
+            Some("reflexion-sentinel".into()),
+            uuid::Uuid::new_v4(),
+        )
+        .await
+        .expect("sentinel returns Ok(string)");
+
+        assert!(
+            reply.contains("[SENTINEL BLOCK]") || reply.contains("[GUARDRAIL BLOCK]"),
+            "expected sentinel/guardrail block, got: {reply}"
         );
     }
 }

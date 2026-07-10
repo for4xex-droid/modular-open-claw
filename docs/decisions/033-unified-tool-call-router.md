@@ -28,11 +28,14 @@ All call sites in `stream.rs`, `agent_engine.rs`, and `mcp/server.rs` were modif
 ### Positive
 - **Architectural Invincibility**: Eliminates the "split-brain" execution model. Security policies and constraints (`Guardrails`, `ImmuneSystem`, `Hooks`) cannot be bypassed by newly introduced asynchronous endpoints.
 - **Fail-Closed Execution**: If `Guardrails` detects an injection attempt, the SSE stream or task immediately halts and returns an error without ever attempting to parse the malicious JSON.
+- **Immune DB Fail-Closed (OP-075, 2026-07-10)**: Implementation now matches this ADR: `verify_intent` `Err` denies via `evaluate_security`. `stream` initial path and `agent_engine` call the same API (no duplicated fail-open branches).
 - **Maintainability**: Duplicated tool preparation code in `stream.rs` and `agent_engine.rs` was deleted, drastically reducing the cognitive load required to understand the execution loop. `process_generated_tool_calls` was simplified from 6 arguments to 4 arguments by delegating logic to the router.
 
 ### Negative
 - All mock implementations and unit tests heavily test `ToolCallRouter`. To suppress clippy warnings, we had to introduce `#[cfg(test)]` bypass blocks within `tool_call_router.rs` to skip `Arc` initialization of complex systems like `SamsaraHub` during simple tests.
+- Transient `immune_rules` DB outages deny chat/MCP input (availability trade-off; baseline regexes still apply).
 
 ## See Also
-- [SECURITY_DESIGN.md](../SECURITY_DESIGN.md) (Layer 2: Unified Precedence)
-- [INFRASTRUCTURE_MODULES.md](../INFRASTRUCTURE_MODULES.md) (skills module HookChain)
+- [SECURITY_DESIGN.md](../architecture/SECURITY_DESIGN.md) (Layer 2: Unified Precedence; OP-075)
+- [INFRASTRUCTURE_MODULES.md](../architecture/INFRASTRUCTURE_MODULES.md) (skills module HookChain)
+- [tech_debt_top5_plan.md](../roadmaps/tech_debt_top5_plan.md) v1.3

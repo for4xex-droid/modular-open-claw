@@ -382,7 +382,7 @@
     "errorSaving": "保存エラー",
     "invalidJson": "無効なJSON形式またはネットワークエラー",
     "mcpArchitecture": "MCP アーキテクチャ (アナリティクス & ツール)",
-    "mcpDesc": "外部のMCPサーバー (GA4, Stripe等) を定義します。$STRIPE_SECRET_KEY などの環境変数が安全に使用できます。保存するとMCPプロセスが動的に再起動します。",
+    "mcpDesc": "外部のMCPサーバー (GA4, Stripe等) を定義します。$STRIPE_API_KEY などの環境変数が安全に使用できます。保存するとMCPプロセスが動的に再起動します。",
     "saveSyncTools": "保存してツールを同期",
     "language": "言語",
     "monthlySpendLimit": "月間支出上限（KC、0 = 無制限）",

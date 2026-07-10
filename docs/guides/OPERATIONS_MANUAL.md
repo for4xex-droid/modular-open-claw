@@ -1,5 +1,5 @@
 # Aiome Operations Manual — 実用運用ガイド
-**Version:** 3.6  
+**Version:** 3.7  
 **Last Updated:** 2026-07-10
 
 ---
@@ -59,6 +59,9 @@ WP_API_URL=https://your-wordpress-site.com
 WP_API_TOKEN=your_jwt_or_app_password
 
 # --- MCP Tool API Keys ---
+# Stripe MCP / discovery のプレースホルダは $STRIPE_API_KEY（api-server 正本）。
+# Nurture 連盟の STRIPE_SECRET_KEY は別系統（混同禁止）。
+STRIPE_API_KEY=sk_test_your_key_here
 DISCORD_TOKEN=your_discord_bot_token
 NOTION_API_KEY=your_notion_integration_token
 X_API_KEY=your_x_api_key
