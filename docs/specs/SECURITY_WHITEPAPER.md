@@ -1,6 +1,6 @@
 # Aiome: セキュリティ仕様書 (Security Whitepaper)
 
-**最終更新日: 2026-07-03**
+**最終更新日: 2026-07-10**
 
 ## 0. はじめに
 Aiome は、自律型 AI が直面する特有のセキュリティ脅威から、お客様の資産（APIクォータ、機密データ、稼働ログ）を守り抜くために設計されています。
@@ -36,6 +36,8 @@ LLM（プランナー）が生成した複数ステップから成る「行動�
 *   **JWT iss/aud Pinning (2026-07)**: `JWT_ISSUER` / `JWT_AUDIENCE` 環境変数が設定されている場合、トークン検証時に issuer / audience を強制します。
 *   **Parse-What-You-Need (構造的デシリアライズ耐性)**: 外部決済サービスの API バージョンアップに伴う予期せぬ JSON 構造の変更によってシステム全体がパニックを起こすのを防ぐため、Webhook のデシリアライズ処理には不要なフィールドを無視する（`#[serde(ignore)]` 等）スワローレイヤーを設計しています。これにより、決済の疎結合な強靭性 (Resilience) が維持されます。
 *   **ADR-009 Karma Generation Path (経済整合性の保護)**: 決済トランザクション完了時に付与される「Karma」は、直接データベースの台帳(Ledger)を操作することをアーキテクチャレベルで禁止し、必ず `Webhook -> AgentHook -> KarmaForge` の一方向イベントフローを経由するよう強制（ADR-009）しています。これにより、未決済の状態で Karma のみが不正に生成される「ゴーストステート」を物理的に遮断します。
+*   **OXP Fail-Closed & Coin-charge DLQ (OP-061 / OP-060, 2026-07-10)**: Nurture 向け経済プロキシは `OxiLeanProofCertificate::generate_header` で署名し、生成失敗時は送信しない（`require_oxp_header`）。coin-charge 失敗は `outbox_dead_letters` に退避し、`coin_charge_dlq_worker` が自動再送する（再 INSERT 禁止・poison 隔離）。
+*   **RTBF Nurture Cascade (OP-061, 2026-07-10)**: `DELETE /api/v1/auth/delete` は `NURTURE_INTERNAL_SECRET` で OXP+Bearer を付与し `/internal/forget` へ伝播する。URL 正本は `NURTURE_API_URL`。secret 欠落はローカル削除前に 500。Nurture HTTP/ネットワーク失敗時はローカル `forget_actor` を継続する（Chesterton）。**`API_SERVER_SECRET` で forget を署名してはならない。**
 
 ## 1.7. Data Flow & Boundary Defense (Taint Tracking Paradigm)
 外部入力に由来する汚染データ（Taint）が、ファイルシステムや外部コマンド実行などの危険な Sink に到達することを防ぐため、Rust の第一原理に基づいた堅牢な防衛線を構築しています。
@@ -129,4 +131,4 @@ Aiome は連邦学習（Federation）機能を備えていますが、この通�
 Aiome のセキュリティは、「隠すこと」ではなく「破られない構造を作ること」に重点を置いています。たとえ内部ソースコードが公開されたとしても、数学的・物理的、強固なカオス耐性、そして OS アーキテクチャ上の制約によって、お客様の API キーやデータの完全性は守られ続けます。
 
 ---
-*最終更新: 2026-07-03 (Asia/Tokyo) - Internal S2S idempotency, auth token rate limit, JWT iss/aud pinning, key-proxy query auth removal*
+*最終更新: 2026-07-10 (Asia/Tokyo) — OP-061 OXP/RTBF fail-closed、OP-060 CoinChargeDlq、Internal S2S idempotency / auth rate limit / JWT iss/aud / key-proxy query auth removal*

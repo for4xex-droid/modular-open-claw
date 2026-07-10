@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
-**Version:** 3.5  
-**Last Updated:** 2026-07-07
+**Version:** 3.6  
+**Last Updated:** 2026-07-10
 
 ---
 
@@ -92,8 +92,8 @@ CONTAINER_RUNTIME=podman                         # DockerConductor/ Delegator �
 LOCAL_LLM_CONCURRENCY=2                          # Fast tier 用ローカルモデルへの同時実行セマフォ制限数 (デフォルト: 2)
 
 # --- Nurture Hybrid Mode (Desktop) ---
-NURTURE_INTERNAL_SECRET=your_secret              # Nurture-API とのS2S認証用シークレット
-NURTURE_API_URL=http://localhost:3020            # Nurture-APIのローカルサイドカーURL
+NURTURE_INTERNAL_SECRET=your_secret              # S2S 認証 + OXP 署名鍵（coin-charge / forget / stripe proxy 共通。API_SERVER_SECRET とは別）
+NURTURE_API_URL=http://localhost:3020            # Nurture URL 正本（coin-charge / DLQ / forget / settings が参照。DB system_settings ではない）
 NURTURE_DRM_MASTER_KEY=your_drm_key              # release 必須。Desktop debug は {data_dir}/.nurture_drm_master_key を自動生成・永続化
 # NURTURE_CLOUD_URL=https://nurture.your-domain.com # リモートの Nurture インスタンスを使用する場合設定
 # NURTURE_DISABLED=true                           # 経済機能を無効化しOSSモードで動作させる場合設定
@@ -245,6 +245,8 @@ RUST_LOG=info cargo run -p api-server
 - [ ] 運用アラート: Discord Webhook アラート送信のために `.env` に `DISCORD_WEBHOOK_URL` を設定 (Phase C-4)
 - [ ] Tauri デスクトップビルド: `scripts/desktop_sidecar_manager.py` によるサイドカーバイナリの物理検証（`--check-core` または `--check-all`）を実行し、合格していることを確認 (Reflexion)
 - [ ] Tauri 環境変数: Nurture をローカル稼働させる場合は `.env` で `NURTURE_INTERNAL_SECRET` が安全に定義されているか確認。リモート利用時は `NURTURE_CLOUD_URL` が正しく設定されているか確認 (Reflexion)
+- [ ] **Nurture S2S (OP-061)**: `NURTURE_API_URL` と `NURTURE_INTERNAL_SECRET` をセットで設定。forget / coin-charge / stripe proxy は同鍵で OXP+Bearer。URL のみ・secret なしは forget が 500（fail-closed）
+- [ ] **Coin-charge DLQ (OP-060)**: 起動ログに `Coin Charge DLQ worker` が出ること。`outbox_dead_letters` の `coin_charge_failed` が滞留し続ける場合は URL/secret/Nurture 到達性を確認（不正 JSON は `coin_charge_failed_poison` に隔離）
 - [ ] Tauri デスクトップ (release): `NURTURE_DRM_MASTER_KEY` が環境変数または `{data_dir}/.nurture_drm_master_key` で解決できるか確認
 - [ ] api-server (release): `A2A_NODE_TOKEN` が設定されているか確認（未設定時は起動失敗）
 - [ ] nurture-api (cloud-storage): `S3_BUCKET_NAME` が設定されているか確認（未設定時は Mock へフォールバックせず起動エラー）

@@ -285,12 +285,29 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 use aiome_core::traits::SettingsOps;
                 let agent_id = state_rc.system_agent_id;
                 let key = format!("agency.{}.mcp_suspended", agent_id);
-                if let Ok(Some(val)) = state_rc.job_queue.get_setting_value(&key).await {
-                    if val == "true" {
+                match state_rc.job_queue.get_setting_value(&key).await {
+                    Ok(Some(val)) if val == "true" => {
                         emit_tool_event(
                             &tx_clone,
                             ToolExecutionEvent::Error(
                                 "[Billing] MCP access suspended. Please update payment method."
+                                    .to_string(),
+                            ),
+                        )
+                        .await;
+                        return;
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        tracing::error!(
+                            error = %e,
+                            setting_key = %key,
+                            "[Billing] mcp_suspended setting read failed; denying MCP tool (fail-closed)"
+                        );
+                        emit_tool_event(
+                            &tx_clone,
+                            ToolExecutionEvent::Error(
+                                "[Billing] Unable to verify MCP billing status. Request denied."
                                     .to_string(),
                             ),
                         )
@@ -721,6 +738,41 @@ mod tests {
         assert!(
             got_suspend_error,
             "MCP suspended guard should emit an error event"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_tool_call_router_mcp_suspend_setting_db_error_fail_closed() {
+        let router = DefaultToolCallRouter;
+        let (mut state, _guard) = setup_mock_state().await;
+
+        let chain = HookChain::new();
+        state.hook_chain = Component::new(Arc::new(chain));
+        state.system_agent_id = uuid::Uuid::new_v4();
+
+        infrastructure::sql_exec!(&state.job_queue.pool, "DROP TABLE system_settings")
+            .expect("drop system_settings for negative test");
+
+        let mut rx = router.execute_skill("some_mcp_tool", "{}", &state).await;
+
+        let mut denied = false;
+        let mut got_result = false;
+        while let Some(evt) = rx.recv().await {
+            match evt {
+                ToolExecutionEvent::Error(msg)
+                    if msg.contains("Unable to verify MCP billing status") =>
+                {
+                    denied = true;
+                }
+                ToolExecutionEvent::Result(_) => got_result = true,
+                _ => {}
+            }
+        }
+
+        assert!(denied, "DB error must fail-closed");
+        assert!(
+            !got_result,
+            "must not reach mock executor (Fail-Open regression)"
         );
     }
 

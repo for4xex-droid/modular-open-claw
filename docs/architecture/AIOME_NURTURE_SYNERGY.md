@@ -3,7 +3,7 @@
 > 要件正本: [`docs/specs/NURTURE_REQUIREMENTS_V2.md`](../specs/NURTURE_REQUIREMENTS_V2.md)（2026-07-06）
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-07-07（品質最大化計画 v4 + /reflexion 反映）  
+> **最終更新**: 2026-07-10（Wave 2 OP-060/061: DLQ 再送 + forget/OXP を `NURTURE_INTERNAL_SECRET` + `NURTURE_API_URL` に統一）  
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -440,8 +440,48 @@ sequenceDiagram
             API->>DLQ: INSERT outbox_dead_letters (id, event_type, payload, error_reason)
             note over API,DLQ: ログ先行出力でデータ消失ゼロを保証
         end
+
+        loop OP-060 CoinChargeDlq (起動直後 + 60s, CancellationToken)
+            API->>DLQ: SELECT coin_charge_failed LIMIT 10
+            API->>NAPI: POST /internal/coin-charge (attempt_coin_charge_once, OXP fail-closed)
+            alt 200 OK
+                API->>DLQ: DELETE row
+            else 不正 JSON
+                API->>DLQ: UPDATE event_type=coin_charge_failed_poison
+            else 失敗 / 設定欠落
+                note over API,DLQ: 行保持（再 INSERT なし）
+            end
+        end
     end
     API-->>Stripe: 200 OK
+```
+
+### 5.4.0 GDPR/RTBF — アカウント削除 → Nurture forget カスケード（OP-061）
+
+```mermaid
+sequenceDiagram
+    participant User as Authenticated User
+    participant Auth as api-server auth.rs
+    participant DB as Aiome DB
+    participant NAPI as nurture-api
+
+    User->>Auth: DELETE /api/v1/auth/delete
+    Auth->>Auth: nurture_url = state.nurture_url (NURTURE_API_URL)
+    alt URL 未設定
+        note over Auth: Nurture スキップ（nurture_pii_scrubbed=false）
+    else URL あり・secret なし
+        Auth-->>User: 500 fail-closed（ローカル削除前）
+    else URL + NURTURE_INTERNAL_SECRET
+        Auth->>Auth: OXP generate_header(aiome_system, 1000, secret)
+        Auth->>NAPI: POST /internal/forget/{agent_id}<br/>Authorization: Bearer + X-OxiLean-Proof-Certificate
+        alt 2xx
+            note over Auth: nurture_notified=true
+        else 4xx/5xx / transport Err
+            note over Auth: Chesterton — ローカル RTBF 継続<br/>nurture_pii_scrubbed=false
+        end
+    end
+    Auth->>DB: forget_actor(agent_id) 原子パージ
+    Auth-->>User: 200 { status: deleted, nurture_pii_scrubbed }
 ```
 
 ### 5.4.1 Polar Webhook イベント処理 → サブスクリプション & ライセンス同期 (P-1)
@@ -1202,6 +1242,7 @@ gantt
 | **MCP 品質ゲート監査** | MCP サーバーからロードされるツールの総数バジェット（警告上限15）および説明文品質（20文字未満）を自動的に監査。低品質なツールや過剰なMCPサーバー接続からくるエージェントのパフォーマンス低下や競合リスクを未然に防止。 |
 | **公式 X (Twitter) MCP 統合** | 公式 X MCP クライアントとの stdio 連携テンプレート、および `TrendSonar` の adapter 連動を整備。自律トレンド収集の精度と速度を大幅に向上。 |
 | **品質最大化 v4（2026-07-07）** | `nurture_wishlist` + `CommerceEngine::get_wishlist`（残高不足シグナル）、`POST /commerce/convert-points`（ADR-052）、P2P デフォルトブロック、`forget_actor` で wishlist パージ、Management Console の `CoinBalanceProvider` / `useCoinBalance` による KC 残高 fetch 集約、`NURTURE_A2C_DRY_RUN` による A2C 2段階有効化 |
+| **Wave 2 OP-060/061（2026-07-10）** | coin-charge DLQ 自動再送（`coin_charge_dlq_worker`、poison 隔離、再 INSERT 禁止）。OXP は `generate_header` 統一 + stripe `require_oxp_header` fail-closed。forget は `NURTURE_INTERNAL_SECRET` OXP+Bearer、URL 正本は `NURTURE_API_URL`（`state.nurture_url`） |
 
 
 ---

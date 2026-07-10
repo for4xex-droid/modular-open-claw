@@ -1022,13 +1022,28 @@ async fn test_stripe_webhook_coin_charge_rejected_without_oxp() {
 
     response.assert_status(axum::http::StatusCode::OK);
 
-    // Wait for background relay retries to exhaust (3 retries with backoff)
-    tokio::time::sleep(std::time::Duration::from_secs(4)).await;
+    // Wait for background relay retries to exhaust (3 attempts: sleep 1s + 5s between)
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     let sync_count = sync_counter.load(std::sync::atomic::Ordering::SeqCst);
     assert_eq!(
         sync_count, 0,
         "Coin charge should be rejected when OXP < 900"
+    );
+
+    // OXP=0 → 3 リトライ後に DLQ へ書込されること（W-1(3) / synergy plan）
+    let pool = state.db_pool.get_inner();
+    let dlq_count: (i64,) = infrastructure::sql_fetch_one!(
+        &**pool,
+        (i64,),
+        sqlite: "SELECT COUNT(*) FROM outbox_dead_letters WHERE event_type = 'coin_charge_failed'",
+        pg: "SELECT COUNT(*) FROM outbox_dead_letters WHERE event_type = 'coin_charge_failed'"
+    )
+    .expect("DLQ count query");
+    assert!(
+        dlq_count.0 >= 1,
+        "OXP rejection must enqueue coin_charge_failed into outbox_dead_letters, got {}",
+        dlq_count.0
     );
 }
 

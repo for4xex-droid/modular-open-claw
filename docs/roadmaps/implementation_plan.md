@@ -25,8 +25,8 @@ Deep Audit v2 で発見された **Federation 層のハリボテ化**、**scrub_
 ### 即時修正（CRITICAL — 1日以内）
 
 #### [MODIFY] [auth.rs](../../apps/api-server/src/routes/auth.rs)
-- **問題:** L223 の `std::env::var("API_SERVER_SECRET")` が bootstrap の `scrub_env` と矛盾し、アカウント削除APIが常に失敗する
-- **修正:** `AppState.api_server_secret: Arc<SecretString>` を使用。`delete_account_handler` に `State(state)` から取得するように変更
+- **問題（当時）:** `std::env::var("API_SERVER_SECRET")` が bootstrap の `scrub_env` と矛盾し、アカウント削除APIが常に失敗する
+- **修正（完了・OP-061 追完 2026-07-10）:** Nurture forget は `state.nurture_internal_secret`（`NURTURE_INTERNAL_SECRET`）で OXP 署名 + `Authorization: Bearer`。URL は `state.nurture_url`（`NURTURE_API_URL`）。**`API_SERVER_SECRET` で forget を署名してはならない**（Nurture 側は `NURTURE_INTERNAL_SECRET` で検証する）
 
 #### [MODIFY] [forecast.rs](../../apps/api-server/src/routes/forecast.rs)
 - **問題:** L42 の `series_id` がエスケープなしに URL 文字列結合（SSRF/URL Injection）、L39 の `Client::new()` がコネクション枯渇リスク

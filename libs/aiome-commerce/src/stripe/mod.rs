@@ -100,16 +100,94 @@ impl StripeCommerceEngine {
             .as_ref()
             .map(|p| p.load(std::sync::atomic::Ordering::Relaxed))
             .unwrap_or(0);
-        let ts = chrono::Utc::now().to_rfc3339();
-        let cert = aiome_core_contracts::oxilean::OxiLeanProofCertificate::generate(
-            "aiome-edge-node".to_string(), // subject_id
+        aiome_core_contracts::oxilean::OxiLeanProofCertificate::generate_header(
+            "aiome-edge-node",
             oxp,
-            ts,
             secret,
-        );
-        let cert_json = serde_json::to_string(&cert).ok()?;
+        )
+    }
+
+    /// Nurture 向けリクエスト用。OXP ヘッダが作れない場合は送信しない（fail-closed）。
+    fn require_oxp_header(&self) -> Result<String, AiomeError> {
+        self.generate_oxp_header()
+            .ok_or_else(|| AiomeError::Infrastructure {
+                reason: "OXP header generation failed; nurture request denied (fail-closed)".into(),
+            })
+    }
+}
+
+#[cfg(test)]
+mod generate_oxp_header_tests {
+    use super::*;
+    use std::sync::atomic::AtomicU32;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn generate_oxp_header_roundtrip_with_nurture_secret() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .expect("in-memory pool");
+        let engine = StripeCommerceEngine::new(
+            SecretString::from("sk_test_mock".to_string()),
+            SecretString::from("whsec_test".to_string()),
+            pool,
+            Some("http://127.0.0.1:9".to_string()),
+            Some("nurture_test_secret".to_string()),
+        )
+        .with_oxp_score_provider(Arc::new(AtomicU32::new(950)));
+
+        let header = engine
+            .generate_oxp_header()
+            .expect("header should be generated");
         use base64::Engine;
-        Some(base64::engine::general_purpose::STANDARD.encode(cert_json))
+        let decoded = base64::engine::general_purpose::STANDARD
+            .decode(&header)
+            .expect("valid base64");
+        let cert: aiome_core_contracts::oxilean::OxiLeanProofCertificate =
+            serde_json::from_slice(&decoded).expect("valid JSON cert");
+        assert_eq!(cert.subject_id, "aiome-edge-node");
+        assert_eq!(cert.oxp_score, 950);
+        assert!(cert.verify("nurture_test_secret"));
+        assert!(!cert.verify("wrong_secret"));
+    }
+
+    #[tokio::test]
+    async fn generate_oxp_header_none_without_nurture_secret() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .expect("in-memory pool");
+        let engine = StripeCommerceEngine::new(
+            SecretString::from("sk_test_mock".to_string()),
+            SecretString::from("whsec_test".to_string()),
+            pool,
+            None,
+            None,
+        );
+        assert!(engine.generate_oxp_header().is_none());
+    }
+
+    #[tokio::test]
+    async fn require_oxp_header_fails_closed_without_nurture_secret() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .expect("in-memory pool");
+        let engine = StripeCommerceEngine::new(
+            SecretString::from("sk_test_mock".to_string()),
+            SecretString::from("whsec_test".to_string()),
+            pool,
+            Some("http://127.0.0.1:9".to_string()),
+            None,
+        );
+        let err = engine.require_oxp_header().expect_err("must fail-closed");
+        match err {
+            AiomeError::Infrastructure { reason } => {
+                assert!(reason.contains("fail-closed"), "reason={reason}");
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
     }
 }
 
@@ -157,9 +235,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .header("Authorization", format!("Bearer {}", secret))
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await.map_infra_err()?;
 
@@ -194,9 +271,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 }))
                 .timeout(std::time::Duration::from_secs(5));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             match req.send().await {
                 Ok(res) if res.status().is_success() => return Ok(()),
@@ -262,9 +338,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .json(&payload)
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("x-oxilean-proof-certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await;
             match res {
@@ -331,9 +406,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .header("Authorization", format!("Bearer {}", secret))
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await.map_infra_err()?;
 
@@ -358,9 +432,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .header("Authorization", format!("Bearer {}", secret))
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await.map_infra_err()?;
 
@@ -391,9 +464,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .json(&payload)
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await.map_infra_err()?;
 
@@ -456,9 +528,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .header("Authorization", format!("Bearer {}", secret))
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await.map_infra_err()?;
 
@@ -528,9 +599,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .json(&payload)
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await.map_infra_err()?;
 
@@ -585,9 +655,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .json(&payload)
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await.map_infra_err()?;
 
@@ -940,9 +1009,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .json(&payload)
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await.map_infra_err_context("HTTP error")?;
 
@@ -999,9 +1067,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .timeout(std::time::Duration::from_secs(10))
                 .json(&payload);
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             match req.send().await {
                 Ok(res) if res.status().is_success() => {
@@ -1072,9 +1139,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .json(&payload)
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await.map_infra_err_context("HTTP error")?;
 
@@ -1115,9 +1181,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .json(&payload)
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await.map_infra_err_context("HTTP error")?;
 
@@ -1155,9 +1220,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .header("Authorization", format!("Bearer {}", secret))
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await.map_infra_err_context("HTTP error")?;
 
@@ -1208,9 +1272,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .header("Authorization", format!("Bearer {}", secret))
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await.map_infra_err_context("HTTP error")?;
 
@@ -1251,9 +1314,8 @@ impl CommerceEngine for StripeCommerceEngine {
                 .header("Authorization", format!("Bearer {}", secret))
                 .timeout(std::time::Duration::from_secs(10));
 
-            if let Some(cert_header) = self.generate_oxp_header() {
-                req = req.header("X-OxiLean-Proof-Certificate", cert_header);
-            }
+            let cert_header = self.require_oxp_header()?;
+            req = req.header("X-OxiLean-Proof-Certificate", cert_header);
 
             let res = req.send().await.map_infra_err_context("HTTP error")?;
 

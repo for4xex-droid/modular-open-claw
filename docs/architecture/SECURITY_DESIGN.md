@@ -112,7 +112,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 88 | **Commerce IDOR** | **Unauthorized release of another user's escrow** | 🔴 High | **Strict ownership validation (`list_escrows` context filter) (P1 Mitigation)** |
 | 89 | **SQL Injection via String Format** | **Execution of arbitrary SQL via format! macros in core ops** | 🔴 High | **Forced parameterized DB queries and RFC3339 timestamps (P1 Mitigation)** |
 | 90 | **UI Metadata Leakage** | **Malformed XML `<thinking>` tags bypassing regex and leaking to UI** | 🔴 High | **Iterative parsing & Defense-in-depth sanitization (Reflexion Phase 3)** |
-| 91 | **RTBF (GDPR) Compliance Failure**| **SQL error during `forget_actor` causing partial PII deletion (KYC, subscriptions, **wishlist behavioral records**, etc.)** | 🔴 High | **Atomic Transactions, schema-safe INSERT alignment, wishlist purge in forget_actor (2026-07-07)** |
+| 91 | **RTBF (GDPR) Compliance Failure**| **SQL error during `forget_actor` causing partial PII deletion (KYC, subscriptions, **wishlist behavioral records**, etc.)** | 🔴 High | **Atomic Transactions, schema-safe INSERT alignment, wishlist purge in forget_actor (2026-07-07). Nurture cascade: `NURTURE_INTERNAL_SECRET` OXP+Bearer + `NURTURE_API_URL`（`state.nurture_url`）。secret 欠落はローカル削除前 fail-closed；Nurture HTTP 失敗時はローカル RTBF 継続（2026-07-10）** |
 | 92 | **Proxy Secret Leakage in Memory**| **Secrets exposed via public struct fields and debug dumps** | 🟢 Fixed | **Wrapped proxy secrets in secrecy::SecretString, restricting field visibility (Reflexion R3)** |
 | 93 | **Unauthorized Karma Generation** | **Direct DB Ledger updates bypassing AgentHook** | 🔴 High | **ADR-009 Enforcement: Mandatory Webhook -> AgentHook Event Flow (Phase 7 Finalization)** |
 | 94 | **Phantom License Transfer** | **License duplication via failed revoke (Race Condition)** | 🔴 High | **DB Transaction Atomicity (transfer_license) (Nurture Phase 3)** |
@@ -278,4 +278,4 @@ For SEO integrations like WordPress, Aiome avoids direct API token injection int
 The `key-proxy` no longer accepts `?key=` query-parameter authentication. Secrets must be supplied via `Authorization: Bearer` or approved header fallbacks only. This prevents vault credentials from appearing in access logs or Referer headers.
 
 ---
-*最終更新: 2026-07-07 (Nurture wishlist GDPR purge in forget_actor, NURTURE_A2C_DRY_RUN env, OP-071 品質最大化 v4 完了)*
+*最終更新: 2026-07-10 (OP-061 forget: NURTURE_INTERNAL_SECRET + NURTURE_API_URL 正本、wishlist GDPR purge 2026-07-07)*

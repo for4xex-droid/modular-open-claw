@@ -277,65 +277,11 @@ mod tests {
     use super::*;
     use crate::app_state::Component;
     use aiome_core::traits::SettingsOps;
-    use infrastructure::job_queue::UniversalJobQueue;
-    use infrastructure::registry::{AssetManifest, AssetType, RegistryManager};
-    use infrastructure::skills::WasmSkillManager;
-    use std::sync::Arc;
-
-    async fn setup_test_state() -> (crate::AppState, tempfile::TempDir) {
-        let tmp_dir = tempfile::TempDir::new().unwrap();
-        let db_path = tmp_dir.path().join("test_agent.db");
-        let pool_url = format!("sqlite://{}", db_path.to_str().unwrap());
-
-        let pool = infrastructure::db::DatabasePool::new_sqlite(&pool_url)
-            .await
-            .unwrap();
-        let ts = std::sync::Arc::new(
-            infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
-        );
-        let jq = Arc::new(
-            UniversalJobQueue::new(pool.clone(), None, ts)
-                .await
-                .unwrap(),
-        );
-        let registry = Arc::new(RegistryManager::new(pool.clone()));
-
-        let skills_dir = tmp_dir.path().join("skills");
-        let sandbox_dir = tmp_dir.path().join("sandbox");
-        std::fs::create_dir_all(&skills_dir).unwrap();
-        std::fs::create_dir_all(&sandbox_dir).unwrap();
-
-        let wsm = Arc::new(
-            WasmSkillManager::new(skills_dir.to_str().unwrap(), sandbox_dir.to_str().unwrap())
-                .unwrap(),
-        );
-
-        let mut config = shared::config::AiomeConfig::default();
-        config.resolver = shared::app_data::AppDataResolver::new().unwrap();
-
-        let state = crate::AppState {
-            registry: Component::new(registry),
-            wasm_skill_manager: Component::new(wsm),
-            job_queue: Component::new(jq),
-            config: Component::new(Arc::new(config)),
-            project_rules_cache: Component::new(Arc::new(
-                moka::future::Cache::builder()
-                    .time_to_live(std::time::Duration::from_secs(30))
-                    .build(),
-            )),
-            prompt_registry: Component::new(Arc::new(
-                infrastructure::prompt_registry::MockPromptRegistry,
-            )
-                as Arc<dyn infrastructure::prompt_registry::PromptRegistry>),
-            ..Default::default()
-        };
-
-        (state, tmp_dir)
-    }
+    use infrastructure::registry::{AssetManifest, AssetType};
 
     #[tokio::test]
     async fn test_build_system_instructions_mcp_inclusion() {
-        let (state, _tmp) = setup_test_state().await;
+        let (state, _tmp) = crate::test_helpers::create_test_app_state().await;
 
         let mcp_manifest = AssetManifest {
             id: uuid::Uuid::new_v4(),
@@ -366,7 +312,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_build_system_instructions_user_md_inclusion() {
-        let (state, _tmp) = setup_test_state().await;
+        let (state, _tmp) = crate::test_helpers::create_test_app_state().await;
 
         let resolver = &state.config.get_inner().resolver;
         let user_md_path = resolver.resolve("USER.md");
@@ -395,7 +341,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_resolve_project_rules_priority() {
-        let (state, tmp_dir) = setup_test_state().await;
+        let (state, tmp_dir) = crate::test_helpers::create_test_app_state().await;
 
         let sub_dir = tmp_dir.path().join("sub");
         std::fs::create_dir_all(&sub_dir).unwrap();
@@ -424,7 +370,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_resolve_project_rules_not_found_traversal() {
-        let (state, tmp_dir) = setup_test_state().await;
+        let (state, tmp_dir) = crate::test_helpers::create_test_app_state().await;
 
         // Deep nested directory with NO rule files.
         let sub_dir = tmp_dir.path().join("sub1").join("sub2").join("sub3");
@@ -443,7 +389,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_build_system_instructions_economic_context_inclusion() {
-        let (state, _) = setup_test_state().await;
+        let (state, _) = crate::test_helpers::create_test_app_state().await;
         let ec = aiome_core::commerce::EconomicContext {
             balance: 100,
             spent_today: 10,
@@ -472,7 +418,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_build_system_instructions_a2ui_inclusion() {
-        let (mut state, _) = setup_test_state().await;
+        let (mut state, _) = crate::test_helpers::create_test_app_state().await;
 
         // Register dummy component into catalog to test schema generation
         let mut catalog = infrastructure::a2ui::AiomeCatalog::default();

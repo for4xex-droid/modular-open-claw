@@ -7,7 +7,6 @@
 
 use crate::error::AppError;
 use crate::AppState;
-use aiome_core::traits::SettingsOps;
 use axum::{
     extract::{Query, State},
     response::Json,
@@ -272,13 +271,12 @@ pub async fn delete_account_handler(
     tracing::warn!("🗑️ Account deletion requested for agent: {}", auth.agent_id);
 
     // 1. Send Forget request to Nurture
+    // URL 正本は coin-charge / DLQ / settings と同じ `state.nurture_url`（NURTURE_API_URL）。
     let client = aiome_core::http::get_http_client();
-    let nurture_url = match state.job_queue.get_setting_value("nurture_url").await {
-        Ok(Some(url)) if !url.is_empty() => url,
+    let nurture_url = match &state.nurture_url {
+        Some(url) if !url.is_empty() => url.clone(),
         _ => {
-            tracing::warn!(
-                "nurture_url setting is not configured; Nurture PII scrub will be skipped"
-            );
+            tracing::warn!("NURTURE_API_URL is not configured; Nurture PII scrub will be skipped");
             String::new()
         }
     };
@@ -286,31 +284,25 @@ pub async fn delete_account_handler(
     let mut nurture_notified = false;
 
     if !nurture_url.is_empty() {
-        use secrecy::ExposeSecret;
-        let secret = match state.api_server_secret.as_opt() {
-            Some(s) => s.expose_secret().clone(),
-            None => {
-                tracing::error!("API_SERVER_SECRET is not initialized in AppState; cannot sign OxiLean certificate for account deletion");
+        // Nurture internal_auth + require_oxp_certificate は NURTURE_INTERNAL_SECRET で検証する
+        let secret = match &state.nurture_internal_secret {
+            Some(s) if !s.is_empty() => s.clone(),
+            _ => {
+                tracing::error!(
+                    "NURTURE_INTERNAL_SECRET is not configured; cannot authenticate Nurture forget"
+                );
                 return Err(AppError::internal(
-                    "Server misconfiguration: signing secret unavailable",
+                    "Server misconfiguration: nurture internal secret unavailable",
                 ));
             }
         };
 
-        // Create an OxiLean Certificate for internal request
-        let ts = chrono::Utc::now().to_rfc3339();
-        let cert = aiome_core_contracts::oxilean::OxiLeanProofCertificate::generate(
-            "aiome_system".to_string(),
+        let cert_b64 = aiome_core_contracts::oxilean::OxiLeanProofCertificate::generate_header(
+            "aiome_system",
             1000,
-            ts,
             &secret,
-        );
-        let cert_json = serde_json::to_string(&cert).map_err(|e| {
-            tracing::error!("Failed to serialize OxiLean certificate: {}", e);
-            AppError::internal("Certificate serialization failed")
-        })?;
-        let cert_b64 =
-            base64::Engine::encode(&base64::engine::general_purpose::STANDARD, cert_json);
+        )
+        .ok_or_else(|| AppError::internal("Certificate generation failed"))?;
 
         let delete_url = format!(
             "{}/internal/forget/{}",
@@ -319,7 +311,8 @@ pub async fn delete_account_handler(
         );
         match client
             .post(&delete_url)
-            .header("x-oxilean-proof-certificate", cert_b64)
+            .header("Authorization", format!("Bearer {secret}"))
+            .header("X-OxiLean-Proof-Certificate", cert_b64)
             .send()
             .await
         {
@@ -327,6 +320,7 @@ pub async fn delete_account_handler(
                 nurture_notified = true;
             }
             Ok(resp) => {
+                // Chesterton: Nurture 到達失敗でもローカル RTBF は継続（nurture_pii_scrubbed=false）
                 tracing::error!(
                     "Nurture returned error on account deletion: {}",
                     resp.status()
@@ -338,7 +332,7 @@ pub async fn delete_account_handler(
         }
     }
 
-    // 2. Delete data from Aiome database (cortex_chat_history, settings, etc)
+    // 2. Delete data from Aiome database (chat_history, settings, etc)
     state
         .job_queue
         .forget_actor(auth.agent_id)

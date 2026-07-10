@@ -392,61 +392,11 @@ impl AgentEngine {
 
 #[cfg(test)]
 mod tests {
-
-    use crate::app_state::Component;
-    use infrastructure::job_queue::UniversalJobQueue;
-    use infrastructure::registry::RegistryManager;
-    use infrastructure::skills::WasmSkillManager;
-    use std::sync::Arc;
-
-    async fn setup_test_state() -> (crate::AppState, tempfile::TempDir) {
-        let tmp_dir = tempfile::TempDir::new().unwrap();
-        let db_path = tmp_dir.path().join("test_agent.db");
-        let pool_url = format!("sqlite://{}", db_path.to_str().unwrap());
-
-        let pool = infrastructure::db::DatabasePool::new_sqlite(&pool_url)
-            .await
-            .unwrap();
-        let ts = std::sync::Arc::new(
-            infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
-        );
-        let jq = Arc::new(
-            UniversalJobQueue::new(pool.clone(), None, ts)
-                .await
-                .unwrap(),
-        );
-        let registry = Arc::new(RegistryManager::new(pool.clone()));
-
-        let skills_dir = tmp_dir.path().join("skills");
-        let sandbox_dir = tmp_dir.path().join("sandbox");
-        std::fs::create_dir_all(&skills_dir).unwrap();
-        std::fs::create_dir_all(&sandbox_dir).unwrap();
-
-        let wsm = Arc::new(
-            WasmSkillManager::new(skills_dir.to_str().unwrap(), sandbox_dir.to_str().unwrap())
-                .unwrap(),
-        );
-
-        let mut config = shared::config::AiomeConfig::default();
-        config.resolver = shared::app_data::AppDataResolver::new().unwrap();
-
-        let state = crate::AppState {
-            registry: Component::new(registry),
-            wasm_skill_manager: Component::new(wsm),
-            job_queue: Component::new(jq),
-            config: Component::new(Arc::new(config)),
-            ..Default::default()
-        };
-
-        (state, tmp_dir)
-    }
-
     use crate::routes::agent::should_trigger_diagnostics;
+    use aiome_core::trajectory::TrajectoryStep;
 
     #[test]
     fn test_should_trigger_diagnostics() {
-        use aiome_core::trajectory::TrajectoryStep;
-
         let mut step1 = TrajectoryStep::default();
         step1.is_critical_failure = false;
 

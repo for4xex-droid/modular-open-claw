@@ -112,7 +112,10 @@ async fn test_oauth2_endpoints_stub() {
     let challenge = URL_SAFE_NO_PAD.encode(hasher.finalize());
 
     // 1. Authorize: GET with PKCE
-    let authorize_url = format!("/api/v1/auth/authorize?client_id=test&response_type=code&code_challenge={}&code_challenge_method=S256", challenge);
+    let authorize_url = format!(
+        "/api/v1/auth/authorize?client_id=test&response_type=code&code_challenge={}&code_challenge_method=S256",
+        challenge
+    );
     let resp = server.get(&authorize_url).await;
     assert_eq!(resp.status_code(), axum::http::StatusCode::OK);
 
@@ -435,4 +438,328 @@ async fn test_auth_admin_hash_fetch_failure_logging() {
 
     let resp = server.post("/api/v1/auth/token").json(&payload).await;
     assert_eq!(resp.status_code(), axum::http::StatusCode::FORBIDDEN);
+}
+
+/// `NURTURE_*` 環境変数をテスト終了時（panic 含む）に復元する。
+struct NurtureEnvGuard {
+    prev_secret: Option<String>,
+    prev_url: Option<String>,
+}
+
+impl NurtureEnvGuard {
+    fn capture() -> Self {
+        Self {
+            prev_secret: std::env::var("NURTURE_INTERNAL_SECRET").ok(),
+            prev_url: std::env::var("NURTURE_API_URL").ok(),
+        }
+    }
+}
+
+impl Drop for NurtureEnvGuard {
+    fn drop(&mut self) {
+        match &self.prev_secret {
+            Some(s) => std::env::set_var("NURTURE_INTERNAL_SECRET", s),
+            None => std::env::remove_var("NURTURE_INTERNAL_SECRET"),
+        }
+        match &self.prev_url {
+            Some(u) => std::env::set_var("NURTURE_API_URL", u),
+            None => std::env::remove_var("NURTURE_API_URL"),
+        }
+    }
+}
+
+/// forget: Bearer(NURTURE_INTERNAL_SECRET) + OXP(同鍵署名) が付与され、ローカル PII も削除されること
+#[serial]
+#[tokio::test]
+async fn test_delete_account_sends_bearer_and_oxp_with_nurture_secret() {
+    use axum::response::IntoResponse;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    let _env = NurtureEnvGuard::capture();
+    let agent_id = uuid::Uuid::parse_str("00000000-0000-0000-0000-00000000d001").unwrap();
+    let bearer = format!("Bearer mock_valid_token_forget_user:{agent_id}");
+
+    let sync_counter = Arc::new(AtomicUsize::new(0));
+    let counter = sync_counter.clone();
+    let mock_app = axum::Router::new().route(
+        "/internal/forget/:actor_id",
+        axum::routing::post(
+            move |headers: axum::http::HeaderMap,
+                  axum::extract::Path(id): axum::extract::Path<String>| {
+                let counter = counter.clone();
+                async move {
+                    assert_eq!(id, agent_id.to_string());
+                    let bearer_ok = headers
+                        .get("authorization")
+                        .and_then(|h| h.to_str().ok())
+                        .map(|v| v == "Bearer mock_nurture_secret")
+                        .unwrap_or(false);
+                    let cert_ok = headers
+                        .get("x-oxilean-proof-certificate")
+                        .and_then(|h| h.to_str().ok())
+                        .map(|b64| {
+                            use base64::Engine;
+                            base64::engine::general_purpose::STANDARD
+                                .decode(b64)
+                                .ok()
+                                .and_then(|j| {
+                                    serde_json::from_slice::<
+                                        aiome_core_contracts::oxilean::OxiLeanProofCertificate,
+                                    >(&j)
+                                    .ok()
+                                })
+                                .map(|c| {
+                                    c.verify("mock_nurture_secret")
+                                        && c.subject_id == "aiome_system"
+                                        && c.oxp_score == 1000
+                                })
+                                .unwrap_or(false)
+                        })
+                        .unwrap_or(false);
+                    if !(bearer_ok && cert_ok) {
+                        return (
+                            axum::http::StatusCode::FORBIDDEN,
+                            axum::response::Json(serde_json::json!({"error": "forbidden"})),
+                        )
+                            .into_response();
+                    }
+                    counter.fetch_add(1, Ordering::SeqCst);
+                    axum::response::Json(serde_json::json!({"status": "ok"})).into_response()
+                }
+            },
+        ),
+    );
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let nurture_url = format!("http://127.0.0.1:{port}");
+    tokio::spawn(async move {
+        axum::serve(listener, mock_app).await.unwrap();
+    });
+
+    std::env::set_var("NURTURE_INTERNAL_SECRET", "mock_nurture_secret");
+    std::env::set_var("NURTURE_API_URL", &nurture_url);
+    let (server, state, _tmp) = create_test_server().await;
+
+    let pool = state.db_pool.get_sqlite_pool().unwrap();
+    sqlx::query(
+        "INSERT INTO chat_history (channel_id, role, content, metadata) VALUES (?, 'user', 'pii', NULL)",
+    )
+    .bind(agent_id.to_string())
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let resp = server
+        .delete("/api/v1/auth/delete")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+    let body = resp.json::<serde_json::Value>();
+    assert_eq!(body["nurture_pii_scrubbed"], true);
+    assert_eq!(sync_counter.load(Ordering::SeqCst), 1);
+
+    let remaining: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM chat_history WHERE channel_id = ?")
+            .bind(agent_id.to_string())
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert_eq!(remaining.0, 0, "local chat_history must be purged");
+}
+
+/// NURTURE_API_URL あり・secret なし → ローカル削除前に 500（fail-closed）
+#[serial]
+#[tokio::test]
+async fn test_delete_account_fails_closed_without_nurture_secret() {
+    let _env = NurtureEnvGuard::capture();
+    let agent_id = uuid::Uuid::parse_str("00000000-0000-0000-0000-00000000d002").unwrap();
+    let bearer = format!("Bearer mock_valid_token_forget_nosecret:{agent_id}");
+
+    std::env::remove_var("NURTURE_INTERNAL_SECRET");
+    std::env::set_var("NURTURE_API_URL", "http://127.0.0.1:9");
+    let (server, state, _tmp) = create_test_server().await;
+
+    let pool = state.db_pool.get_sqlite_pool().unwrap();
+    sqlx::query(
+        "INSERT INTO chat_history (channel_id, role, content, metadata) VALUES (?, 'user', 'pii', NULL)",
+    )
+    .bind(agent_id.to_string())
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let resp = server
+        .delete("/api/v1/auth/delete")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+
+    let remaining: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM chat_history WHERE channel_id = ?")
+            .bind(agent_id.to_string())
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        remaining.0, 1,
+        "fail-closed must NOT run forget_actor / purge chat_history"
+    );
+}
+
+/// Chesterton: Nurture が 403 でもローカル削除は継続（nurture_pii_scrubbed=false）
+#[serial]
+#[tokio::test]
+async fn test_delete_account_continues_local_purge_when_nurture_rejects() {
+    use axum::response::IntoResponse;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    let _env = NurtureEnvGuard::capture();
+    let agent_id = uuid::Uuid::parse_str("00000000-0000-0000-0000-00000000d003").unwrap();
+    let bearer = format!("Bearer mock_valid_token_forget_reject:{agent_id}");
+    let hit_counter = Arc::new(AtomicUsize::new(0));
+    let hits = hit_counter.clone();
+
+    let mock_app = axum::Router::new().route(
+        "/internal/forget/:actor_id",
+        axum::routing::post(move || {
+            let hits = hits.clone();
+            async move {
+                hits.fetch_add(1, Ordering::SeqCst);
+                (
+                    axum::http::StatusCode::FORBIDDEN,
+                    axum::response::Json(serde_json::json!({"error": "forbidden"})),
+                )
+                    .into_response()
+            }
+        }),
+    );
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let nurture_url = format!("http://127.0.0.1:{port}");
+    tokio::spawn(async move {
+        axum::serve(listener, mock_app).await.unwrap();
+    });
+
+    std::env::set_var("NURTURE_INTERNAL_SECRET", "mock_nurture_secret");
+    std::env::set_var("NURTURE_API_URL", &nurture_url);
+    let (server, state, _tmp) = create_test_server().await;
+
+    let pool = state.db_pool.get_sqlite_pool().unwrap();
+    sqlx::query(
+        "INSERT INTO chat_history (channel_id, role, content, metadata) VALUES (?, 'user', 'pii', NULL)",
+    )
+    .bind(agent_id.to_string())
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let resp = server
+        .delete("/api/v1/auth/delete")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+    let body = resp.json::<serde_json::Value>();
+    assert_eq!(body["nurture_pii_scrubbed"], false);
+    assert_eq!(
+        hit_counter.load(Ordering::SeqCst),
+        1,
+        "Nurture forget endpoint must be reached (not skipped)"
+    );
+
+    let remaining: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM chat_history WHERE channel_id = ?")
+            .bind(agent_id.to_string())
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        remaining.0, 0,
+        "Chesterton fence: Nurture failure must still purge local PII"
+    );
+}
+
+/// NURTURE_API_URL 未設定 → Nurture スキップ + ローカル purge（nurture_pii_scrubbed=false）
+#[serial]
+#[tokio::test]
+async fn test_delete_account_skips_nurture_when_url_unset() {
+    let _env = NurtureEnvGuard::capture();
+    let agent_id = uuid::Uuid::parse_str("00000000-0000-0000-0000-00000000d004").unwrap();
+    let bearer = format!("Bearer mock_valid_token_forget_nourl:{agent_id}");
+
+    std::env::remove_var("NURTURE_INTERNAL_SECRET");
+    std::env::remove_var("NURTURE_API_URL");
+    let (server, state, _tmp) = create_test_server().await;
+
+    let pool = state.db_pool.get_sqlite_pool().unwrap();
+    sqlx::query(
+        "INSERT INTO chat_history (channel_id, role, content, metadata) VALUES (?, 'user', 'pii', NULL)",
+    )
+    .bind(agent_id.to_string())
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let resp = server
+        .delete("/api/v1/auth/delete")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+    let body = resp.json::<serde_json::Value>();
+    assert_eq!(body["nurture_pii_scrubbed"], false);
+
+    let remaining: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM chat_history WHERE channel_id = ?")
+            .bind(agent_id.to_string())
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert_eq!(remaining.0, 0);
+}
+
+/// Chesterton: Nurture transport Err（接続拒否）でもローカル削除継続
+#[serial]
+#[tokio::test]
+async fn test_delete_account_continues_local_purge_on_nurture_transport_error() {
+    let _env = NurtureEnvGuard::capture();
+    let agent_id = uuid::Uuid::parse_str("00000000-0000-0000-0000-00000000d005").unwrap();
+    let bearer = format!("Bearer mock_valid_token_forget_transport:{agent_id}");
+
+    std::env::set_var("NURTURE_INTERNAL_SECRET", "mock_nurture_secret");
+    // 未リッスンのポート → connection refused
+    std::env::set_var("NURTURE_API_URL", "http://127.0.0.1:1");
+    let (server, state, _tmp) = create_test_server().await;
+
+    let pool = state.db_pool.get_sqlite_pool().unwrap();
+    sqlx::query(
+        "INSERT INTO chat_history (channel_id, role, content, metadata) VALUES (?, 'user', 'pii', NULL)",
+    )
+    .bind(agent_id.to_string())
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let resp = server
+        .delete("/api/v1/auth/delete")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .await;
+
+    assert_eq!(resp.status_code(), StatusCode::OK);
+    let body = resp.json::<serde_json::Value>();
+    assert_eq!(body["nurture_pii_scrubbed"], false);
+
+    let remaining: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM chat_history WHERE channel_id = ?")
+            .bind(agent_id.to_string())
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert_eq!(remaining.0, 0);
 }

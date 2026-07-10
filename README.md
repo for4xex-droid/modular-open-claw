@@ -198,7 +198,7 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 6. **Impact Analysis Protocol**: エージェントによる自律コード改修時の未知のカスケードエラーを防ぐ、`grep_search` ベースの依存追跡プロトコルとセマンティック依存マップ（`RIPPLE_MAP.md`）の標準搭載
 7. **Automated Chaos Engineering**: 意図的な障害注入（LLMタイムアウトや不正フォーマット）をテスト環境で自律実行し、「予測不能なAIの失敗」に対するシステムの縮退運転（Graceful Degradation）を完全に担保
 8. **Cell-Based Architecture (CBA)**: 1プロセス=1セルの不変条件に基づく物理的パス隔離。`AppDataResolver` と Shell ガードによるパストラバーサル・インジェクションの多層防御。
-9. **GDPR/RTBF & Content Compliance**: 単一トランザクションで最大7テーブルの完全な物理パージ（`forget_actor`）と安全な外部削除伝播を保証。さらに、有害コンテンツを自動検知してフィルタリングする安全フィルターを搭載。
+9. **GDPR/RTBF & Content Compliance**: 単一トランザクションで最大7テーブルの完全な物理パージ（`forget_actor`）と、Nurture への Zero-Trust 削除伝播（`NURTURE_INTERNAL_SECRET` による OXP+Bearer、`NURTURE_API_URL` 正本）を保証。さらに、有害コンテンツを自動検知してフィルタリングする安全フィルターを搭載。
 10. **Aegis Sentinel**: WASM実行時のインシデントを常時監視・記録し、LLMによるパッチ生成とKaniによる形式検証を経て、システム稼働中にコードを自己修復・入れ替え（HotSwap）する事後修復システム。
 11. **Adaptive Immune System**: 実行前に入力脅威パターンを検知し、学習ルールのドリフトを防止する事前防御システム（事後修復の **Aegis Sentinel** とともに多層免疫システムを形成）。
 12. **Multi-Context Sanitization**: 出力コンテキスト（SqlQuery, FilePath, HttpHeader等）に応じた厳格なサニタイズ処理。SQLインジェクション対策（ダブルクォートやコメント等の除去）、再帰トラバーサルバイパス防止、OnceLockによるパニックフリーなHttpHeader処理などを一元化。

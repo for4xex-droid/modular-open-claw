@@ -1,12 +1,15 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-09**
+**最終更新: 2026-07-10**
+
+> **実装手順の正本**: 残存タスクの詳細実装計画は [`docs/roadmaps/remaining_tasks_implementation_plan.md`](docs/roadmaps/remaining_tasks_implementation_plan.md)（**v6・実装コピペ確定** 2026-07-09）。Wave 0〜4・ファイル:行アンカー・確定 API 仕様・Verification Protocol・DoD を定義。本台帳は「何が未解決か」のみを管理する。
 
 ## 運用ルール
 
 - 未解決タスクは**このファイルのみ**で管理する（`memory/` の Open は当日分の追記メモであり、翌日以降はここへ反映する）。
 - 各行は `- [ ] **ID**: 内容（初出日）` 形式。解決時はチェックを付け「✅ 解決」セクションへ移し、解決日と根拠（コミット/CHANGELOG）を1行添える。四半期ごとに解決済みを削除する。
 - 凍結タスクは「⏸️ 凍結」セクションで管理し、解除条件を明記する。
+- 実装の進め方・順序は `docs/roadmaps/remaining_tasks_implementation_plan.md` に従う（本ファイルに手順を複製しない）。
 
 ## 🔴 P0 / ブロッカー
 
@@ -30,7 +33,7 @@
 - [ ] **OP-021**: BAN 管理ダッシュボード UI の設計検討（2026-05-22）
 - [ ] **OP-022**: CausalVisualizer（Trajectory Graph の UI 可視化）未着手（MEMORY.md Blind Spots より）
 - [ ] **OP-023**: `infrastructure` コアに残存する一時的 `unwrap()` / ドキュメント警告のリファクタ（R-005 違反）（MEMORY.md Blind Spots より）
-- [ ] **OP-024**: `tool_call_router.rs` 課金チェックの Fail-Closed 化（DB エラーを握り潰さず明示拒否）（MEMORY.md Phase 48 より）
+- [x] **OP-024**: `tool_call_router.rs` 課金チェックの Fail-Closed 化（DB エラーを握り潰さず明示拒否）（MEMORY.md Phase 48 より）→ **2026-07-09 完了**（`get_setting_value` Err 時に MCP ツール拒否 + Negative テスト）
 - [ ] **OP-025**: `key-proxy` への Telemetry（`caller_id`）追加と Cross-Node Auth Reliability モニタリング（MEMORY.md Phase 4 より）
 - [ ] **OP-026**: X Signal Probe 設定画面 UI（SettingsPage.tsx, settings.rs）（2026-04-07）
 - [ ] **OP-027**: Stripe API 実装追加時の一元化モック拡充（2026-06-01）
@@ -46,12 +49,8 @@
 - [x] **OP-057**: LP Stripe 決済基盤（Payment Link URL・Price ID・ローカル `.env`）→ 2026-07-05 完了（`plink_1TpXHCBcUTwo5TwLnO1BJneY` / `price_1TpXFpBcUTwo5TwLmK9SQbKL`）。**残（本番 env・決済→Pro 自動有効化）は ⏸️ 凍結 OP-057-R へ移管**（Biome ブラッシュアップと同一バッチ）
 - [x] **OP-058**: `ProUpgradeModal`（402→アップグレード導線）→ 2026-07-04 解消（`App.tsx` ルートマウント + `STRIPE_PRICE_ID`）
 - [ ] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠 + ✅ W-1 OXP relay 修正 + ✅ **R2-3 月間支出上限**（ADR-050、DB マイグレーション、インターセプタ、Settings UI `economy.monthly_spend_limit`、2026-07-06）
-- [ ] **OP-060**: coin-charge DLQ（`outbox_dead_letters`）の自動再送機構 — 現状は手動再送のみ（2026-07-04）
-- [ ] **OP-061**: OXP ヘッダ生成の stripe/auth/relay 3箇所を `generate_header()` へ統一リファクタ（Safety-Critical、人間レビュー後）（2026-07-04）
 - [ ] **OP-062**: Tauri `NurtureMode::InProcess` variant — sidecar 起動と in-process の排他（ADR-012 残タスク）（2026-07-04）
-- [ ] **OP-067**: `html2md`（GPL-3.0+、infrastructure 経由）を MIT 系代替（htmd 等）へ置換。暫定で deny.toml に例外を登録済み（2026-07-04。旧 OP-060 重複採番を 2026-07-05 改番）
 - [ ] **OP-068**: deny.toml `[advisories].ignore` に登録した 21 件（wasmtime 41.x / rustls-webpki 旧版 / idna 0.4 / quick-xml 0.39 / rand 0.8）の解消。実体は OP-030〜OP-034 の Upstream 待ちと同根。上流更新後に ignore を削除すること（2026-07-04。旧 OP-061 重複採番を 2026-07-05 改番）
-- [ ] **OP-069**: implementation_plan.md Phase 3.5 残2件 — (1) `test_helpers.rs`（`create_test_app_state()`）未作成（HIGH・開発基盤でありリリース非ブロッカー） (2) Federation 5メソッドのアンスタブ実装に対する ADR 記録が未作成（実装は CHANGELOG「Federation Unstubbing」で完了済み、方針変更の追認 ADR のみ残）（2026-07-05 照合で発見）
 - [ ] **OP-063**: LP 用実プロダクト証拠ビジュアル撮影（MESSAGING §8 ショットリスト7点 + Quick Start GIF）。実データ・ダークテーマ・1920×1080 以上。バイラル32原則 #10 対応（ユーザー実施、2026-07-05）
 - [ ] **OP-064**: ベータユーザー 5〜10 人の獲得と実名テスティモニアル収集。launch（本格トラフィック獲得）の前提条件。バイラル32原則 #14/#29 対応（ユーザー実施、2026-07-05）
 - [x] **OP-065**: Pro 価格改定 $9.99 → **$19.99/月**（2026-07-05 ユーザー決定）。MESSAGING.md / LP i18n / README / ProUpgradeModal 表示 / stripe-setup.md / .env.example を同期。Stripe Payment Link・Price ID の実体差し替えは OP-057 に統合。
@@ -78,5 +77,9 @@
 
 ## ✅ 解決（直近のみ保持）
 
+- [x] **OP-061**: OXP `generate_header` 統一 + forget Bearer/`NURTURE_INTERNAL_SECRET` + stripe `require_oxp_header` fail-closed — **2026-07-10 完了**（ユーザー明示「修正」承認。CHANGELOG Fixed 2026-07-10、delete_account 5テスト + aiome-commerce generate_oxp_header 3テスト PASS。forget URL は `state.nurture_url`/`NURTURE_API_URL` 正本）
+- [x] **OP-060**: coin-charge DLQ 自動再送 — **2026-07-09 完了**（`coin_charge_dlq_worker` + poison 隔離）
+- [x] **OP-067**: html2md → htmd — **2026-07-09 完了**
+- [x] **OP-069**: `create_test_app_state` + ADR-053 — **2026-07-09 完了**
 - [x] **OP-071**: Nurture 品質最大化計画 v4（`docs/roadmaps/nurture_quality_max_plan.md`）— Phase A–E-0 + /reflexion + D-1 → **2026-07-07 完了**（CHANGELOG [Unreleased]、`cargo test --workspace` PASS、D-1 `CoinBalanceProvider` 集約）
 - [x] **OP-900**: 異常ファイル名 `memory/2026-04-07.md\`` の整理 — 2026-07-03 解決（Lessons を正規版へマージし memory/archive/ へ移動）

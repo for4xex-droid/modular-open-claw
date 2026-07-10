@@ -200,7 +200,7 @@ impl CortexIngester {
             });
         }
 
-        let raw_md = html2md::parse_html(&clean_html);
+        let raw_md = html_to_markdown(&clean_html)?;
 
         // Take at most 8000 chars without cloning the full content
         let sample_for_llm: String = raw_md.chars().take(8000).collect();
@@ -575,5 +575,30 @@ impl CortexIngester {
             })?;
 
         Ok(())
+    }
+}
+
+/// HTML → Markdown（Cortex 取り込み用）。htmd (Apache-2.0) を使用。
+pub(crate) fn html_to_markdown(html: &str) -> Result<String, AiomeError> {
+    htmd::convert(html).map_err(|e| AiomeError::Infrastructure {
+        reason: format!("HTML to Markdown conversion failed: {e}"),
+    })
+}
+
+#[cfg(test)]
+mod html_to_markdown_tests {
+    use super::html_to_markdown;
+
+    #[test]
+    fn html_to_markdown_strips_heading_tags() {
+        let md = html_to_markdown("<h1>Hello</h1>").unwrap();
+        assert!(md.contains("Hello"));
+        assert!(!md.contains("<h1>"));
+    }
+
+    #[test]
+    fn html_to_markdown_empty_input_is_ok() {
+        let md = html_to_markdown("").unwrap();
+        assert!(md.is_empty());
     }
 }

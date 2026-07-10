@@ -49,6 +49,8 @@ mod self_diagnosis;
 mod skill_handler;
 mod stream;
 pub mod system_instructions;
+#[cfg(test)]
+mod test_helpers;
 pub mod tool_call_processor;
 pub mod tool_call_router;
 mod workflow_execution_tracker;

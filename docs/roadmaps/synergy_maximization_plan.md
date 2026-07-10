@@ -111,7 +111,7 @@ relay.rs からは `OxiLeanProofCertificate::generate_header("aiome-edge-node", 
 
 （`AppState.oxilean_power` は `app_state.rs` L169 定義、`bootstrap/mod.rs` L154 で 0 初期化、`internal_services/oxilean_poller.rs` が 60 秒ごとに gRPC `get_oxi_lean_status` で更新）
 
-**(3) 起動直後（OXP=0 < 900）シナリオの扱い** — 変更不要で既存機構が機能することを確認する: 403 → 3回リトライ → `outbox_dead_letters` DLQ 保存（relay.rs L64–95）。**DLQ 再送機構は存在しないことを検証済み（v3）**: 書込は relay.rs L71–89 のみ、読取はテーブル存在確認テスト（`libs/infrastructure/src/registry.rs` L782）のみで、再送コンシューマ・cron・管理 API は無い。よって「DLQ は手動再送（運用手順）」を W-8 のドキュメントに明記し、自動再送機構の要否は OPEN.md に起票する
+**(3) 起動直後（OXP=0 < 900）シナリオの扱い** — 403 → 3回リトライ → `outbox_dead_letters` DLQ 保存（relay.rs）。**OP-060（2026-07-09）で自動再送を追加**: `coin_charge_dlq_worker` が**起動直後に 1 バッチ**実行し、以降 60 秒周期で `attempt_coin_charge_once` を再送（成功時 DELETE）。設定欠落時は error ログ + 行保持。不正 JSON は `coin_charge_failed_poison` に隔離。
 
 - **完了条件**:
   - `cargo check -p api-server` PASS
@@ -296,7 +296,7 @@ if let Some(bonus) = SurpriseEngine::evaluate_bonus(
 | 項目 | 発見 | 反映 |
 |---|---|---|
 | W-1 | OXP ヘッダ生成が既に2箇所に重複実装されていた（`stripe/mod.rs` L95–113 私有・`auth.rs` L300–322 インライン）。relay に3つ目を書くのは再発明 | 共通ヘルパー `OxiLeanProofCertificate::generate_header()` を型の正本 `oxilean.rs` に追加する方式へ変更。既存2箇所の置換は Safety-Critical のためスコープ外（OPEN.md 起票） |
-| W-1(3) | DLQ 再送機構は不存在と確定（書込のみ・読取はテストのみ） | 「手動再送を W-8 で明記＋自動再送要否を OPEN.md 起票」に確定 |
+| W-1(3) | DLQ 自動再送は OP-060 で実装済み（`coin_charge_dlq_worker`） | 手動再送ドキュメントは補助。自動再送が正本 |
 | W-4 | wallet 残高ハンドラ `handle_get_balance` が `mcp_tools/wallet.rs` L20–25 に既存（HTTP ルートで使用実績あり）。新設は再発明 | tools/call から既存関数を呼ぶ配線のみに変更 |
 | W-4(4) | `mcp_tools/upload.rs` L148–168 で CSAM 3層検査（`csam_pipeline.run_all()`）実施済みと確認 | 「grep で確認」条件を「検証済み・公開可（Negative テスト必須）」に確定 |
 | W-5 | nurture MCP は単一 POST ではなく SSE 2段構成（`GET /mcp/sse` → `POST /mcp/message?sessionId=…`）。認証は Bearer のみ（OXP 不要）。HTTP transport は `config.rs` L35–38 でサポート済み。`libs/infrastructure/src/mcp/` は不存在 | プロキシ設計を「SSE+message の素通し2ルート」に修正。HTTP seed を確定案に昇格 |

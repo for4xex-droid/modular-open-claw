@@ -1,5 +1,20 @@
 ## [Unreleased]
 
+### Fixed (Safety-Critical OP-061 follow-up 2026-07-10)
+- **auth forget**: Nurture `/internal/forget` 呼び出しを `NURTURE_INTERNAL_SECRET` で OXP 署名し、`Authorization: Bearer` を付与。URL は coin-charge と同じ `state.nurture_url`（`NURTURE_API_URL`）。secret 未設定時はローカル削除前に 500（fail-closed）。
+- **stripe OXP**: `StripeCommerceEngine::require_oxp_header()` を追加し、Nurture 向け全リクエストで OXP 生成失敗時は送信しない（fail-closed）。16 箇所の `if let Some(cert)` を置換。
+- **/reflexion**: 旧 `implementation_plan.md` が forget を `API_SERVER_SECRET` に戻すよう誘導していた記述を OP-061 正本へ更新。`SECURITY_DESIGN.md` RTBF 行を同期。delete_account テストに panic-safe `NurtureEnvGuard` を追加。
+- **/docs-sync**: OPERATIONS_MANUAL v3.6、SECURITY_WHITEPAPER、AIOME_NURTURE_SYNERGY（§5.4.0 forget シーケンス）、INFRASTRUCTURE_MODULES、release_master_plan、`.env.example`、README / README_en を Wave 1/2（OP-024/060/061/067/069）に同期。
+
+### Added (Wave 2 Safety-Critical OP-061/060 2026-07-09)
+- **OP-061 OXP 統一**: `libs/aiome-commerce/src/stripe/mod.rs` の `generate_oxp_header` と `routes/auth.rs` の forget 経路を `OxiLeanProofCertificate::generate_header` に委譲（stripe/relay: `aiome-edge-node` + `nurture_internal_secret`）。auth forget の鍵は 2026-07-10 追完で `NURTURE_INTERNAL_SECRET` に統一（下記 Fixed 参照）。
+- **OP-060 DLQ 再送**: `attempt_coin_charge_once` を `relay.rs` に抽出し（OXP 生成失敗は fail-closed）、`coin_charge_dlq_worker` が `outbox_dead_letters` を起動直後＋60 秒周期で再送（成功時 DELETE）。設定欠落時は error ログ。不正 JSON は `coin_charge_failed_poison` に隔離。`CancellationToken` 対応。P1/N1/N2/設定欠落（URL+secret）テスト付き。
+
+### Added (Wave 1 残存タスク OP-024/067/069 2026-07-09)
+- **OP-024 Fail-Closed**: `tool_call_router` の MCP 課金ガードで `get_setting_value` が DB エラーを返した場合、Fail-Open せず明示拒否。Negative テスト（`DROP TABLE system_settings`）追加。
+- **OP-067 ライセンス**: `cortex_ingester` の `html2md`（GPL-3.0+）を `htmd`（Apache-2.0）へ置換。`html_to_markdown` 純関数抽出 + 単体テスト。`deny.toml` の html2md 例外・clarify 削除。
+- **OP-069 テスト基盤**: `apps/api-server/src/test_helpers.rs` に `create_test_app_state()` を集約（3 モジュール置換、`agent_engine` 死コード削除）。**ADR-053** Federation アンスタブ追認。
+
 ### Added (W2 ワークフロー実行エンジン OP-073 2026-07-08)
 - **W2-0 契約バグ修正**: `execute_workflow` が `enqueue` 返却 ID を採用し `karma_directives` 親参照をリマップ。`build_job_topic` で node_type + config をマージ。Condition を `wf_condition` 化、branch 記録を追加。
 - **W2-1 DI 化**: `McpToolInvoker` トレイト（contracts）、`McpProcessManagerInvoker`（api-server）、`WorkflowConductorDeps` + `with_deps()`、`core_services.rs` 本番登録。
@@ -225,7 +240,7 @@
 - **Conventional Commits**: GitHub 自動生成の merge commit（`Merge ...`）を検証対象外に。
 - **Test & Lint**: `docker-compose` → `docker compose`（v2）へ更新、`libglib2.0-dev` を追加インストール。
 - **Generate Wiki**: PR 実行時に detached HEAD で `git push` が失敗するため main への push 時のみ実行に変更（`contents: write` 権限を明示）。
-- **Industrial Security Audit (Bastion)**: `deny.toml` を整備 — html2md（GPL-3.0+）の SPDX 表現を clarify＋クレート単位例外に登録（置換は OP-060）、unmaintained 勧告は workspace 直接依存のみ検査、上流メジャー更新待ちの 21 advisory を理由付きで ignore（OP-061、OP-030〜034 と同根）。`anyhow` を 1.0.103 へ更新。ローカルで `cargo deny check` 全項目 PASS を確認。
+- **Industrial Security Audit (Bastion)**: `deny.toml` を整備 — html2md（GPL-3.0+）の SPDX 表現を clarify＋クレート単位例外に登録（置換は OP-060）、unmaintained 勧告は workspace 直接依存のみ検査、上流メジャー更新待ちの 21 advisory を理由付きで ignore（OP-068、OP-030〜034 と同根）。`anyhow` を 1.0.103 へ更新。ローカルで `cargo deny check` 全項目 PASS を確認。
 - **Frontend Lint & Build / Docker Build / Playwright E2E**: `apps/management-console` の既存 TypeScript エラー（`setupTests.ts` の `global`、`useBiomeEngine.ts` の自己 import、`biome.worker.ts` の `postMessage` オーバーロード、`BiomePostEffects.tsx` の不正 prop）を修正し、連鎖失敗を解消。
 
 ### Added (ハイブリッド価格 OP-059 バックエンド 2026-07-03)

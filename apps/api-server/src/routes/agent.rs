@@ -97,67 +97,14 @@ pub async fn handle_karma_feedback(
 mod tests {
     use super::*;
     use crate::agent_engine::build_system_instructions;
-    use crate::app_state::Component;
     use crate::skill_handler;
-    use infrastructure::job_queue::UniversalJobQueue;
-    use infrastructure::registry::{AssetManifest, AssetType, RegistryManager};
-    use infrastructure::skills::WasmSkillManager;
+    use infrastructure::registry::{AssetManifest, AssetType};
     use serial_test::serial;
-    use std::sync::Arc;
-
-    async fn setup_test_state() -> (crate::AppState, tempfile::TempDir) {
-        let tmp_dir = tempfile::TempDir::new().unwrap();
-        let db_path = tmp_dir.path().join("test_agent.db");
-        let pool_url = format!("sqlite://{}", db_path.to_str().unwrap());
-
-        let pool = infrastructure::db::DatabasePool::new_sqlite(&pool_url)
-            .await
-            .unwrap();
-        let ts = std::sync::Arc::new(
-            infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
-        );
-        let jq = Arc::new(
-            UniversalJobQueue::new(pool.clone(), None, ts)
-                .await
-                .unwrap(),
-        );
-        let registry = Arc::new(RegistryManager::new(pool.clone()));
-
-        // Setup WASM Skill Manager in a tmp dir
-        let skills_dir = tmp_dir.path().join("skills");
-        let sandbox_dir = tmp_dir.path().join("sandbox");
-        std::fs::create_dir_all(&skills_dir).unwrap();
-        std::fs::create_dir_all(&sandbox_dir).unwrap();
-
-        let wsm = Arc::new(
-            WasmSkillManager::new(skills_dir.to_str().unwrap(), sandbox_dir.to_str().unwrap())
-                .unwrap(),
-        );
-
-        let state = crate::AppState {
-            registry: Component::new(registry),
-            wasm_skill_manager: Component::new(wsm),
-            job_queue: Component::new(jq),
-            config: Component::new(Arc::new(shared::config::AiomeConfig::default())),
-            project_rules_cache: Component::new(Arc::new(
-                moka::future::Cache::builder()
-                    .time_to_live(std::time::Duration::from_secs(30))
-                    .build(),
-            )),
-            prompt_registry: Component::new(Arc::new(
-                infrastructure::prompt_registry::MockPromptRegistry,
-            )
-                as Arc<dyn infrastructure::prompt_registry::PromptRegistry>),
-            ..Default::default()
-        };
-
-        (state, tmp_dir)
-    }
 
     #[serial]
     #[tokio::test]
     async fn test_build_system_instructions_includes_mcp_servers() {
-        let (state, _tmp) = setup_test_state().await;
+        let (state, _tmp) = crate::test_helpers::create_test_app_state().await;
 
         // 1. Register a fake MCP server
         let mcp_manifest = AssetManifest {
@@ -198,7 +145,7 @@ mod tests {
     #[serial]
     #[tokio::test]
     async fn test_describe_skill_returns_markdown_for_mcp() {
-        let (state, _tmp) = setup_test_state().await;
+        let (state, _tmp) = crate::test_helpers::create_test_app_state().await;
 
         let mcp_name = "mcp-search-server";
         let mcp_manifest = AssetManifest {

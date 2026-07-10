@@ -9,6 +9,7 @@ pub mod dream;
 pub mod heartbeat;
 pub mod watchtower;
 
+pub mod coin_charge_dlq_worker;
 pub mod commune_ws;
 pub mod oxilean_poller;
 pub mod x_mcp_trend;
@@ -17,7 +18,7 @@ use crate::AppState;
 use tracing::info;
 
 pub async fn spawn_all(state: AppState) {
-    info!("🚀 Spawning unified internal services (Watchtower & Heartbeat & OxiLean & Dream) with TaskSupervisor...");
+    info!("🚀 Spawning unified internal services (Watchtower & Heartbeat & OxiLean & Dream & CoinChargeDlq) with TaskSupervisor...");
 
     let supervisor = infrastructure::supervisor::TaskSupervisor::new(10, 300);
     let cancel_token = tokio_util::sync::CancellationToken::new();
@@ -179,6 +180,41 @@ pub async fn spawn_all(state: AppState) {
     }
     supervisor.spawn_supervised(
         CommuneWsClientTask {
+            state: state.clone(),
+        },
+        cancel_token.clone(),
+    );
+
+    // 6. Coin Charge DLQ Replay Task
+    struct CoinChargeDlqTask {
+        state: AppState,
+    }
+    impl infrastructure::supervisor::SupervisedTask for CoinChargeDlqTask {
+        fn name(&self) -> &'static str {
+            "CoinChargeDlq"
+        }
+        fn run(
+            &self,
+            ct: tokio_util::sync::CancellationToken,
+        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+            let state = self.state.clone();
+            Box::pin(async move {
+                // 他 SupervisedTask と同様: run が Err で落ちたら再起動。cancel で Ok 終了。
+                while let Err(e) = coin_charge_dlq_worker::run(state.clone(), ct.clone()).await {
+                    tracing::error!(
+                        "❌ Coin Charge DLQ worker failed: {:?}. Restarting in 5s...",
+                        e
+                    );
+                    tokio::select! {
+                        _ = ct.cancelled() => { tracing::info!("🛑 CoinChargeDlq shutdown requested"); return; }
+                        _ = tokio::time::sleep(std::time::Duration::from_secs(5)) => {}
+                    }
+                }
+            })
+        }
+    }
+    supervisor.spawn_supervised(
+        CoinChargeDlqTask {
             state: state.clone(),
         },
         cancel_token.clone(),

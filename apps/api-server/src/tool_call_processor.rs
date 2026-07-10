@@ -155,84 +155,7 @@ mod tests {
     use aiome_core_contracts::TaskRegistry;
     use async_trait::async_trait;
     use infrastructure::immune_system::AdaptiveImmuneSystem;
-    use infrastructure::job_queue::UniversalJobQueue;
-    use infrastructure::registry::RegistryManager;
-
-    use infrastructure::skills::WasmSkillManager;
     use std::sync::Arc;
-
-    async fn setup_test_state() -> (crate::AppState, tempfile::TempDir) {
-        let tmp_dir = tempfile::TempDir::new().unwrap();
-        let db_path = tmp_dir.path().join("test_agent.db");
-        let pool_url = format!("sqlite://{}", db_path.to_str().unwrap());
-
-        let pool = infrastructure::db::DatabasePool::new_sqlite(&pool_url)
-            .await
-            .unwrap();
-        let ts = std::sync::Arc::new(
-            infrastructure::job_queue::trajectory_store::SqliteTrajectoryStore::new(pool.clone()),
-        );
-        let jq = Arc::new(
-            UniversalJobQueue::new(pool.clone(), None, ts)
-                .await
-                .unwrap(),
-        );
-        let registry = Arc::new(RegistryManager::new(pool.clone()));
-
-        let skills_dir = tmp_dir.path().join("skills");
-        let sandbox_dir = tmp_dir.path().join("sandbox");
-        std::fs::create_dir_all(&skills_dir).unwrap();
-        std::fs::create_dir_all(&sandbox_dir).unwrap();
-
-        let wsm = Arc::new(
-            WasmSkillManager::new(skills_dir.to_str().unwrap(), sandbox_dir.to_str().unwrap())
-                .unwrap(),
-        );
-
-        let mut config = shared::config::AiomeConfig::default();
-        config.resolver = shared::app_data::AppDataResolver::new().unwrap();
-
-        #[derive(Debug)]
-        struct MockLlm;
-        #[async_trait]
-        impl aiome_core::llm_provider::LlmProvider for MockLlm {
-            async fn complete(
-                &self,
-                _prompt: &str,
-                _sys: Option<&str>,
-            ) -> Result<aiome_core_contracts::LlmResponse, aiome_core::error::AiomeError>
-            {
-                Ok(aiome_core_contracts::LlmResponse {
-                    content: "Mocked Execution Result".into(),
-                    metadata: Some(std::collections::HashMap::new()),
-
-                    stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
-                    ..Default::default()
-                })
-            }
-            async fn test_connection(&self) -> Result<(), aiome_core::error::AiomeError> {
-                Ok(())
-            }
-            fn name(&self) -> &str {
-                "MockLlm"
-            }
-        }
-
-        let state = crate::AppState {
-            registry: Component::new(registry),
-            wasm_skill_manager: Component::new(wsm),
-            job_queue: Component::new(jq),
-            config: Component::new(Arc::new(config)),
-            provider: Component::new(Arc::new(MockLlm)),
-            hook_chain: Component::new(Arc::new(infrastructure::skills::hooks::HookChain::new())),
-            skill_arena: Component::new(Arc::new(
-                infrastructure::skills::skill_arena::SkillArena::new(),
-            )),
-            ..Default::default()
-        };
-
-        (state, tmp_dir)
-    }
 
     #[tokio::test]
     async fn test_tool_hook_denies_execution() {
@@ -249,7 +172,7 @@ mod tests {
             }
         }
 
-        let (mut state, _tmp) = setup_test_state().await;
+        let (mut state, _tmp) = crate::test_helpers::create_test_app_state().await;
 
         let mut chain = HookChain::new();
         chain.add_hook(Box::new(DenyHook));
@@ -310,7 +233,7 @@ some_skill { "data": "hello" }"#;
             }
         }
 
-        let (mut state, _tmp) = setup_test_state().await;
+        let (mut state, _tmp) = crate::test_helpers::create_test_app_state().await;
         let mut chain = HookChain::new();
         chain.add_hook(Box::new(AllowHook));
         state.hook_chain = Component::new(Arc::new(chain));
@@ -362,7 +285,7 @@ some_skill { "data": "hello" }"#;
 
     #[tokio::test]
     async fn test_trajectory_step_persistence() {
-        let (state, _tmp) = setup_test_state().await;
+        let (state, _tmp) = crate::test_helpers::create_test_app_state().await;
 
         let reply_from_llm = r#"some_skill { "data": "hello" }"#;
         let mut steps = 0;

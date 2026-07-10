@@ -1,3 +1,16 @@
+## 🔍 Wave 2 OP-060/061（2026-07-09 / reflexion 2026-07-10）
+
+- **変更内容**:
+    - `apps/api-server/src/routes/commerce_webhook/relay.rs` [MODIFY]: `attempt_coin_charge_once` 抽出。OXP ヘッダ生成失敗は fail-closed。
+    - `apps/api-server/src/internal_services/coin_charge_dlq_worker.rs` [NEW]: `process_one_batch` / `run(cancel)`。成功時 DELETE、再 INSERT 禁止。
+    - `apps/api-server/src/internal_services/mod.rs` [MODIFY]: `CoinChargeDlq` SupervisedTask。
+    - `libs/aiome-commerce/src/stripe/mod.rs` [MODIFY]: `generate_oxp_header` → `OxiLeanProofCertificate::generate_header`。
+    - `apps/api-server/src/routes/auth.rs` [MODIFY]: forget を `nurture_internal_secret` 署名 + Bearer。URL は `state.nurture_url`（`NURTURE_API_URL`）。secret 欠落は fail-closed。
+    - `libs/aiome-commerce/src/stripe/mod.rs` [MODIFY]: `require_oxp_header()` で Nurture 送信を fail-closed。
+- **波及効果**: DLQ 滞留はワーカーが自動再送。forget / stripe の Nurture 契約は `NURTURE_INTERNAL_SECRET` に統一。forget URL は DB `system_settings.nurture_url` ではなく env 正本（coin-charge と同一）。forget は secret 欠落時 fail-closed、Nurture HTTP/ネットワーク失敗時はローカル RTBF 継続（`nurture_pii_scrubbed: false`）。
+- **テスト**: `api_integration_tests/auth.rs` — delete_account 5 本（env ベース + `NurtureEnvGuard`）; `aiome-commerce` generate_oxp_header 3 本。
+- **ドキュメント同期 (2026-07-10 /docs-sync)**: OPERATIONS_MANUAL v3.6、SECURITY_WHITEPAPER §1.6、SYNERGY §5.4.0、INFRASTRUCTURE_MODULES、release_master_plan、`.env.example`、README/README_en。
+
 ## 🔍 W2 ワークフロー実行エンジン OP-073（2026-07-08）
 
 - **変更内容**:
