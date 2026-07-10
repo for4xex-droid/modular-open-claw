@@ -967,3 +967,132 @@ async fn test_dispatch_loop_human_review_transition() {
         "Dispatcher should emit AwaitingInput event"
     );
 }
+
+#[tokio::test]
+#[serial_test::serial]
+async fn test_goal_immune_db_error_fail_closed() {
+    let mut job = Job::default();
+    job.id = "db-err-job".into();
+    job.category = "Goal".into();
+    job.topic = "Check secure command".into();
+
+    let job_queue = Arc::new(GlobalMockJobQueue {
+        job_to_return: std::sync::Mutex::new(Some(job.clone())),
+        fetched_job: std::sync::Mutex::new(Some(job)),
+        fail_immune_fetch: std::sync::Mutex::new(true), // Trigger DB error
+        ..Default::default()
+    });
+
+    #[derive(Debug)]
+    struct MockLlmForPlanning;
+    #[async_trait]
+    impl aiome_core_contracts::llm::LlmProvider for MockLlmForPlanning {
+        async fn complete(
+            &self,
+            content: &str,
+            prompt: Option<&str>,
+        ) -> Result<aiome_core_contracts::llm::LlmResponse, AiomeError> {
+            let pr = prompt.unwrap_or("");
+            if pr.contains("Constitutional Finder") || content.contains("Constitutional Finder") {
+                return Ok(aiome_core_contracts::llm::LlmResponse {
+                    content: "NONE".to_string(),
+                    ..Default::default()
+                });
+            }
+            if pr.contains("Constitutional Referee") || content.contains("Constitutional Referee") {
+                return Ok(aiome_core_contracts::llm::LlmResponse {
+                    content: "PASS".to_string(),
+                    ..Default::default()
+                });
+            }
+
+            let steps = serde_json::json!([
+                {
+                    "description": "Safe check",
+                    "step_category": "Execution",
+                    "reasoning": "Simple check",
+                    "tool_name": "ls",
+                    "input": {}
+                }
+            ]);
+            Ok(aiome_core_contracts::llm::LlmResponse {
+                content: format!("```json\n{}\n```", steps),
+                stop_reason: aiome_core_contracts::llm::StopReason::EndTurn,
+                ..Default::default()
+            })
+        }
+        async fn test_connection(&self) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        fn name(&self) -> &str {
+            "Mock"
+        }
+        async fn complete_with_cache(
+            &self,
+            req: aiome_core_contracts::llm::LlmRequest,
+        ) -> Result<aiome_core_contracts::llm::LlmResponse, AiomeError> {
+            let pr = req
+                .messages
+                .iter()
+                .map(|m| m.content.as_str())
+                .collect::<Vec<_>>()
+                .join("\n");
+            self.complete(&pr, None).await
+        }
+    }
+
+    let mock_llm = Arc::new(MockLlmForPlanning);
+    let planner = Arc::new(DefaultStrategicPlanner::new(mock_llm.clone()));
+    let immune_system = Arc::new(crate::immune_system::AdaptiveImmuneSystem::new(
+        mock_llm.clone(),
+    ));
+
+    let validator = Arc::new(crate::validator::DefaultConstitutionalValidator::new(
+        mock_llm.clone(),
+        None,
+    ));
+
+    let mut dispatcher = TaskDispatcher::new(
+        job_queue.clone(),
+        Duration::from_millis(10),
+        None,                // core_event_tx
+        None,                // tool_discovery
+        Some(planner),       // planner
+        Some(validator),     // validator
+        None,                // soul_path
+        None,                // oracle
+        None,                // gig_engine
+        None,                // diagnostics
+        Some(immune_system), // immune_system
+        None,                // quality_gate_store
+        None,                // hook_manager
+    );
+
+    let _rx = dispatcher.subscribe_events();
+    dispatcher.register_conductor(Arc::new(TestConductor));
+
+    let _handle = tokio::spawn(async move {
+        dispatcher.run_dispatch_loop().await;
+    });
+
+    let mut failed_detected = false;
+    for _ in 0..20 {
+        if let Some(status) = job_queue.updated_status.lock().unwrap().as_ref() {
+            if *status == JobStatus::Failed {
+                failed_detected = true;
+                break;
+            }
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+
+    assert!(
+        failed_detected,
+        "Job should transition to Failed due to DB error in immune check"
+    );
+
+    let failed = job_queue.failed_jobs.lock().unwrap();
+    assert_eq!(failed.len(), 1);
+    assert!(failed[0].1.contains("Unable to verify immune status"));
+    assert!(job_queue.trajectory.lock().unwrap().is_empty());
+}

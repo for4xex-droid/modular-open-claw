@@ -2,7 +2,7 @@
 
 - **ステータス**: 実装進行中（R0/R1/R2 コード完了 — R2-1 Human 待ち / R3-1・R3-2・R3-4 チェックリスト ✅ 2026-07-06 / R3-4 実走 Human 待ち）。**Wave 1/2（OP-024/060/061/067/069）完了**。**TECH_DEBT Top5 のうち OP-075/054/029/076 完了**（2026-07-10）。OP-051 は ADR-054 Proposed。
 - **作成日**: 2026-07-05
-- **最終更新**: 2026-07-10
+- **最終更新**: 2026-07-11
 - **目的**: 残存タスク全量を単一の実行計画に統合し、Public Beta リリースと本番化を「計画通りに実装すれば確実に完了する」状態にする。
 - **正本関係**: タスク台帳の正本は `OPEN.md`。本計画は「リリースまでの実行順序・依存・完了基準」を定義する層であり、二重管理はしない（本計画の項目は必ず OP 番号で OPEN.md と対応させる）。
 - **根拠**: OPEN.md 全量精査 + ロードマップ14本の未完了項目調査（サブエージェント）+ CHANGELOG 突合。調査報告のうち以下4件は**陳腐化**を確認済み: W-1 OXP relay（✅ CHANGELOG L79）/ ProUpgradeModal マウント（✅ OP-058）/ LP main push（✅ 2026-07-05）/ Biome Phase 5 P5-1〜P5-5（✅ CHANGELOG「面白さの核」+ ADR-049）。
@@ -22,8 +22,8 @@
 
 **スコープ外（ポストリリース、本計画で追わない）**:
 - `value_10x_roadmap.md` F-2〜F-10（Outcome Ledger / Marketplace α / Remote Access / Federation / Agency / Voice 等）
-- 技術的負債系: OP-020〜023, OP-025〜027, OP-051（ADR-054 Accepted 後）, OP-062, OP-068, App.tsx god-shell
-  - ✅ 完了済み（本計画スコープ外だったが消化）: OP-024 / OP-060 / OP-061 / OP-067 / OP-069（Wave 1/2）; **OP-075 Immune Fail-Closed / OP-054 JobQueue 可視性 / OP-029 HEX / OP-076 `$STRIPE_API_KEY`**（Top5・2026-07-10）
+- 技術的負債系: OP-020〜023, OP-025〜027, OP-051（ADR-054 Accepted 後）, OP-062, OP-068, OP-059-UI
+  - ✅ 完了済み（本計画スコープ外だったが消化）: OP-024 / OP-060 / OP-061 / OP-067 / OP-069（Wave 1/2）; **OP-075 / OP-054 / OP-029 / OP-076**（Top5・2026-07-10）; **OP-075-B / App.tsx シェル分割**（Wave A2/A3・2026-07-11）
 - Upstream 待ち: OP-030〜034（`watch_upstream_blockers.py` 監視継続のみ）
 - OP-040（OGP 動画）: 完全凍結のまま（解除条件はユーザー素材提供）
 - 有償スキル販売・F-3 マーケット α: 法務（特商法・資金決済法）完了までスコープ外。**リリースは Mock 経済 + Pro サブスクのみで成立させる**

@@ -197,6 +197,21 @@ pub async fn execute_wasm_skill(
         .and_then(|m| m.inputs.first().cloned())
         .unwrap_or_else(|| "{}".to_string());
 
+    let immune_rules = match state.job_queue.fetch_active_immune_rules().await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(
+                error = %e,
+                "[Security] fetch_active_immune_rules failed; deny skill {}",
+                skill_name
+            );
+            return format!(
+                "[{} Error: Unable to verify immune status. Request denied.]",
+                skill_name
+            );
+        }
+    };
+
     let unverified = UnverifiedSkill {
         name: skill_name.to_string(),
         input_test_payload: test_payload,
@@ -289,11 +304,7 @@ pub async fn execute_wasm_skill(
     if let Some(id) = job_id {
         // Evaluate constraints
         let checker = infrastructure::constraint_checker::ConstraintChecker::new(
-            state
-                .job_queue
-                .fetch_active_immune_rules()
-                .await
-                .unwrap_or_default(),
+            immune_rules,
             state
                 .wasm_skill_manager
                 .get_metadata(skill_name)
@@ -443,4 +454,29 @@ pub async fn describe_skill(skill_name: &str, state: &AppState) -> String {
         "# Skill Not Found\n\nスキル `{}` は WASM または MCP レジストリに見つかりませんでした。",
         skill_name
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::execute_wasm_skill;
+
+    /// N-B5: fetch_active_immune_rules Err → Wasm 実行前に deny（call_skill に到達しない）
+    #[tokio::test]
+    async fn test_execute_wasm_skill_immune_db_error_fail_closed() {
+        let (_server, state, _tmp) = crate::api_integration_tests::create_test_server().await;
+
+        infrastructure::sql_exec!(&state.job_queue.pool, "DROP TABLE immune_rules")
+            .expect("drop immune_rules for N-B5 negative test");
+
+        let reply = execute_wasm_skill("n_b5_probe_skill", "{}", &state, None, 0).await;
+
+        assert!(
+            reply.contains("Unable to verify immune status"),
+            "expected fail-closed deny before Wasm, got: {reply}"
+        );
+        assert!(
+            !reply.contains("Truncated for brevity") && !reply.contains("OxiLean"),
+            "must not reach call_skill success path, got: {reply}"
+        );
+    }
 }

@@ -143,46 +143,70 @@ impl TaskDispatcher {
             if !bypass_immune_check {
                 for step in &steps {
                     if let Some(tool_name) = &step.tool_name {
-                        if let Ok(Some(rule)) = immune
+                        match immune
                             .verify_tool_call(tool_name, &step.input, self.job_queue.as_ref())
                             .await
                         {
-                            warn!("🚨 [AdaptiveImmuneSystem] Plan for goal {} blocked by rule {}: tool={}", job.id, rule.id, tool_name);
+                            Ok(Some(rule)) => {
+                                warn!("🚨 [AdaptiveImmuneSystem] Plan for goal {} blocked by rule {}: tool={}", job.id, rule.id, tool_name);
 
-                            // Use 70 as the threshold for "High" severity elicitation triggers
-                            const ELICITATION_THRESHOLD: u8 = 70;
-                            if rule.severity >= ELICITATION_THRESHOLD {
-                                info!("✋ [Elicitation] High severity violation detected. Transitioning job {} to AwaitingInput.", job.id);
-                                let reason = format!(
-                                    "Governable Execution Blocked: {}. User input required.",
-                                    rule.id
-                                );
+                                // Use 70 as the threshold for "High" severity elicitation triggers
+                                const ELICITATION_THRESHOLD: u8 = 70;
+                                if rule.severity >= ELICITATION_THRESHOLD {
+                                    info!("✋ [Elicitation] High severity violation detected. Transitioning job {} to AwaitingInput.", job.id);
+                                    let reason = format!(
+                                        "Governable Execution Blocked: {}. User input required.",
+                                        rule.id
+                                    );
 
-                                // Gap 3: Persist the reason to the DB before setting status to AwaitingInput
-                                if let Err(e) = self.job_queue.fail_job(&job.id, &reason).await {
-                                    tracing::error!("🚨 [TaskOrchestrator] Failed to record job failure for {}: {}", job.id, e);
+                                    // Gap 3: Persist the reason to the DB before setting status to AwaitingInput
+                                    if let Err(e) = self.job_queue.fail_job(&job.id, &reason).await
+                                    {
+                                        tracing::error!("🚨 [TaskOrchestrator] Failed to record job failure for {}: {}", job.id, e);
+                                    }
+
+                                    self.job_queue
+                                        .update_job_status(
+                                            &job.id,
+                                            aiome_core_contracts::traits::JobStatus::AwaitingInput,
+                                        )
+                                        .await?;
+
+                                    // Notify elicitation event
+                                    if let Err(e_tx) =
+                                        self.event_tx.send(super::types::TaskEvent::AwaitingInput {
+                                            job_id: job.id.clone(),
+                                            reason,
+                                        })
+                                    {
+                                        warn!("Failed to send AwaitingInput event: {:?}", e_tx);
+                                    }
+                                    return Ok(()); // Stop planning/dispatching for this goal completely
+                                } else {
+                                    info!("⚠️ [AdaptiveImmuneSystem] Rule violation (low severity: {}). Warning logged but proceeding.", rule.severity);
                                 }
-
-                                self.job_queue
+                            }
+                            Err(e) => {
+                                error!(
+                                    error = %e,
+                                    "[Security] verify_tool_call failed; failing goal {} (fail-closed)",
+                                    job.id
+                                );
+                                let reason =
+                                    "Unable to verify immune status. Request denied.".to_string();
+                                if let Err(fe) = self.job_queue.fail_job(&job.id, &reason).await {
+                                    error!("fail_job after immune Err: {:?}", fe);
+                                }
+                                let _ = self
+                                    .job_queue
                                     .update_job_status(
                                         &job.id,
-                                        aiome_core_contracts::traits::JobStatus::AwaitingInput,
+                                        aiome_core_contracts::traits::JobStatus::Failed,
                                     )
-                                    .await?;
-
-                                // Notify elicitation event
-                                if let Err(e_tx) =
-                                    self.event_tx.send(super::types::TaskEvent::AwaitingInput {
-                                        job_id: job.id.clone(),
-                                        reason,
-                                    })
-                                {
-                                    warn!("Failed to send AwaitingInput event: {:?}", e_tx);
-                                }
-                                return Ok(()); // Stop planning/dispatching for this goal completely
-                            } else {
-                                info!("⚠️ [AdaptiveImmuneSystem] Rule violation (low severity: {}). Warning logged but proceeding.", rule.severity);
+                                    .await;
+                                return Ok(()); // サブジョブ enqueue 禁止（Fail-Closed: 以降の計画実行に進まない）
                             }
+                            Ok(None) => {}
                         }
                     }
                 }

@@ -10,64 +10,22 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
   Shield,
-  Clock,
   GitMerge,
   MessageSquare,
   BrainCircuit,
-  Package,
-  Box,
-  Settings as SettingsIcon,
   Zap,
-  Sparkles,
-  Network,
-  Crown,
-  Library,
-  Server,
-  Briefcase,
-  Home,
-  LayoutDashboard,
-  GitCommit,
-  TrendingUp,
-  Coins,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Gamepad2
 } from "lucide-react";
+
 const LoginScreen = React.lazy(() => import("./components/LoginScreen"));
 const SetupWizard = React.lazy(() => import("./components/SetupWizard"));
-const HomePage = React.lazy(() => import("./components/home/HomePage"));
-const BiotopeView = React.lazy(() => import("./components/BiotopeView"));
-const ActivityView = React.lazy(() => import("./components/ActivityView"));
-const ImmuneSystem = React.lazy(() => import("./components/ImmuneSystem"));
-const AgentConsole = React.lazy(() => import("./components/AgentConsole"));
-const SeoPulseView = React.lazy(() => import("./components/SeoPulseView"));
-const SkillVault = React.lazy(() => import("./components/SkillVault"));
-const ArtifactVault = React.lazy(() => import("./components/ArtifactVault"));
-const GraphView = React.lazy(() => import("./components/GraphView"));
-const SettingsPage = React.lazy(() => import("./components/SettingsPage"));
-const StatusPage = React.lazy(() => import("./components/StatusPage"));
-const ExpressionPipeline = React.lazy(() => import("./components/ExpressionPipeline"));
-const LoraTrainingView = React.lazy(() => import("./components/LoraTrainingView"));
-const CommuneDialogueView = React.lazy(() => import("./components/CommuneDialogueView"));
-const VoiceStore = React.lazy(() => import("./components/VoiceStore"));
-const McpDashboard = React.lazy(() => import("./components/McpDashboard"));
-const BanDashboard = React.lazy(() => import("./components/BanDashboard"));
-const DemoView = React.lazy(() => import("./components/DemoView"));
-const BiomeGame = React.lazy(() => import("./lib/biome/BiomeGame").then(m => ({ default: m.BiomeGame })));
-const CausalVisualizer = React.lazy(() => import("./components/CausalVisualizer"));
-const CortexView = React.lazy(() => import("./components/cortex/CortexView"));
-const NurtureDashboard = React.lazy(() => import("./components/commerce/NurtureDashboard"));
 const ProUpgradeModal = React.lazy(() =>
   import("./components/commerce/ProUpgradeModal").then((m) => ({ default: m.ProUpgradeModal }))
 );
-const BuzzApproval = React.lazy(() => import("./components/BuzzApproval"));
-const WorkflowBuilder = React.lazy(() => import("./components/WorkflowBuilder"));
 const DioramaView = React.lazy(() => import("./components/diorama/DioramaView"));
 const TaskApprovalOverlay = React.lazy(() => import("./components/TaskApprovalOverlay"));
+
 import { SoTProgressBar } from "./components/SoTProgressBar";
 import { useWorkspacePersona } from "./hooks/useWorkspacePersona";
-import { AiaaOnboardingWizard } from "./components/AiaaOnboardingWizard";
-
 import { isAuthenticated, clearAuthToken, AUTH_UNAUTHORIZED_EVENT } from "./lib/auth";
 import { useAvatarState } from "./hooks/useAvatarState";
 import { AiomeSkeleton } from "./components/common/AiomeSkeleton";
@@ -77,84 +35,20 @@ import { useSystemVitality } from "./hooks/useSystemVitality";
 import { useViewMode } from "./hooks/useViewMode";
 import { useAgentIdentity } from "./hooks/useAgentIdentity";
 import { useTokenHealth } from "./hooks/useTokenHealth";
-import { PlanBadge } from "./components/commerce/PlanBadge";
-import { CoinChip } from "./components/commerce/CoinChip";
 import { CheckoutSuccess } from "./components/commerce/CheckoutSuccess";
 import { APP_VERSION, API_BASE, STRIPE_PRICE_ID } from "./config";
 import { isValidA2uiNavTab } from "./lib/a2uiTabs";
+
+// Split components / configurations
+import { AppSidebar } from "./components/AppSidebar";
+import { AppHeader } from "./components/AppHeader";
+import { AppRoutes } from "./AppRoutes";
 
 /** Valid boot mode states returned from the API normalization layer */
 type BootMode = 'Normal' | 'Setup';
 
 /** Maps lowercase backend mode strings to typed frontend values */
 const BOOT_MODE_MAP: Readonly<Record<string, BootMode>> = Object.freeze({ normal: 'Normal', setup: 'Setup' });
-
-/**
- * U6-1: サイドバーの情報設計（5グループ・利用頻度順）。
- * 並び順は「毎日使う（ホーム・対話）→ 育てる → 様子を見る → 広げる → 守る・整える」。
- * `agency` は workspacePersona.mode === 'agency' のときのみ表示（描画側で判定）。
- */
-interface NavItemDef {
-  tab: string;
-  labelKey: string;
-  icon: React.ReactNode;
-}
-interface NavGroupDef {
-  sectionKey: string;
-  items: NavItemDef[];
-}
-const NAV_GROUPS: NavGroupDef[] = [
-  {
-    sectionKey: 'home',
-    items: [
-      { tab: 'home-v2', labelKey: 'nav.homeV2', icon: <Home size={18} /> },
-      { tab: 'agent', labelKey: 'nav.agentConsole', icon: <MessageSquare size={18} /> },
-      { tab: 'agency', labelKey: 'nav.agencyOnboarding', icon: <Briefcase size={18} /> },
-    ],
-  },
-  {
-    sectionKey: 'grow',
-    items: [
-      { tab: 'biome', labelKey: 'nav.biome', icon: <Gamepad2 size={18} /> },
-      { tab: 'lora', labelKey: 'nav.loraAutotuner', icon: <BrainCircuit size={18} /> },
-      { tab: 'vault', labelKey: 'nav.skillVault', icon: <Package size={18} /> },
-      { tab: 'cortex', labelKey: 'nav.cortex', icon: <Library size={18} /> },
-      { tab: 'expressions', labelKey: 'nav.expressions', icon: <Sparkles size={18} /> },
-    ],
-  },
-  {
-    sectionKey: 'observe',
-    items: [
-      { tab: 'dashboard', labelKey: 'nav.biotope', icon: <LayoutDashboard size={18} /> },
-      // U6-5: audit / prompt-stats はアクティビティ（karma）の内部タブに統合
-      { tab: 'karma', labelKey: 'nav.chronicle', icon: <Clock size={18} /> },
-      { tab: 'graph', labelKey: 'nav.resonanceMap', icon: <GitMerge size={18} /> },
-      { tab: 'causal', labelKey: 'nav.causalTrace', icon: <GitCommit size={18} /> },
-      { tab: 'status-page', labelKey: 'nav.statusPage', icon: <Shield size={18} /> },
-    ],
-  },
-  {
-    sectionKey: 'expand',
-    items: [
-      { tab: 'nurture', labelKey: 'nav.nurtureEconomy', icon: <Coins size={18} /> },
-      { tab: 'store', labelKey: 'nav.voiceStore', icon: <Crown size={18} /> },
-      { tab: 'buzz-approval', labelKey: 'nav.buzzApproval', icon: <Zap size={18} /> },
-      { tab: 'seo-pulse', labelKey: 'nav.seoPulse', icon: <TrendingUp size={18} /> },
-      { tab: 'commune', labelKey: 'nav.communeLab', icon: <Network size={18} /> },
-      { tab: 'workflow-builder', labelKey: 'nav.workflowBuilder', icon: <Network size={18} /> },
-      { tab: 'mcp-dashboard', labelKey: 'nav.mcpDashboard', icon: <Server size={18} /> },
-      { tab: 'artifacts', labelKey: 'nav.artifactVault', icon: <Box size={18} /> },
-    ],
-  },
-  {
-    sectionKey: 'protect',
-    items: [
-      { tab: 'immune', labelKey: 'nav.immuneSystem', icon: <Shield size={18} /> },
-      { tab: 'ban-dashboard', labelKey: 'nav.banDashboard', icon: <Shield size={18} /> },
-      { tab: 'settings', labelKey: 'nav.settings', icon: <SettingsIcon size={18} /> },
-    ],
-  },
-];
 
 function App() {
   const { t } = useTranslation();
@@ -308,7 +202,6 @@ function App() {
         if (!seenTokenEventsRef.current.has(d.ts)) {
             seenTokenEventsRef.current.add(d.ts);
             
-            // Prevent unbounded memory growth in 24/7 running dashboard tabs
             if (seenTokenEventsRef.current.size > 1000) {
                const oldestTs = seenTokenEventsRef.current.values().next().value;
                if (oldestTs) seenTokenEventsRef.current.delete(oldestTs);
@@ -356,62 +249,6 @@ function App() {
     }
   }, [lastEvent]);
 
-  // Status Badge Rendering Logic
-  const renderStatusBadge = () => {
-    let badgeClass = "status-badge";
-    let dotClass = "status-dot";
-    let text = "";
-
-    switch (connectionStatus) {
-      case "connected":
-        text = lastPingMs !== null ? t('status.connectedMs', { ms: lastPingMs }) : t('status.hubConnected');
-        // Default classes are fine
-        break;
-      case "connecting":
-        badgeClass += ' disconnected'; // Using disconnected style for connecting state
-        dotClass += ' offline'; // Using offline dot style for connecting state
-        dotClass += ' ani-pulse';
-        text = t('status.reconnecting');
-        break;
-      case "paused":
-        badgeClass += ' paused';
-        dotClass += ' offline';
-        dotClass = dotClass.replace('offline', 'paused'); // Custom styling inline if needed
-        text = t('status.syncPaused');
-        break;
-      case "disconnected":
-      default:
-        badgeClass += ' disconnected';
-        dotClass += ' offline';
-        text = t('status.connectionLost');
-        break;
-    }
-
-    return (
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <div className="status-item persona-toggle" onClick={() => workspacePersona.setMode(workspacePersona.mode === 'agency' ? 'consumer' : 'agency')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: 'var(--black-40)', borderRadius: '6px' }} data-tooltip={workspacePersona.mode === 'agency' ? t('persona.agencyTooltip') : t('persona.consumerTooltip')}>
-          <Briefcase size={14} color={workspacePersona.mode === 'agency' ? 'var(--accent-cyan)' : 'var(--text-secondary)'} />
-          <span>{workspacePersona.mode === 'agency' ? t('persona.agencyMode') : t('persona.consumerMode')}</span>
-        </div>
-        <button
-          className={badgeClass}
-          onClick={toggleConnection}
-          style={{
-            cursor: 'pointer', border: '1px solid var(--white-05)', background: 'var(--black-40)',
-            outline: 'none', transition: 'all 0.2s', padding: '0.5rem 1rem'
-          }}
-          data-tooltip="Click to toggle connection sync"
-        >
-          <div className={dotClass} style={{
-            background: connectionStatus === 'paused' ? 'var(--accent-amber)' : undefined,
-            boxShadow: connectionStatus === 'paused' ? 'var(--glow-amber)' : undefined
-          }} />
-          {text}
-        </button>
-      </div>
-    );
-  };
-
   const { viewMode } = useViewMode();
   const { agentId } = useAgentIdentity();
   const { isExpired, dismiss } = useTokenHealth();
@@ -426,7 +263,7 @@ function App() {
 
   const isBootComplete = bootMode === 'Normal' && isAuth;
 
-  // Pre-compute ambient particles (must be unconditional — Rules of Hooks)
+  // Pre-compute ambient particles
   const ambientParticles = useMemo(() => [...Array(6)].map((_, i) => (
     <motion.div
       key={i}
@@ -520,169 +357,47 @@ function App() {
       {/* Society of Thought Visualization */}
       <SoTProgressBar />
 
-      {/* Ambient Background Particles — 認証後のみ表示（LoginScreen は FluidBackground を使用） */}
+      {/* Ambient Background Particles */}
       {isBootComplete && (
         <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
           {ambientParticles}
         </div>
       )}
 
-      {/* Sidebar — cockpit mode only */}
-      {viewMode === 'cockpit' && isMobileNav && isSidebarOpen && (
-        <div
-          className="sidebar-backdrop"
-          onClick={() => setIsSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-      {viewMode === 'cockpit' && <aside className={`sidebar ${isSidebarOpen ? '' : 'closed'}`}>
-        <div className="brand-row">
-          <img
-            src={isSidebarOpen ? '/aiome-horizontal-white.png' : '/aiome-graphic-white.png'}
-            alt="Aiome"
-            className="brand-logo"
-          />
-          <button
-            type="button"
-            className="sidebar-toggle-btn"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            aria-label={t('sidebar.toggleSidebar')}
-            data-tooltip={t('sidebar.toggleSidebar')}
-          >
-            {isSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
-          </button>
-        </div>
-
-        <div className="sidebar-nav-container" ref={navContainerRef}>
-          {NAV_GROUPS.map((group) => {
-            const visibleItems = group.items.filter((item) =>
-              item.tab === 'agency'
-                ? workspacePersona.mode === 'agency'
-                : isVisible(item.tab)
-            );
-            if (visibleItems.length === 0) return null;
-            return (
-              <nav className="nav-group" key={group.sectionKey}>
-                <h4>{t(`nav.section.${group.sectionKey}`)}</h4>
-                {visibleItems.map((item) => (
-                  <NavItem
-                    key={item.tab}
-                    tab={item.tab}
-                    icon={item.icon}
-                    label={t(item.labelKey)}
-                    description={t(`nav.desc.${item.tab}`)}
-                    active={activeTab === item.tab}
-                    onClick={() => setActiveTab(item.tab)}
-                  />
-                ))}
-              </nav>
-            );
-          })}
-        </div>
-
-        <AnimatePresence>
-          {isSidebarOpen && (
-            <motion.div
-              className="sidebar-footer"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{t('sidebar.samsaraTier')}</span>
-                <span style={{ color: 'var(--accent-purple)' }}>{t('sidebar.level')} {stats.level}</span>
-              </div>
-              <div style={{ height: '4px', background: 'var(--white-10)', borderRadius: '2px', overflow: 'hidden' }}>
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(stats.exp % 1000) / 10}%` }}
-                  style={{ height: '100%', background: 'var(--accent-purple)' }}
-                />
-              </div>
-              <div style={{ marginTop: '0.5rem', textAlign: 'center', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                AIOME {APP_VERSION}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem', marginTop: '0.75rem' }}>
-                <button className={`lang-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => setLang('en')}>
-                  🇺🇸 {t('language.en')}
-                </button>
-                <button className={`lang-btn ${lang === 'ja' ? 'active' : ''}`} onClick={() => setLang('ja')}>
-                  🇯🇵 {t('language.ja')}
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </aside>}
+      {/* Sidebar */}
+      <AppSidebar
+        viewMode={viewMode}
+        isMobileNav={isMobileNav}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        workspacePersona={workspacePersona}
+        isVisible={isVisible}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        t={t}
+        navContainerRef={navContainerRef}
+        stats={stats}
+        lang={lang}
+        setLang={setLang}
+        APP_VERSION={APP_VERSION}
+      />
 
       {/* Main Content */}
       <main className="main-content">
-        <header className="header">
-          {isMobileNav && viewMode === 'cockpit' && !isSidebarOpen && (
-            <button
-              type="button"
-              className="mobile-menu-btn"
-              aria-label={t('sidebar.openMenu')}
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <PanelLeftOpen size={20} />
-            </button>
-          )}
-          <div className="header-title-block">
-            <motion.h2
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              key={activeTab}
-            >
-              {activeTab === "home-v2" && t('page.homeV2')}
-              {activeTab === "dashboard" && t('page.biotope')}
-              {activeTab === "demo" && t('page.demo')}
-              {activeTab === "biome" && t('page.biome')}
-              {activeTab === "karma" && t('page.chronicle')}
-              {activeTab === "graph" && t('page.resonanceMap')}
-              {activeTab === "immune" && t('page.immuneSystem')}
-              {activeTab === "agent" && t('page.agentConsole')}
-              {activeTab === "seo-pulse" && t('page.seoPulse')}
-              {activeTab === "cortex" && t('page.cortex')}
-              {activeTab === "vault" && t('page.skillVault')}
-              {activeTab === "artifacts" && t('page.artifactVault')}
-              {activeTab === "audit" && t('page.audit')}
-              {activeTab === "prompt-stats" && t('page.promptStats')}
-              {activeTab === "mcp-dashboard" && t('page.mcpDashboard')}
-              {activeTab === "expressions" && t('page.expressions')}
-              {activeTab === "commune" && t('page.communeLab')}
-              {activeTab === "store" && t('page.voiceStore')}
-              {activeTab === "ban-dashboard" && t('page.banDashboard')}
-              {activeTab === "nurture" && t('page.nurtureEconomy')}
-              {activeTab === "workflow-builder" && t('page.workflowBuilder')}
-              {activeTab === "causal" && t('page.causalTrace')}
-              {activeTab === "lora" && t('page.loraAutotuner')}
-              {activeTab === "settings" && t('page.settings')}
-              {activeTab === "agency" && t('page.agencyOnboarding')}
-              {activeTab === "status-page" && t('page.statusPage')}
-              {activeTab === "buzz-approval" && t('page.buzzApproval')}
-            </motion.h2>
-            {/* U6-4: 画面自己説明 — この画面で何ができるかを1行で示す */}
-            <motion.p
-              className="page-desc"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              key={`desc-${activeTab}`}
-            >
-              {t(`page.desc.${activeTab}`)}
-            </motion.p>
-          </div>
-
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <CoinChip />
-            <PlanBadge />
-            {renderStatusBadge()}
-          </div>
-        </header>
+        <AppHeader
+          isMobileNav={isMobileNav}
+          viewMode={viewMode}
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
+          activeTab={activeTab}
+          t={t}
+          connectionStatus={connectionStatus}
+          lastPingMs={lastPingMs}
+          toggleConnection={toggleConnection}
+          workspacePersona={workspacePersona}
+        />
 
         <AnimatePresence mode="wait">
-          {/* Use Suspense for lazy loaded components */}
           <React.Suspense fallback={
             <div style={{ padding: 'var(--space-lg)', display: 'grid', gap: 'var(--space-lg)', height: '100%' }}>
               <AiomeSkeleton height="40px" width="30%" />
@@ -711,42 +426,22 @@ function App() {
                   }}
                 />
               ) : (
-              <>
-              {activeTab === "home-v2" && <HomePage stats={stats} vitalityEvents={vitalityEvents} connectionStatus={connectionStatus} recentEvents={recentEvents} lastEvent={lastEvent} sessionSavedChars={sessionSavedChars} />}
-              {activeTab === "dashboard" && <BiotopeView stats={stats} isConnected={isConnected} recentEvents={recentEvents} sessionSavedChars={sessionSavedChars} />}
-              {activeTab === "demo" && <DemoView stats={stats} lastEvent={lastEvent} isConnected={isConnected} />}
-              {activeTab === "biome" && <BiomeGame />}
-              {activeTab === "karma" && <ActivityView initialTab="timeline" />}
-              {activeTab === "graph" && <GraphView />}
-              {activeTab === "immune" && <ImmuneSystem />}
-              {activeTab === "agent" && <AgentConsole sessionSavedChars={sessionSavedChars} />}
-              {activeTab === "seo-pulse" && <SeoPulseView />}
-              {activeTab === "cortex" && <CortexView />}
-              {activeTab === "vault" && <SkillVault />}
-              {activeTab === "artifacts" && <ArtifactVault />}
-              {activeTab === "audit" && <ActivityView initialTab="audit" />}
-              {activeTab === "prompt-stats" && <ActivityView initialTab="usage" />}
-              {activeTab === "mcp-dashboard" && <McpDashboard />}
-              {activeTab === "expressions" && <ExpressionPipeline />}
-              {activeTab === "commune" && <CommuneDialogueView />}
-              {activeTab === "store" && <VoiceStore />}
-              {activeTab === "ban-dashboard" && <BanDashboard />}
-              {activeTab === "nurture" && <NurtureDashboard onNavigateToStore={() => setActiveTab('store')} />}
-              {activeTab === "workflow-builder" && <WorkflowBuilder />}
-              {activeTab === "buzz-approval" && <BuzzApproval />}
-              {activeTab === "causal" && <CausalVisualizer />}
-              {activeTab === "lora" && <LoraTrainingView />}
-              {activeTab === "settings" && <SettingsPage />}
-              {activeTab === "agency" && <AiaaOnboardingWizard />}
-              {activeTab === "status-page" && <StatusPage />}
-              </>
+                <AppRoutes
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                  stats={stats}
+                  vitalityEvents={vitalityEvents}
+                  connectionStatus={connectionStatus}
+                  recentEvents={recentEvents}
+                  lastEvent={lastEvent}
+                  sessionSavedChars={sessionSavedChars}
+                  isConnected={isConnected}
+                />
               )}
             </motion.div>
           </React.Suspense>
         </AnimatePresence>
       </main>
-
-
 
       <React.Suspense fallback={null}>
         <TaskApprovalOverlay />
@@ -754,32 +449,6 @@ function App() {
       </React.Suspense>
       </>)}
     </div>
-  );
-}
-
-function NavItem({ tab, icon, label, description, active, onClick }: {
-  tab: string,
-  icon: React.ReactNode,
-  label: string,
-  description?: string,
-  active: boolean,
-  onClick: () => void,
-}) {
-  return (
-    <button
-      type="button"
-      className={`nav-item ${active ? 'active' : ''}`}
-      data-testid={`nav-${tab}`}
-      onClick={onClick}
-      title={description}
-    >
-      {icon}
-      <span className="nav-item-text">
-        <span className="nav-item-label">{label}</span>
-        {description && <span className="nav-item-desc">{description}</span>}
-      </span>
-      {active && <motion.div layoutId="active-pill" className="nav-active-bar" />}
-    </button>
   );
 }
 

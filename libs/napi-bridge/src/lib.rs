@@ -263,15 +263,30 @@ pub fn shutdown() {
     tracing::info!("ContextEngine NAPI shutdown.");
 }
 
-#[napi]
-/// `immune_check_tool` 関数
-pub async fn immune_check_tool(tool_name: String, params: String) -> Result<ToolCheckResponse> {
-    tracing::info!(
-        "🛡️ [NAPI Sentinel] immune_check_tool: {} | {}",
-        tool_name,
-        params
-    );
+pub(crate) enum ImmuneGate<R> {
+    Allow,
+    Block(R),
+}
 
+/// verify_intent / 同等 Result を Fail-Closed で解釈する（ユニットテスト用）
+pub(crate) fn gate_immune_result<R>(
+    result: std::result::Result<Option<R>, aiome_core::error::AiomeError>,
+    on_rule: impl FnOnce(R) -> ImmuneGate<String>,
+    deny_msg: &str,
+) -> ImmuneGate<String> {
+    match result {
+        Ok(Some(rule)) => on_rule(rule),
+        Ok(None) => ImmuneGate::Allow,
+        Err(e) => {
+            tracing::error!(error = %e, "[Security] immune verify failed; deny");
+            ImmuneGate::Block(deny_msg.to_string())
+        }
+    }
+}
+
+#[napi]
+/// `immune_check_tool` 関数 (Sentinel Layer 2)
+pub async fn immune_check_tool(tool_name: String, params: String) -> Result<ToolCheckResponse> {
     // 1. Baseline RegExp Check (Sentinel Layer 1.5 - No DB needed)
     // catch obvious dangerous patterns quickly using cached RegExp instances
     if let Some(pattern) = check_dangerous_patterns(&params) {
@@ -291,21 +306,26 @@ pub async fn immune_check_tool(tool_name: String, params: String) -> Result<Tool
 
     // We use a mock topic for tool check context
     let context_topic = format!("Tool Execute: {}", tool_name);
-    if let Ok(Some(rule)) = immune
-        .verify_intent(
-            &format!("{} with params: {}", context_topic, params),
-            db.as_ref(),
-        )
-        .await
-    {
-        return Ok(ToolCheckResponse {
-            blocked: true,
-            reason: Some(format!(
+    let intent = format!("{} with params: {}", context_topic, params);
+
+    match gate_immune_result(
+        immune.verify_intent(&intent, db.as_ref()).await,
+        |rule| {
+            ImmuneGate::Block(format!(
                 "[SENTINEL] Adaptive Block: {} (Pattern: {})",
                 rule.action, rule.pattern
-            )),
-            new_params: None,
-        });
+            ))
+        },
+        "[SENTINEL] Unable to verify immune status. Request denied.",
+    ) {
+        ImmuneGate::Block(reason) => {
+            return Ok(ToolCheckResponse {
+                blocked: true,
+                reason: Some(reason),
+                new_params: None,
+            });
+        }
+        ImmuneGate::Allow => {}
     }
 
     Ok(ToolCheckResponse {
@@ -387,14 +407,19 @@ pub async fn immune_scan_input(prompt: String, _history_messages: String) -> Res
     let immune = get_immune().await.map_err(map_err)?;
     let db = get_db().await.map_err(map_err)?;
 
-    if let Ok(Some(rule)) = immune.verify_intent(&prompt, db.as_ref()).await {
-        return Err(napi::Error::from_reason(format!(
-            "[SENTINEL] Blocked by Rule: {} -> action: {}",
-            rule.pattern, rule.action
-        )));
+    match gate_immune_result(
+        immune.verify_intent(&prompt, db.as_ref()).await,
+        |rule| {
+            ImmuneGate::Block(format!(
+                "[SENTINEL] Blocked by Rule: {} -> action: {}",
+                rule.pattern, rule.action
+            ))
+        },
+        "[SENTINEL] Unable to verify immune status. Request denied.",
+    ) {
+        ImmuneGate::Block(msg) => Err(napi::Error::from_reason(msg)),
+        ImmuneGate::Allow => Ok(()),
     }
-
-    Ok(())
 }
 
 #[napi]
@@ -813,5 +838,31 @@ mod tests {
         let res_safe = immune_check_tool("bash".to_string(), "ls".to_string()).await;
         assert!(res_safe.is_ok());
         assert!(!res_safe.unwrap().blocked);
+    }
+
+    #[test]
+    fn test_gate_immune_result_err_is_deny() {
+        let err = aiome_core::error::AiomeError::Infrastructure {
+            reason: "db down".into(),
+        };
+        let g = gate_immune_result::<()>(
+            std::result::Result::Err(err),
+            |_| ImmuneGate::Allow,
+            "DENIED",
+        );
+        match g {
+            ImmuneGate::Block(m) => assert!(m.contains("DENIED")),
+            _ => panic!("must deny"),
+        }
+    }
+
+    #[test]
+    fn test_gate_immune_result_ok_none_allow() {
+        let g = gate_immune_result::<()>(
+            std::result::Result::Ok(None),
+            |_| ImmuneGate::Block("x".into()),
+            "DENIED",
+        );
+        assert!(matches!(g, ImmuneGate::Allow));
     }
 }

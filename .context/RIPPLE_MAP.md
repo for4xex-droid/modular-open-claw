@@ -1,3 +1,17 @@
+## 🔍 Wave A2/A3 App.tsx + OP-075-B（2026-07-10/11）
+
+- **変更内容**:
+    - `apps/management-console/src/App.tsx` [MODIFY]: 786→456 行。シェル分割。
+    - `navConfig.tsx` / `components/{NavItem,AppSidebar,StatusBadge,AppHeader}.tsx` / `AppRoutes.tsx` [NEW]
+    - `hooks/useWorkspacePersona.ts` [MODIFY]: `WorkspacePersona` を export（A2 /reflexion 型厳密化）
+    - `libs/napi-bridge/src/lib.rs` [MODIFY]: `gate_immune_result` + B1/B2 Fail-Closed + テスト
+    - `libs/infrastructure/.../goal_processor.rs` + `tests.rs` / `test_utils.rs` [MODIFY]: B3 Fail-Closed
+    - `commercial/apps/nurture-api/src/mcp/server.rs` [MODIFY]: B4 Fail-Closed + テスト
+    - `apps/api-server/src/skill_handler.rs` [MODIFY]: B5 実行前 `fetch_active_immune_rules` + **N-B5** `test_execute_wasm_skill_immune_db_error_fail_closed`
+- **波及効果**: immune/DB 障害時はチャット以外（napi/goal/nurture MCP/wasm）も拒否。App タブ ID は不変（`a2uiTabs.ts` 同期維持）。
+- **ドキュメント同期 (2026-07-11 /docs-sync)**: SECURITY_DESIGN / WHITEPAPER / ADR-033 / RIPPLE_MAP / TECH_DEBT_AUDIT / INFRASTRUCTURE_MODULES / SKILL_FORGE_SPEC / SYNERGY / release_master / foolproof plan / CHANGELOG / OPEN。
+- **/reflexion (2026-07-11)**: A2 props 型（`WorkspacePersona`/`Language`/`RefObject`）+ `AiaaOnboardingWizard` lazy named export。`tsc --noEmit` PASS。再採点 96。
+
 ## 🔍 TECH_DEBT Top5 OP-075/054/029/076 + ADR-054（2026-07-10）
 
 - **変更内容**:

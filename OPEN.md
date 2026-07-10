@@ -1,11 +1,12 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-10**
+**最終更新: 2026-07-11**
 
 > **実装手順の正本**:
+> - **残存ワーク統合（Human + Agent・foolproof）**: [`docs/roadmaps/remaining_work_foolproof_plan.md`](docs/roadmaps/remaining_work_foolproof_plan.md)（**v1.2**・2026-07-10・Human NT-* 詳細化 + Agent `/perfect-plan` PASS）
 > - **直近 Public Beta（Human ゲート中心）**: [`docs/roadmaps/near_term_public_beta_plan.md`](docs/roadmaps/near_term_public_beta_plan.md)（**v5.1**・2026-07-10・`/perfect-plan`+`/reflexion` 検証済み。秘密は AbyssVault、compose への API キー追加は禁止）
 > - **技術負債 Wave 3 以降**: [`docs/roadmaps/remaining_tasks_implementation_plan.md`](docs/roadmaps/remaining_tasks_implementation_plan.md)（v6。Wave 1/2 完了済み）
-> - **TECH_DEBT Top 5（OP-075/054/051/068/029+QW）**: [`docs/roadmaps/tech_debt_top5_plan.md`](docs/roadmaps/tech_debt_top5_plan.md)（**v1.3**・2026-07-10・`/perfect-plan` ✅ PASS。OP-054=可視性のみ）
+> - **TECH_DEBT Top 5（OP-075/054/051/068/029+QW）**: [`docs/roadmaps/tech_debt_top5_plan.md`](docs/roadmaps/tech_debt_top5_plan.md)（**v1.3**・2026-07-10・実装完了。OP-054=可視性のみ）
 > - **リリース全体**: [`docs/roadmaps/release_master_plan.md`](docs/roadmaps/release_master_plan.md)
 >
 > 本台帳は「何が未解決か」のみを管理する。手順の複製はしない。
@@ -15,7 +16,7 @@
 - 未解決タスクは**このファイルのみ**で管理する（`memory/` の Open は当日分の追記メモであり、翌日以降はここへ反映する）。
 - 各行は `- [ ] **ID**: 内容（初出日）` 形式。解決時はチェックを付け「✅ 解決」セクションへ移し、解決日と根拠（コミット/CHANGELOG）を1行添える。四半期ごとに解決済みを削除する。
 - 凍結タスクは「⏸️ 凍結」セクションで管理し、解除条件を明記する。
-- 実装の進め方・順序は直近は [`docs/roadmaps/near_term_public_beta_plan.md`](docs/roadmaps/near_term_public_beta_plan.md)、技術負債は [`docs/roadmaps/remaining_tasks_implementation_plan.md`](docs/roadmaps/remaining_tasks_implementation_plan.md) に従う（本ファイルに手順を複製しない）。
+- 実装の進め方・順序は直近は [`docs/roadmaps/near_term_public_beta_plan.md`](docs/roadmaps/near_term_public_beta_plan.md)、統合手順は [`docs/roadmaps/remaining_work_foolproof_plan.md`](docs/roadmaps/remaining_work_foolproof_plan.md)、技術負債 Wave 詳細は [`docs/roadmaps/remaining_tasks_implementation_plan.md`](docs/roadmaps/remaining_tasks_implementation_plan.md) に従う（本ファイルに手順を複製しない）。
 
 ## 🔴 P0 / ブロッカー
 
@@ -55,7 +56,8 @@
 - [x] **OP-056**: フロント `useWorkflowApi` の `POST /api/v1/workflows/validate` とバックエンド `/api/v1/workflows/:id/validate` のパス不整合 → **2026-07-05 完了**（release_master_plan R1-13）
 - [x] **OP-057**: LP Stripe 決済基盤（Payment Link URL・Price ID・ローカル `.env`）→ 2026-07-05 完了（`plink_1TpXHCBcUTwo5TwLnO1BJneY` / `price_1TpXFpBcUTwo5TwLmK9SQbKL`）。**本番反映・Human 作業は ⏸️ 凍結 OP-057-R へ移管**（(2) 決済→Pro コードは 2026-07-05 完了済み）
 - [x] **OP-058**: `ProUpgradeModal`（402→アップグレード導線）→ 2026-07-04 解消（`App.tsx` ルートマウント + `STRIPE_PRICE_ID`）
-- [ ] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠 + ✅ W-1 OXP relay 修正 + ✅ **R2-3 月間支出上限**（ADR-050、DB マイグレーション、インターセプタ、Settings UI `economy.monthly_spend_limit`、2026-07-06）
+- [x] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠 + ✅ W-1 OXP relay 修正 + ✅ **R2-3 月間支出上限**（ADR-050、DB マイグレーション、インターセプタ、Settings UI `economy.monthly_spend_limit`、2026-07-06） → **2026-07-10 docs クローズ**（コードは先行完了。残: OP-059-UI = Settings allowance 入力）
+- [ ] **OP-059-UI**: Settings への `pro_monthly_kc_allowance` 入力 UI 実装（2026-07-10）
 - [ ] **OP-062**: Tauri `NurtureMode::InProcess` variant — sidecar 起動と in-process の排他（ADR-012 残タスク）（2026-07-04）
 - [ ] **OP-068**: deny.toml `[advisories].ignore` に登録した 21 件（wasmtime 41.x / rustls-webpki 旧版 / idna 0.4 / quick-xml 0.39 / rand 0.8）の解消。実体は OP-030〜OP-034 の Upstream 待ちと同根。上流更新後に ignore を削除すること（2026-07-04。旧 OP-061 重複採番を 2026-07-05 改番）
 - [ ] **OP-063**: LP 用実プロダクト証拠ビジュアル撮影（MESSAGING §8 ショットリスト7点 + Quick Start GIF）。実データ・ダークテーマ・1920×1080 以上。バイラル32原則 #10 対応（ユーザー実施、2026-07-05）
@@ -84,6 +86,7 @@
 
 ## ✅ 解決（直近のみ保持）
 
+- [x] **OP-075-B**: Immune Fail-Open 残（napi・goal_processor・nurture-api MCP・skill_handler）の Fail-Closed 修正 → **2026-07-10/11 完了**（B1–B5 + N-B5 `test_execute_wasm_skill_immune_db_error_fail_closed` PASS。/reflexion 96）
 - [x] **OP-013**: Stripe E2E テストの実行と結合挙動の継続確認（P2-2）→ **2026-07-10 完了**（NT-4: commerce 28 PASS / commerce_e2e 2 PASS / aiome-commerce 65 PASS。Positive: subscription checkout unlock・signature green。Negative: missing signature・production rejects test secrets）
 - [x] **OP-061**: OXP `generate_header` 統一 + forget Bearer/`NURTURE_INTERNAL_SECRET` + stripe `require_oxp_header` fail-closed — **2026-07-10 完了**（ユーザー明示「修正」承認。CHANGELOG Fixed 2026-07-10、delete_account 5テスト + aiome-commerce generate_oxp_header 3テスト PASS。forget URL は `state.nurture_url`/`NURTURE_API_URL` 正本）
 - [x] **OP-060**: coin-charge DLQ 自動再送 — **2026-07-09 完了**（`coin_charge_dlq_worker` + poison 隔離）

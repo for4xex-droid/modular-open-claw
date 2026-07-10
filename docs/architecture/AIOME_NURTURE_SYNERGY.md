@@ -3,7 +3,7 @@
 > 要件正本: [`docs/specs/NURTURE_REQUIREMENTS_V2.md`](../specs/NURTURE_REQUIREMENTS_V2.md)（2026-07-06）
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-07-10（Wave 2 OP-060/061: DLQ 再送 + forget/OXP を `NURTURE_INTERNAL_SECRET` + `NURTURE_API_URL` に統一）  
+> **最終更新**: 2026-07-11（OP-075-B: nurture-api MCP `tools/call` の `verify_intent` Err → JSON-RPC deny / Fail-Closed。Wave 2 OP-060/061 は継続）
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -1284,7 +1284,7 @@ gantt
 | `nurture-core` | 15 | `AiomeCoin`, `CreatorPoints`, `EconomyLedger`, `EconomyPolicy`, `SurpriseEngine` |
 | `nurture-infra` | 40+ | `NurtureCommerceBridge`, `EconomyInterceptor`, `DrmEngine`, `CsamPipeline`, `VramArbiter`, `CloneManager` |
 | `nurture-bridge` | 20+ | `LoraEngine` / `TtsProvider` (re-exports), `UniversalJobQueue`, `AdaptiveImmuneSystem` |
-| `nurture-api` | 15+ | `NurturePlugin`, `McpAuth`, `/internal/lora-train` (S2S), MCP ツール群 (`search`, `buy`, `gift`, `wallet`, `sandbox_exec`) |
+| `nurture-api` | 15+ | `NurturePlugin`, `McpAuth`, `/internal/lora-train` (S2S), MCP ツール群 (`search`, `buy`, `gift`, `wallet`, `sandbox_exec`)。**OP-075-B**: `tools/call` 前 `verify_intent` Fail-Closed |
 
 ---
 

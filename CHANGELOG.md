@@ -1,5 +1,35 @@
 ## [Unreleased]
 
+### Changed (/docs-sync 2026-07-11 post-/reflexion)
+- **RIPPLE_MAP**: N-B5・A2 型厳密化（`WorkspacePersona` export / lazy named export）を追記。
+- **TECH_DEBT_AUDIT**: v11「新規・再浮上」の OP-075/076/App.tsx を `[RESOLVED]` 注記に更新。ホットスポット `App.tsx` 評価を分割済に修正。
+- **SKILL_FORGE_SPEC**: 実行前 `fetch_active_immune_rules` Fail-Closed（OP-075-B / N-B5）を追記。更新日 2026-07-11。
+- **AIOME_NURTURE_SYNERGY**: nurture-api MCP `verify_intent` Fail-Closed を依存マップに反映。最終更新 2026-07-11。
+- **OPEN**: OP-075-B 完了日を 2026-07-10/11（N-B5・/reflexion 96）に同期。
+
+### Fixed (Wave A2 /reflexion 2026-07-11)
+- **App shell 分割の型**: `AppHeader` / `StatusBadge` / `AppSidebar` の `WorkspacePersona`・`Language`・`RefObject` を厳密化。`AiaaOnboardingWizard` の lazy named export を修正。未使用 `Clock` / `React` import を削除。`tsc --noEmit` PASS。
+
+### Changed (/docs-sync 2026-07-11 Wave A2/A3)
+- **SECURITY_DESIGN / SECURITY_WHITEPAPER / ADR-033**: OP-075-B（napi / goal_processor / nurture MCP / skill_handler）Fail-Closed を同期。
+- **RIPPLE_MAP / INFRASTRUCTURE_MODULES / TECH_DEBT_AUDIT / release_master_plan / remaining_work_foolproof_plan**: A2（App.tsx 456行）・A3（OP-075-B）完了を反映。
+- **OPEN**: OP-075-B を ✅ 解決へ移動済みを確認。OP-059-UI は未解決のまま。
+
+### Fixed (Wave A3 OP-075-B 2026-07-10/11)
+- **OP-075-B Immune Fail-Closed**: DB/immune 取得失敗時の Fail-Open を 5 箇所で拒否に統一。
+  - **B1/B2 (napi-bridge)**: `gate_immune_result` — Err 時 `blocked: true` / `napi::Error`。ユニットテスト追加。
+  - **B3 (goal_processor)**: `verify_tool_call` Err → `JobStatus::Failed`、サブジョブ enqueue 拒否。Negative テスト追加。
+  - **B4 (nurture-api MCP)**: `verify_intent` Err → JSON-RPC error。Negative テスト追加。
+  - **B5 (skill_handler)**: Wasm 実行**前**に `fetch_active_immune_rules`、Err 時は実行せず error 文字列。N-B5（`test_execute_wasm_skill_immune_db_error_fail_closed`）追加。
+  - 運用注意: immune/DB 障害時は napi・goal・nurture MCP・wasm skill も拒否（OP-075 チャット経路と同型）。
+
+### Changed (Wave A2 App.tsx シェル分割 2026-07-10/11)
+- **App.tsx**: 786行 → **456行**。`navConfig.tsx` / `NavItem.tsx` / `AppSidebar.tsx` / `StatusBadge.tsx` / `AppHeader.tsx` / `AppRoutes.tsx` に分割。
+
+### Changed (Wave A1 / docs plan 2026-07-10)
+- **OP-059 docsクローズ**: `MESSAGING.md` stale 解消。OPEN に `OP-059-UI` 起票。
+- **`remaining_work_foolproof_plan.md` v1.2**: Human NT-1〜7 詳細化。v1.1/v1.0 経緯は同ファイル。
+
 ### Changed (/docs-sync 2026-07-10 Top5)
 - **SECURITY_DESIGN / SECURITY_WHITEPAPER / ADR-033**: OP-075 Immune Fail-Closed（`evaluate_security` 共有経路）を同期。
 - **error_handling.md**: ADR-054（OP-051 三階層・Proposed）へのリンクを追加。

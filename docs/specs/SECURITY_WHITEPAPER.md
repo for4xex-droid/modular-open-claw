@@ -1,6 +1,6 @@
 # Aiome: セキュリティ仕様書 (Security Whitepaper)
 
-**最終更新日: 2026-07-10**
+**最終更新日: 2026-07-11**
 
 ## 0. はじめに
 Aiome は、自律型 AI が直面する特有のセキュリティ脅威から、お客様の資産（APIクォータ、機密データ、稼働ログ）を守り抜くために設計されています。
@@ -75,7 +75,7 @@ Aiome が実行するスキル（動的コード）は、用途に応じて2種�
   * **使い捨てコンテナ**: NPM パッケージや Python ライブラリなど、WASM 化できない重い依存関係が必要なタスクは、Docker コンテナとして一時的に切り出され、実行後は破棄されます。
   * **権限隔離**: コンテナ内の AI エージェントには `~/.ssh` や `aiome.db` などのホスト側の機密領域は一切マウントされません。
   * **BastionGuard ホワイトリスト検証 (H-6)**: 従来のブラックリスト方式を廃止し、`PathSandbox` による厳格なパス検証を導入しました。全てのコマンド引数は実行前に正規化（Canonicalization）され、許可されたワークスペース外へのアクセスは構造的に遮断されます。
-  * **Immune System**: 実行されるコマンドは `ImmuneSystem` によってリアルタイムに監視されます。14種類以上の攻撃シグネチャ（リバースシェル、環境変数窃取等）に基づき、不審な挙動は即座にブロックされます。**OP-075 (2026-07-10)**: `evaluate_security` は Immune 評価の DB 障害時も Fail-Closed（リクエスト拒否）。ベースライン正規表現は DB 取得前に評価されます。チャット SSE 初期・`AgentEngine`・MCP/ツールループは同一経路です（ADR-033）。
+  * **Immune System**: 実行されるコマンドは `ImmuneSystem` によってリアルタイムに監視されます。14種類以上の攻撃シグネチャ（リバースシェル、環境変数窃取等）に基づき、不審な挙動は即座にブロックされます。**OP-075 (2026-07-10)**: `evaluate_security` は Immune 評価の DB 障害時も Fail-Closed（リクエスト拒否）。ベースライン正規表現は DB 取得前に評価されます。チャット SSE 初期・`AgentEngine`・MCP/ツールループは同一経路です（ADR-033）。**OP-075-B (2026-07-11)**: napi-bridge / goal_processor / nurture-api MCP / skill_handler（Wasm 実行前）も同様に Fail-Closed です。
   * **MCP Client Lifecycle Defense**: 外部の MCP サーバー（Node.js, Python）を連携させる際、Aiome が終了すると「プロセスグループ (PGID)」単位で一斉キルシグナルが送信され、ゾンビプロセスやリソースの占有を防ぎます。
 * **PDFテキスト抽出プロセスの安全隔離 (pdftotext 移行)**: アプリ内で実行されていた `pdf-extract` ライブラリのスタックオーバーフロー脆弱性 (`RUSTSEC-2026-0187`) に対処するため、OS標準の `pdftotext` コマンドを子プロセスとして安全に起動する「隔離プロセス実行モデル」へ移行しました。実行は非特権・ファイル書き込み禁止・ネットワーク遮断の `SandboxProfile::Strict` 環境下で行われ、30秒のタイムアウト制御と `wait` による確実なゾンビプロセス回収、および最大 10MB (stdout) / 64KB (stderr) のバッファサイズ制限により、悪意ある PDF を用いた DoS 攻撃やシステム乗っ取り攻撃を完全に防止します。
 * **Begging Supervisor (ダークパターン防止 - Phase 7.2)**: AI の出力層に特化したガードレールを導入しました。AI がユーザーに金銭、投げ銭、物理ギフトを「おねだり」するような誘導表現をリアルタイムで検知・遮断し、エージェントの倫理的・法的透明性を担保します。
@@ -131,4 +131,4 @@ Aiome は連邦学習（Federation）機能を備えていますが、この通�
 Aiome のセキュリティは、「隠すこと」ではなく「破られない構造を作ること」に重点を置いています。たとえ内部ソースコードが公開されたとしても、数学的・物理的、強固なカオス耐性、そして OS アーキテクチャ上の制約によって、お客様の API キーやデータの完全性は守られ続けます。
 
 ---
-*最終更新: 2026-07-10 (Asia/Tokyo) — OP-075 Immune Fail-Closed、OP-061 OXP/RTBF fail-closed、OP-060 CoinChargeDlq、Internal S2S idempotency / auth rate limit / JWT iss/aud / key-proxy query auth removal*
+*最終更新: 2026-07-11 (Asia/Tokyo) — OP-075-B peripheral Fail-Closed（N-B5）、OP-075 Immune Fail-Closed、OP-061 OXP/RTBF fail-closed、OP-060 CoinChargeDlq、Internal S2S idempotency / auth rate limit / JWT iss/aud / key-proxy query auth removal*

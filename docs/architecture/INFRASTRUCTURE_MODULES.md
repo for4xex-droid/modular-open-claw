@@ -60,7 +60,7 @@
 | `spec_provider` | `FsSpecProvider` を通じた動的ワークフロー仕様のファイルシステムへのエクスポート基盤。パストラバーサル防御、symlink拒否、正規表現によるシークレットサニタイズを実装。 | **Phase 4 完了** |
 | `prompt_registry` | Minijinjaベースのシステムプロンプト・テンプレートレンダリングエンジン。ゼロパニック対応の `NoopPromptRegistry` フォールバックを提供し、プロンプトのSSOTを確立。 | **Phase 4 完了** |
 | `score_tracker` | エージェントの成長やKarmaの停滞（Plateau）を日次で記録し、TimesFMによる時系列予測モジュールへデータを供給する。 | **Phase 3D 完了** |
-| `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase B** にて `ToolHook` と `HookChain` を導入し、実行前後のインターセプトと `ToolCallRouter` による一元的なセキュリティ評価基盤を構築。**OP-075 (2026-07-10)**: `evaluate_security` は Immune DB `Err` も Fail-Closed（api-server `tool_call_router` / `stream` / `agent_engine` 共有）。**2026-07** に God Module（mod.rs 1,135行）を `code_mode`（JS ブリッジ）/ `host_fns`（ホスト関数ビルダー）/ `types`（TypeState 型定義）へ分解し、機密パス検査を `is_sensitive_path` に統一。 | **リファクタ完了** |
+| `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase B** にて `ToolHook` と `HookChain` を導入し、実行前後のインターセプトと `ToolCallRouter` による一元的なセキュリティ評価基盤を構築。**OP-075 (2026-07-10)**: `evaluate_security` は Immune DB `Err` も Fail-Closed（api-server `tool_call_router` / `stream` / `agent_engine` 共有）。**OP-075-B (2026-07-11)**: `skill_handler` は Wasm 実行前に `fetch_active_immune_rules`（Err 拒否）。napi / goal_processor / nurture MCP も同方針。**2026-07** に God Module（mod.rs 1,135行）を `code_mode` / `host_fns` / `types` へ分解し、機密パス検査を `is_sensitive_path` に統一。 | **リファクタ完了** |
 | `slo_engine` | サービスの可用性や応答時間の目標値を監視。 | 実装完了 |
 | `society_of_thought` | **ADR-032**: Dochkina (2026) の Endogeneity Paradox に基づく自己組織化熟議エンジン。Sequential マルチパス協調、自律ロール発明、Voluntary Self-Abstention、Capability-Aware Protocol Fallback を実装。Oracle `multi_review` と統合済。 | **ADR-032 完了** |
 | `soul_adapter` | 内部イベントから Experience へ変換、予測評価、および **Phase 37a** で L2.5 層 `WhisperMiddleware` を追加した Middleware Chain との連携。 | **Phase 37a 完了** |
@@ -86,7 +86,7 @@
 - **Phase 37a Integration**: `SoulPipeline` の評価後に経験蓄積 (`push_experience`) を実行するようアーキテクチャを変更し、`WhisperMiddleware` による自己省察ログの永続化を保証。
 
 ---
-*最終更新: 2026-07-10 (Asia/Tokyo) — OP-075 Immune Fail-Closed（ToolCallRouter）/ OP-060 CoinChargeDlq / OP-061 OXP+RTBF / OP-067 htmd*
+*最終更新: 2026-07-11 (Asia/Tokyo) — OP-075-B peripheral Fail-Closed（N-B5 含む） / OP-075 ToolCallRouter / OP-060 CoinChargeDlq / OP-061 OXP+RTBF / OP-067 htmd*
 
 ## Phase 6 Integration Notes
 

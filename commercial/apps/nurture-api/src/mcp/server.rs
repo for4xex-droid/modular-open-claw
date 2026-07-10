@@ -230,26 +230,43 @@ async fn handle_mcp_request(req: JsonRpcRequest, state: SharedState) -> JsonRpcR
             // --- Security Shield: Prompt Injection Validation ---
             if name != "sandbox_exec" {
                 let args_str = arguments.to_string();
-                if let Ok(Some(rule)) = state
+                match state
                     .immune_system
                     .verify_intent(&args_str, state.job_queue.as_ref())
                     .await
                 {
-                    tracing::warn!(
-                        "🛡️ [Nurture-MCP] Blocked tool call '{}' due to immune rule '{}'",
-                        name,
-                        rule.id
-                    );
-                    return JsonRpcResponse {
-                        jsonrpc: "2.0".into(),
-                        id,
-                        result: None,
-                        error: Some(JsonRpcError {
-                            code: -32600,
-                            message: "Prompt injection detected. Request blocked by AdaptiveImmuneSystem.".to_string(),
-                            data: None,
-                        }),
-                    };
+                    Ok(Some(rule)) => {
+                        tracing::warn!(
+                            "🛡️ [Nurture-MCP] Blocked tool call '{}' due to immune rule '{}'",
+                            name,
+                            rule.id
+                        );
+                        return JsonRpcResponse {
+                            jsonrpc: "2.0".into(),
+                            id,
+                            result: None,
+                            error: Some(JsonRpcError {
+                                code: -32600,
+                                message: "Prompt injection detected. Request blocked by AdaptiveImmuneSystem.".to_string(),
+                                data: None,
+                            }),
+                        };
+                    }
+                    Err(e) => {
+                        tracing::error!(error = %e, "[Nurture-MCP] immune verify_intent failed; deny");
+                        return JsonRpcResponse {
+                            jsonrpc: "2.0".into(),
+                            id,
+                            result: None,
+                            error: Some(JsonRpcError {
+                                code: -32600,
+                                message: "Unable to verify immune status. Request blocked by AdaptiveImmuneSystem."
+                                    .to_string(),
+                                data: None,
+                            }),
+                        };
+                    }
+                    Ok(None) => {}
                 }
             }
             // ----------------------------------------------------
@@ -587,5 +604,32 @@ mod tests {
             res.error.unwrap().message,
             "Prompt injection detected. Request blocked by AdaptiveImmuneSystem."
         );
+    }
+
+    #[tokio::test]
+    async fn test_verify_intent_db_error_fail_closed() {
+        let state = setup_state().await;
+
+        if let DatabasePool::Sqlite(pool) = &state.pool {
+            pool.close().await;
+        }
+
+        let req = JsonRpcRequest {
+            jsonrpc: "2.0".into(),
+            id: Some(serde_json::json!(1)),
+            method: "tools/call".to_string(),
+            params: Some(serde_json::json!({
+                "name": "market_search",
+                "arguments": {
+                    "query": "hello"
+                }
+            })),
+        };
+
+        let res = handle_mcp_request(req, state).await;
+
+        assert!(res.error.is_some());
+        let err = res.error.unwrap();
+        assert!(err.message.contains("Unable to verify immune status"));
     }
 }

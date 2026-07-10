@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 
 export type WorkspaceMode = 'consumer' | 'agency';
 
-interface WorkspacePersona {
+export interface WorkspacePersona {
   mode: WorkspaceMode;
   setMode: (mode: WorkspaceMode) => void;
   isAgency: boolean;

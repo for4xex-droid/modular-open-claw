@@ -71,7 +71,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 47 | **Context Overflow DoS** | **Massive fact blobs injected into Prompt** | 🔴 High | **Strict ContextBudget evaluation loops (Phase 2B)** |
 | 48 | **Internal SSRF (Localhost)** | **Attack on local services via valid tool** | 🔴 High | **SecurityPolicy Port-level Validation (8188/11434) (Phase 53)** |
 | 49 | **Prompt Injection (Internal)** | **Ignore all instructions / secret_key** | 🔴 High | **Local Keyword Guardrail Patterns (guardrails.rs) (Phase 53)** |
-| 50 | **Infrastructure Fail-Open** | **DB failure treated as "setting not found"**| 🔴 High | **Result<?> Error Propagation (Fail-Closed) (RT1-1)**; **OP-075 (2026-07-10)**: Immune `verify_intent` Err also Fail-Closed via `evaluate_security` |
+| 50 | **Infrastructure Fail-Open** | **DB failure treated as "setting not found"**| 🔴 High | **Result<?> Error Propagation (Fail-Closed) (RT1-1)**; **OP-075 / OP-075-B (2026-07-10/11)**: Immune Err Fail-Closed on chat (`evaluate_security`) **and** napi / goal_processor / nurture MCP / skill_handler |
 | 51 | **Native Bridge Bypass** | **Missing binary defaults to "allow-all"** | 🔴 High | **Fail-Closed Fallback (Sentinel Resilience) (RT1-2)** |
 | 52 | **Context Memory DoS** | **Single massive message exhausts RAM** | 🔴 High | **Per-message 10k character limit (RT2-1)** |
 | 53 | **TTS Error Payload DoS** | **Massive error response body OOM** | 🟡 Mid | **2048-byte Read Limit on API Errors (RT2-2)** |
@@ -163,6 +163,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 ### Layer 2: SecurityPolicy (Execution Control)
 - **Unified Precedence (ToolCallRouter) (Phase B)**: Centralizes all task parsing, hook insertion, and actual execution within a single un-bypassable trait (`ToolCallRouter`). Ensures that both Guardrails and Intent Verification check inputs before any actual parsing/execution happens, preventing split-brain bypasses and redundant LLM tool evaluation code across asynchronous stream agents and MCP Server components.
 - **Immune evaluate_security Fail-Closed (OP-075, 2026-07-10)**: When `AdaptiveImmuneSystem::verify_intent` returns `Err` (e.g. `immune_rules` DB failure), `DefaultToolCallRouter::evaluate_security` denies the request. Call sites (`stream` initial SSE as `security_block`, `agent_engine` as `Ok(block_msg)`, MCP/tool loops) share this path. Baseline regexes still run before DB fetch. Degraded-mode flag is intentionally not introduced. See ADR-033.
+- **Immune peripheral Fail-Closed (OP-075-B, 2026-07-10/11)**: Same policy outside `evaluate_security`: `napi-bridge` (`gate_immune_result` / `immune_check_tool` / `immune_scan_input`), `goal_processor` (`verify_tool_call` Err → job `Failed`), nurture-api MCP `tools/call`, and `skill_handler` (fetch rules **before** Wasm `call_skill`). Transient DB outages deny those paths as well.
 - **Whitelisting**: Only registered tools in the `ToolRegistry` can be executed.
 - **Sandboxing**: Filesystem access is restricted via `PathSandbox`. WASM execution and external processes (like Python Forge) are explicitly isolated using **`SandboxProfile`** definitions running atop gVisor (`runsc`) or macOS native sandbox, preventing unrestrained host access.
 - **Unified Sensitive-Path Enforcement (2026-07-03)**: The WASM `host_write` host function and the Code Mode JS bridge (`aiome.writeFile`/`readFile`) now share a single sensitive-path detector (`skills::is_sensitive_path`), blocking writes to `.env*`, `.git`, `.ssh`, `id_rsa`/`id_ed25519`, `security.json`, `Cargo.toml`, `*.pem`, and `*.key`. This closed a gap where `host_write` previously checked only 3 of these patterns inline. Host function builders are centralized in `skills/host_fns.rs` (B-1 Memory Safety Contract).
@@ -279,4 +280,4 @@ For SEO integrations like WordPress, Aiome avoids direct API token injection int
 The `key-proxy` no longer accepts `?key=` query-parameter authentication. Secrets must be supplied via `Authorization: Bearer` or approved header fallbacks only. This prevents vault credentials from appearing in access logs or Referer headers.
 
 ---
-*最終更新: 2026-07-10 (OP-075 Immune Fail-Closed via evaluate_security; OP-061 forget: NURTURE_INTERNAL_SECRET + NURTURE_API_URL 正本、wishlist GDPR purge 2026-07-07)*
+*最終更新: 2026-07-11 (OP-075-B peripheral Fail-Closed + N-B5; OP-075 evaluate_security; OP-061 forget: NURTURE_INTERNAL_SECRET + NURTURE_API_URL 正本、wishlist GDPR purge 2026-07-07)*

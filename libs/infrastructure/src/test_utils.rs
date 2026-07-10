@@ -40,6 +40,7 @@ pub mod job_queue_mock {
         pub failed_jobs: std::sync::Mutex<Vec<(String, String)>>,
         pub updated_status: std::sync::Mutex<Option<JobStatus>>,
         pub active_rules: std::sync::Mutex<Vec<ImmuneRule>>,
+        pub fail_immune_fetch: std::sync::Mutex<bool>,
     }
 
     #[async_trait]
@@ -457,6 +458,13 @@ pub mod job_queue_mock {
             Ok(())
         }
         async fn fetch_active_immune_rules(&self) -> Result<Vec<ImmuneRule>, AiomeError> {
+            if let Ok(fail) = self.fail_immune_fetch.lock() {
+                if *fail {
+                    return Err(AiomeError::Infrastructure {
+                        reason: "Simulated DB error for immune fetch".into(),
+                    });
+                }
+            }
             Ok(self.active_rules.lock().unwrap().clone())
         }
         async fn record_arena_match(&self, _: &ArenaMatch) -> Result<(), AiomeError> {
