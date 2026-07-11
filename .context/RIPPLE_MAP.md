@@ -1,3 +1,32 @@
+## 🔍 NT-2 /reflexion: Quick Start Mock + chat POST（2026-07-12）
+
+- **変更内容**:
+    - `libs/aiome-commerce`: feature `dev-mock`；`mock.rs` は `#![cfg(any(test, debug_assertions, feature = "dev-mock"))]`（B-004）
+    - `factory.rs`: release Mock は `dev-mock` + `AIOME_DEV_MODE=1` の二重ゲート（DEV_MODE のみの先行修正は release で E0433）
+    - `apps/api-server`: feature `dev-mock` を commerce へ伝播；`/api/stream/chat` に POST 追加
+    - `docker-compose.quickstart.yml`: `FEATURES: dev-mock` + `AIOME_DEV_MODE=1`
+- **波及効果**: 本番 compose / distroless は feature 未指定のまま Fail-Closed。GHCR 非公開・MC biome pkg は別ブロッカー。
+- **非対象**: GHCR 公開、MC Dockerfile の biome 同梱
+
+## 🔍 /nt-assist + nt_gate（2026-07-11）
+
+- **変更内容**:
+    - `.agent/workflows/nt-assist.md` [NEW]: 1ステップ進行・秘密禁止・human-only 境界
+    - `scripts/nt_gate.py` [NEW]: `step0` / `hygiene` / `mark` / `status` / `self-test`（Positive+Negative）
+    - `docs/guides/nt_progress.example.json` [NEW] → 実行時 `states/nt_progress.json`（gitignore）
+    - `HUMAN_PUBLIC_BETA_RUNBOOK.md` [MODIFY]: 先頭に `/nt-assist` 薄い入口（正本は維持）
+- **波及効果**: Human はランブック全文を読まずに NT を進行可能。Agent は秘密を扱わない。
+- **非対象**: cell/commercial/docker-publish、OP-059-UI
+
+## 🔍 compose api-server → distroless（2026-07-11・Human runbook v1.5→v1.6）
+
+- **変更内容**:
+    - `docker-compose.production.yml` [MODIFY]: **api-server** `dockerfile: docker/distroless.Dockerfile`、`user: "65532:65532"`、`healthcheck.disable: true`
+    - key-proxy / samsara-hub / shadow-worker: `production.Dockerfile` **維持**
+    - `docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md` [MODIFY]: **v1.6** NT-1 **Step 0**（pull/chown/build/up/稼働 Labels）詳細。foolproof H-1 は委譲
+- **波及効果**: Vault GUI 利用前にイメージ再ビルド必須。`restart` だけでは旧イメージのまま。
+- **非対象**: `cell.yml` / `commercial.yml` / `docker-publish.yml` / CI workflows
+
 ## 🔍 Wave A2/A3 App.tsx + OP-075-B（2026-07-10/11）
 
 - **変更内容**:

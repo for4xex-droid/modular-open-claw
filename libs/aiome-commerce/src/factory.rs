@@ -64,14 +64,25 @@ impl CommerceEngineFactory {
                 )))
             }
             ProviderType::Mock => {
-                #[cfg(debug_assertions)]
+                // B-004: MockCommerceEngine is cfg-gated (test/debug/`dev-mock` feature).
+                // Release + `dev-mock` still requires AIOME_DEV_MODE=1 (defense in depth).
+                #[cfg(any(test, debug_assertions, feature = "dev-mock"))]
                 {
-                    tracing::warn!(
-                        "⚠️ [CommerceFactory] Using MockCommerceEngine for local/OSS economy."
-                    );
-                    Ok(Arc::new(crate::mock::MockCommerceEngine::new()))
+                    let is_dev = std::env::var("AIOME_DEV_MODE")
+                        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                        .unwrap_or(false);
+                    if cfg!(debug_assertions) || is_dev {
+                        tracing::warn!(
+                            "⚠️ [CommerceFactory] Using MockCommerceEngine for local/OSS economy."
+                        );
+                        Ok(Arc::new(crate::mock::MockCommerceEngine::new()))
+                    } else {
+                        Err(anyhow::anyhow!(
+                            "Mock provider requires AIOME_DEV_MODE=1 (dev-mock feature alone is insufficient)"
+                        ))
+                    }
                 }
-                #[cfg(not(debug_assertions))]
+                #[cfg(not(any(test, debug_assertions, feature = "dev-mock")))]
                 {
                     Err(anyhow::anyhow!(
                         "Mock provider is not allowed in production"
@@ -150,7 +161,52 @@ mod tests {
 
         #[cfg(not(debug_assertions))]
         {
-            assert!(engine.is_err(), "Should fail in release mode for mock");
+            // Release without AIOME_DEV_MODE must Fail-Closed (even with/without feature).
+            assert!(
+                engine.is_err(),
+                "Should fail in release mode for mock without AIOME_DEV_MODE"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_commerce_factory_mock_with_dev_mode() {
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        let config = CommerceConfig {
+            provider: ProviderType::Mock,
+            api_key: None,
+            webhook_secret: SecretString::from("".to_string()),
+            base_url: None,
+        };
+
+        // SAFETY: test-only env; restored below. Avoid parallel pollution via unique key...
+        // (commerce tests are light; set/remove around the call)
+        let prev = std::env::var("AIOME_DEV_MODE").ok();
+        std::env::set_var("AIOME_DEV_MODE", "1");
+        let engine = CommerceEngineFactory::create(config, pool, None, None, None).await;
+        match prev {
+            Some(v) => std::env::set_var("AIOME_DEV_MODE", v),
+            None => std::env::remove_var("AIOME_DEV_MODE"),
+        }
+
+        #[cfg(any(debug_assertions, feature = "dev-mock"))]
+        {
+            assert!(
+                engine.is_ok(),
+                "Mock must be allowed when AIOME_DEV_MODE=1 and Mock is compiled in"
+            );
+        }
+
+        #[cfg(not(any(debug_assertions, feature = "dev-mock")))]
+        {
+            assert!(
+                engine.is_err(),
+                "Release without dev-mock feature cannot construct Mock"
+            );
         }
     }
 }

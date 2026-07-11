@@ -226,6 +226,9 @@ RUST_LOG=info cargo run -p api-server
 ---
 
 ## 8. Production Deployment Checklist
+
+> **Human Public Beta**: 本番 Docker では [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-6 Part B のスキップ規則を優先（G1←NT-2 / R2-1←NT-1 / OP-012・014 は過去 PASS 時）。下の localhost / `cargo run` 行は開発向け。
+
 - [ ] `.env` に `GEMINI_API_KEY` を設定
 - [ ] `.env` に `API_SERVER_SECRET` を設定
 - [ ] `.env` に `VAULT_SECRET` を設定 (Key Proxy用)
@@ -257,7 +260,7 @@ RUST_LOG=info cargo run -p api-server
 - [ ] **PostgreSQL 本番検証 (OP-012)**: `bash scripts/verify-production-postgres.sh` が Positive / Negative / Revert すべて PASS すること（`docker-compose.production-verify.yml`、ポート `127.0.0.1:5434`）
 - [ ] **Keychain CLI 検証 (OP-014)**: `bash scripts/verify-keychain-cli.sh` が PASS すること（`abyss-vault` set/get/delete + 非 whitelist 拒否）
 - [ ] **Quick Start 実走 (G1)**: Human が [`docs/guides/QUICK_START_VERIFICATION.md`](QUICK_START_VERIFICATION.md) に沿って 5 分以内に完走すること
-- [ ] **Stripe 本番反映 (R2-1)**: [`docs/operations/stripe-production-setup.md`](../operations/stripe-production-setup.md) どおり — 秘密は AbyssVault（`abyss-vault set STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET`）、非秘密は `STRIPE_TEST_MODE=false` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` / `VITE_STRIPE_PRICE_ID`
+- [ ] **Stripe 本番反映 (R2-1)**: [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-1 **v1.6** — 進行は `/nt-assist` + `python3 scripts/nt_gate.py step0`。詳細はランブック（本 §8 に手順を再掲しない）
 
 ### 8.1 Release Verification Scripts（リリース前検証）
 
@@ -267,6 +270,7 @@ RUST_LOG=info cargo run -p api-server
 |---|---|---|
 | `scripts/verify-production-postgres.sh` | 3 DB（`aiome` / `nurture` / `samsara_hub`）マイグレーション + BAN 統合 | Docker、`docker-compose.production-verify.yml` |
 | `scripts/verify-keychain-cli.sh` | `abyss-vault` CLI ラウンドトリップ + macOS Keychain smoke | `VAULT_MASTER_PASSWORD`（一時ディレクトリ） |
+| `scripts/nt_gate.py` | NT-1 Step 0 / compose 衛生ゲート（`step0`/`hygiene`/`self-test`）。秘密は扱わない | `/nt-assist`、本番ホスト or `--skip-docker` |
 | `docs/guides/QUICK_START_VERIFICATION.md` | G1: clone → 起動 → Setup Wizard → チャット | Human 実走 |
 
 検証用 Postgres URL（任意）: `.env.example` の `PRODUCTION_VERIFY_PG_BASE` を参照。

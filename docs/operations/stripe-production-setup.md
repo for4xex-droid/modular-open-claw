@@ -5,9 +5,10 @@ Stripe の本番アカウント申請承認に伴い、Aiome 課金システム�
 **最終更新: 2026-07-10** — release_master_plan **R2-1** / near_term **NT-1** 手順書（Human 作業の正本）。凍結台帳 **OP-057-R** チェックリストと対応。
 
 > **OP-057-R チェックリスト（本番反映）**
+> 0. [ ] **環境**: 本番に distroless イメージをデプロイ（[`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-1 **Step 0** を実行。`restart` だけではイメージは更新されません）
 > 1. [ ] **秘密**: AbyssVault に `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` を格納し、api-server を再起動（§2.A）
 > 2. [ ] **非秘密**: `STRIPE_TEST_MODE=false` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` をホスト env または compose パススルーで設定（§2.B）
-> 3. [ ] management-console 本番ビルドに `VITE_STRIPE_PRICE_ID` を設定（§2.1）— **api-server と同一 Price ID**
+> 3. [ ] ホストに `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` を設定（§2.B）。`VITE_STRIPE_PRICE_ID` は任意（未設定時は `price_gold_monthly` エイリアス → §2.1）
 > 4. [ ] Stripe Dashboard Webhook 登録（§3）
 > 5. [ ] 本番 API が実 Price ID を返すこと + **テスト決済 1 件で Pro unlock**（DoD: R2-1 / NT-1）
 >
@@ -37,17 +38,26 @@ api-server は起動時に `shared::security::fetch_and_inject_secrets()` で ke
 
 | 種別 | 変数 | 正本の格納先 | compose への直書き |
 |---|---|---|---|
-| **秘密** | `STRIPE_API_KEY` | **AbyssVault**（`abyss-vault set`） | **禁止**（Zero-Trust） |
-| **秘密** | `STRIPE_WEBHOOK_SECRET` | **AbyssVault**（推奨） | フォールバックとして env 可 |
+| **秘密** | `STRIPE_API_KEY` | **AbyssVault**（**推奨: MC GUI** / 上級: `abyss-vault set`） | **禁止**（Zero-Trust） |
+| **秘密** | `STRIPE_WEBHOOK_SECRET` | **AbyssVault**（同上） | フォールバックとして env 可（空推奨） |
 | **非秘密** | `STRIPE_TEST_MODE` | ホスト `.env` / compose パススルー | 可（Vault 対象外） |
 | **非秘密** | `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` | ホスト `.env` / compose パススルー | 可（Vault 対象外） |
 
-詳細な Vault 操作は [api_key_rotation.md](api_key_rotation.md) を参照してください。
+詳細な Vault 操作は [api_key_rotation.md](api_key_rotation.md)（**§B GUI 推奨** / §C CLI）を参照してください。Human 向けコピペは [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-1。  
+**本番 MC（Vault GUI）**: `docker-compose.production.yml` の **api-server = `docker/distroless.Dockerfile`（実施済）**。Human は [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-1 **Step 0** で `build`/`up`/稼働 Labels 確認してから GUI に入ること（`restart` だけでは旧イメージのまま）。
 
 ### 2.A 秘密（必須・AbyssVault）
 
+#### 推奨 — Management Console GUI（本番 compose）
+
+本番 MC に管理者ログイン（通常 `https://<YOUR_DOMAIN>/`。quickstart の 1420 ではない）→ **まもる・整える → 設定 → Abyss Vault シークレットマネージャ** で `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` を設定します。API は key-proxy 経由のため、**本番 api-server が読む Vault DB と同一**です（[api_key_rotation.md](api_key_rotation.md) §B）。
+
+#### 上級 — CLI（同一 DB が保証できるときのみ）
+
+ホストで `cargo run --bin abyss-vault` する場合、`ABYSS_VAULT_PATH` / `VAULT_MASTER_PASSWORD` / `CELL_ID` が **key-proxy コンテナと同一**でないと、別 DB に書いて「入ったつもり」になります。迷ったら GUI のみ。
+
 ```bash
-# 本番 live キーを Vault に格納（値はシェル履歴に残さないよう対話入力推奨）
+# 本番 live/test キーを Vault に格納（値はシェル履歴に残さないよう対話入力推奨）
 cargo run --bin abyss-vault -- set STRIPE_API_KEY
 cargo run --bin abyss-vault -- set STRIPE_WEBHOOK_SECRET
 
@@ -85,22 +95,24 @@ STRIPE_PRICE_SUBSCRIPTION_MONTHLY="price_xxxx"
 
 ### 2.1 management-console フロントエンド（`VITE_STRIPE_PRICE_ID`）
 
-Pro アプリ内 Checkout（`ProUpgradeModal` / `useCheckoutSession`）はビルド時に Vite 環境変数を埋め込みます。**api-server の `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` と同一の Price ID** を設定してください。
+Pro アプリ内 Checkout（`ProUpgradeModal` / `useCheckoutSession`）はビルド時に Vite 環境変数を埋め込みます。
 
 | 環境変数 | 設定先 | 用途 |
 |---|---|---|
-| `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` | api-server 非秘密 env / compose | Checkout Session 作成・Webhook 照合 |
-| `VITE_STRIPE_PRICE_ID` | `apps/management-console/.env` または CI secrets | フロント Checkout リクエストの `price_id` |
+| `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` | api-server 非秘密 env / compose | Checkout Session 作成・Webhook 照合（**必須**） |
+| `VITE_STRIPE_PRICE_ID` | `apps/management-console/.env` または CI secrets | フロント Checkout リクエストの `price_id`（任意） |
+
+**エイリアス（本番 Docker 向け）**: `VITE_STRIPE_PRICE_ID` 未設定時、フロントはデフォルト `price_gold_monthly`（`config.ts`）を送ります。api-server はこれをホストの `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` に解決します。したがって **ホスト Price が正しければ、VITE 未焼き込みでも Checkout は動作**します。厳密に同一文字列をフロントに焼き込む場合のみ再ビルドしてください。
 
 ```bash
-# apps/management-console/.env（本番ビルド / CI）
+# apps/management-console/.env（任意・本番ビルド / CI）
 VITE_STRIPE_PRICE_ID="price_xxxx"   # STRIPE_PRICE_SUBSCRIPTION_MONTHLY と同一値
 ```
 
 **確定値（2026-07-05、OP-057）**: `price_1TpXFpBcUTwo5TwLmK9SQbKL`（Pro $19.99/月）。開発手順の詳細は [stripe-setup.md](stripe-setup.md) §2.5 を参照。
 
 > [!NOTE]
-> Vite 変数はビルド時に静的埋め込みされます。Price ID 変更後は **management-console の再ビルド・再デプロイ** が必要です。
+> Vite 変数を使う場合、変更後は **management-console の再ビルド・再デプロイ** が必要です。エイリアス経路のみなら api-server 側のホスト Price 更新で足ります。
 
 > [!CAUTION]
 > - `STRIPE_TEST_MODE="false"` に設定されると、起動時プリフライトチェックで `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` が未設定の場合は**サーバーの起動を拒否**する安全ガードが稼働します。

@@ -11,12 +11,18 @@
 ## 事前準備
 
 - [ ] Docker Desktop が起動している
-- [ ] ポート `1420`（Management Console）が空いている
+- [ ] ポート `1420`（Management Console）が空いている（`lsof -i :1420`）
+- [ ] 固定名コンテナなし（`aiome-ollama` / `aiome-api-server` / `aiome-mc` — 他ディレクトリの quickstart と衝突する）
 - [ ] 本リポジトリを**新規 clone** したクリーン作業ディレクトリを使用（既存 `aiome_data` ボリュームに依存しない）
 
 ```bash
+lsof -i :1420 || echo "1420 OK"
+docker ps --format '{{.Names}}' | grep -E '^aiome-(ollama|api-server|mc)$' || echo "OK: no name clash"
+# 衝突時: docker stop aiome-ollama aiome-api-server aiome-mc 2>/dev/null || true
+
 git clone https://github.com/motivationstudio-llc/aiome.git aiome-quickstart-verify
 cd aiome-quickstart-verify
+docker compose -f docker-compose.quickstart.yml down -v 2>/dev/null || true
 ```
 
 ---
@@ -49,7 +55,7 @@ docker compose -f docker-compose.quickstart.yml ps
 - [ ] Setup Wizard が表示される（エージェント名 / LLM エンジン / 経験レベル）
 - [ ] ウィザードで管理パスワードを設定し、完了できる
 - [ ] 設定したパスワードでログイン成功（ログイン画面は**パスワード欄のみ**。メール欄は存在しない）
-- [ ] Home / Chat タブが操作可能
+- [ ] Home / **AIとはなす** が操作可能
 
 > 開発機の既存 `aiome.db` を流用した場合のみ、既定パスワード `SuperSecretPassword123!` でログインする（クリーン検証としては無効。必ず新規 clone + 新規ボリュームで実施すること）。
 > ログインが弾かれる等のトラブル時は `docs/guides/LOCAL_LOGIN_VERIFICATION.md` の復旧手順を参照。
@@ -58,7 +64,7 @@ docker compose -f docker-compose.quickstart.yml ps
 
 ## Step 4 — チャット疎通（目標: 1 分）
 
-- [ ] Chat タブを開く
+- [ ] **AIとはなす** を開く
 - [ ] 短いメッセージ（例: `hello`）を送信
 - [ ] エラー toast なしで応答またはストリーミング開始（LLM 未設定時は設定促し UI でも可）
 

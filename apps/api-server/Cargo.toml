@@ -74,6 +74,8 @@ argon2 = "0.5.3"
 [features]
 default = []  # SEC: dev-routes must be explicitly opted-in via --features dev-routes
 dev-routes = []
+# Quick Start release images only — never enable on production compose.
+dev-mock = ["aiome-commerce/dev-mock"]
 nurture = ["dep:nurture-api", "dep:nurture-core", "dep:nurture-infra", "dep:commerce-protocol", "aiome_core/nurture"]
 demo = []
 

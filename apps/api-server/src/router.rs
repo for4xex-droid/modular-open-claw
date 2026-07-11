@@ -703,7 +703,9 @@ pub fn build_app(
         .route("/api/synergy/karma", get(routes::karma::get_karma_stream))
         .route(
             "/api/stream/chat",
-            get(crate::stream::trigger_agent_chat_stream),
+            // MC `useAgentChat` posts JSON+SSE; keep GET for older clients/tools.
+            get(crate::stream::trigger_agent_chat_stream)
+                .post(crate::stream::trigger_agent_chat_stream),
         )
         .route("/api/stream/history", get(crate::stream::get_chat_history))
         .route(

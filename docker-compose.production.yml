@@ -23,11 +23,13 @@ services:
   # Caddy Reverse Proxy
   caddy:
     image: caddy:2-alpine
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -37,6 +39,7 @@ services:
 
   # The Abyss Vault (Key Proxy)
   # Responsible for holding sensitive API keys in memory (locked).
+  # KEEP production.Dockerfile: healthcheck uses `nc` (distroless has no shell/nc).
   key-proxy:
     build:
       context: .
@@ -72,14 +75,18 @@ services:
 
   # The AIOME Command Center (Main Application)
   # No API keys in environment; communicates through the proxy.
+  # MC (React) is served from api-server static — MUST use distroless (includes dist).
+  # key-proxy / samsara-hub / shadow-worker stay on production.Dockerfile (curl/nc healthchecks).
   api-server:
     build:
       context: .
-      dockerfile: docker/production.Dockerfile
+      dockerfile: docker/distroless.Dockerfile
       args:
         BIN_NAME: api-server
     environment:
       - CELL_ID=${CELL_ID:-cell-0}
+      # Bind-mounted data volume; required so UID 65532 can write (DEV_MODE workspace under /app is not writable).
+      - AIOME_DATA_DIR=/app/data
       - KEY_PROXY_URL=http://key-proxy:9999
       - VAULT_SECRET=${VAULT_SECRET}
       # Federation v1.5 activated
@@ -118,18 +125,20 @@ services:
         condition: service_healthy
     volumes:
       - ./data/api:/app/data
+      - ./data/api/intent_tmp:/app/.intent_tmp
+      - ./apps/api-server/static:/app/apps/api-server/static:ro
     deploy:
       resources:
         limits:
           memory: 2G
     security_opt:
       - no-new-privileges:true
-    user: "1001:1001"
+    # distroless nonroot = UID/GID 65532（production.Dockerfile の 1001 とは異なる）
+    user: "65532:65532"
+    # Distroless に curl/shell が無いため CMD curl healthcheck は不可。
+    # 到達性は Caddy upstream / 外部監視で確認する。
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3015/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      disable: true
     restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"

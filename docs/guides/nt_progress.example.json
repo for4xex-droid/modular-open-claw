@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "updated": null,
+  "current": {
+    "nt": null,
+    "step": null,
+    "mode": "assist"
+  },
+  "tasks": {
+    "NT-1": { "status": "pending", "steps": {} },
+    "NT-2": { "status": "pending", "steps": {} },
+    "NT-3": { "status": "pending", "steps": {} },
+    "NT-4": { "status": "done", "steps": { "auto": { "result": "PASS", "note": "2026-07-10" } } },
+    "NT-5": { "status": "pending", "steps": {} },
+    "NT-6": { "status": "pending", "steps": {} },
+    "NT-7": { "status": "pending", "steps": {} }
+  },
+  "_readme": "Copy to states/nt_progress.json (gitignored). Never store sk_/whsec_/passwords. Agent updates via: python3 scripts/nt_gate.py mark NT-1 0.4 PASS"
+}

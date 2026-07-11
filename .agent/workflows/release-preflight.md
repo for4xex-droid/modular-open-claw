@@ -67,7 +67,7 @@ echo "Tracked files:" && git ls-files | wc -l && echo "Estimated size:" && git l
 GitHubリポジトリの About セクションに以下が設定されているか確認する（手動チェック）:
 - Description: 適切な1行説明
 - Website: 公式サイトURL（あれば）
-- Topics: `ai`, `autonomous-agents`, `rust`, `agent-os`, `self-improving-ai` 等
+- Topics: `ai-agents` `autonomous-agents` `self-hosted` `sovereign-ai` `mcp` `rust` `agent-economy` `local-first` `ai-os` `tauri`（MESSAGING §7 正本）
 
 ## ステップ 7.5: CHANGELOG [Unreleased] 肥大化チェック
 ```bash
@@ -77,9 +77,11 @@ awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md | wc -l
 
 ## ステップ 8: LICENSE 整合性
 ```bash
-head -1 LICENSE && grep -o "Apache\|BUSL\|MIT\|GPL" LICENSE | head -1
+head -1 LICENSE
+grep -n "BUSL\|Business Source\|License-BUSL\|License-BSL" README.md | head -5
 ```
-README のバッジ表示と一致していることを確認する。
+**PASS**: LICENSE 1行目が `Business Source License` で、README バッジが BUSL/BSL。  
+**注意**: `grep -o Apache LICENSE | head -1` は使わない（Change License 行に誤ヒットする）。
 
 ## 判定
 全ステップが OK であればリリース可能。1件でも NG があればリリースを中止し、修正後に再実行する。

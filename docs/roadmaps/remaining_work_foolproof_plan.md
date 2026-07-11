@@ -4,7 +4,8 @@
 > **改訂**: v1.1（`/perfect-plan` Agent 手順修正）→ **v1.2**（Human NT-* を Agent 波と同粒度のコピペ手順に拡充）  
 > **根拠**: `OPEN.md` + `near_term_public_beta_plan.md` v5.1 + 運用正本（stripe-production-setup / QUICK_START_VERIFICATION / MESSAGING §8 / OPERATIONS_MANUAL §8 / release-preflight）  
 > **タスク正本**: [`OPEN.md`](../../OPEN.md)（本計画は手順のみ。ID の二重管理をしない）  
-> **ステータス**: 計画 ✅ PASS（v1.2）。**Wave A1/A2/A3 実装完了**（2026-07-10/11）。残は Human NT-* / Gate（OP-051・062）/ Watch / OP-059-UI
+> **ステータス**: 計画 ✅ PASS（v1.2）。**Wave A1/A2/A3 実装完了**（2026-07-10/11）。残は Human NT-* / Gate（OP-051・062）/ Watch / OP-059-UI  
+> **Human 実行の超詳細版（推奨）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）— Human コピペ正本。進行は **`/nt-assist`** + `scripts/nt_gate.py`（1ステップ・秘密禁止）。§2 H-1 は要約。
 
 ---
 
@@ -13,7 +14,7 @@
 | # | v1.1 の問題 | v1.2 の固定 |
 |---|-------------|------------|
 | 1 | Wave H が要約のみ（「正本を見ろ」止まり） | NT-1〜7 を **Step / コマンド / DoD / Negative / 記録テンプレ** まで記載 |
-| 2 | NT-1 の `abyss-vault` 起動形が曖昧 | `cargo run --bin abyss-vault -- set …`（stripe-production-setup §2.A 正本） |
+| 2 | NT-1 の `abyss-vault` 起動形が曖昧 | ランブック v1.2: **GUI 正本**（MC Vault マネージャ→key-proxy）。CLI は同一 DB 時のみ（stripe-production-setup / api_key_rotation §B） |
 | 3 | NT-3 パスのみで「何を見るか」不足 | タブ操作・合格/不合格の目視基準を固定 |
 | 4 | NT-5 が「§8 参照」のみ | 7 ショット + GIF の保存先・禁止事項・チェック表 |
 | 5 | NT-6 が文書名のみ | OPERATIONS §8 スキップ表 + preflight ステップ 0〜8 の実行順 |
@@ -105,7 +106,8 @@ B5 実行前ゲート / `String` 戻り、B3=`Failed`、対象 5 箇所、napi �
 
 ## 2. Wave H — Human Public Beta（Foolproof）
 
-> **Agent の役割**: コード・Vault 値・compose への秘密追加はしない。ユーザーが「NT-N を進める」と言ったら、本節の該当チェックリストをそのまま読み上げ・進捗を記録する。  
+> **実行はこちらを優先してよい**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（画面操作・判定表・コピペをさらに噛み砕いた版）。  
+> **Agent の役割**: コード・Vault 値・compose への秘密追加はしない。ユーザーが「NT-N を進める」と言ったら、ランブックまたは本節の該当チェックリストをそのまま読み上げ・進捗を記録する。  
 > **Human の役割**: 下記 Step を上から実行し、各 DoD を満たしたら OPEN / 本計画の記録欄に結果を残す。
 
 ### 2.0 Human 共通ルール
@@ -131,118 +133,80 @@ NT-4 ✅ 済み（再実行不要）
 
 ### H-1 NT-1 = R2-1 = OP-057-R (1) — Stripe 本番反映 🔐
 
-**正本（重複時はこちら優先）**: [`docs/operations/stripe-production-setup.md`](../operations/stripe-production-setup.md)  
-**補助**: [`docs/operations/api_key_rotation.md`](../operations/api_key_rotation.md)（set / 再起動の一般則）
+**Human 実行の詳細正本（重複時はこちら）**: [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) **NT-1（v1.6+）** — Step 0→A→B→C→D。  
+**技術正本**: [`docs/operations/stripe-production-setup.md`](../operations/stripe-production-setup.md)  
+**補助**: [`docs/operations/api_key_rotation.md`](../operations/api_key_rotation.md) §B GUI  
+
+> 本 H-1 はチェックリスト要約。**コマンドの全文コピペはランブック NT-1 を開いて実行**する（ここに再掲しない＝重複防止）。
 
 #### 事前チェック（全部 Yes で開始）
 
-- [ ] Stripe Dashboard で **live** Product / Price がある（Price ID = `price_…`）
-- [ ] 確定 Price（開発記録 2026-07-05）: `price_1TpXFpBcUTwo5TwLmK9SQbKL`（$19.99/月）— **本番で差し替えた場合は新 ID に統一**
-- [ ] 本番ホストで `key-proxy` が動く / `VAULT_SECRET`・`VAULT_MASTER_PASSWORD` がホスト側にある
-- [ ] `docker-compose.production.yml` を開き、api-server に `STRIPE_API_KEY=` 行が**無い**ことを確認
+- [ ] 方針 A（test）または B（live）を決めた  
+- [ ] Price ID を控えた（チャットに全文禁止）  
+- [ ] 本番ホストに `VAULT_SECRET` / `VAULT_MASTER_PASSWORD`  
+- [ ] compose に `STRIPE_API_KEY=` 代入なし  
+- [ ] compose の api-server が `docker/distroless.Dockerfile`（ファイル）
+
+#### Step 0 — distroless を本番に載せる（必須・ランブック詳細へ委譲）
+
+本番イメージが MC 付き distroless であることを保証するため、ホスト環境で `git pull`、`chown`、`build`、`up -d` を実行し、稼働 Labels を確認します。
+
+> [!IMPORTANT]
+> プロセスの `restart` だけでは Docker イメージは更新されません。必ず詳細手順とコマンドを [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-1 **Step 0** で確認し、実行してください（コマンドの重複を避けるため、本節でのコマンド全文は省略しランブックへ委譲します）。
+
+- [ ] Step 0 DoD PASS  
 
 #### Step A — 秘密（AbyssVault）
 
-リポジトリルートで（値は対話入力推奨・履歴に残さない）:
+**推奨**: 本番 MC → **まもる・整える → 設定 → Abyss Vault**（Step 0 後）。CLI は同一 Vault DB 時のみ。
 
-```bash
-cargo run --bin abyss-vault -- set STRIPE_API_KEY
-# → sk_live_… を入力（チャットに貼らない）
-
-cargo run --bin abyss-vault -- set STRIPE_WEBHOOK_SECRET
-# → whsec_… を入力（未作成なら Step C の後でも可。その場合は Webhook 作成後に再 set + 再起動）
-
-cargo run --bin abyss-vault -- status
-# 値は表示されない想定。キー名の存在だけ確認
-```
-
-- [ ] `STRIPE_API_KEY` 格納完了  
-- [ ] `STRIPE_WEBHOOK_SECRET` 格納完了（または Step C 後に完了予定とメモ）
+- [ ] `STRIPE_API_KEY` 格納  
+- [ ] `STRIPE_WEBHOOK_SECRET` 格納（または Step C 後に完了とメモ）
 
 #### Step B — 非秘密（ホスト env / compose パススルー）
 
-ホストの `.env` またはシェル export（**キーは書かない**）:
+**方針 A**: `STRIPE_TEST_MODE=true` + test Price  
+**方針 B**: `STRIPE_TEST_MODE=false` + live Price  
 
-```bash
-# ホスト側（例）
-export STRIPE_TEST_MODE=false
-export STRIPE_PRICE_SUBSCRIPTION_MONTHLY="price_1TpXFpBcUTwo5TwLmK9SQbKL"  # 本番 ID に置換可
-```
+`VITE_STRIPE_PRICE_ID` は任意（`price_gold_monthly` エイリアス可）。詳細はランブック / stripe-production-setup §2.1。
 
-compose は既にパススルー済み（`docker-compose.production.yml:104–105`）:
-
-```yaml
-STRIPE_TEST_MODE=${STRIPE_TEST_MODE:-false}
-STRIPE_PRICE_SUBSCRIPTION_MONTHLY=${STRIPE_PRICE_SUBSCRIPTION_MONTHLY}
-```
-
-Management Console 本番ビルド:
-
-```bash
-# apps/management-console/.env（または CI secrets）
-# VITE_STRIPE_PRICE_ID は STRIPE_PRICE_SUBSCRIPTION_MONTHLY と【同一文字列】
-echo 'VITE_STRIPE_PRICE_ID=price_…'  # 手元で設定。Agent に値を送らない
-```
-
-- [ ] `STRIPE_TEST_MODE=false`  
-- [ ] Price ID が api-server と MC で一致  
-- [ ] Price 未設定のまま `false` で起動しない（preflight が Fail-Closed）
+- [ ] TEST_MODE 一致  
+- [ ] ホスト Price 設定済  
+- [ ] 方針 B で Price 空起動しない  
 
 #### Step C — Webhook（Stripe Dashboard）
 
-1. Developers → Webhooks → エンドポイント追加  
-2. URL: `https://<YOUR_DOMAIN>/api/v1/commerce/webhook`  
-3. 必須イベント **7**（stripe-production-setup §3）:
+ランブック NT-1 Step C（イベント 7・whsec・`restart api-server`＝注入再読込）。
 
-| イベント |
-|----------|
-| `checkout.session.completed` |
-| `invoice.paid` |
-| `invoice.payment_failed` |
-| `customer.subscription.deleted` |
-| `customer.subscription.updated` |
-| `charge.dispute.created` |
-| `checkout.session.expired` |
+- [ ] Webhook 登録 + 注入ログ OK（値は出ない）
 
-4. Signing secret（`whsec_…`）を Vault に set（未実施なら Step A に戻る）  
-5. **api-server を再起動**（注入は起動時のみ。`api_key_rotation.md` の注意どおり）
-
-- [ ] Webhook 登録完了  
-- [ ] 再起動後、起動ログで key-proxy 注入成功（**値は出ない**こと）
-
-#### Step D — DoD 確認（Positive）
+#### Step D — DoD（Positive）
 
 | # | 確認 | 合格条件 |
 |---|------|----------|
-| D1 | チェックアウト API / UI | 返る `price_id` が設定した実 ID（test のダミーや空でない） |
-| D2 | テスト決済 1 件 | Stripe test/live 方針に従い 1 件完了 |
-| D3 | Pro unlock | Webhook 後、対象アカウントが Pro（`PlanBadge` / サブスク Active・Trialing） |
-| D4 | compose 衛生 | `rg STRIPE_API_KEY docker-compose.production.yml` がコメント以外で **0**（またはキー代入なし） |
+| D0 | 稼働 distroless | Step 0 DoD |
+| D1 | Checkout 開始 | PlanBadge / コインとポイント / 402 |
+| D2 | アプリ Checkout 1 件 | LP Link 単独不可 |
+| D3 | Pro unlock | PlanBadge 等 |
+| D4 | compose 衛生 | キー代入なし |
 
-#### Negative（必須・1 つで可）
+#### Negative
 
-| 注入 | 期待 |
-|------|------|
-| Vault から `STRIPE_API_KEY` を一時 delete → api-server 再起動 | 本番モードで課金/preflight が拒否 or Mock に落ちない設計どおり Fail-Closed。**値をログに出さない** |
-| 確認後 | 直ちに `abyss-vault set` で復元 + 再起動 |
+GUI/CLI で API キー一時削除 → restart → 拒否 → **復元** → restart。
 
-#### 完了記録（OPEN / CHANGELOG 用）
+#### 完了記録
 
 ```
 NT-1 / OP-057-R(1) / R2-1
 日付: YYYY-MM-DD
-環境: （ホスト名は出してよい。秘密は出さない）
-Price ID 末尾4桁: ____
-Webhook: 登録済 / イベント7
-Pro unlock: PASS / FAIL
-compose に STRIPE_API_KEY: 無し（確認済）
+Step0 distroless: PASS
+Vault: GUI|CLI / 方針: A|B / Price末尾4: ____
+Webhook7 / Pro / Negative復元
 ```
 
-#### Agent がやってはいけないこと
+#### Agent 禁止
 
-- `docker-compose.production.yml` に `STRIPE_API_KEY` 追加  
-- 秘密値を CHANGELOG / Issue / チャットに書く  
-- webhook ハンドラコードの「ついで修正」
+- compose に `STRIPE_API_KEY` 追加 / 秘密をチャットへ / webhook コードのついで修正
 
 ---
 
@@ -253,12 +217,14 @@ compose に STRIPE_API_KEY: 無し（確認済）
 #### 事前準備
 
 - [ ] Docker Desktop 起動  
-- [ ] ポート `1420` が空  
+- [ ] ポート `1420` が空（`lsof -i :1420`）  
+- [ ] 固定名コンテナなし（`aiome-ollama` / `aiome-api-server` / `aiome-mc` — 衝突時は `docker stop`）  
 - [ ] **新規 clone**（既存 `aiome_data` ボリュームに依存しない）
 
 ```bash
 git clone https://github.com/motivationstudio-llc/aiome.git aiome-quickstart-verify
 cd aiome-quickstart-verify
+docker compose -f docker-compose.quickstart.yml down -v 2>/dev/null || true
 ```
 
 #### Step 1 — 起動（目標 3 分）
@@ -347,8 +313,9 @@ FAIL 時: docker compose -f docker-compose.quickstart.yml logs の末尾50行を
 #### Step
 
 1. ローカルまたは quickstart で Management Console を開く  
-2. サイドバー **Biome** タブ（`activeTab === "biome"` → `<BiomeGame />`）を開く  
-3. キャンバス背後の合成を観察  
+2. **コックピット**に切替（**まもる・整える → 設定 → インターフェース複雑度 →「コックピット」**）  
+3. サイドバー **そだてる → ワールド**（Biome）を開く  
+4. キャンバス背後の合成を観察  
 
 #### 合格 / 不合格
 
@@ -407,12 +374,14 @@ docs/assets/evidence/YYYY-MM-DD/
 | # | 内容 | UI 到達 | ファイル | 済 |
 |---|------|---------|----------|----|
 | 1 | SetupWizard → Playbook → Home（GIF ~30s） | 初回 or 設定リセット相当 | `01-quickstart.gif` | [ ] |
-| 2 | 監査ログ | Diagnostics / Activity audit | `02-audit.png` | [ ] |
-| 3 | 承認キュー | **BuzzApproval** タブ | `03-buzz-approval.png` | [ ] |
-| 4 | エコノミー | **Nurture** ダッシュボード | `04-nurture-economy.png` | [ ] |
-| 5 | ワークフロー | **Workflow Builder** | `05-workflow-builder.png` | [ ] |
-| 6 | チャット+アバター | AgentConsole + Diorama（cockpit） | `06-agent-diorama.png` | [ ] |
-| 7 | LLM 統計 | Prompt stats / usage | `07-prompt-stats.png` | [ ] |
+| 2 | 監査ログ | **アクティビティ**（`karma`）を開き内部タブ「監査ログ」 | `02-audit.png` | [ ] |
+| 3 | 承認キュー | **SNS承認**（`buzz-approval`） | `03-buzz-approval.png` | [ ] |
+| 4 | エコノミー | **コインとポイント**（`nurture`） | `04-nurture-economy.png` | [ ] |
+| 5 | ワークフロー | **ワークフロー**（`workflow-builder`） | `05-workflow-builder.png` | [ ] |
+| 6 | チャット+アバター | **AIとはなす**（`agent`）+ Diorama | `06-agent-diorama.png` | [ ] |
+| 7 | LLM 統計 | **アクティビティ** → 内部タブ「使用量」 | `07-prompt-stats.png` | [ ] |
+
+> **注意（2026-07-11）**: `audit` / `prompt-stats` はサイドバー独立項目ではない（U6-5）。詳細は [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-5。
 
 #### DoD
 
@@ -485,19 +454,21 @@ cargo check --workspace 2>&1 | tail -3
 # 5.5 ignored ゲート
 cargo test --workspace -- --ignored --skip sandbox --skip vendor 2>&1 | tail -10
 
-# 6 サイズ
+# 6 サイズ — PASS: ≤2500 files かつ ≤75MB
 echo "Tracked files:" && git ls-files | wc -l && echo "Estimated size:" && git ls-files -z | xargs -0 du -ch 2>/dev/null | tail -1
 
 # 7.5 CHANGELOG
 awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md | wc -l
 # 200 超なら R5-2 でバージョン切り出し必須
 
-# 8 LICENSE
-head -1 LICENSE && grep -o "Apache\|BUSL\|MIT\|GPL" LICENSE | head -1
+# 8 LICENSE（1行目 BUSL。Apache は Change License なので grep -o Apache は使わない）
+head -1 LICENSE
+grep -n "BUSL\|Business Source\|License-BUSL\|License-BSL" README.md | head -5
 ```
 
-**ステップ 0（Human）**: ロールバック手順（Feature Flag / `git revert` / DB）を Issue かリリースノート草案に書く。  
-**ステップ 7（Human）**: GitHub About — 文面は MESSAGING §7。R4-4 と同一作業ならここでまとめて実施。
+**ステップ 0（Human）**: ロールバック手順（Feature Flag / `git revert` / DB 復元の**実リンク**）を Issue かリリースノート草案に書く（空欄は FAIL）。  
+**ステップ 7（Human）**: GitHub About — Description（MESSAGING §7）+ **Website** + Topics + Social preview。R4-4 と同一作業ならここでまとめて実施。  
+**実行場所**: preflight は**開発機の clone**（本番 SSH ではない）。詳細コピペは [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-6。
 
 #### R5-2〜5
 
@@ -512,6 +483,7 @@ head -1 LICENSE && grep -o "Apache\|BUSL\|MIT\|GPL" LICENSE | head -1
 
 - [ ] preflight 全ステップ OK（または NG を修正して再実行）  
 - [ ] §8 の未スキップ項目がチェック済み  
+- [ ] **NT-5 = 7/7**（R5-5 直前）  
 - [ ] R5-5 まで進む場合は Human が公開を明示承認  
 
 #### Negative

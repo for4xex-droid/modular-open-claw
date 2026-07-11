@@ -5,6 +5,9 @@
  * Licensed under the Business Source License 1.1.
  */
 
+// B-004: Mock stays out of production release binaries unless `dev-mock` is opted in.
+#![cfg(any(test, debug_assertions, feature = "dev-mock"))]
+
 use aiome_core::commerce::CommerceEngine;
 use aiome_core::error::AiomeError;
 use aiome_core_contracts::commerce::EscrowRecord;
@@ -16,7 +19,7 @@ use dashmap::DashMap;
 use std::sync::Arc;
 
 /// OSS 版向けのモック経済エンジン
-#[cfg(any(test, debug_assertions))]
+#[cfg(any(test, debug_assertions, feature = "dev-mock"))]
 #[derive(Clone)]
 pub struct MockCommerceEngine {
     /// エージェント別の残高
@@ -27,7 +30,7 @@ pub struct MockCommerceEngine {
     pub subscription_override: Arc<std::sync::atomic::AtomicU8>,
 }
 
-#[cfg(any(test, debug_assertions))]
+#[cfg(any(test, debug_assertions, feature = "dev-mock"))]
 fn subscription_override_from_env() -> u8 {
     match std::env::var("MOCK_SUBSCRIPTION_STATUS")
         .unwrap_or_default()
@@ -43,7 +46,7 @@ fn subscription_override_from_env() -> u8 {
     }
 }
 
-#[cfg(any(test, debug_assertions))]
+#[cfg(any(test, debug_assertions, feature = "dev-mock"))]
 impl Default for MockCommerceEngine {
     fn default() -> Self {
         Self {
@@ -56,7 +59,7 @@ impl Default for MockCommerceEngine {
     }
 }
 
-#[cfg(any(test, debug_assertions))]
+#[cfg(any(test, debug_assertions, feature = "dev-mock"))]
 impl MockCommerceEngine {
     /// 新規モックエンジンを生成する
     pub fn new() -> Self {
@@ -64,7 +67,7 @@ impl MockCommerceEngine {
     }
 }
 
-#[cfg(any(test, debug_assertions))]
+#[cfg(any(test, debug_assertions, feature = "dev-mock"))]
 #[async_trait]
 impl CommerceEngine for MockCommerceEngine {
     async fn get_balance(&self, agent_id: Uuid) -> Result<u64, AiomeError> {

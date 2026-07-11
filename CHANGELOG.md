@@ -3,6 +3,15 @@
 ### Fixed (MC agent identity / Pro badge 2026-07-12)
 - **`useAgentIdentity`**: JWT の `agent_id`（UUID）を優先。管理者トークンの `sub`（メール）を agentId に使わない。Pro 購読照会・Checkout の 400 を解消。
 - **`/checkout/success` 404**: ビルド後に `dist/checkout/success/index.html` を配置（ServeDir 向け SPA シェル）。success_url は末尾 `/`。App のパス判定は trailing slash 対応。
+- **`docker/distroless.Dockerfile`**: frontend に `libs/biome-engine/pkg`、builder に `cmake`/`g++`、最終段に `libssl3`/CA と UID 65532 向け `/app/data`・`/app/workspace`。compose に `AIOME_DATA_DIR=/app/data`（DEV_MODE 時の `/app/workspace` 書き込み不可による即死を回避）。
+- **Quick Start commerce**: `dev-mock` feature + `AIOME_DEV_MODE=1` でのみ release Mock を許可（B-004 準拠。feature 無しの本番 release はコンパイル時に Mock 排除）。`docker-compose.quickstart.yml` に `FEATURES: dev-mock` と `AIOME_DEV_MODE=1` を追加。
+- **`/api/stream/chat`**: MC の `POST`（`useAgentChat`）を受付。従来は `GET` のみで UI が 405 になっていた。
+
+### Changed (Human runbook + compose 2026-07-11)
+- **`/nt-assist` 最小構成**: [`.agent/workflows/nt-assist.md`](.agent/workflows/nt-assist.md)（1ステップ進行・秘密禁止）、[`scripts/nt_gate.py`](scripts/nt_gate.py)（`step0`/`hygiene`/`mark`/`self-test`）、[`docs/guides/nt_progress.example.json`](docs/guides/nt_progress.example.json)（→ `states/nt_progress.json`）。ランブックは正本のまま、先頭に薄い入口のみ。
+- **`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md` v1.6**: NT-1 に **Step 0**（`git pull` → `chown 65532` → `build api-server` → `up -d` → 稼働 Labels `security.distroless=true` / ブラウザ確認）を詳細追加。`restart`≠イメージ更新を明記。実行順表・失敗時表。foolproof H-1 はランブックへ委譲（重複排除）。
+- **`docker-compose.production.yml`**: **api-server** の `dockerfile` を `docker/distroless.Dockerfile` に変更（MC dist 同梱）。`user: "65532:65532"`、`healthcheck.disable: true`。**key-proxy / samsara-hub / shadow-worker** は `production.Dockerfile` 維持。
+- **`stripe-production-setup.md` / `OPERATIONS_MANUAL.md` §8 / foolproof H-1 / OPEN OP-057-R / `.env.example` / RIPPLE_MAP**: 上記に同期。
 
 ### Changed (/docs-sync 2026-07-11 post-/reflexion)
 - **RIPPLE_MAP**: N-B5・A2 型厳密化（`WorkspacePersona` export / lazy named export）を追記。

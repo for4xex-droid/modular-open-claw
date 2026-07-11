@@ -3,6 +3,8 @@
 **最終更新: 2026-07-11**
 
 > **実装手順の正本**:
+> - **Human 実行ランブック（NT-1〜7・コピペ超詳細）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）  
+> - **Agent アシスト（推奨・1ステップ進行）**: [`.agent/workflows/nt-assist.md`](.agent/workflows/nt-assist.md)（`/nt-assist`）+ [`scripts/nt_gate.py`](scripts/nt_gate.py)
 > - **残存ワーク統合（Human + Agent・foolproof）**: [`docs/roadmaps/remaining_work_foolproof_plan.md`](docs/roadmaps/remaining_work_foolproof_plan.md)（**v1.2**・2026-07-10・Human NT-* 詳細化 + Agent `/perfect-plan` PASS）
 > - **直近 Public Beta（Human ゲート中心）**: [`docs/roadmaps/near_term_public_beta_plan.md`](docs/roadmaps/near_term_public_beta_plan.md)（**v5.1**・2026-07-10・`/perfect-plan`+`/reflexion` 検証済み。秘密は AbyssVault、compose への API キー追加は禁止）
 > - **技術負債 Wave 3 以降**: [`docs/roadmaps/remaining_tasks_implementation_plan.md`](docs/roadmaps/remaining_tasks_implementation_plan.md)（v6。Wave 1/2 完了済み）
@@ -82,7 +84,7 @@
 ## ⏸️ 凍結（解除条件つき）
 
 - [ ] **OP-040**: OGP 画像（og:image）・プロモーション動画の埋め込み — **OGP 画像は 2026-07-09 解除・配置完了**（`docs/assets/logo/` + `docs/landing/public/ogp.png` / `aiome-hero-white.png`）。**プロモーション動画は凍結継続**（音声素材提供待ち）。
-- [ ] **OP-057-R**: OP-057 残タスク。**(1)** 本番ホストへの秘密・非秘密反映 — **Human 待ち**（2026-07-10: 手順書を Vault 正本化、compose に非秘密 `STRIPE_TEST_MODE` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` パススルー追加。秘密は `abyss-vault set`）。**(2)** 決済→Pro 自動有効化 — **2026-07-05 コード完了**。本番デプロイ前に人間レビュー推奨。
+- [ ] **OP-057-R**: OP-057 残タスク。**(1)** 本番ホストへの秘密・非秘密反映 — **Human 待ち**（進行: `/nt-assist` NT-1 + `python3 scripts/nt_gate.py step0`。正本 [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)）。**(2)** 決済→Pro — **2026-07-05 コード完了**。
 
 ## ✅ 解決（直近のみ保持）
 

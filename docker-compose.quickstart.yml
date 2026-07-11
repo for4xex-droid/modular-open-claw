@@ -36,10 +36,15 @@ services:
     build:
       context: .
       dockerfile: docker/production.Dockerfile
+      args:
+        BIN_NAME: api-server
+        # Opt-in Mock for empty Stripe; production compose must never set this.
+        FEATURES: dev-mock
     ports:
       - "3015:3015"
     environment:
       CELL_ID: "quickstart"
+      AIOME_DEV_MODE: "1"
       OLLAMA_HOST: "http://ollama:11434"
       # For Mac native Ollama, use: OLLAMA_HOST: "http://host.docker.internal:11434"
       OLLAMA_MODEL: "gemma4:e4b"  # Gemma4 — multimodal, ~6GB RAM

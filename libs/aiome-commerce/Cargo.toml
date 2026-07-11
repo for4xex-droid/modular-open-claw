@@ -39,6 +39,11 @@ base64.workspace = true
 alloy-primitives = "1.5.7"
 alloy-signer-local = "2.0.4"
 
+[features]
+default = []
+# Opt-in only: allows MockCommerceEngine in release (Quick Start). Production images must NOT enable this.
+dev-mock = []
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }
 wiremock = { workspace = true }

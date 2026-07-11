@@ -7,10 +7,8 @@
     # グローバルオプション
     admin off
     log {
-        output file /var/log/caddy/access.log {
-            roll_size 10mb
-            roll_keep 5
-        }
+        output stdout
+        format console
     }
 }
 
