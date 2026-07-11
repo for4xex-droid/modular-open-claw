@@ -62,7 +62,11 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileNav, setIsMobileNav] = useState(false);
   const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(
-    () => typeof window !== 'undefined' && window.location.pathname.endsWith('/checkout/success')
+    () => {
+      if (typeof window === 'undefined') return false;
+      const path = window.location.pathname.replace(/\/$/, '');
+      return path.endsWith('/checkout/success');
+    }
   );
   const seenTokenEventsRef = React.useRef(new Set<number>());
   const navContainerRef = useRef<HTMLDivElement>(null);

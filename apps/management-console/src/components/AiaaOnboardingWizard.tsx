@@ -49,7 +49,7 @@ export const AiaaOnboardingWizard = () => {
         body: JSON.stringify({
           agent_id: '00000000-0000-0000-0000-000000000000', // Dummy agent ID for onboarding
           price_id: STRIPE_PRICE_ID,
-          success_url: `${window.location.origin}/checkout/success`,
+          success_url: `${window.location.origin}/checkout/success/`,
           cancel_url: `${window.location.origin}/checkout/cancel`
         })
       });

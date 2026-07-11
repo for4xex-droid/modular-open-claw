@@ -16,7 +16,8 @@ export const useCheckoutSession = (priceId: string, agentId?: string) => {
     const [error, setError] = useState<string | null>(null);
     const pendingRef = useRef(false);
 
-    const checkoutSuccessUrl = `${window.location.origin}/checkout/success`;
+    // Trailing slash: production ServeDir serves checkout/success/index.html as a directory.
+    const checkoutSuccessUrl = `${window.location.origin}/checkout/success/`;
     const checkoutCancelUrl = window.location.href;
 
     const handleCheckout = useCallback(async () => {

@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed (MC agent identity / Pro badge 2026-07-12)
+- **`useAgentIdentity`**: JWT の `agent_id`（UUID）を優先。管理者トークンの `sub`（メール）を agentId に使わない。Pro 購読照会・Checkout の 400 を解消。
+- **`/checkout/success` 404**: ビルド後に `dist/checkout/success/index.html` を配置（ServeDir 向け SPA シェル）。success_url は末尾 `/`。App のパス判定は trailing slash 対応。
+
 ### Changed (/docs-sync 2026-07-11 post-/reflexion)
 - **RIPPLE_MAP**: N-B5・A2 型厳密化（`WorkspacePersona` export / lazy named export）を追記。
 - **TECH_DEBT_AUDIT**: v11「新規・再浮上」の OP-075/076/App.tsx を `[RESOLVED]` 注記に更新。ホットスポット `App.tsx` 評価を分割済に修正。

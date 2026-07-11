@@ -31,13 +31,26 @@ describe('useAgentIdentity', () => {
         expect(result.current.isEkycVerified).toBe(false);
     });
 
-    it('should decode base64url payload and return agentId from sub', () => {
+    it('should decode base64url payload and return UUID-shaped sub when agent_id missing', () => {
         (auth.getAuthToken as jest.Mock).mockReturnValue(
             createMockToken({ sub: '123e4567-e89b-12d3-a456-426614174000', ekyc_verified: true })
         );
         const { result } = renderHook(() => useAgentIdentity());
         expect(result.current.agentId).toBe('123e4567-e89b-12d3-a456-426614174000');
         expect(result.current.isEkycVerified).toBe(true);
+    });
+
+    it('should prefer agent_id over email sub (admin JWT shape)', () => {
+        (auth.getAuthToken as jest.Mock).mockReturnValue(
+            createMockToken({
+                sub: 'admin@example.com',
+                agent_id: '00000000-0000-0000-0000-000000000001',
+                ekyc_verified: false,
+            })
+        );
+        const { result } = renderHook(() => useAgentIdentity());
+        expect(result.current.agentId).toBe('00000000-0000-0000-0000-000000000001');
+        expect(result.current.isEkycVerified).toBe(false);
     });
 
     it('should return agentId from agent_id if sub is missing', () => {
@@ -47,6 +60,14 @@ describe('useAgentIdentity', () => {
         const { result } = renderHook(() => useAgentIdentity());
         expect(result.current.agentId).toBe('123e4567-e89b-12d3-a456-426614174001');
         expect(result.current.isEkycVerified).toBe(false);
+    });
+
+    it('should not treat email sub as agentId', () => {
+        (auth.getAuthToken as jest.Mock).mockReturnValue(
+            createMockToken({ sub: 'admin@example.com', ekyc_verified: false })
+        );
+        const { result } = renderHook(() => useAgentIdentity());
+        expect(result.current.agentId).toBeNull();
     });
 
     it('should handle malformed token gracefully', () => {

@@ -12,6 +12,23 @@ interface AgentIdentity {
     isEkycVerified: boolean;
 }
 
+const UUID_RE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Prefer JWT `agent_id`; fall back to UUID-shaped `sub` only (never email). */
+export const resolveAgentIdFromClaims = (decoded: {
+    agent_id?: unknown;
+    sub?: unknown;
+}): string | null => {
+    if (typeof decoded.agent_id === 'string' && UUID_RE.test(decoded.agent_id)) {
+        return decoded.agent_id;
+    }
+    if (typeof decoded.sub === 'string' && UUID_RE.test(decoded.sub)) {
+        return decoded.sub;
+    }
+    return null;
+};
+
 export const useAgentIdentity = (): AgentIdentity => {
     const [identity, setIdentity] = useState<AgentIdentity>({
         agentId: null,
@@ -36,11 +53,11 @@ export const useAgentIdentity = (): AgentIdentity => {
             const base64 = payloadStr.replace(/-/g, '+').replace(/_/g, '/');
             const pad = base64.length % 4;
             const paddedBase64 = pad ? base64 + '='.repeat(4 - pad) : base64;
-            
+
             const decoded = JSON.parse(atob(paddedBase64));
 
             setIdentity({
-                agentId: decoded.sub || decoded.agent_id || null,
+                agentId: resolveAgentIdFromClaims(decoded),
                 isEkycVerified: !!decoded.ekyc_verified,
             });
         } catch (e) {
