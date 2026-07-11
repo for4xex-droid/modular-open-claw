@@ -6,6 +6,7 @@
 - **`docker/distroless.Dockerfile`**: frontend に `libs/biome-engine/pkg`、builder に `cmake`/`g++`、最終段に `libssl3`/CA と UID 65532 向け `/app/data`・`/app/workspace`。compose に `AIOME_DATA_DIR=/app/data`（DEV_MODE 時の `/app/workspace` 書き込み不可による即死を回避）。
 - **Quick Start commerce**: `dev-mock` feature + `AIOME_DEV_MODE=1` でのみ release Mock を許可（B-004 準拠。feature 無しの本番 release はコンパイル時に Mock 排除）。`docker-compose.quickstart.yml` に `FEATURES: dev-mock` と `AIOME_DEV_MODE=1` を追加。
 - **`/api/stream/chat`**: MC の `POST`（`useAgentChat`）を受付。従来は `GET` のみで UI が 405 になっていた。
+- **`AppDataResolver` tests**: `AIOME_DATA_DIR` / `WORKSPACE_DIR` 汚染に耐えるようテスト前にクリア。
 
 ### Changed (Human runbook + compose 2026-07-11)
 - **`/nt-assist` 最小構成**: [`.agent/workflows/nt-assist.md`](.agent/workflows/nt-assist.md)（1ステップ進行・秘密禁止）、[`scripts/nt_gate.py`](scripts/nt_gate.py)（`step0`/`hygiene`/`mark`/`self-test`）、[`docs/guides/nt_progress.example.json`](docs/guides/nt_progress.example.json)（→ `states/nt_progress.json`）。ランブックは正本のまま、先頭に薄い入口のみ。

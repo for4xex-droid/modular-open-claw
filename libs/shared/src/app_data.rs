@@ -141,14 +141,17 @@ mod tests {
     use serial_test::serial;
     use std::env;
 
-    /// テスト前に CELL_ID をクリアするヘルパー。
-    fn clean_cell_id() {
+    /// テスト前に CELL_ID / AIOME_DATA_DIR をクリアするヘルパー。
+    fn clean_env_overrides() {
         env::remove_var("CELL_ID");
+        env::remove_var("AIOME_DATA_DIR");
+        env::remove_var("WORKSPACE_DIR");
     }
 
     #[test]
     #[serial]
     fn test_resolve_root_dev() {
+        clean_env_overrides();
         env::set_var("CELL_ID", "test-cell");
         env::set_var("AIOME_DEV_MODE", "1");
         let resolver = AppDataResolver::new().unwrap();
@@ -158,6 +161,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_resolve_root_prod() {
+        clean_env_overrides();
         env::set_var("CELL_ID", "test-cell");
         env::remove_var("AIOME_DEV_MODE");
         let resolver = AppDataResolver::new().unwrap();
@@ -171,6 +175,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_db_path_resolution() {
+        clean_env_overrides();
         env::set_var("CELL_ID", "test-cell");
         env::set_var("AIOME_DEV_MODE", "1");
         let resolver = AppDataResolver::new().unwrap();
@@ -184,6 +189,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_db_url_resolution() {
+        clean_env_overrides();
         env::set_var("CELL_ID", "test-cell");
         env::set_var("AIOME_DEV_MODE", "1");
         let resolver = AppDataResolver::new().unwrap();
@@ -195,6 +201,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_cell_id_namespacing() {
+        clean_env_overrides();
         env::set_var("AIOME_DEV_MODE", "1");
         env::set_var("CELL_ID", "test-cell-42");
         let resolver = AppDataResolver::new().unwrap();
@@ -217,14 +224,14 @@ mod tests {
         assert!(art_str.contains("test-cell-42"));
         assert!(art_str.ends_with("test-cell-42/artifacts"));
 
-        clean_cell_id();
+        clean_env_overrides();
     }
 
     #[test]
     #[serial]
     fn test_cell_id_absent_defaults_to_test_cell() {
+        clean_env_overrides();
         env::set_var("AIOME_DEV_MODE", "1");
-        clean_cell_id();
         let resolver = AppDataResolver::new().unwrap();
         assert!(resolver.root().to_string_lossy().contains("test-cell"));
     }
@@ -232,10 +239,11 @@ mod tests {
     #[test]
     #[serial]
     fn test_cell_id_rejects_traversal() {
+        clean_env_overrides();
         env::set_var("AIOME_DEV_MODE", "1");
         env::set_var("CELL_ID", "../../etc");
         let result = AppDataResolver::new();
-        clean_cell_id();
+        clean_env_overrides();
         assert!(
             result.is_err(),
             "Expected Err due to invalid characters in CELL_ID"
@@ -257,6 +265,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_resolve_root_override_via_env() {
+        clean_env_overrides();
         let custom_path = env::temp_dir().join("aiome-custom-data-test");
         env::set_var("AIOME_DATA_DIR", custom_path.to_str().unwrap());
         env::set_var("CELL_ID", "override-test-cell");
@@ -264,7 +273,6 @@ mod tests {
         let resolver = AppDataResolver::new().unwrap();
         assert_eq!(resolver.root(), custom_path);
 
-        env::remove_var("AIOME_DATA_DIR");
-        clean_cell_id();
+        clean_env_overrides();
     }
 }
