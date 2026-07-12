@@ -446,13 +446,22 @@ pub async fn init_core_services(
                 http_client.clone(),
             )) as Arc<dyn aiome_core_contracts::ekyc::EkycEngine>
         } else {
-            #[cfg(debug_assertions)]
+            // Mirror CommerceFactory B-004: Mock only when compiled in + (debug | AIOME_DEV_MODE).
+            #[cfg(any(test, debug_assertions, feature = "dev-mock"))]
             {
-                tracing::warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockEkycEngine (always verified) for development.");
-                Arc::new(aiome_commerce::ekyc::MockEkycEngine)
-                    as Arc<dyn aiome_core_contracts::ekyc::EkycEngine>
+                let is_dev = std::env::var("AIOME_DEV_MODE")
+                    .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                    .unwrap_or(false);
+                if cfg!(debug_assertions) || is_dev {
+                    tracing::warn!("⚠️ [api-server] STRIPE_API_KEY not set. Using MockEkycEngine (always verified) for development.");
+                    Arc::new(aiome_commerce::ekyc::MockEkycEngine)
+                        as Arc<dyn aiome_core_contracts::ekyc::EkycEngine>
+                } else {
+                    tracing::error!("🚨 [FATAL SECURITY ERROR] STRIPE_API_KEY must be set in production for eKYC enforcement!");
+                    std::process::exit(1);
+                }
             }
-            #[cfg(not(debug_assertions))]
+            #[cfg(not(any(test, debug_assertions, feature = "dev-mock")))]
             {
                 tracing::error!("🚨 [FATAL SECURITY ERROR] STRIPE_API_KEY must be set in production for eKYC enforcement!");
                 std::process::exit(1);

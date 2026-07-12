@@ -113,11 +113,11 @@ impl EkycEngine for StripeEkycEngine {
     }
 }
 
-/// 開発・テスト用のモック
-#[cfg(any(test, debug_assertions))]
+/// 開発・テスト用のモック（B-004: release は `dev-mock` + AIOME_DEV_MODE のみ）
+#[cfg(any(test, debug_assertions, feature = "dev-mock"))]
 pub struct MockEkycEngine;
 
-#[cfg(any(test, debug_assertions))]
+#[cfg(any(test, debug_assertions, feature = "dev-mock"))]
 #[async_trait]
 impl EkycEngine for MockEkycEngine {
     async fn create_verification_session(&self, _user_id: &str) -> anyhow::Result<EkycSession> {

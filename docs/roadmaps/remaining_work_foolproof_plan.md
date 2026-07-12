@@ -1,10 +1,10 @@
-# 残存ワーク Foolproof 実行計画（v1.2）
+# 残存ワーク Foolproof 実行計画（v1.4）
 
 > **作成**: 2026-07-10（v1.0）  
-> **改訂**: v1.1（`/perfect-plan` Agent 手順修正）→ **v1.2**（Human NT-* を Agent 波と同粒度のコピペ手順に拡充）  
+> **改訂**: v1.1 → **v1.2**（Human NT 拡充）→ **v1.3**（NT-2 実装ゲート分離）→ **v1.4**（2026-07-13: NT-2=done・§8 R-A〜R-D 閉じ / OPEN OP-078・077・079）→ **v1.5**（2026-07-13: Local LLM /reflexion 残リスク LL-A〜D → OP-080〜082）  
 > **根拠**: `OPEN.md` + `near_term_public_beta_plan.md` v5.1 + 運用正本（stripe-production-setup / QUICK_START_VERIFICATION / MESSAGING §8 / OPERATIONS_MANUAL §8 / release-preflight）  
 > **タスク正本**: [`OPEN.md`](../../OPEN.md)（本計画は手順のみ。ID の二重管理をしない）  
-> **ステータス**: 計画 ✅ PASS（v1.2）。**Wave A1/A2/A3 実装完了**（2026-07-10/11）。残は Human NT-* / Gate（OP-051・062）/ Watch / OP-059-UI  
+> **ステータス**: Wave A1/A2/A3 ✅。NT-1 ✅。NT-2 ✅（§8 閉じ）。**いま NT-3**（OP-002 Biome 目視・human-only / LL-C）。残: NT-5/6/7 / Gate / OP-059-UI / LL follow（OP-080〜082・NT-6 ブロッカー外）
 > **Human 実行の超詳細版（推奨）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）— Human コピペ正本。進行は **`/nt-assist`** + `scripts/nt_gate.py`（1ステップ・秘密禁止）。§2 H-1 は要約。
 
 ---
@@ -71,8 +71,10 @@ B5 実行前ゲート / `String` 戻り、B3=`Failed`、対象 5 箇所、napi �
 | NT | OPEN | コード状態 | 次アクション |
 |----|------|------------|--------------|
 | **NT-1** | OP-057-R (1) | 手順 ✅ / 反映 ❌ | Vault |
-| **NT-2** | G1 | チェックリスト ✅ | Quick Start 実走 |
-| **NT-3** | OP-002 | `BiomeCanvas.tsx:99` / `BiomeRenderer.tsx:187` DONE | 目視 |
+| **NT-2** | G1 / OP-078 ✅ | API+MC proxy DoD + §8 R-A〜R-D ✅（2026-07-13） | [`nt2_quickstart_unblock_plan.md`](nt2_quickstart_unblock_plan.md) §8（完了） |
+| **LL follow** | OP-080〜082 | Pattern A ✅ / B 実機❌ / git 未コミット | [`local_llm_ab_reflexion_plan.md`](local_llm_ab_reflexion_plan.md) §2（**NT-6 必須ブロッカー外**） |
+
+| **NT-3** | OP-002 | `BiomeCanvas.tsx:99` / `BiomeRenderer.tsx:187` DONE | 目視（**LL-C** = 同一） |
 | NT-4 | OP-013 | ✅ | 再実行不要 |
 | **NT-5** | OP-063 | OGP ✅ / 撮影 ❌ | 7+GIF |
 | **NT-6** | R5 | WF ✅ | 「実行しろ」後 |
@@ -212,96 +214,46 @@ Webhook7 / Pro / Negative復元
 
 ### H-2 NT-2 = G1 = R3-4 — Quick Start 実走
 
-**正本**: [`docs/guides/QUICK_START_VERIFICATION.md`](../guides/QUICK_START_VERIFICATION.md)（本節は同内容の実行用コピー）
+**現状（2026-07-13）**: 公式 compose DoD PASS + **§8 R-A〜R-D すべて閉じ**（NT-2=done / OP-078・077・079）。手順の再掲はしない。
 
-#### 事前準備
-
-- [ ] Docker Desktop 起動  
-- [ ] ポート `1420` が空（`lsof -i :1420`）  
-- [ ] 固定名コンテナなし（`aiome-ollama` / `aiome-api-server` / `aiome-mc` — 衝突時は `docker stop`）  
-- [ ] **新規 clone**（既存 `aiome_data` ボリュームに依存しない）
-
-```bash
-git clone https://github.com/motivationstudio-llc/aiome.git aiome-quickstart-verify
-cd aiome-quickstart-verify
-docker compose -f docker-compose.quickstart.yml down -v 2>/dev/null || true
-```
-
-#### Step 1 — 起動（目標 3 分）
-
-```bash
-docker compose -f docker-compose.quickstart.yml up -d
-docker compose -f docker-compose.quickstart.yml ps
-```
-
-- [ ] 全サービス `running` / `healthy`  
-- [ ] 初回含め 3 分以内に healthy
-
-#### Step 2 — ダッシュボード（目標 30 秒）
-
-ブラウザ: http://localhost:1420
-
-- [ ] Setup Wizard またはログイン画面  
-- [ ] DevTools Console に致命的 JS エラーなし
-
-#### Step 3 — Setup / ログイン
-
-クリーン環境では **Setup Wizard** が起動する。
-
-- [ ] エージェント名 / LLM / 経験レベルを設定  
-- [ ] 管理パスワードを設定して完了  
-- [ ] **パスワード欄のみ**のログイン画面で成功（メール欄は無い）  
-- [ ] Home / Chat が操作可能  
-
-> 既存 `aiome.db` 流用は **本検証として無効**。開発機の `SuperSecretPassword123!` はクリーン G1 の合格条件に使わない。  
-> トラブル時のみ [`LOCAL_LOGIN_VERIFICATION.md`](../guides/LOCAL_LOGIN_VERIFICATION.md)（DB 再生成・hash 削除は原則禁止）。
-
-#### Step 4 — チャット（目標 1 分）
-
-- [ ] Chat タブで `hello` 送信  
-- [ ] エラー toast なしで応答 or ストリーミング or LLM 設定促し UI
-
-#### Step 5 — 停止
-
-```bash
-docker compose -f docker-compose.quickstart.yml down
-```
-
-- [ ] exit code 0
-
-#### DoD
-
-| 項目 | 基準 |
+| 正本 | 用途 |
 |------|------|
-| 時間 | clone〜Step 4 完了 **5 分以内** |
-| ログイン | Wizard で設定したパスワードで成功 |
-| チャット | 送信可能 |
-| 回帰（任意推奨） | `down` 後再 `up` で Step 3 再現 |
+| [`nt2_quickstart_unblock_plan.md`](nt2_quickstart_unblock_plan.md) | 実装履歴 + **§8 残リスク対応計画（R-A〜R-D）** |
+| [`QUICK_START_VERIFICATION.md`](../guides/QUICK_START_VERIFICATION.md) | **Human / 代理実走**の唯一の手順・DoD・Negative |
+| [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-2 | 入口 |
 
-#### Negative
+#### 実装ゲート（要約）
 
-| 注入 | 期待 |
-|------|------|
-| 誤パスワード | ログイン失敗（成功しない） |
-| ポート 1420 占有のまま起動 | 失敗が分かる（ログ）。占有解除して再試行 |
+| ID | 状態 |
+|----|------|
+| B1–B6 / I-1–I-5 / V（API 代理） | ✅ |
+| I-3 GHCR quickstart タグ | 任意・未 |
+| §8 R-A イメージ再ビルド煙 | ✅ 2026-07-13（`--no-build` FATAL → `--build` healthy） |
+| §8 R-B ブラウザ人手 | ✅ 2026-07-13（API+MC proxy 代理） |
+| §8 R-C / R-D | ✅ 2026-07-13（OP-077 / OP-079） |
 
-#### 記録テンプレ
+#### Human / Agent フォロー
 
-```
-NT-2 / G1 / R3-4
-日付: YYYY-MM-DD
-環境: macOS / Linux / Windows(WSL)
-所要時間: __ 分
-結果: PASS / FAIL
-備考: （LLM 設定の有無、スクショパス）
-FAIL 時: docker compose -f docker-compose.quickstart.yml logs の末尾50行を別途保存（秘密マスク）
-```
-
-完了時: OPEN の G1/R3-4 相当・OP-070 進捗を更新可。
+手順・記録は **VERIFICATION**。残リスク **§8 R-A〜R-D すべて ✅**（2026-07-13）。`nt_gate` browser=PASS。次は NT-3。
 
 ---
 
-### H-3 NT-3 = OP-002 = R1-16 — Biome `alpha:false` 目視
+### H-2.5 Local LLM A/B /reflexion フォロー（OP-080〜082）
+
+**正本**: [`local_llm_ab_reflexion_plan.md`](local_llm_ab_reflexion_plan.md)（手順の再掲はしない）。
+
+| ID | OPEN | 要約 | ブロッカー |
+|----|------|------|------------|
+| **LL-A** | OP-080 | Pattern B 実機: `pattern-b-up` → API 煙 → `pattern-a-up` 復帰。Negative: 11434 競合 | **いいえ**（macOS quickstart は Pattern A で可） |
+| **LL-B** | OP-081 | 未コミット diff の論理分割コミット（`.env` 除外） | いいえ（ユーザー承認後） |
+| **LL-C** | OP-002 | NT-3 Biome 目視 — **H-3 と同一** | **はい**（Public Beta Human ゲート） |
+| **LL-D** | OP-082 | Linux `extra_hosts`（需要ゲート後） | いいえ |
+
+**Agent 禁止**: Pattern B を本番 compose 既定にする / `.env` コミット / LL-C を代理 PASS。
+
+---
+
+### H-3 NT-3 = OP-002 = R1-16 = LL-C — Biome `alpha:false` 目視
 
 **コード（変更不要・確認のみ）**:
 

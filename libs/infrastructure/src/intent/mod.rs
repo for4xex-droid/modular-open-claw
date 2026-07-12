@@ -19,6 +19,7 @@ use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::gig::{AcceptanceCriteria, GigIntent, IntentCategory};
 use regex::Regex;
 use shared::sandbox::PathSandbox;
+use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 use tracing::info;
 use uuid::Uuid;
@@ -151,14 +152,23 @@ pub struct IntentFirewall {
 
 impl IntentFirewall {
     pub fn new() -> Result<Self, AiomeError> {
-        let sandbox = PathSandbox::new(".intent_tmp")
-            .or_else(|_| {
-                let _ = std::fs::create_dir_all(".intent_tmp");
-                PathSandbox::new(".intent_tmp")
-            })
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Failed to create intent sandbox: {}", e),
-            })?;
+        // Prefer AIOME_DATA_DIR (writable volume in Docker); fall back to TMPDIR.
+        // Relative `.intent_tmp` under WORKDIR=/app fails for uid 1001 (root-owned /app).
+        let root = std::env::var_os("AIOME_DATA_DIR")
+            .map(PathBuf::from)
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or_else(std::env::temp_dir);
+        let path = root.join(".intent_tmp");
+        std::fs::create_dir_all(&path).map_err(|e| AiomeError::Infrastructure {
+            reason: format!(
+                "Failed to create intent sandbox dir {}: {}",
+                path.display(),
+                e
+            ),
+        })?;
+        let sandbox = PathSandbox::new(&path).map_err(|e| AiomeError::Infrastructure {
+            reason: format!("Failed to create intent sandbox: {}", e),
+        })?;
 
         Ok(Self { _sandbox: sandbox })
     }
@@ -238,6 +248,48 @@ mod tests {
         assert!(clean_text.contains("[EMAIL]"));
         assert!(clean_text.contains("[PHONE]"));
         assert!(clean_text.contains("[NAME]"));
+    }
+
+    #[test]
+    fn test_intent_firewall_new_uses_aiome_data_dir() {
+        let tmp = tempdir().unwrap();
+        let prev = std::env::var_os("AIOME_DATA_DIR");
+        std::env::set_var("AIOME_DATA_DIR", tmp.path());
+        let result = IntentFirewall::new();
+        match prev {
+            Some(v) => std::env::set_var("AIOME_DATA_DIR", v),
+            None => std::env::remove_var("AIOME_DATA_DIR"),
+        }
+        assert!(
+            result.is_ok(),
+            "IntentFirewall::new should succeed: {:?}",
+            result.err()
+        );
+        let sandbox = tmp.path().join(".intent_tmp");
+        assert!(
+            sandbox.is_dir(),
+            "expected sandbox dir at {}",
+            sandbox.display()
+        );
+    }
+
+    #[test]
+    fn test_intent_firewall_new_rejects_unwritable_data_dir() {
+        let tmp = tempdir().unwrap();
+        // Point AIOME_DATA_DIR at a regular file so create_dir_all(file/.intent_tmp) fails.
+        let blocker = tmp.path().join("not_a_directory");
+        std::fs::write(&blocker, b"x").unwrap();
+        let prev = std::env::var_os("AIOME_DATA_DIR");
+        std::env::set_var("AIOME_DATA_DIR", &blocker);
+        let result = IntentFirewall::new();
+        match prev {
+            Some(v) => std::env::set_var("AIOME_DATA_DIR", v),
+            None => std::env::remove_var("AIOME_DATA_DIR"),
+        }
+        assert!(
+            result.is_err(),
+            "IntentFirewall::new must fail when data dir is not a directory"
+        );
     }
 
     #[tokio::test]

@@ -88,6 +88,9 @@ aiome.db.bak.*
 audit*.json
 venv/
 venv_new/
+.venv/
+tools/ruri-embed-server/.venv/
+docs/landing/.venv/
 workspace_a/
 workspace_b/
 .nurture_drm_master_key

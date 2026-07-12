@@ -1,3 +1,45 @@
+## 🔍 ローカル LLM Pattern A/B + 衛生（2026-07-13）
+
+- **変更内容**:
+    - [`docker-compose.quickstart.native-ollama.yml`](docker-compose.quickstart.native-ollama.yml) [NEW]: Pattern B（`host.docker.internal` + `gemma4:26b`）
+    - [`scripts/local_llm_setup.sh`](scripts/local_llm_setup.sh) [NEW]: A pull / B up / 未使用 Ollama・HF 削除
+    - [`.env`](.env) [MODIFY]: Gemma4 26b 同期
+    - [`docs/guides/QUICKSTART.md`](docs/guides/QUICKSTART.md) [MODIFY]: override 手順
+- **波及効果**: 既定 quickstart（A）は非破壊。B は `aiome-ollama` 停止が前提。ネイティブ Ollama 削除は `deep-dive-local`（Cursor MCP）と `gemma4:26b` を保持。
+- **残リスク台帳**: [`docs/roadmaps/local_llm_ab_reflexion_plan.md`](docs/roadmaps/local_llm_ab_reflexion_plan.md)（LL-A〜D → OPEN **OP-080〜082**）。Pattern B 実機は **OP-080** 未完了。
+- **非対象**: LM Studio 自動削除（別ツール）
+
+## 🔍 ローカルディスク衛生（2026-07-13）
+
+- **変更内容**:
+    - `cargo clean`（target ~269GiB）+ `.codeql-db` / DB バックアップ / workspace / venv / landing deps 削除
+    - [`.gitignore`](.gitignore) [MODIFY]: `.venv/`、`tools/ruri-embed-server/.venv/`、`docs/landing/.venv/`
+    - [`scripts/disk_hygiene.sh`](scripts/disk_hygiene.sh) [NEW]: dry-run / `--apply`
+- **波及効果**: 作業ツリー ~179GB → ~2.7GB。次回 `cargo build` / `npm ci` はフル再取得。`aiome.db` は保持。
+- **非対象**: Git 履歴 blob 除去（Phase C・別承認）、`vendor/` 無確認削除
+
+## 🔍 ViewModeProvider 共有（2026-07-13）
+
+- **変更内容**:
+    - `apps/management-console/src/hooks/useViewMode.ts` [MODIFY]: `ViewModeProvider` Context 化（App / HomePage / SettingsPage の状態分裂を解消）
+    - `apps/management-console/src/main.tsx` [MODIFY]: Provider ラップ
+    - `useViewMode.test.tsx` [NEW]: wrapper + 共有 state / Provider 外 throw テスト（旧 `.ts` から JSX 対応で移行）
+- **波及効果**: 設定の「コックピット」選択がサイドバー表示に即反映。quickstart MC 再ビルドが必要。
+- **非対象**: Consumer/Agency（`useWorkspacePersona`）の Context 化
+
+## 🔍 NT-2 Quick Start アンブロック実装（2026-07-13）
+
+- **変更内容**:
+    - `docker/console.Dockerfile` [NEW]: wasm-pack + MC（ルート context）
+    - `apps/management-console/Dockerfile` [MODIFY]: 誤用防止スタブ
+    - `docker-compose.quickstart.yml` [MODIFY]: ローカル build / `AIOME_DATA_DIR=/data` / volume chown / release 必須 demo env（CORS・A2A・GENERATIVE）
+    - `libs/infrastructure/src/intent/mod.rs` [MODIFY]: IntentFirewall → `AIOME_DATA_DIR/.intent_tmp`
+    - `libs/aiome-commerce/src/ekyc/mod.rs` + `core_services.rs` [MODIFY]: MockEkyc を `dev-mock`+`AIOME_DEV_MODE` に揃える
+    - `.github/workflows/docker-publish.yml` [MODIFY]: MC を `docker/console.Dockerfile` に切替
+    - QUICKSTART / README(_en) / VERIFICATION / nt2 plan 同期
+- **波及効果**: 匿名 GHCR pull 不要。公式 compose DoD（API 代理）PASS。初回 `--build` は 10 分超になり得る。`dev-mock` は commerce + infrastructure（MockGenerative）へ伝播。残リスク対応は unblock **§8** / OPEN **OP-078**。
+- **非対象**: production compose への `dev-mock`；R-B ブラウザ人手は OP-078（Gate 前）
+
 ## 🔍 NT-2 /reflexion: Quick Start Mock + chat POST（2026-07-12）
 
 - **変更内容**:

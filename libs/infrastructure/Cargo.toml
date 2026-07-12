@@ -89,6 +89,8 @@ metrics.workspace = true
 
 [features]
 test-utils = []
+# Opt-in mocks for Quick Start release binaries (never on production compose).
+dev-mock = []
 grpc = ["tonic", "aiome-core-contracts/grpc", "tonic-health"]
 native-inference = ["candle-core", "candle-nn", "candle-transformers", "hf-hub", "tokenizers"]
 s3 = ["aws-config", "aws-sdk-s3"]

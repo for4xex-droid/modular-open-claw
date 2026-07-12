@@ -13,6 +13,7 @@ use axum::{
     extract::{Path, State},
     response::Json,
 };
+#[cfg(debug_assertions)]
 use tracing::{info, warn};
 
 #[utoipa::path(

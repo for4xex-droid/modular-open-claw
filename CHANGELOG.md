@@ -1,5 +1,36 @@
 ## [Unreleased]
 
+### Changed (local LLM A/B + hygiene 2026-07-13)
+- **Pattern A / B**: [`docker-compose.quickstart.native-ollama.yml`](docker-compose.quickstart.native-ollama.yml) でホスト Ollama（`gemma4:26b`）へ切替。`depends_on: !reset null` で container Ollama 停止時も api-server が起動可能。既定 [`docker-compose.quickstart.yml`](docker-compose.quickstart.yml) は Docker Ollama（`gemma4:e4b`）のまま。
+- **`scripts/local_llm_setup.sh`**: `pattern-a` / `pattern-b-up` / `hygiene-dry-run` / `hygiene-apply`。
+- **`.env`**: `OLLAMA_MODEL` / `BG_LLM_MODEL` を `gemma4:26b` に同期（example 整合）。
+- **QUICKSTART**: 手動 compose 編集手順を override + スクリプト手順に置換。
+- **開発計画**: `/reflexion` 残リスクを [`local_llm_ab_reflexion_plan.md`](docs/roadmaps/local_llm_ab_reflexion_plan.md) に台帳化（LL-A〜D → OPEN **OP-080〜082**）。NT-3 目視は既存 **OP-002**（LL-C）。
+
+### Changed (local disk hygiene 2026-07-13)
+- **Workspace cleanup**: `cargo clean`（~269GiB）+ `.codeql-db` / 古い DB バックアップ / 重複 venv / landing deps 等の再生成可能物を削除。作業ツリー ~179GB → ~2.7GB。
+- **`.gitignore`**: `.venv/`、`tools/ruri-embed-server/.venv/`、`docs/landing/.venv/` を追加。
+- **`scripts/disk_hygiene.sh`**: ローカル生成物の dry-run / `--apply` 削除スクリプト。
+
+### Fixed (ViewMode sync 2026-07-13)
+- **`useViewMode` → `ViewModeProvider`**: Settings / HomePage / App が別インスタンスの `useState` を持っていたため、「インターフェース複雑度 → コックピット」を選んでもサイドバーが切り替わらない不具合を修正。`main.tsx` で Context 共有。
+
+### Fixed (NT-2 Quick Start unblock 2026-07-13)
+- **`docker/console.Dockerfile`**: ルート context で `wasm-pack` → MC build（`biome-engine/pkg` 解決）。`docker-publish.yml` / quickstart compose を同期。
+- **`docker-compose.quickstart.yml`**: GHCR `image:` 削除 + `pull_policy: build`；`AIOME_DATA_DIR=/data`；volume を uid 1001 向けに chown してから起動。intent sandbox 用ディレクトリも用意。release 必須 demo env（`ALLOWED_ORIGINS` / `A2A_NODE_TOKEN` 等）を同梱。Generative は `dev-mock` Mock（偽 ComfyUI は使わない）。
+- **`IntentFirewall`**: サンドボックスを `AIOME_DATA_DIR/.intent_tmp`（なければ TMPDIR）へ。root 所有の `/app` 配下作成による即死を解消。
+- **`MockEkycEngine` + bootstrap**: `dev-mock` + `AIOME_DEV_MODE` で release Quick Start が Stripe 無し起動可能（Commerce Mock と同ゲート）。
+- **`MockGenerativeEngine`**: 同上。quickstart は偽 ComfyUI URL ではなく Mock（`infrastructure/dev-mock`）を使用。
+- **`IntentFirewall` tests**: `AIOME_DATA_DIR` 正系 / 非ディレクトリ負系を追加。
+- **NT-2 §8 / OP-078**: /reflexion 残リスクを開発計画へ組み込み（R-A/R-B）。R-C=`OP-077`、R-D=`OP-079`。foolproof v1.4。※採番は完了済 OP-076（Stripe キー統一）と衝突しないよう OP-078 を使用。
+- **OP-078 R-A**: 旧イメージ `--no-build` で Generative FATAL（Negative）→ `up -d --build` で MockGenerative + `/health` 200（Positive）を確認。
+- **OP-078 R-B / OP-077 / OP-079**: ブラウザ代理 DoD PASS（API+MC proxy；実ブラウザ目視は任意）；`router`/`karma` の release unused import を `cfg(debug_assertions)` 化；compose から `/app/.intent_tmp` を撤去。
+- **Docs**: QUICKSTART / README(_en) / VERIFICATION をローカルビルド前提に同期。VERIFICATION: 公式 compose 実走 DoD（API 代理）PASS。
+- **MC `nginx.conf`**: Docker DNS (`127.0.0.11`) + 変数 upstream で `api-server` 未解決時も nginx 起動可。
+
+### Changed (NT-2 plan brush-up 2026-07-13)
+- **NT-2 実装正本**: [`docs/roadmaps/nt2_quickstart_unblock_plan.md`](docs/roadmaps/nt2_quickstart_unblock_plan.md)（B1–B6 コード照合・I-1〜I-4・文書重複排除）。foolproof v1.3 H-2 / ランブック NT-2 / VERIFICATION はポインタ化。
+
 ### Fixed (MC agent identity / Pro badge 2026-07-12)
 - **`useAgentIdentity`**: JWT の `agent_id`（UUID）を優先。管理者トークンの `sub`（メール）を agentId に使わない。Pro 購読照会・Checkout の 400 を解消。
 - **`/checkout/success` 404**: ビルド後に `dist/checkout/success/index.html` を配置（ServeDir 向け SPA シェル）。success_url は末尾 `/`。App のパス判定は trailing slash 対応。

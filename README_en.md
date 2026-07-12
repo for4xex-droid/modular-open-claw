@@ -55,13 +55,16 @@ Advanced features like commercial payments (Commerce/Stripe) **automatically ope
 > Please ensure you read [QUICK_START.md](QUICK_START.md) regarding authentication flows and feature limitations within the Docker Quickstart environment.
 
 ### Option A: Using Docker / Podman (Recommended)
-Skip the 10+ minute initial compilation locally by using our pre-built image running alongside Ollama.
+Builds locally from source (no GHCR login). The **first run often takes 10+ minutes**.
 
 ```bash
 git clone https://github.com/motivationstudio-llc/aiome
 cd aiome
-# Standard Quickstart (Mocked payments)
-docker compose -f docker-compose.quickstart.yml up -d
+# Standard Quickstart (mocked payments, local build)
+docker compose -f docker-compose.quickstart.yml up -d --build
+# After pulling code changes, always --build (stale images can FATAL at boot)
+# Older Compose that still attempts private GHCR pulls:
+# docker compose -f docker-compose.quickstart.yml up -d --build --pull never
 
 # Or, start in Commercial Mode (Nurture Engine / Live Stripe payments enabled)
 docker compose -f docker-compose.commercial.yml up -d

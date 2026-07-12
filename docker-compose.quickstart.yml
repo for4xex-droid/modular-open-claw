@@ -2,15 +2,12 @@
 # zero-configuration demonstration purposes. It omits critical container security options
 # (like IPC_LOCK, read-only rootfs) to maximize startup speed and compatibility.
 # For any production-facing or remote deployments, you MUST use `docker-compose.production.yml`.
+#
+# Images are built locally (no GHCR pull). First run: `up -d --build` (cold build can take 10+ min).
+# Older Compose without pull_policy: use `up -d --build --pull never`.
 
-# =====================================================================
-# 🍎 macOS USERS:
-# Native Ollama installation is HIGHLY recommended for performance.
-# If using native Ollama on macOS:
-# 1. Comment out the 'ollama:' block below.
-# 2. In 'api-server', set: OLLAMA_HOST: "http://host.docker.internal:11434"
-# =====================================================================
-
+# Optional: local LLM Pattern A/B — see scripts/local_llm_setup.sh
+# Pattern B override: docker-compose.quickstart.native-ollama.yml
 services:
   ollama:
     image: ollama/ollama
@@ -30,8 +27,7 @@ services:
     # On Mac, native Ollama installation is recommended instead of using this container.
 
   api-server:
-    # Use the pre-built image to save 10+ minutes of build time
-    image: ghcr.io/motivationstudio-llc/aiome:v1.0.0
+    # Local build only (GHCR packages are private; avoid anonymous pull failure).
     container_name: aiome-api-server
     build:
       context: .
@@ -40,22 +36,40 @@ services:
         BIN_NAME: api-server
         # Opt-in Mock for empty Stripe; production compose must never set this.
         FEATURES: dev-mock
+    pull_policy: build
     ports:
       - "3015:3015"
+    # Root briefly chowns the named volume, then drops to uid 1001 (image USER).
+    user: "0:0"
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -euo pipefail
+        # Writable volume for AIOME_DATA_DIR (IntentFirewall uses DATA_DIR/.intent_tmp).
+        mkdir -p /data /data/.intent_tmp
+        chown -R aiome:aiome /data
+        exec runuser -u aiome -- /app/aiome-app
     environment:
       CELL_ID: "quickstart"
       AIOME_DEV_MODE: "1"
+      AIOME_DATA_DIR: "/data"
       OLLAMA_HOST: "http://ollama:11434"
       # For Mac native Ollama, use: OLLAMA_HOST: "http://host.docker.internal:11434"
       OLLAMA_MODEL: "gemma4:e4b"  # Gemma4 — multimodal, ~6GB RAM
       RUST_LOG: "info,aiome=debug"
       WORKSPACE_DIR: "/data"
+      ALLOWED_ORIGINS: "http://localhost:1420,http://127.0.0.1:1420"
       API_SERVER_SECRET: "aiome_quickstart_demo_secret_2026"
       VAULT_MASTER_KEY: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
       # JWT key for auth (release builds require this; generate your own for production)
       JWT_PRIVATE_KEY_B64: "MC4CAQAwBQYDK2VwBCIEIO5u8FRMowHdVD/soQOD6TivIP1Ovb6Wm161FW6NmkYK" # gitleaks:allow
+      # A2A gRPC token (release requires set; demo-only for quickstart)
+      A2A_NODE_TOKEN: "aiome_quickstart_a2a_demo_token_2026"
+      # Default GENERATIVE_ENGINE=mock; allowed in release only with FEATURES=dev-mock + AIOME_DEV_MODE.
       # Optionals:
       # STRIPE_API_KEY: "" # Leave empty for automatic mock mode capability
+      # GENERATIVE_ENGINE: "comfyui"
+      # COMFYUI_URL: "http://host.docker.internal:8188"
     volumes:
       - aiome_data:/data
     healthcheck:
@@ -68,11 +82,11 @@ services:
         condition: service_healthy
 
   management-console:
-    image: ghcr.io/motivationstudio-llc/aiome-console:v1.0.0
     container_name: aiome-mc
     build:
-      context: apps/management-console
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/console.Dockerfile
+    pull_policy: build
     ports:
       - "1420:80"
     depends_on:

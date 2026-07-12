@@ -183,7 +183,7 @@ impl GenerativeEngine for FalAiGenerativeEngine {
     }
 }
 
-#[cfg(any(test, debug_assertions))]
+#[cfg(any(test, debug_assertions, feature = "dev-mock"))]
 pub mod mock {
     use super::*;
 

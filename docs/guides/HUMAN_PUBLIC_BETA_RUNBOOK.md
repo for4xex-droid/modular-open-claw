@@ -153,7 +153,7 @@ NT-5..7: 未/PASS/FAIL/DEFER
 - 秘密 → 「NT-? Step ? で詰まった」だけ（値なし）  
 - 正本優先  
 - UI 名: **まもる・整える** / **そだてる** / **ようすを見る** / **ひろげる** / **AIとはなす** / **ワールド** / **アクティビティ** / **SNS承認** / **コインとポイント** / **ワークフロー**
-- **cockpit モード**: NT-3・NT-5 の大半の画面は cockpit 専用。切替: **まもる・整える → 設定 → インターフェース複雑度 →「コックピット」**（「シンプル」では Biome / アクティビティ / SNS承認 等が開けない）
+- **cockpit モード**: NT-3・NT-5 の大半の画面は cockpit 専用。切替: **まもる・整える → 設定 → インターフェース複雑度 →「コックピット」**（「シンプル」では Biome / アクティビティ / SNS承認 等が開けない）。**Consumer/Agency トグルとは別軸**（persona 切替ではサイドバーは出ない）。旧ビルドでは切替後にハードリロードが必要な場合あり（`ViewModeProvider` 導入後は即反映）
 
 ### 0.6 課金導線の正本（混同禁止）
 
@@ -415,14 +415,19 @@ NT-1: 日付 / Step0 distroless稼働=PASS / Vault=GUI|CLI / 方針=A|B / Price�
 
 ## NT-2 — Quick Start 実走（G1 / R3-4）
 
-**正本**: [`QUICK_START_VERIFICATION.md`](QUICK_START_VERIFICATION.md)  
-**終わる状態**: 新規 clone → Setup → ログイン → チャット。
+**実走正本**: [`QUICK_START_VERIFICATION.md`](QUICK_START_VERIFICATION.md)（手順・DoD・Negative はそちら。ここへコピペしない）  
+**実装・残リスク正本**: [`nt2_quickstart_unblock_plan.md`](../roadmaps/nt2_quickstart_unblock_plan.md)（コア実装済。フォローは **§8**）  
+**終わる状態**: 新規 clone → Setup → ログイン → チャット（**公式** `docker-compose.quickstart.yml`）。
+
+> **2026-07-13**: 公式 compose DoD PASS（API + R-B 代理）。OPEN **OP-078/077/079** 閉じ。詳細は unblock **§8**。  
+> **Local LLM /reflexion フォロー**（Pattern B 実機・git 整理）: [`local_llm_ab_reflexion_plan.md`](../roadmaps/local_llm_ab_reflexion_plan.md) — **OP-080〜082**（NT-6 必須ブロッカー外）。
 
 ### 事前準備
 
 - [ ] Docker 起動  
 - [ ] 1420 空  
 - [ ] 固定名コンテナなし  
+- [ ] **実装ゲート I-1〜I-4 完了**（unblock 計画）または意図的に FAIL 記録  
 
 ```bash
 lsof -i :1420 || echo "1420 OK"
@@ -431,62 +436,7 @@ docker ps --format '{{.Names}}' | grep -E '^aiome-(ollama|api-server|mc)$' || ec
 
 衝突時: `docker stop aiome-ollama aiome-api-server aiome-mc 2>/dev/null || true`
 
-### Step 1 — 新規 clone
-
-```bash
-cd ~/Desktop
-git clone https://github.com/motivationstudio-llc/aiome.git aiome-quickstart-verify
-cd aiome-quickstart-verify
-docker compose -f docker-compose.quickstart.yml down -v 2>/dev/null || true
-```
-
-普段の `aiome` ではやらない。
-
-### Step 2 — 起動
-
-```bash
-docker compose -f docker-compose.quickstart.yml up -d
-docker compose -f docker-compose.quickstart.yml ps
-```
-
-FAIL 時: `logs --tail=50`（秘密マスク）
-
-### Step 3 — http://localhost:1420
-
-Setup/ログイン。Console に致命的 JS なし。
-
-### Step 4 — Wizard → ログイン
-
-検証専用パスワード。**パスワード欄のみ**（メール欄なし＝正常）。  
-禁止: `SuperSecretPassword123!` をクリーン合格に使う / 既存 DB コピー。
-
-### Step 5 — **AIとはなす** で `hello`
-
-応答・ストリーム・LLM 設定促し可。
-
-### Step 6 — 停止
-
-```bash
-docker compose -f docker-compose.quickstart.yml down
-# 完全クリーン: down -v
-```
-
-（任意）再 `up` でログイン再現。
-
-### Negative
-
-1. 誤パスワード → 失敗 → 復帰  
-2. （推奨）1420 占有で `up` → 失敗が分かる  
-
-トラブル: [`LOCAL_LOGIN_VERIFICATION.md`](LOCAL_LOGIN_VERIFICATION.md)（DB 再生成・hash 削除は原則禁止）。
-
-### DoD
-
-clone〜チャット **5分目標**（初回 pull は備考で除外可）。
-
-```
-NT-2: 日付 / OS / 分 / PASS|FAIL / Negative PASS
-```
+以降の Step 1〜6 / DoD / Negative / 記録は **QUICK_START_VERIFICATION.md** に従う。
 
 ---
 

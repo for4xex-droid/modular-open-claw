@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-11**
+**最終更新: 2026-07-13**
 
 > **実装手順の正本**:
 > - **Human 実行ランブック（NT-1〜7・コピペ超詳細）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）  
@@ -25,11 +25,17 @@
 - [x] **OP-071**: `GET /api/v1/ekyc/status` 常時 500 → **2026-07-07 解決**（ユーザー承認のうえ U0-B1: `jwt_auth_middleware` を route layer 適用、U0-B3: status ハンドラから Stripe セッション作成除去、U0-B2: トーストデデュープ + パネル内再試行。CHANGELOG [Unreleased] 参照）
 - [x] **OP-072**: UI 情報設計の確定改修（Phase U6）— **2026-07-07 完了**（U0-B + U6-1〜8 実装、Jest 394 PASS、hex ゲート GREEN、`sync:tokens` template ベース idempotent 同期対応）
 - [x] **OP-001**: v8.3 リリースタスク（17個）の実装と検証 → **2026-07-05 クローズ**（照合結果: 17項目の正本リストは memory/2026-06-11.md に件数のみで列挙が現存せず。CHANGELOG L840–854 + コミット dbb2b92c/12196ad1 で実装をコード実体確認、2026-06-12 の memory Open ゼロ。残課題は OP-002 / biome_lenia_overhaul_plan / OP-066 に分散済みのため再定義不要）
-- [ ] **OP-002**: BiomeBackground + alpha:false 修正の目視検証（ブラウザ確認）（2026-06-30）
+- [ ] **OP-002**: BiomeBackground + alpha:false 修正の目視検証（ブラウザ確認）（2026-06-30）。/reflexion **LL-C** = NT-3 = foolproof H-3
 
 ## 🟠 P1 / 次期リリース
 
-- [ ] **OP-070**: **リリース・本番化マスタープラン**（`docs/roadmaps/release_master_plan.md` v1）の実行。**R0/R1/R2 コード完了**（2026-07-05〜06）。**R3-1 OP-012 ✅** / **R3-2 OP-014 ✅** / **R3-4 チェックリスト ✅** / **R2-4 OP-013 ✅**（2026-07-10）。残: R2-1 本番 Vault+非秘密（Human）/ R3-4 実走（Human）/ R4 ローンチ資材（Human）/ R5 preflight + 公開。
+- [ ] **OP-070**: **リリース・本番化マスタープラン**（`docs/roadmaps/release_master_plan.md` v1）の実行。**R0/R1/R2 コード完了**（2026-07-05〜06）。**R3-1 OP-012 ✅** / **R3-2 OP-014 ✅** / **R3-4 チェックリスト ✅** / **R2-4 OP-013 ✅**（2026-07-10）。**R3-4 公式 compose 実走 ✅（2026-07-13・API 代理+OP-078 ブラウザ代理 / NT-2 done）**。残: R2-1 本番 Vault+非秘密（Human）/ R4 ローンチ資材（Human）/ R5 preflight + 公開。
+- [x] **OP-078**: NT-2 /reflexion 残リスク §8 **R-A+R-B** → **2026-07-13 完了**（R-A: `--no-build` Generative FATAL → `--build` healthy；R-B 代理: クリーン volume Setup/login/Neg403/chat+MC proxy SSE → `down`。`nt_gate` browser=PASS）
+- [x] **OP-077**: api-server release 向け unused import 掃除（`router.rs` OpenApi / `karma.rs` tracing を `cfg(debug_assertions)` 化）→ **2026-07-13 完了**（NT-2 §8 R-C）
+- [x] **OP-079**: compose entrypoint の `/app/.intent_tmp` 二重 mkdir 撤去 → **2026-07-13 完了**（`/data/.intent_tmp` のみ・再作成後 healthy。NT-2 §8 R-D）
+- [ ] **OP-080**: Local LLM **Pattern B 実機検証**（`/reflexion` LL-A）— `pattern-b-check` → `pattern-b-up` → API 煙 → Negative（11434 競合）→ `pattern-a-up` 復帰。正本: [`local_llm_ab_reflexion_plan.md`](docs/roadmaps/local_llm_ab_reflexion_plan.md) §4（2026-07-13 計画化）
+- [x] **OP-081**: Local LLM A/B + ViewMode + disk hygiene **git 分割コミット**（`/reflexion` LL-B）— `.env` 除外（2026-07-13 本コミットで反映）
+- [ ] **OP-082**: Pattern B **Linux** 向け `extra_hosts`（`/reflexion` LL-D）— Linux 需要ゲート後のみ。macOS quickstart は Pattern A 既定のまま（2026-07-13 計画化・低優先）
 - [x] **OP-010**: Stripe Customer Portal 統合 — クレート追加、ポータル URL 生成エンドポイント新設（2026-05-28、HANDOVER.md P1-1）→ **2026-07-06 クローズ**（R2-5 照合: 実 Stripe Billing Portal API 実装済み。ADR-051）
 - [ ] **OP-011**: `execute_autonomous_purchase` の封印解除 — Nurture /internal/purchase へのプロキシ実装（2026-05-28、HANDOVER.md P1-4）→ **R3-3 リリース判定（2026-07-06）: Public Beta では封印維持。自律購買（実通貨 A2C 購入）はポストリリーススコープ。コード変更なし**
 - [x] **OP-012**: PostgreSQL 本番環境での統合デプロイ検証（BAN 統合含む）→ **2026-07-06 完了**（R3-1: `docker-compose.production-verify.yml` + `scripts/verify-production-postgres.sh` + `postgres_production_verify.rs` — 3 DB マイグレーション + BAN ラウンドトリップ）

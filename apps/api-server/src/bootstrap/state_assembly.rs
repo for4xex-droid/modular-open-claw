@@ -242,17 +242,25 @@ pub async fn assemble_app_state(
                         )
                     }
                     _ => {
-                        #[cfg(any(test, debug_assertions))]
+                        // B-004 + Quick Start: Mock only when compiled in + (debug | AIOME_DEV_MODE).
+                        #[cfg(any(test, debug_assertions, feature = "dev-mock"))]
                         {
-                            tracing::warn!(
-                                "⚠️ [GenerativeEngine] Using Mock engine for development."
-                            );
-                            std::sync::Arc::new(
-                            infrastructure::generative_engine::mock::MockGenerativeEngine::default(
-                            ),
-                        )
+                            let is_dev = std::env::var("AIOME_DEV_MODE")
+                                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                                .unwrap_or(false);
+                            if cfg!(debug_assertions) || is_dev {
+                                tracing::warn!(
+                                    "⚠️ [GenerativeEngine] Using Mock engine for development."
+                                );
+                                std::sync::Arc::new(
+                                    infrastructure::generative_engine::mock::MockGenerativeEngine::default(),
+                                )
+                            } else {
+                                tracing::error!("🚨 [FATAL] GenerativeEngine must be explicitly configured in production (GENERATIVE_ENGINE=comfyui|falai).");
+                                std::process::exit(1);
+                            }
                         }
-                        #[cfg(not(any(test, debug_assertions)))]
+                        #[cfg(not(any(test, debug_assertions, feature = "dev-mock")))]
                         {
                             tracing::error!("🚨 [FATAL] GenerativeEngine must be explicitly configured in production (GENERATIVE_ENGINE=comfyui|falai).");
                             std::process::exit(1);

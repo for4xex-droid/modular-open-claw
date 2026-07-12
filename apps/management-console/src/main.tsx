@@ -18,6 +18,7 @@ import { ToastProvider } from "./components/common/Toast";
 import { SubscriptionProvider } from "./hooks/useSubscriptionStatus";
 import { AgentChatProvider } from "./hooks/AgentChatProvider";
 import { CoinBalanceProvider } from "./hooks/useCoinBalance";
+import { ViewModeProvider } from "./hooks/useViewMode";
 
 /**
  * [Milestone 3] UI Dynamic Discovery
@@ -37,21 +38,23 @@ async function boot() {
       <React.StrictMode>
         <ErrorBoundary>
           <LanguageProvider>
-            <AvatarCharacterProvider>
-              <SystemVitalityProvider>
-                <ToastProvider>
-                  <SubscriptionProvider>
-                    <CoinBalanceProvider>
-                      <AgentChatProvider>
-                        <MotionConfig reducedMotion="user">
-                          <App />
-                        </MotionConfig>
-                      </AgentChatProvider>
-                    </CoinBalanceProvider>
-                  </SubscriptionProvider>
-                </ToastProvider>
-              </SystemVitalityProvider>
-            </AvatarCharacterProvider>
+            <ViewModeProvider>
+              <AvatarCharacterProvider>
+                <SystemVitalityProvider>
+                  <ToastProvider>
+                    <SubscriptionProvider>
+                      <CoinBalanceProvider>
+                        <AgentChatProvider>
+                          <MotionConfig reducedMotion="user">
+                            <App />
+                          </MotionConfig>
+                        </AgentChatProvider>
+                      </CoinBalanceProvider>
+                    </SubscriptionProvider>
+                  </ToastProvider>
+                </SystemVitalityProvider>
+              </AvatarCharacterProvider>
+            </ViewModeProvider>
           </LanguageProvider>
         </ErrorBoundary>
       </React.StrictMode>,

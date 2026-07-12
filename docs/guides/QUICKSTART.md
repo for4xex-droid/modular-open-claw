@@ -1,6 +1,6 @@
 # Aiome Quickstart Guide 🚀
 
-Aiome (Autonomous AI Operating System) is designed to be fully local, private, and extensible. This guide will help you get the entire system up and running with just a few commands using Docker.
+Aiome (Autonomous AI Operating System) is designed to be fully local, private, and extensible. This guide will help you get the entire system up and running with Docker Compose **local builds** (no GHCR login required).
 
 ## 🛠️ Prerequisites
 
@@ -16,8 +16,6 @@ Aiome (Autonomous AI Operating System) is designed to be fully local, private, a
 
 ### 1. Clone the Repository
 
-First, clone the Aiome repository to your local machine:
-
 ```bash
 git clone https://github.com/motivationstudio-llc/aiome.git
 cd aiome
@@ -25,17 +23,16 @@ cd aiome
 
 ### 2. Start the System
 
-We provide a streamlined Docker Compose file designed for quick, zero-configuration local setups.
-
 ```bash
-docker compose -f docker-compose.quickstart.yml up -d
+docker compose -f docker-compose.quickstart.yml up -d --build
 ```
 
-> **Note**: The first time you run this command, Docker will download the necessary images (API Server, Management Console, and optionally Ollama). This may take a few minutes depending on your internet connection.
+> **Note**: The first run **builds** the API Server and Management Console from source (often **10+ minutes** cold). Later starts are much faster.  
+> After pulling code changes that affect the API binary (Mock / IntentFirewall / etc.), **always** use `up -d --build` — reusing an old image without rebuild can crash at startup.  
+> If your Compose is older and still tries to pull private GHCR tags, use:  
+> `docker compose -f docker-compose.quickstart.yml up -d --build --pull never`
 
 ### 3. Access the Dashboard
-
-Once the containers are running, open your browser and navigate to the Aiome Management Console:
 
 👉 **[http://localhost:1420](http://localhost:1420)**
 
@@ -46,24 +43,42 @@ You will be greeted by the beginner-friendly setup wizard which will guide you t
 
 ---
 
-## 🍎 macOS Optimization
+## 🍎 macOS Optimization (Pattern B — native Ollama)
 
-If you are on a Mac and want to use hardware acceleration (Metal):
+If you are on a Mac and want hardware acceleration (Metal), use the **override compose file** (no need to edit the main file):
 
-1. Install [Ollama for macOS](https://ollama.com/download/mac).
-2. Open `docker-compose.quickstart.yml` in your editor.
-3. Comment out or delete the entire `ollama:` block.
-4. Under the `api-server` section, update the environment variable to point to your host machine:
-   ```yaml
-   OLLAMA_HOST: "http://host.docker.internal:11434"
-   ```
-5. Run `docker compose -f docker-compose.quickstart.yml up -d`.
+```bash
+# Host: Ollama.app running, model pulled once
+ollama pull gemma4:26b
+
+# Stop container Ollama if it was running (port 11434)
+docker stop aiome-ollama 2>/dev/null || true
+
+# Start API + MC only, pointing at host Ollama
+docker compose -f docker-compose.quickstart.yml \
+  -f docker-compose.quickstart.native-ollama.yml \
+  up -d --build api-server management-console
+```
+
+Or use the helper script:
+
+```bash
+./scripts/local_llm_setup.sh pattern-b-check
+./scripts/local_llm_setup.sh pattern-b-up
+```
+
+### Pattern A (default — Docker Ollama, lighter `gemma4:e4b`)
+
+```bash
+docker compose -f docker-compose.quickstart.yml up -d --build
+./scripts/local_llm_setup.sh pattern-a   # pull gemma4:e4b into the container
+```
+
+See also: `./scripts/local_llm_setup.sh status`
 
 ---
 
 ## 🛑 Stopping the System
-
-To shut down the Aiome ecosystem gracefully:
 
 ```bash
 docker compose -f docker-compose.quickstart.yml down
@@ -77,4 +92,4 @@ This will stop and remove the containers, but all your AI's memories, configurat
 
 - Head over to the **Settings** tab in the app to switch your View Mode from `Beginner` to `Advanced` to unlock full developer capabilities (MCP integrations, Federation, LoRA training).
 - Check out the [Architecture Documentation](../architecture/ARCHITECTURE.md) to understand the internals of the Samsara Hub.
-- **Release verification (Human)**: Before Public Beta, complete the checklist in [Quick Start Verification](QUICK_START_VERIFICATION.md) (5-minute end-to-end run).
+- **Release verification (Human)**: Before Public Beta, complete the checklist in [Quick Start Verification](QUICK_START_VERIFICATION.md) (warm 5-minute end-to-end run).

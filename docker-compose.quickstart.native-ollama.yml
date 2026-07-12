@@ -1,0 +1,21 @@
+# Pattern B: use native (host) Ollama — recommended on macOS for Metal GPU.
+# Does NOT remove Pattern A; use alongside docker-compose.quickstart.yml.
+#
+#   docker compose -f docker-compose.quickstart.yml \
+#     -f docker-compose.quickstart.native-ollama.yml \
+#     up -d --build api-server management-console
+#
+# Prerequisites: Ollama.app running on the host, `ollama pull gemma4:26b`
+# Stop the container Ollama first to avoid port 11434 conflicts:
+#   docker stop aiome-ollama 2>/dev/null || true
+
+services:
+  api-server:
+    environment:
+      OLLAMA_HOST: "http://host.docker.internal:11434"
+      OLLAMA_MODEL: "gemma4:26b"
+      BG_LLM_MODEL: "gemma4:26b"
+      LLM_MODEL: "gemma4:26b"
+    # Merge with base compose would keep `depends_on: ollama`; reset so api-server
+    # starts when the container Ollama is stopped (Pattern B).
+    depends_on: !reset null

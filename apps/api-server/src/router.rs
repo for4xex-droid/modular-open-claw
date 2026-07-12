@@ -28,6 +28,7 @@ use tower_http::{
     cors::CorsLayer, limit::RequestBodyLimitLayer, services::ServeDir,
     set_header::SetResponseHeaderLayer, timeout::TimeoutLayer,
 };
+#[cfg(debug_assertions)]
 use utoipa::OpenApi;
 
 pub async fn metrics_middleware(req: Request, next: Next) -> Response {

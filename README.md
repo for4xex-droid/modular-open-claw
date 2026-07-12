@@ -56,13 +56,16 @@ Aiome は、面倒な設定なしで、コマンド一発で全機能（チャ�
 > Docker Quickstart 環境での認証や機能制限については、必ず [QUICK_START.md](QUICK_START.md) をご一読ください。
 
 ### オプション A: Docker / Podman を使う（推奨）
-初回ビルドの10分以上をスキップし、あらかじめビルドされたイメージと Ollama を立ち上げます。
+ソースからローカルビルドします（GHCR ログイン不要）。**初回は 10 分以上**かかることがあります。
 
 ```bash
 git clone https://github.com/motivationstudio-llc/aiome
 cd aiome
-# 通常のクイックスタート（モック決済）
-docker compose -f docker-compose.quickstart.yml up -d
+# 通常のクイックスタート（モック決済・ローカルビルド）
+docker compose -f docker-compose.quickstart.yml up -d --build
+# コード変更を pull した直後も必ず --build（旧イメージのまま起動すると FATAL し得る）
+# 古い Compose で GHCR pull しようとする場合:
+# docker compose -f docker-compose.quickstart.yml up -d --build --pull never
 
 # または、商業機能（Nurture Engine / Stripe決済）を有効化して起動する場合
 docker compose -f docker-compose.commercial.yml up -d

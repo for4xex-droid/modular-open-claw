@@ -1,0 +1,122 @@
+# Local LLM A/B + ViewMode /reflexion フォロー計画
+
+> **作成**: 2026-07-13  
+> **出典**: Local LLM A/B 実装 + `/reflexion`（Loop2 合格 96/100）の**残リスク**  
+> **目的**: Pattern B 実機未検証・未コミット diff・NT-3 目視を、NT-2 §8 と同型の台帳で後追い可能にする  
+> **非目標**: Pattern A スタックの即時切替、本番 compose 変更、`.env` のコミット
+
+---
+
+## 0. 30 秒サマリ
+
+| 層 | 状態 | 備考 |
+|----|------|------|
+| Pattern A（Docker Ollama + `gemma4:e4b`） | ✅ 実機確認済 | 現行 quickstart 既定 |
+| Pattern B compose（`depends_on: !reset null`） | ✅ config 検証済 | **実機 `pattern-b-up` 未実行** → **LL-A** |
+| ViewModeProvider + テスト 15 件 | ✅ PASS | MC dist 反映済（quickstart） |
+| disk_hygiene / local_llm_setup | ✅ スクリプト + bash -n | — |
+| git コミット | ❌ 大量未コミット | **LL-B**（ユーザー承認後） |
+| NT-3 Biome 目視 | ❌ Human-only | 既存 **OP-002** → **LL-C** |
+| Linux Pattern B | ○ 未検証 | macOS 前提。必要時 **LL-D** |
+
+**/reflexion Loop2 でコード修正済み（残リスクではない）**: `depends_on: !reset null`、`pattern-b-up --force-recreate`、`disk_hygiene` の `cargo clean` 順序。
+
+---
+
+## 1. 正本・重複排除
+
+| 文書 | 役割 |
+|------|------|
+| 本ファイル | 残リスク LL-A〜D の対応計画・DoD |
+| [`QUICKSTART.md`](../guides/QUICKSTART.md) | Pattern A/B ユーザー手順 |
+| [`scripts/local_llm_setup.sh`](../../scripts/local_llm_setup.sh) | 切替・衛生コマンド |
+| [`remaining_work_foolproof_plan.md`](remaining_work_foolproof_plan.md) §2.H-2.5 | Human/Agent 入口（ポインタ） |
+| [`OPEN.md`](../../OPEN.md) | **OP-080 / OP-081 / OP-082** のみ（手順は複製しない） |
+| NT-3 目視 | [`foolproof` H-3](remaining_work_foolproof_plan.md) / **OP-002** |
+
+---
+
+## 2. /reflexion 残リスク → 対応計画
+
+| ID | 残リスク | 影響 | 対応策 | 担当 | DoD / 検証 | OPEN |
+|----|----------|------|--------|------|------------|------|
+| **LL-A** | **Pattern B 実機未実行**（compose config のみ確認） | macOS Metal 利用者が Pattern B 切替時に起動失敗・誤バックエンドのリスク | ① `./scripts/local_llm_setup.sh pattern-b-check` ② `pattern-b-up` ③ `docker inspect aiome-api-server` で `OLLAMA_HOST=host.docker.internal` / `OLLAMA_MODEL=gemma4:26b` ④ API 煙: `/health` 200 + Ollama 検出系（settings または chat 1 往復）⑤ **復帰**: `./scripts/local_llm_setup.sh pattern-a-up` で Pattern A に戻し `aiome-ollama` 再稼働 | Human または Agent（明示承認後） | Positive: B で api+MC healthy、ホスト `ollama` が推論バックエンド。Negative: **`aiome-ollama` 起動のまま `pattern-b-up`** → 11434 競合 or 誤ルーティングを記録してから `docker stop aiome-ollama` で復帰 | **OP-080** |
+| **LL-B** | ViewMode / LLM compose+scripts / disk hygiene / CHANGELOG 等が**未コミット** | ロールバック困難・レビュー不能 | ユーザー「コミットしろ」承認後、論理単位で分割: (1) ViewModeProvider + test.tsx (2) `docker-compose.quickstart.native-ollama.yml` + `local_llm_setup.sh` (3) `disk_hygiene.sh` + `.gitignore` (4) docs。**.env / 秘密は除外** | Agent（ユーザー依頼時） | 各コミットで関連テスト PASS；`git status` クリーン（意図的 untracked 除く） | **OP-081** |
+| **LL-C** | **NT-3 Biome 目視未実施** | Public Beta の R1-16 / OP-002 未クローズ | 既存 foolproof **H-3** 手順のまま Human 実行。cockpit → そだてる → ワールド。不透明グレー板なし = PASS | **Human-only** | foolproof H-3 記録テンプレ + OPEN **OP-002** `[x]` | **OP-002**（既存） |
+| **LL-D** | Pattern B が **Linux で `host.docker.internal` 未保証** | Linux 開発者が Pattern B 失敗 | macOS では現状 doc のみ。Linux 需要が出た PR で `extra_hosts` 追加 + VERIFICATION 1 行。今は実装しない | Agent（Linux 需要ゲート後） | Linux ホストで `pattern-b-up` → api healthy | **OP-082**（任意・低優先） |
+
+---
+
+## 3. 実行順序
+
+```
+LL-C（NT-3 目視） ── Human 並行可 ──→ OP-002 クローズ
+LL-A（Pattern B 実機） ── macOS 需要時・NT-3 前後どちらでも可 ──→ OP-080 クローズ
+LL-B（git 整理） ──ユーザー「コミットしろ」後──→ OP-081 クローズ
+LL-D ── Linux 需要が出るまで保留──→ OP-082
+```
+
+**推奨**: 日常開発は **Pattern A 維持**。LL-A は Metal 検証や B 手順の回帰確認時のみ実行し、終了後は **必ず pattern-a-up で復帰**。
+
+---
+
+## 4. LL-A 詳細手順（正本）
+
+### 4.1 Positive（Pattern B）
+
+```bash
+cd /path/to/aiome
+./scripts/local_llm_setup.sh pattern-b-check
+./scripts/local_llm_setup.sh pattern-b-up
+docker inspect aiome-api-server --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -E '^OLLAMA_|^LLM_MODEL='
+curl -sf http://localhost:3015/health
+# 任意: MC ログイン後 chat 1 往復、または settings で Ollama 検出確認
+```
+
+### 4.2 Negative（競合注入）
+
+```bash
+docker compose -f docker-compose.quickstart.yml up -d ollama   # 意図的に container Ollama を起動
+./scripts/local_llm_setup.sh pattern-b-up   # 失敗 or 誤バックエンドを観察・記録
+docker stop aiome-ollama
+./scripts/local_llm_setup.sh pattern-b-up   # 復帰確認
+```
+
+### 4.3 復帰（Pattern A）
+
+```bash
+./scripts/local_llm_setup.sh pattern-a-up
+docker exec aiome-ollama ollama list | head -5
+```
+
+### 4.4 完了記録
+
+```
+LL-A / OP-080
+日付: YYYY-MM-DD
+Pattern B: PASS / FAIL
+Negative 11434: 記録済
+Pattern A 復帰: PASS
+```
+
+---
+
+## 5. やらないこと
+
+- Pattern B を本番 compose / GHCR イメージの既定にする  
+- `.env` や Vault 秘密のコミット  
+- LL-A 未完了を NT-6 公開の**必須ブロッカー**に格上げ（macOS quickstart は Pattern A で足りる）  
+- LL-C（NT-3）を Agent 代理で PASS 扱いにする  
+
+---
+
+## 6. チェックリスト
+
+```
+[x] Loop2 修正: depends_on !reset null / force-recreate / disk_hygiene cargo clean
+[x] Pattern A 実機 + gemma4:e4b pull
+[ ] LL-A Pattern B 実機（OP-080）
+[ ] LL-B git 分割コミット（OP-081・ユーザー承認後）
+[ ] LL-C NT-3 目視（OP-002）
+[ ] LL-D Linux extra_hosts（OP-082・任意）
+```

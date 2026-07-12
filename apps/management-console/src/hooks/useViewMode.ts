@@ -5,7 +5,14 @@
  * Licensed under the Business Source License 1.1.
  */
 
-import { useState, useEffect } from 'react';
+import React, {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useState,
+} from 'react';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
 import { SettingEntry, ViewMode } from '../types';
@@ -21,11 +28,20 @@ export const migrateViewMode = (raw: string): ViewMode => {
 /** @deprecated Use migrateViewMode */
 export const normalizeViewMode = migrateViewMode;
 
-export const useViewMode = () => {
-    const [viewMode, setViewMode] = useState<ViewMode>(() => {
-        const saved = localStorage.getItem('aiome_view_mode');
-        return saved ? migrateViewMode(saved) : 'cockpit';
-    });
+interface ViewModeContextValue {
+    viewMode: ViewMode;
+    setViewMode: (mode: ViewMode) => Promise<void>;
+}
+
+const ViewModeContext = createContext<ViewModeContextValue | null>(null);
+
+function readInitialViewMode(): ViewMode {
+    const saved = localStorage.getItem('aiome_view_mode');
+    return saved ? migrateViewMode(saved) : 'cockpit';
+}
+
+export const ViewModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [viewMode, setViewModeState] = useState<ViewMode>(readInitialViewMode);
 
     useEffect(() => {
         const fetchViewMode = async () => {
@@ -36,7 +52,7 @@ export const useViewMode = () => {
                     const modeSetting = data.find((s: SettingEntry) => s.key === 'view_mode');
                     if (modeSetting) {
                         const migrated = migrateViewMode(modeSetting.value);
-                        setViewMode(migrated);
+                        setViewModeState(migrated);
                         localStorage.setItem('aiome_view_mode', migrated);
                     }
                 }
@@ -47,8 +63,8 @@ export const useViewMode = () => {
         fetchViewMode();
     }, []);
 
-    const updateViewMode = async (newMode: ViewMode) => {
-        setViewMode(newMode);
+    const updateViewMode = useCallback(async (newMode: ViewMode) => {
+        setViewModeState(newMode);
         localStorage.setItem('aiome_view_mode', newMode);
         try {
             await authenticatedFetch(`${API_BASE}/api/v1/settings`, {
@@ -58,7 +74,20 @@ export const useViewMode = () => {
         } catch (e) {
             console.error("Failed to update view mode", e);
         }
-    };
+    }, []);
 
-    return { viewMode, setViewMode: updateViewMode };
+    const value = useMemo(
+        () => ({ viewMode, setViewMode: updateViewMode }),
+        [viewMode, updateViewMode],
+    );
+
+    return React.createElement(ViewModeContext.Provider, { value }, children);
+};
+
+export const useViewMode = (): ViewModeContextValue => {
+    const ctx = useContext(ViewModeContext);
+    if (!ctx) {
+        throw new Error('useViewMode must be used within ViewModeProvider');
+    }
+    return ctx;
 };
