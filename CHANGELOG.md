@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+### Fixed (OP-083-A CommerceEngine supertrait 2026-07-13)
+- **トレイト分割**: `FiatPaymentRails`（checkout/portal/subscription/verify）+ `Web3PaymentRails`（stake/slash）を `CommerceEngine` の supertrait に。`Arc<dyn CommerceEngine>` 呼び出しは維持。8 impl 更新。`get_subscription_status` にデフォルト `None`。
+
+### Fixed (OP-083-B spend_guard 2026-07-13)
+- **ADR-050 硬化**: `nurture_core::spend_guard` を新設し、日次（raw `min`・0=全拒否）と月次（0=無制限）の合成を一本化。`interceptor` / `commerce_impl`（escrow 日次が wallet を無視していたバグ修正含む）/ `nurture-api` `daily-stats` の **7 箇所**を置換。`CoinWallet::check_*` は非変更。
+- **/reflexion**: `commerce_impl` の escrow / deduct / validate を `check_spend_limits` + `map_spend_limit_err` に統一。escrow で wallet 日次が policy より厳しい Negative を追加。wallet 月次（policy=無制限）Negative と SYNERGY `get_subscription_status` 型表記の修正を追加。
+
+### Changed (Commerce tech debt plan v3.3 2026-07-13)
+- **`/perfect-plan` 三度目**: [`commerce_layer_tech_debt_plan_v3.md`](docs/roadmaps/commerce_layer_tech_debt_plan_v3.md) v3.3。MUST-FIX: 日次/月次の 0 セマンティクスを **分離 API**（日次=raw min=全拒否、月次=0無制限）。集約 **7 箇所**（`daily-stats` 追加）。判定 **PASS**。
+
+### Changed (Commerce tech debt plan v3.2 2026-07-13)
+- **`/perfect-plan` 再検証**: [`commerce_layer_tech_debt_plan_v3.md`](docs/roadmaps/commerce_layer_tech_debt_plan_v3.md) v3.2。GiftEngine は兄弟 trait（supertrait 先例ではない）、Phase 2 は **ADR-050 硬化**（月次新機能の再発明禁止）、`verify_signature`→Fiat、`CoinWallet` 日次0セマンティクス変更禁止。判定 **PASS**。OPEN **OP-083** 更新。
+
+### Changed (Commerce tech debt plan v3.1 2026-07-13)
+- **`/perfect-plan`**: 同計画を実コード照合でブラッシュアップ（spend 6箇所・impl 8型・supertrait・Vault・Federation ゲート）。
+
 ### Changed (local LLM A/B + hygiene 2026-07-13)
 - **Pattern A / B**: [`docker-compose.quickstart.native-ollama.yml`](docker-compose.quickstart.native-ollama.yml) でホスト Ollama（`gemma4:26b`）へ切替。`depends_on: !reset null` で container Ollama 停止時も api-server が起動可能。既定 [`docker-compose.quickstart.yml`](docker-compose.quickstart.yml) は Docker Ollama（`gemma4:e4b`）のまま。
 - **`scripts/local_llm_setup.sh`**: `pattern-a` / `pattern-b-up` / `hygiene-dry-run` / `hygiene-apply`。

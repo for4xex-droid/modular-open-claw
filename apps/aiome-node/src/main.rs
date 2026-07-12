@@ -39,7 +39,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         use ::uuid::Uuid;
         use aiome_commerce::gig::UniversalGigEngine;
         use aiome_core_contracts::commerce::{
-            CommerceEngine, EscrowRecord, PointsBalance, SubscriptionStatus, TransactionRecord,
+            CommerceEngine, EscrowRecord, FiatPaymentRails, PointsBalance, SubscriptionStatus,
+            TransactionRecord, Web3PaymentRails,
         };
         use aiome_core_contracts::error::AiomeError;
         use aiome_core_contracts::llm::{LlmProvider, LlmResponse};
@@ -98,59 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         #[async_trait]
-        impl CommerceEngine for StubCommerceEngine {
-            async fn get_balance(&self, _id: Uuid) -> Result<u64, AiomeError> {
-                Self::err()
-            }
-            async fn validate_activity(
-                &self,
-                _id: Uuid,
-                _typ: &str,
-                _amt: u64,
-            ) -> Result<(), AiomeError> {
-                Self::err()
-            }
-            async fn execute_autonomous_purchase(
-                &self,
-                _a: Uuid,
-                _i: Uuid,
-                _m: serde_json::Value,
-            ) -> Result<String, AiomeError> {
-                Self::err()
-            }
-            async fn get_daily_spend(&self, _id: Uuid) -> Result<u64, AiomeError> {
-                Self::err()
-            }
-            async fn get_daily_limit(&self, _id: Uuid) -> Result<u64, AiomeError> {
-                Self::err()
-            }
-            async fn escrow_create(&self, _id: Uuid, _amt: u64) -> Result<String, AiomeError> {
-                Self::err()
-            }
-            async fn list_escrows(&self, _id: Uuid) -> Result<Vec<EscrowRecord>, AiomeError> {
-                Self::err()
-            }
-            async fn escrow_release(&self, _e: &str, _r: Uuid) -> Result<(), AiomeError> {
-                Self::err()
-            }
-            async fn escrow_refund(&self, _e: &str) -> Result<(), AiomeError> {
-                Self::err()
-            }
-            async fn stake(&self, _id: Uuid, _amt: u64) -> Result<(), AiomeError> {
-                Self::err()
-            }
-            async fn slash(&self, _id: Uuid, _amt: u64, _reason: &str) -> Result<(), AiomeError> {
-                Self::err()
-            }
-            async fn register_license(
-                &self,
-                _a: Uuid,
-                _asset: Uuid,
-                _t: &str,
-                _l: &str,
-            ) -> Result<String, AiomeError> {
-                Self::err()
-            }
+        impl FiatPaymentRails for StubCommerceEngine {
             fn verify_signature(&self, _p: &str, _s: &str) -> Result<(), AiomeError> {
                 Self::err()
             }
@@ -165,21 +114,103 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Self::err()
             }
 
+            async fn create_portal_session(
+                &self,
+                _agent_id: Uuid,
+                _return_url: &str,
+            ) -> Result<String, AiomeError> {
+                Self::err()
+            }
+
             async fn create_subscription(&self, _a: Uuid, _p: &str) -> Result<String, AiomeError> {
                 Self::err()
             }
+
             async fn cancel_subscription(&self, _a: Uuid, _s: &str) -> Result<(), AiomeError> {
                 Self::err()
             }
+        }
+
+        #[async_trait]
+        impl Web3PaymentRails for StubCommerceEngine {
+            async fn stake(&self, _id: Uuid, _amt: u64) -> Result<(), AiomeError> {
+                Self::err()
+            }
+
+            async fn slash(&self, _id: Uuid, _amt: u64, _reason: &str) -> Result<(), AiomeError> {
+                Self::err()
+            }
+        }
+
+        #[async_trait]
+        impl CommerceEngine for StubCommerceEngine {
+            async fn get_balance(&self, _id: Uuid) -> Result<u64, AiomeError> {
+                Self::err()
+            }
+
+            async fn validate_activity(
+                &self,
+                _id: Uuid,
+                _typ: &str,
+                _amt: u64,
+            ) -> Result<(), AiomeError> {
+                Self::err()
+            }
+
+            async fn execute_autonomous_purchase(
+                &self,
+                _a: Uuid,
+                _i: Uuid,
+                _m: serde_json::Value,
+            ) -> Result<String, AiomeError> {
+                Self::err()
+            }
+
+            async fn get_daily_spend(&self, _id: Uuid) -> Result<u64, AiomeError> {
+                Self::err()
+            }
+
+            async fn get_daily_limit(&self, _id: Uuid) -> Result<u64, AiomeError> {
+                Self::err()
+            }
+
+            async fn escrow_create(&self, _id: Uuid, _amt: u64) -> Result<String, AiomeError> {
+                Self::err()
+            }
+
+            async fn list_escrows(&self, _id: Uuid) -> Result<Vec<EscrowRecord>, AiomeError> {
+                Self::err()
+            }
+
+            async fn escrow_release(&self, _e: &str, _r: Uuid) -> Result<(), AiomeError> {
+                Self::err()
+            }
+
+            async fn escrow_refund(&self, _e: &str) -> Result<(), AiomeError> {
+                Self::err()
+            }
+
+            async fn register_license(
+                &self,
+                _a: Uuid,
+                _asset: Uuid,
+                _t: &str,
+                _l: &str,
+            ) -> Result<String, AiomeError> {
+                Self::err()
+            }
+
             async fn get_subscription_status(
                 &self,
                 _a: Uuid,
             ) -> Result<SubscriptionStatus, AiomeError> {
                 Self::err()
             }
+
             async fn transfer(&self, _f: Uuid, _t: Uuid, _amt: u64) -> Result<String, AiomeError> {
                 Self::err()
             }
+
             async fn deduct_generation_cost(
                 &self,
                 _a: Uuid,
@@ -189,27 +220,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ) -> Result<(), AiomeError> {
                 Self::err()
             }
+
             async fn instant_refund(&self, _t: &str, _a: Uuid) -> Result<(), AiomeError> {
                 Self::err()
             }
+
             async fn withdraw_points(&self, _a: Uuid, _p: u64) -> Result<(), AiomeError> {
                 Self::err()
             }
+
             async fn get_points(&self, _a: Uuid) -> Result<PointsBalance, AiomeError> {
                 Self::err()
             }
+
             async fn get_transaction_history(
                 &self,
                 _a: Uuid,
                 _limit: u32,
             ) -> Result<Vec<TransactionRecord>, AiomeError> {
-                Self::err()
-            }
-            async fn create_portal_session(
-                &self,
-                _agent_id: Uuid,
-                _return_url: &str,
-            ) -> Result<String, AiomeError> {
                 Self::err()
             }
         }

@@ -5,16 +5,70 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
+//! Commerce contracts (OP-083-A).
+//!
+//! `CommerceEngine` is a **supertrait** of [`FiatPaymentRails`] + [`Web3PaymentRails`]
+//! so `Arc<dyn CommerceEngine>` keeps checkout/portal/webhook call sites working
+//! (unlike sibling [`GiftEngine`], which uses a separate AppState field).
+
 use crate::error::AiomeError;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+/// Fiat payment rail (Stripe / Polar). Webhook signature + Checkout / Portal / Subscriptions.
+#[async_trait]
+pub trait FiatPaymentRails: Send + Sync {
+    /// Webhook 署名の検証
+    fn verify_signature(&self, payload: &str, sig_header: &str) -> Result<(), AiomeError>;
+
+    /// チェックアウトセッションを作成する（自律エージェントのセットアップや追加課金用）
+    async fn create_checkout_session(
+        &self,
+        agent_id: Uuid,
+        price_id: &str,
+        success_url: &str,
+        cancel_url: &str,
+    ) -> Result<String, AiomeError>;
+
+    /// Stripe Customer Portal のセッションを作成し、ポータル URL を返す
+    async fn create_portal_session(
+        &self,
+        agent_id: Uuid,
+        return_url: &str,
+    ) -> Result<String, AiomeError>;
+
+    /// サブスクリプションを作成する (P0-1)
+    async fn create_subscription(
+        &self,
+        agent_id: Uuid,
+        plan_id: &str,
+    ) -> Result<String, AiomeError>;
+
+    /// サブスクリプションをキャンセルする (P0-1)
+    async fn cancel_subscription(
+        &self,
+        agent_id: Uuid,
+        subscription_id: &str,
+    ) -> Result<(), AiomeError>;
+}
+
+/// Web3 / staking rail (x402-adjacent; stake/slash today).
+#[async_trait]
+pub trait Web3PaymentRails: Send + Sync {
+    /// ステーキング（証拠金預託）を行う
+    async fn stake(&self, agent_id: Uuid, amount: u64) -> Result<(), AiomeError>;
+
+    /// スラッシュ（罰則によるトークン没収）を実行する
+    async fn slash(&self, agent_id: Uuid, amount: u64, reason: &str) -> Result<(), AiomeError>;
+}
+
 /// 経済エンジン・トレイト
 ///
 /// `Project-Nurture` 等の商用モジュールによって実装される。
+/// Fiat / Web3 レールは supertrait（OP-083-A）。
 #[async_trait]
-pub trait CommerceEngine: Send + Sync {
+pub trait CommerceEngine: FiatPaymentRails + Web3PaymentRails + Send + Sync {
     /// エージェントの現在の残高（コイン数）を取得する
     async fn get_balance(&self, agent_id: Uuid) -> Result<u64, AiomeError>;
 
@@ -64,12 +118,6 @@ pub trait CommerceEngine: Send + Sync {
     /// エスクローを依頼者に返金する（キャンセル時）
     async fn escrow_refund(&self, escrow_id: &str) -> Result<(), AiomeError>;
 
-    /// ステーキング（証拠金預託）を行う
-    async fn stake(&self, agent_id: Uuid, amount: u64) -> Result<(), AiomeError>;
-
-    /// スラッシュ（罰則によるトークン没収）を実行する
-    async fn slash(&self, agent_id: Uuid, amount: u64, reason: &str) -> Result<(), AiomeError>;
-
     /// ライセンス（Voice Asset 等の使用権）を登録する (P0-1)
     async fn register_license(
         &self,
@@ -79,37 +127,16 @@ pub trait CommerceEngine: Send + Sync {
         license_type: &str,
     ) -> Result<String, AiomeError>;
 
-    /// Webhook 署名の検証
-    fn verify_signature(&self, payload: &str, sig_header: &str) -> Result<(), AiomeError>;
-
-    /// チェックアウトセッションを作成する（自律エージェントのセットアップや追加課金用）
-    async fn create_checkout_session(
-        &self,
-        agent_id: Uuid,
-        price_id: &str,
-        success_url: &str,
-        cancel_url: &str,
-    ) -> Result<String, AiomeError>;
-
-    /// サブスクリプションを作成する (P0-1)
-    async fn create_subscription(
-        &self,
-        agent_id: Uuid,
-        plan_id: &str,
-    ) -> Result<String, AiomeError>;
-
-    /// サブスクリプションをキャンセルする (P0-1)
-    async fn cancel_subscription(
-        &self,
-        agent_id: Uuid,
-        subscription_id: &str,
-    ) -> Result<(), AiomeError>;
-
     /// サブスクリプションのステータスを取得する (P0-1)
+    ///
+    /// Default `None` so non-fiat providers (Nurture ledger, marketplace mocks) need not stub.
+    /// Stripe / Polar / auth-facing mocks override.
     async fn get_subscription_status(
         &self,
-        agent_id: Uuid,
-    ) -> Result<SubscriptionStatus, AiomeError>;
+        _agent_id: Uuid,
+    ) -> Result<SubscriptionStatus, AiomeError> {
+        Ok(SubscriptionStatus::None)
+    }
 
     /// 他のエージェントまたはユーザーへ送金する (P0-1, G-2, M-1)
     async fn transfer(&self, from_id: Uuid, to_id: Uuid, amount: u64)
@@ -148,13 +175,6 @@ pub trait CommerceEngine: Send + Sync {
     async fn get_wishlist(&self, _agent_id: Uuid) -> Result<Vec<WishlistEntry>, AiomeError> {
         Ok(vec![])
     }
-
-    /// Stripe Customer Portal のセッションを作成し、ポータル URL を返す
-    async fn create_portal_session(
-        &self,
-        agent_id: Uuid,
-        return_url: &str,
-    ) -> Result<String, AiomeError>;
 }
 
 /// クリエイターのポイント（Karma）残高

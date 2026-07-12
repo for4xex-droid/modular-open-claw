@@ -5,7 +5,9 @@
  * Licensed under the Business Source License 1.1.
  */
 
-use aiome_core_contracts::commerce::{CommerceEngine, EscrowRecord};
+use aiome_core_contracts::commerce::{
+    CommerceEngine, EscrowRecord, FiatPaymentRails, Web3PaymentRails,
+};
 use aiome_core_contracts::error::AiomeError;
 use async_trait::async_trait;
 use secrecy::{ExposeSecret, SecretString};
@@ -219,6 +221,292 @@ struct BalanceRes {
 struct DailyStatsRes {
     spent_today: u64,
     daily_limit: u64,
+}
+
+#[async_trait]
+impl FiatPaymentRails for StripeCommerceEngine {
+    fn verify_signature(&self, payload: &str, sig_header: &str) -> Result<(), AiomeError> {
+        // カンマ区切りで複数シークレットに対応 (v2 thin + snapshot 用)
+        let raw_secret = self.webhook_secret.expose_secret();
+        let mut last_err = None;
+        let mut secret_count: usize = 0;
+
+        for secret in raw_secret.split(',') {
+            let trimmed = secret.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            // テストシークレットの個別検知（複数シークレットの1つが whsec_test でも拒否）
+            if !self.is_mock && trimmed == "whsec_test" {
+                tracing::error!("\u{1F6A8} [SECURITY] Stripe Webhook verification rejected: Test secret ('whsec_test') found in secret #{}", secret_count + 1);
+                return Err(AiomeError::Infrastructure {
+                    reason:
+                        "Stripe Webhook verification failed: Test secret used in production mode!"
+                            .into(),
+                });
+            }
+
+            secret_count += 1;
+            match Webhook::construct_event(payload, sig_header, trimmed) {
+                Ok(_) => return Ok(()),
+                Err(stripe_webhook::WebhookError::BadParse(_)) => {
+                    // デシリアライズ（パース）エラーは、署名自体は正しく一致していることを意味します。
+                    // したがって、署名検証の観点からは「成功」です。
+                    return Ok(());
+                }
+                Err(e) => {
+                    last_err = Some(e);
+                }
+            }
+        }
+
+        Err(AiomeError::Infrastructure {
+            reason: format!(
+                "Stripe Webhook verification failed with {} secret(s): {}",
+                secret_count,
+                last_err.map(|e| e.to_string()).unwrap_or_default()
+            ),
+        })
+    }
+
+    async fn create_checkout_session(
+        &self,
+        agent_id: Uuid,
+        price_id: &str,
+        success_url: &str,
+        cancel_url: &str,
+    ) -> Result<String, AiomeError> {
+        if self.is_mock {
+            return Ok("cs_test_mock".to_string());
+        }
+
+        let existing_customer: Option<(String,)> =
+            sqlx::query_as("SELECT customer_id FROM stripe_customers WHERE agent_id = ?")
+                .bind(agent_id.to_string())
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?;
+
+        let customer_id = if let Some(row) = existing_customer {
+            row.0
+                .parse::<stripe_core::CustomerId>()
+                .map_err(|e| AiomeError::Infrastructure {
+                    reason: e.to_string(),
+                })?
+        } else {
+            let desc = format!("Agent Soul: {}", agent_id);
+            let create_customer = stripe_core::customer::CreateCustomer::new()
+                .description(desc)
+                .metadata(std::collections::HashMap::from([(
+                    "agent_id".to_string(),
+                    agent_id.to_string(),
+                )]));
+
+            let customer = create_customer
+                .send(&self.client)
+                .await
+                .map_infra_err_context("Failed to create Stripe customer")?;
+
+            sqlx::query("INSERT INTO stripe_customers (agent_id, customer_id) VALUES (?, ?)")
+                .bind(agent_id.to_string())
+                .bind(customer.id.as_str())
+                .execute(&self.pool)
+                .await
+                .map_infra_err()?;
+
+            customer.id
+        };
+
+        let line_item = stripe_checkout::checkout_session::CreateCheckoutSessionLineItems {
+            price: Some(price_id.to_string()),
+            quantity: Some(1),
+            ..Default::default()
+        };
+
+        let create_session = stripe_checkout::checkout_session::CreateCheckoutSession::new()
+            .customer(customer_id)
+            .mode(stripe_checkout::CheckoutSessionMode::Subscription)
+            .success_url(success_url)
+            .cancel_url(cancel_url)
+            .line_items(vec![line_item])
+            .metadata(std::collections::HashMap::from([
+                ("agent_id".to_string(), agent_id.to_string()),
+                ("checkout_type".to_string(), "pro_subscription".to_string()),
+            ]));
+
+        let session = create_session
+            .send(&self.client)
+            .await
+            .map_infra_err_context("Failed to create Stripe checkout session")?;
+
+        match session.url {
+            Some(url) => Ok(url),
+            None => {
+                tracing::warn!(
+                    "⚠️ [StripeCommerce] Checkout session {} has no URL. Returning session ID as fallback.",
+                    session.id
+                );
+                Ok(session.id.to_string())
+            }
+        }
+    }
+
+    async fn create_portal_session(
+        &self,
+        agent_id: Uuid,
+        return_url: &str,
+    ) -> Result<String, AiomeError> {
+        if self.is_mock {
+            return Ok("https://example.com/portal-session-mock".to_string());
+        }
+
+        let customer_id: Option<(String,)> =
+            sqlx::query_as("SELECT customer_id FROM stripe_customers WHERE agent_id = ?")
+                .bind(agent_id.to_string())
+                .fetch_optional(&self.pool)
+                .await
+                .map_infra_err_context("DB lookup failed for customer")?;
+
+        let Some((customer_id_str,)) = customer_id else {
+            return Err(AiomeError::NotFound {
+                reason: format!("Stripe customer not found for agent: {}", agent_id),
+            });
+        };
+
+        let cust_id = customer_id_str
+            .parse::<stripe_core::CustomerId>()
+            .map_err(|e| AiomeError::Infrastructure {
+                reason: format!("Invalid customer ID format: {}", e),
+            })?;
+
+        let session = stripe_billing::billing_portal_session::CreateBillingPortalSession::new()
+            .customer(cust_id)
+            .return_url(return_url)
+            .locale(stripe_billing::BillingPortalSessionLocale::Ja)
+            .send(&self.client)
+            .await
+            .map_infra_err_context("Stripe billing portal session creation failed")?;
+
+        Ok(session.url)
+    }
+
+    async fn create_subscription(
+        &self,
+        agent_id: Uuid,
+        plan_id: &str,
+    ) -> Result<String, AiomeError> {
+        // Mock mode for tests
+        if self.is_mock {
+            return Ok("sub_mock_stripe".to_string());
+        }
+
+        // Retrieve existing customer from registry table stripe_customers
+        let existing_customer: Option<(String,)> =
+            sqlx::query_as("SELECT customer_id FROM stripe_customers WHERE agent_id = ?")
+                .bind(agent_id.to_string())
+                .fetch_optional(&self.pool)
+                .await
+                .map_infra_err()?;
+
+        let customer_id = if let Some(row) = existing_customer {
+            tracing::info!("✅ [Stripe] Found existing customer: {}", row.0);
+            row.0.parse::<stripe_core::CustomerId>().map_infra_err()?
+        } else {
+            let desc = format!("Agent Soul: {}", agent_id);
+            let create_customer = stripe_core::customer::CreateCustomer::new()
+                .description(desc)
+                .metadata(std::collections::HashMap::from([(
+                    "agent_id".to_string(),
+                    agent_id.to_string(),
+                )]));
+
+            let customer = create_customer
+                .send(&self.client)
+                .await
+                .map_infra_err_context("Stripe Customer creation failed")?;
+
+            // Save to DB
+            sqlx::query("INSERT INTO stripe_customers (agent_id, customer_id) VALUES (?, ?)")
+                .bind(agent_id.to_string())
+                .bind(customer.id.to_string())
+                .execute(&self.pool)
+                .await
+                .map_infra_err_context("Failed to save customer")?;
+
+            tracing::info!("✅ [Stripe] Created new customer: {}", customer.id);
+            customer.id
+        };
+
+        let plan_id_str = plan_id.to_string();
+        // Stripe Subscriptions API Call
+        let sub_item = stripe_billing::subscription::CreateSubscriptionItems {
+            price: Some(plan_id_str),
+            ..Default::default()
+        };
+
+        let create_sub = stripe_billing::subscription::CreateSubscription::new()
+            .customer(customer_id.to_string())
+            .items([sub_item])
+            .metadata(std::collections::HashMap::from([(
+                "agent_id".to_string(),
+                agent_id.to_string(),
+            )]));
+
+        create_sub
+            .send(&self.client)
+            .await
+            .map_infra_err_context("Stripe Subscription creation failed")
+            .map(|sub| {
+                tracing::info!("✅ [Stripe] Subscription created: {}", sub.id);
+                sub.id.to_string()
+            })
+    }
+
+    async fn cancel_subscription(
+        &self,
+        _agent_id: Uuid,
+        subscription_id: &str,
+    ) -> Result<(), AiomeError> {
+        if self.is_mock {
+            return Ok(());
+        }
+
+        let sub_id = subscription_id
+            .parse::<stripe_billing::SubscriptionId>()
+            .map_infra_err_context("Invalid subscription ID format")?;
+
+        stripe_billing::subscription::CancelSubscription::new(sub_id)
+            .send(&self.client)
+            .await
+            .map_infra_err_context("Stripe cancel subscription failed")?;
+
+        tracing::info!("✅ [Stripe] Subscription cancelled: {}", subscription_id);
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Web3PaymentRails for StripeCommerceEngine {
+    async fn stake(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
+        if self.is_mock {
+            return Ok(());
+        }
+        Err(AiomeError::Infrastructure {
+            reason: "stake is not available in v1.0".into(),
+        })
+    }
+
+    async fn slash(&self, _agent_id: Uuid, _amount: u64, _reason: &str) -> Result<(), AiomeError> {
+        if self.is_mock {
+            return Ok(());
+        }
+        Err(AiomeError::Infrastructure {
+            reason: "slash is not available in v1.0".into(),
+        })
+    }
 }
 
 #[async_trait]
@@ -692,23 +980,6 @@ impl CommerceEngine for StripeCommerceEngine {
             }
         }
     }
-    async fn stake(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
-        if self.is_mock {
-            return Ok(());
-        }
-        Err(AiomeError::Infrastructure {
-            reason: "stake is not available in v1.0".into(),
-        })
-    }
-
-    async fn slash(&self, _agent_id: Uuid, _amount: u64, _reason: &str) -> Result<(), AiomeError> {
-        if self.is_mock {
-            return Ok(());
-        }
-        Err(AiomeError::Infrastructure {
-            reason: "slash is not available in v1.0".into(),
-        })
-    }
 
     async fn register_license(
         &self,
@@ -723,228 +994,6 @@ impl CommerceEngine for StripeCommerceEngine {
         Err(AiomeError::Infrastructure {
             reason: "register_license is not available in v1.0".into(),
         })
-    }
-
-    fn verify_signature(&self, payload: &str, sig_header: &str) -> Result<(), AiomeError> {
-        // カンマ区切りで複数シークレットに対応 (v2 thin + snapshot 用)
-        let raw_secret = self.webhook_secret.expose_secret();
-        let mut last_err = None;
-        let mut secret_count: usize = 0;
-
-        for secret in raw_secret.split(',') {
-            let trimmed = secret.trim();
-            if trimmed.is_empty() {
-                continue;
-            }
-
-            // テストシークレットの個別検知（複数シークレットの1つが whsec_test でも拒否）
-            if !self.is_mock && trimmed == "whsec_test" {
-                tracing::error!("\u{1F6A8} [SECURITY] Stripe Webhook verification rejected: Test secret ('whsec_test') found in secret #{}", secret_count + 1);
-                return Err(AiomeError::Infrastructure {
-                    reason:
-                        "Stripe Webhook verification failed: Test secret used in production mode!"
-                            .into(),
-                });
-            }
-
-            secret_count += 1;
-            match Webhook::construct_event(payload, sig_header, trimmed) {
-                Ok(_) => return Ok(()),
-                Err(stripe_webhook::WebhookError::BadParse(_)) => {
-                    // デシリアライズ（パース）エラーは、署名自体は正しく一致していることを意味します。
-                    // したがって、署名検証の観点からは「成功」です。
-                    return Ok(());
-                }
-                Err(e) => {
-                    last_err = Some(e);
-                }
-            }
-        }
-
-        Err(AiomeError::Infrastructure {
-            reason: format!(
-                "Stripe Webhook verification failed with {} secret(s): {}",
-                secret_count,
-                last_err.map(|e| e.to_string()).unwrap_or_default()
-            ),
-        })
-    }
-
-    async fn create_checkout_session(
-        &self,
-        agent_id: Uuid,
-        price_id: &str,
-        success_url: &str,
-        cancel_url: &str,
-    ) -> Result<String, AiomeError> {
-        if self.is_mock {
-            return Ok("cs_test_mock".to_string());
-        }
-
-        let existing_customer: Option<(String,)> =
-            sqlx::query_as("SELECT customer_id FROM stripe_customers WHERE agent_id = ?")
-                .bind(agent_id.to_string())
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?;
-
-        let customer_id = if let Some(row) = existing_customer {
-            row.0
-                .parse::<stripe_core::CustomerId>()
-                .map_err(|e| AiomeError::Infrastructure {
-                    reason: e.to_string(),
-                })?
-        } else {
-            let desc = format!("Agent Soul: {}", agent_id);
-            let create_customer = stripe_core::customer::CreateCustomer::new()
-                .description(desc)
-                .metadata(std::collections::HashMap::from([(
-                    "agent_id".to_string(),
-                    agent_id.to_string(),
-                )]));
-
-            let customer = create_customer
-                .send(&self.client)
-                .await
-                .map_infra_err_context("Failed to create Stripe customer")?;
-
-            sqlx::query("INSERT INTO stripe_customers (agent_id, customer_id) VALUES (?, ?)")
-                .bind(agent_id.to_string())
-                .bind(customer.id.as_str())
-                .execute(&self.pool)
-                .await
-                .map_infra_err()?;
-
-            customer.id
-        };
-
-        let line_item = stripe_checkout::checkout_session::CreateCheckoutSessionLineItems {
-            price: Some(price_id.to_string()),
-            quantity: Some(1),
-            ..Default::default()
-        };
-
-        let create_session = stripe_checkout::checkout_session::CreateCheckoutSession::new()
-            .customer(customer_id)
-            .mode(stripe_checkout::CheckoutSessionMode::Subscription)
-            .success_url(success_url)
-            .cancel_url(cancel_url)
-            .line_items(vec![line_item])
-            .metadata(std::collections::HashMap::from([
-                ("agent_id".to_string(), agent_id.to_string()),
-                ("checkout_type".to_string(), "pro_subscription".to_string()),
-            ]));
-
-        let session = create_session
-            .send(&self.client)
-            .await
-            .map_infra_err_context("Failed to create Stripe checkout session")?;
-
-        match session.url {
-            Some(url) => Ok(url),
-            None => {
-                tracing::warn!(
-                    "⚠️ [StripeCommerce] Checkout session {} has no URL. Returning session ID as fallback.",
-                    session.id
-                );
-                Ok(session.id.to_string())
-            }
-        }
-    }
-
-    async fn create_subscription(
-        &self,
-        agent_id: Uuid,
-        plan_id: &str,
-    ) -> Result<String, AiomeError> {
-        // Mock mode for tests
-        if self.is_mock {
-            return Ok("sub_mock_stripe".to_string());
-        }
-
-        // Retrieve existing customer from registry table stripe_customers
-        let existing_customer: Option<(String,)> =
-            sqlx::query_as("SELECT customer_id FROM stripe_customers WHERE agent_id = ?")
-                .bind(agent_id.to_string())
-                .fetch_optional(&self.pool)
-                .await
-                .map_infra_err()?;
-
-        let customer_id = if let Some(row) = existing_customer {
-            tracing::info!("✅ [Stripe] Found existing customer: {}", row.0);
-            row.0.parse::<stripe_core::CustomerId>().map_infra_err()?
-        } else {
-            let desc = format!("Agent Soul: {}", agent_id);
-            let create_customer = stripe_core::customer::CreateCustomer::new()
-                .description(desc)
-                .metadata(std::collections::HashMap::from([(
-                    "agent_id".to_string(),
-                    agent_id.to_string(),
-                )]));
-
-            let customer = create_customer
-                .send(&self.client)
-                .await
-                .map_infra_err_context("Stripe Customer creation failed")?;
-
-            // Save to DB
-            sqlx::query("INSERT INTO stripe_customers (agent_id, customer_id) VALUES (?, ?)")
-                .bind(agent_id.to_string())
-                .bind(customer.id.to_string())
-                .execute(&self.pool)
-                .await
-                .map_infra_err_context("Failed to save customer")?;
-
-            tracing::info!("✅ [Stripe] Created new customer: {}", customer.id);
-            customer.id
-        };
-
-        let plan_id_str = plan_id.to_string();
-        // Stripe Subscriptions API Call
-        let sub_item = stripe_billing::subscription::CreateSubscriptionItems {
-            price: Some(plan_id_str),
-            ..Default::default()
-        };
-
-        let create_sub = stripe_billing::subscription::CreateSubscription::new()
-            .customer(customer_id.to_string())
-            .items([sub_item])
-            .metadata(std::collections::HashMap::from([(
-                "agent_id".to_string(),
-                agent_id.to_string(),
-            )]));
-
-        create_sub
-            .send(&self.client)
-            .await
-            .map_infra_err_context("Stripe Subscription creation failed")
-            .map(|sub| {
-                tracing::info!("✅ [Stripe] Subscription created: {}", sub.id);
-                sub.id.to_string()
-            })
-    }
-    async fn cancel_subscription(
-        &self,
-        _agent_id: Uuid,
-        subscription_id: &str,
-    ) -> Result<(), AiomeError> {
-        if self.is_mock {
-            return Ok(());
-        }
-
-        let sub_id = subscription_id
-            .parse::<stripe_billing::SubscriptionId>()
-            .map_infra_err_context("Invalid subscription ID format")?;
-
-        stripe_billing::subscription::CancelSubscription::new(sub_id)
-            .send(&self.client)
-            .await
-            .map_infra_err_context("Stripe cancel subscription failed")?;
-
-        tracing::info!("✅ [Stripe] Subscription cancelled: {}", subscription_id);
-        Ok(())
     }
 
     async fn get_subscription_status(
@@ -1339,44 +1388,5 @@ impl CommerceEngine for StripeCommerceEngine {
         }
 
         Ok(vec![])
-    }
-
-    async fn create_portal_session(
-        &self,
-        agent_id: Uuid,
-        return_url: &str,
-    ) -> Result<String, AiomeError> {
-        if self.is_mock {
-            return Ok("https://example.com/portal-session-mock".to_string());
-        }
-
-        let customer_id: Option<(String,)> =
-            sqlx::query_as("SELECT customer_id FROM stripe_customers WHERE agent_id = ?")
-                .bind(agent_id.to_string())
-                .fetch_optional(&self.pool)
-                .await
-                .map_infra_err_context("DB lookup failed for customer")?;
-
-        let Some((customer_id_str,)) = customer_id else {
-            return Err(AiomeError::NotFound {
-                reason: format!("Stripe customer not found for agent: {}", agent_id),
-            });
-        };
-
-        let cust_id = customer_id_str
-            .parse::<stripe_core::CustomerId>()
-            .map_err(|e| AiomeError::Infrastructure {
-                reason: format!("Invalid customer ID format: {}", e),
-            })?;
-
-        let session = stripe_billing::billing_portal_session::CreateBillingPortalSession::new()
-            .customer(cust_id)
-            .return_url(return_url)
-            .locale(stripe_billing::BillingPortalSessionLocale::Ja)
-            .send(&self.client)
-            .await
-            .map_infra_err_context("Stripe billing portal session creation failed")?;
-
-        Ok(session.url)
     }
 }

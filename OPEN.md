@@ -36,6 +36,10 @@
 - [ ] **OP-080**: Local LLM **Pattern B 実機検証**（`/reflexion` LL-A）— `pattern-b-check` → `pattern-b-up` → API 煙 → Negative（11434 競合）→ `pattern-a-up` 復帰。正本: [`local_llm_ab_reflexion_plan.md`](docs/roadmaps/local_llm_ab_reflexion_plan.md) §4（2026-07-13 計画化）
 - [x] **OP-081**: Local LLM A/B + ViewMode + disk hygiene **git 分割コミット**（`/reflexion` LL-B）— `.env` 除外（2026-07-13 本コミットで反映）
 - [ ] **OP-082**: Pattern B **Linux** 向け `extra_hosts`（`/reflexion` LL-D）— Linux 需要ゲート後のみ。macOS quickstart は Pattern A 既定のまま（2026-07-13 計画化・低優先）
+- [ ] **OP-083**: **Commerce レイヤー技術負債 v3.3**（`/perfect-plan` 三度検証済 2026-07-13）— **B→A 先行**、C/D=Federation後。正本: [`commerce_layer_tech_debt_plan_v3.md`](docs/roadmaps/commerce_layer_tech_debt_plan_v3.md)。**B**=spend_guard（**日次/月次 0 セマンティクス分離**・7箇所）→ **A**=supertrait+verify→Fiat（8 impl）→ **C**=x402+Vault → **D**=u64↔U256。**日次0=無制限化禁止**。**Safety-Critical — フェーズごとに「実装しろ」承認必須**
+  - [x] **OP-083-B**: Phase 2 spend_guard — **2026-07-13 完了**（`nurture_core::spend_guard`、interceptor/commerce_impl/daily-stats 7箇所、日次 raw min / 月次 0=無制限。`CoinWallet::check_*` 非変更）
+  - [x] **OP-083-A**: Phase 1 supertrait — **2026-07-13 完了**（`FiatPaymentRails` + `Web3PaymentRails` + `CommerceEngine`、8 impl、`get_subscription_status` デフォルト `None`）
+  - [ ] **OP-083-C** / **OP-083-D**: 未着手（Federation 後）
 - [x] **OP-010**: Stripe Customer Portal 統合 — クレート追加、ポータル URL 生成エンドポイント新設（2026-05-28、HANDOVER.md P1-1）→ **2026-07-06 クローズ**（R2-5 照合: 実 Stripe Billing Portal API 実装済み。ADR-051）
 - [ ] **OP-011**: `execute_autonomous_purchase` の封印解除 — Nurture /internal/purchase へのプロキシ実装（2026-05-28、HANDOVER.md P1-4）→ **R3-3 リリース判定（2026-07-06）: Public Beta では封印維持。自律購買（実通貨 A2C 購入）はポストリリーススコープ。コード変更なし**
 - [x] **OP-012**: PostgreSQL 本番環境での統合デプロイ検証（BAN 統合含む）→ **2026-07-06 完了**（R3-1: `docker-compose.production-verify.yml` + `scripts/verify-production-postgres.sh` + `postgres_production_verify.rs` — 3 DB マイグレーション + BAN ラウンドトリップ）

@@ -11,7 +11,7 @@
 //! 組み合わせ、LoRA アダプターの出品・購入・転送を安全に仲介する。
 
 use crate::{sql_exec, sql_fetch_optional_map};
-use aiome_core_contracts::commerce::CommerceEngine;
+use aiome_core_contracts::commerce::{CommerceEngine, FiatPaymentRails, Web3PaymentRails};
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::lora_marketplace::{
     ListingFilter, ListingStatus, LoraListing, LoraMarketplace, LoraPurchase, PurchaseStatus,
@@ -699,57 +699,7 @@ mod tests {
     }
 
     #[async_trait]
-    impl CommerceEngine for MockCommerceEngineForMarketplace {
-        async fn get_balance(&self, _: Uuid) -> Result<u64, AiomeError> {
-            Ok(10000)
-        }
-        async fn validate_activity(&self, _: Uuid, _: &str, _: u64) -> Result<(), AiomeError> {
-            Ok(())
-        }
-        async fn execute_autonomous_purchase(
-            &self,
-            _: Uuid,
-            _: Uuid,
-            _: serde_json::Value,
-        ) -> Result<String, AiomeError> {
-            Ok("tx_mock".into())
-        }
-        async fn get_daily_spend(&self, _: Uuid) -> Result<u64, AiomeError> {
-            Ok(0)
-        }
-        async fn get_daily_limit(&self, _: Uuid) -> Result<u64, AiomeError> {
-            Ok(10000)
-        }
-        async fn escrow_create(&self, _: Uuid, _: u64) -> Result<String, AiomeError> {
-            if self.escrow_should_fail {
-                Err(AiomeError::Infrastructure {
-                    reason: "Mock escrow failure".into(),
-                })
-            } else {
-                Ok(format!("escrow_{}", Uuid::new_v4()))
-            }
-        }
-        async fn escrow_release(&self, _: &str, _: Uuid) -> Result<(), AiomeError> {
-            Ok(())
-        }
-        async fn escrow_refund(&self, _: &str) -> Result<(), AiomeError> {
-            Ok(())
-        }
-        async fn stake(&self, _: Uuid, _: u64) -> Result<(), AiomeError> {
-            Ok(())
-        }
-        async fn slash(&self, _: Uuid, _: u64, _: &str) -> Result<(), AiomeError> {
-            Ok(())
-        }
-        async fn register_license(
-            &self,
-            _: Uuid,
-            _: Uuid,
-            _: &str,
-            _: &str,
-        ) -> Result<String, AiomeError> {
-            Ok("lic_mock".into())
-        }
+    impl FiatPaymentRails for MockCommerceEngineForMarketplace {
         fn verify_signature(&self, _: &str, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
@@ -763,21 +713,94 @@ mod tests {
         ) -> Result<String, AiomeError> {
             Ok("cs_dummy".into())
         }
+
+        async fn create_portal_session(
+            &self,
+            _agent_id: Uuid,
+            _return_url: &str,
+        ) -> Result<String, AiomeError> {
+            Ok("mock_portal_url".into())
+        }
+
         async fn create_subscription(&self, _: Uuid, _: &str) -> Result<String, AiomeError> {
             Ok("sub_mock".into())
         }
+
         async fn cancel_subscription(&self, _: Uuid, _: &str) -> Result<(), AiomeError> {
             Ok(())
         }
-        async fn get_subscription_status(
+    }
+
+    #[async_trait]
+    impl Web3PaymentRails for MockCommerceEngineForMarketplace {
+        async fn stake(&self, _: Uuid, _: u64) -> Result<(), AiomeError> {
+            Ok(())
+        }
+
+        async fn slash(&self, _: Uuid, _: u64, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+    }
+
+    #[async_trait]
+    impl CommerceEngine for MockCommerceEngineForMarketplace {
+        async fn get_balance(&self, _: Uuid) -> Result<u64, AiomeError> {
+            Ok(10000)
+        }
+
+        async fn validate_activity(&self, _: Uuid, _: &str, _: u64) -> Result<(), AiomeError> {
+            Ok(())
+        }
+
+        async fn execute_autonomous_purchase(
             &self,
             _: Uuid,
-        ) -> Result<aiome_core_contracts::commerce::SubscriptionStatus, AiomeError> {
-            Ok(aiome_core_contracts::commerce::SubscriptionStatus::None)
+            _: Uuid,
+            _: serde_json::Value,
+        ) -> Result<String, AiomeError> {
+            Ok("tx_mock".into())
         }
+
+        async fn get_daily_spend(&self, _: Uuid) -> Result<u64, AiomeError> {
+            Ok(0)
+        }
+
+        async fn get_daily_limit(&self, _: Uuid) -> Result<u64, AiomeError> {
+            Ok(10000)
+        }
+
+        async fn escrow_create(&self, _: Uuid, _: u64) -> Result<String, AiomeError> {
+            if self.escrow_should_fail {
+                Err(AiomeError::Infrastructure {
+                    reason: "Mock escrow failure".into(),
+                })
+            } else {
+                Ok(format!("escrow_{}", Uuid::new_v4()))
+            }
+        }
+
+        async fn escrow_release(&self, _: &str, _: Uuid) -> Result<(), AiomeError> {
+            Ok(())
+        }
+
+        async fn escrow_refund(&self, _: &str) -> Result<(), AiomeError> {
+            Ok(())
+        }
+
+        async fn register_license(
+            &self,
+            _: Uuid,
+            _: Uuid,
+            _: &str,
+            _: &str,
+        ) -> Result<String, AiomeError> {
+            Ok("lic_mock".into())
+        }
+
         async fn transfer(&self, _: Uuid, _: Uuid, _: u64) -> Result<String, AiomeError> {
             Ok("tx_mock".into())
         }
+
         async fn deduct_generation_cost(
             &self,
             _: Uuid,
@@ -787,12 +810,14 @@ mod tests {
         ) -> Result<(), AiomeError> {
             Ok(())
         }
+
         async fn list_escrows(
             &self,
             _agent_id: Uuid,
         ) -> Result<Vec<aiome_core_contracts::commerce::EscrowRecord>, AiomeError> {
             Ok(vec![])
         }
+
         async fn instant_refund(
             &self,
             _transaction_id: &str,
@@ -800,9 +825,11 @@ mod tests {
         ) -> Result<(), AiomeError> {
             Ok(())
         }
+
         async fn withdraw_points(&self, _actor_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
             Ok(())
         }
+
         async fn get_points(
             &self,
             _agent_id: Uuid,
@@ -814,20 +841,13 @@ mod tests {
                 conversion_rate_bps: 10000,
             })
         }
+
         async fn get_transaction_history(
             &self,
             _agent_id: Uuid,
             _limit: u32,
         ) -> Result<Vec<aiome_core_contracts::commerce::TransactionRecord>, AiomeError> {
             Ok(vec![])
-        }
-
-        async fn create_portal_session(
-            &self,
-            _agent_id: Uuid,
-            _return_url: &str,
-        ) -> Result<String, AiomeError> {
-            Ok("mock_portal_url".into())
         }
     }
 

@@ -280,23 +280,125 @@ async fn test_edge_case_daily_limit_exceeded() {
 
     let agent_id = Uuid::new_v4();
 
-    // Wallet with 20k to avoid Insufficient funds error
+    // Policy-bound path: wallet daily_limit ≥ policy (10000) so effective = policy.
     sqlx::query("INSERT INTO nurture_wallets (actor_id, balance, daily_limit) VALUES (?, ?, ?)")
         .bind(agent_id.to_string())
         .bind(20000i64)
-        .bind(200i64) // Has no effect, policy is used
+        .bind(10000i64)
         .execute(&pool)
         .await
         .unwrap();
 
-    // The test engine policy has daily_spend_limit = 10000 by default (EconomyPolicy::default()).
-    // Let's try to spend 10001, which should be rejected.
+    // EconomyPolicy::default().daily_spend_limit = 10000 → reject 10001.
     let res = engine.escrow_create(agent_id, 10001).await;
     assert!(res.is_err());
 
     // Check error message contains daily spend limit
     if let Err(nurture_bridge::error::AiomeError::Infrastructure { reason }) = res {
         assert!(reason.contains("daily spend limit"));
+        assert!(
+            reason.contains("Effective Limit: 10000"),
+            "policy-side effective limit expected: {reason}"
+        );
+    } else {
+        panic!("Wrong error type");
+    }
+}
+
+#[tokio::test]
+#[serial]
+async fn test_escrow_wallet_daily_limit_binds_when_tighter_than_policy() {
+    let (engine, pool, _, _tdir) = setup_test_engine().await;
+
+    let agent_id = Uuid::new_v4();
+
+    // wallet daily_limit=50 ≪ policy 10000 → effective = 50
+    sqlx::query("INSERT INTO nurture_wallets (actor_id, balance, daily_limit) VALUES (?, ?, ?)")
+        .bind(agent_id.to_string())
+        .bind(20000i64)
+        .bind(50i64)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let ok = engine.escrow_create(agent_id, 50).await;
+    assert!(ok.is_ok(), "exactly at wallet daily limit should pass");
+
+    let agent_id2 = Uuid::new_v4();
+    sqlx::query("INSERT INTO nurture_wallets (actor_id, balance, daily_limit) VALUES (?, ?, ?)")
+        .bind(agent_id2.to_string())
+        .bind(20000i64)
+        .bind(50i64)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let res = engine.escrow_create(agent_id2, 51).await;
+    assert!(
+        res.is_err(),
+        "wallet daily_limit must reject when tighter than policy"
+    );
+    if let Err(nurture_bridge::error::AiomeError::Infrastructure { reason }) = res {
+        assert!(
+            reason.contains("daily spend limit"),
+            "unexpected reason: {reason}"
+        );
+        assert!(
+            reason.contains("Effective Limit: 50"),
+            "effective limit must be wallet side: {reason}"
+        );
+    } else {
+        panic!("Wrong error type");
+    }
+}
+
+#[tokio::test]
+#[serial]
+async fn test_escrow_wallet_monthly_limit_binds_when_policy_unlimited() {
+    let (engine, pool, _, _tdir) = setup_test_engine().await;
+
+    let agent_id = Uuid::new_v4();
+    // policy.monthly_spend_limit default = 0 (unlimited); wallet monthly_limit=50 must bind.
+    sqlx::query(
+        "INSERT INTO nurture_wallets (actor_id, balance, daily_limit, monthly_limit) VALUES (?, ?, ?, ?)",
+    )
+    .bind(agent_id.to_string())
+    .bind(20000i64)
+    .bind(10000i64)
+    .bind(50i64)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let ok = engine.escrow_create(agent_id, 50).await;
+    assert!(ok.is_ok(), "exactly at wallet monthly limit should pass");
+
+    let agent_id2 = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO nurture_wallets (actor_id, balance, daily_limit, monthly_limit) VALUES (?, ?, ?, ?)",
+    )
+    .bind(agent_id2.to_string())
+    .bind(20000i64)
+    .bind(10000i64)
+    .bind(50i64)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let res = engine.escrow_create(agent_id2, 51).await;
+    assert!(
+        res.is_err(),
+        "wallet monthly_limit must reject when policy monthly is unlimited"
+    );
+    if let Err(nurture_bridge::error::AiomeError::Infrastructure { reason }) = res {
+        assert!(
+            reason.contains("monthly spend limit"),
+            "unexpected reason: {reason}"
+        );
+        assert!(
+            reason.contains("Effective Limit: 50"),
+            "effective monthly must be wallet side: {reason}"
+        );
     } else {
         panic!("Wrong error type");
     }

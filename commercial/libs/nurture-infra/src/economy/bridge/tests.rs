@@ -14,7 +14,7 @@ use crate::economy::ledger::DatabaseEconomyLedger;
 use crate::economy::settlement::SQLiteSettlementProvider;
 use crate::marketplace::sqlite::SQLiteMarketplace;
 use crate::mock_job_queue::MockJobQueue;
-use aiome_core_contracts::commerce::CommerceEngine;
+use aiome_core_contracts::commerce::{CommerceEngine, FiatPaymentRails, Web3PaymentRails};
 use nurture_core::policy::EconomyPolicy;
 use sqlx::SqlitePool;
 use tokio::sync::RwLock;

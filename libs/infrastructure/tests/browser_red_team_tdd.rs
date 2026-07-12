@@ -7,7 +7,8 @@
 #![allow(clippy::unwrap_used)]
 
 use aiome_contracts::commerce::{
-    CommerceEngine, EscrowRecord, PointsBalance, SubscriptionStatus, TransactionRecord,
+    CommerceEngine, EscrowRecord, FiatPaymentRails, PointsBalance, TransactionRecord,
+    Web3PaymentRails,
 };
 use aiome_core::error::AiomeError;
 use aiome_core::traits::Job;
@@ -37,6 +38,58 @@ impl MockCommerceEngine {
             escrow_called_with_amount: Arc::new(AtomicU64::new(0)),
             fail_escrow: true,
         }
+    }
+}
+
+#[async_trait]
+impl FiatPaymentRails for MockCommerceEngine {
+    fn verify_signature(&self, _payload: &str, _sig_header: &str) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn create_checkout_session(
+        &self,
+        _agent_id: Uuid,
+        _price_id: &str,
+        _success_url: &str,
+        _cancel_url: &str,
+    ) -> Result<String, AiomeError> {
+        Ok("mock_session_id".to_string())
+    }
+
+    async fn create_portal_session(
+        &self,
+        _agent_id: Uuid,
+        _return_url: &str,
+    ) -> Result<String, AiomeError> {
+        Ok("mock_portal_url".to_string())
+    }
+
+    async fn create_subscription(
+        &self,
+        _agent_id: Uuid,
+        _plan_id: &str,
+    ) -> Result<String, AiomeError> {
+        Ok("mock_subscription_id".to_string())
+    }
+
+    async fn cancel_subscription(
+        &self,
+        _agent_id: Uuid,
+        _subscription_id: &str,
+    ) -> Result<(), AiomeError> {
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Web3PaymentRails for MockCommerceEngine {
+    async fn stake(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
+        Ok(())
+    }
+
+    async fn slash(&self, _agent_id: Uuid, _amount: u64, _reason: &str) -> Result<(), AiomeError> {
+        Ok(())
     }
 }
 
@@ -106,14 +159,6 @@ impl CommerceEngine for MockCommerceEngine {
         }
     }
 
-    async fn stake(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
-        Ok(())
-    }
-
-    async fn slash(&self, _agent_id: Uuid, _amount: u64, _reason: &str) -> Result<(), AiomeError> {
-        Ok(())
-    }
-
     async fn register_license(
         &self,
         _agent_id: Uuid,
@@ -122,43 +167,6 @@ impl CommerceEngine for MockCommerceEngine {
         _license_type: &str,
     ) -> Result<String, AiomeError> {
         Ok("mock_license_id".to_string())
-    }
-
-    fn verify_signature(&self, _payload: &str, _sig_header: &str) -> Result<(), AiomeError> {
-        Ok(())
-    }
-
-    async fn create_checkout_session(
-        &self,
-        _agent_id: Uuid,
-        _price_id: &str,
-        _success_url: &str,
-        _cancel_url: &str,
-    ) -> Result<String, AiomeError> {
-        Ok("mock_session_id".to_string())
-    }
-
-    async fn create_subscription(
-        &self,
-        _agent_id: Uuid,
-        _plan_id: &str,
-    ) -> Result<String, AiomeError> {
-        Ok("mock_subscription_id".to_string())
-    }
-
-    async fn cancel_subscription(
-        &self,
-        _agent_id: Uuid,
-        _subscription_id: &str,
-    ) -> Result<(), AiomeError> {
-        Ok(())
-    }
-
-    async fn get_subscription_status(
-        &self,
-        _agent_id: Uuid,
-    ) -> Result<SubscriptionStatus, AiomeError> {
-        Ok(SubscriptionStatus::None)
     }
 
     async fn transfer(
@@ -211,14 +219,6 @@ impl CommerceEngine for MockCommerceEngine {
         _limit: u32,
     ) -> Result<Vec<TransactionRecord>, AiomeError> {
         Ok(vec![])
-    }
-
-    async fn create_portal_session(
-        &self,
-        _agent_id: Uuid,
-        _return_url: &str,
-    ) -> Result<String, AiomeError> {
-        Ok("mock_portal_url".to_string())
     }
 }
 

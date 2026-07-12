@@ -14,6 +14,7 @@ use axum::{extract::Path, http::StatusCode, response::IntoResponse, Extension, J
 use chrono::Utc;
 use commerce_protocol::identity::ActorId;
 use nurture_bridge::commerce::CommerceEngine;
+use nurture_core::effective_daily_limit;
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -46,7 +47,7 @@ pub async fn get_daily_stats(
             StatusCode::OK,
             Json(DailyStatsResponse {
                 spent_today: wallet.spent_today,
-                daily_limit: policy.daily_spend_limit,
+                daily_limit: effective_daily_limit(wallet.daily_limit, policy.daily_spend_limit),
             }),
         )
             .into_response(),

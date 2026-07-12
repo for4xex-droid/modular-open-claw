@@ -111,86 +111,22 @@ impl aiome_core::llm_provider::LlmProvider for DummyLlm {
 #[derive(Debug)]
 struct MockCommerceEngine;
 #[async_trait::async_trait]
-impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
-    async fn deduct_generation_cost(
+impl aiome_core_contracts::commerce::FiatPaymentRails for MockCommerceEngine {
+    fn verify_signature(
         &self,
-        _agent_id: uuid::Uuid,
-        _asset_id: Option<uuid::Uuid>,
-        _amount: u64,
-        _generation_type: &str,
+        _payload: &str,
+        sig_header: &str,
     ) -> Result<(), aiome_core::error::AiomeError> {
-        Ok(())
-    }
-
-    async fn get_balance(
-        &self,
-        _agent_id: uuid::Uuid,
-    ) -> Result<u64, aiome_core::error::AiomeError> {
-        Ok(0)
-    }
-    async fn validate_activity(
-        &self,
-        agent_id: uuid::Uuid,
-        _activity_type: &str,
-        _amount: u64,
-    ) -> Result<(), aiome_core::error::AiomeError> {
-        if agent_id.to_string() == "00000000-0000-0000-0000-fa1100000000" {
-            return Err(aiome_core::error::AiomeError::Infrastructure {
-                reason: "Insufficient funds".into(),
+        // Negative テスト用マーカーのみ拒否。
+        // "bad" の部分一致は HMAC hex（0-9a-f）に偶然含まれてフレークするため禁止。
+        // "invalid" は hex に現れないので contains で安全（polar: v1,invalid_sig）。
+        let marker = sig_header.trim();
+        if marker.contains("invalid") || marker == "bad" || marker.starts_with("bad_") {
+            return Err(aiome_core::error::AiomeError::Unauthorized {
+                reason: "Invalid signature".into(),
             });
         }
         Ok(())
-    }
-    async fn execute_autonomous_purchase(
-        &self,
-        _agent_id: uuid::Uuid,
-        _item_id: uuid::Uuid,
-        _metadata: serde_json::Value,
-    ) -> Result<String, aiome_core::error::AiomeError> {
-        Ok("mock".into())
-    }
-    async fn get_daily_spend(
-        &self,
-        _agent_id: uuid::Uuid,
-    ) -> Result<u64, aiome_core::error::AiomeError> {
-        Ok(0)
-    }
-    async fn get_daily_limit(
-        &self,
-        _agent_id: uuid::Uuid,
-    ) -> Result<u64, aiome_core::error::AiomeError> {
-        Ok(100)
-    }
-    async fn escrow_create(
-        &self,
-        _agent_id: uuid::Uuid,
-        _amount: u64,
-    ) -> Result<String, aiome_core::error::AiomeError> {
-        Ok("esc".into())
-    }
-    async fn stake(
-        &self,
-        _agent_id: uuid::Uuid,
-        _amount: u64,
-    ) -> Result<(), aiome_core::error::AiomeError> {
-        Ok(())
-    }
-    async fn slash(
-        &self,
-        _agent_id: uuid::Uuid,
-        _amount: u64,
-        _reason: &str,
-    ) -> Result<(), aiome_core::error::AiomeError> {
-        Ok(())
-    }
-    async fn register_license(
-        &self,
-        _agent_id: uuid::Uuid,
-        _asset_id: uuid::Uuid,
-        _license_type: &str,
-        _extra: &str,
-    ) -> Result<String, aiome_core::error::AiomeError> {
-        Ok("lic".into())
     }
 
     async fn create_checkout_session(
@@ -204,6 +140,14 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
             return Ok("cs_test_overwritten".into());
         }
         Ok("cs_test_mock".into())
+    }
+
+    async fn create_portal_session(
+        &self,
+        _agent_id: uuid::Uuid,
+        _return_url: &str,
+    ) -> Result<String, aiome_core::error::AiomeError> {
+        Ok("https://example.com/portal-session-mock".to_string())
     }
 
     async fn create_subscription(
@@ -223,6 +167,101 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
         _subscription_id: &str,
     ) -> Result<(), aiome_core::error::AiomeError> {
         Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl aiome_core_contracts::commerce::Web3PaymentRails for MockCommerceEngine {
+    async fn stake(
+        &self,
+        _agent_id: uuid::Uuid,
+        _amount: u64,
+    ) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+
+    async fn slash(
+        &self,
+        _agent_id: uuid::Uuid,
+        _amount: u64,
+        _reason: &str,
+    ) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
+    async fn deduct_generation_cost(
+        &self,
+        _agent_id: uuid::Uuid,
+        _asset_id: Option<uuid::Uuid>,
+        _amount: u64,
+        _generation_type: &str,
+    ) -> Result<(), aiome_core::error::AiomeError> {
+        Ok(())
+    }
+
+    async fn get_balance(
+        &self,
+        _agent_id: uuid::Uuid,
+    ) -> Result<u64, aiome_core::error::AiomeError> {
+        Ok(0)
+    }
+
+    async fn validate_activity(
+        &self,
+        agent_id: uuid::Uuid,
+        _activity_type: &str,
+        _amount: u64,
+    ) -> Result<(), aiome_core::error::AiomeError> {
+        if agent_id.to_string() == "00000000-0000-0000-0000-fa1100000000" {
+            return Err(aiome_core::error::AiomeError::Infrastructure {
+                reason: "Insufficient funds".into(),
+            });
+        }
+        Ok(())
+    }
+
+    async fn execute_autonomous_purchase(
+        &self,
+        _agent_id: uuid::Uuid,
+        _item_id: uuid::Uuid,
+        _metadata: serde_json::Value,
+    ) -> Result<String, aiome_core::error::AiomeError> {
+        Ok("mock".into())
+    }
+
+    async fn get_daily_spend(
+        &self,
+        _agent_id: uuid::Uuid,
+    ) -> Result<u64, aiome_core::error::AiomeError> {
+        Ok(0)
+    }
+
+    async fn get_daily_limit(
+        &self,
+        _agent_id: uuid::Uuid,
+    ) -> Result<u64, aiome_core::error::AiomeError> {
+        Ok(100)
+    }
+
+    async fn escrow_create(
+        &self,
+        _agent_id: uuid::Uuid,
+        _amount: u64,
+    ) -> Result<String, aiome_core::error::AiomeError> {
+        Ok("esc".into())
+    }
+
+    async fn register_license(
+        &self,
+        _agent_id: uuid::Uuid,
+        _asset_id: uuid::Uuid,
+        _license_type: &str,
+        _extra: &str,
+    ) -> Result<String, aiome_core::error::AiomeError> {
+        Ok("lic".into())
     }
 
     async fn get_subscription_status(
@@ -255,23 +294,6 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
     }
 
     async fn escrow_refund(&self, _order_id: &str) -> Result<(), aiome_core::error::AiomeError> {
-        Ok(())
-    }
-
-    fn verify_signature(
-        &self,
-        _payload: &str,
-        sig_header: &str,
-    ) -> Result<(), aiome_core::error::AiomeError> {
-        // Negative テスト用マーカーのみ拒否。
-        // "bad" の部分一致は HMAC hex（0-9a-f）に偶然含まれてフレークするため禁止。
-        // "invalid" は hex に現れないので contains で安全（polar: v1,invalid_sig）。
-        let marker = sig_header.trim();
-        if marker.contains("invalid") || marker == "bad" || marker.starts_with("bad_") {
-            return Err(aiome_core::error::AiomeError::Unauthorized {
-                reason: "Invalid signature".into(),
-            });
-        }
         Ok(())
     }
 
@@ -333,14 +355,6 @@ impl aiome_core_contracts::commerce::CommerceEngine for MockCommerceEngine {
     ) -> Result<Vec<aiome_core_contracts::commerce::TransactionRecord>, aiome_core::error::AiomeError>
     {
         Ok(vec![])
-    }
-
-    async fn create_portal_session(
-        &self,
-        _agent_id: uuid::Uuid,
-        _return_url: &str,
-    ) -> Result<String, aiome_core::error::AiomeError> {
-        Ok("https://example.com/portal-session-mock".to_string())
     }
 }
 

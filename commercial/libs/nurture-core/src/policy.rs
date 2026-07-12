@@ -16,6 +16,8 @@ use commerce_protocol::transaction::{Transaction, TxState};
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct EconomyPolicy {
+    /// Global daily spend cap. Unlike monthly, **0 = hard zero** (positive spend rejected
+    /// via `effective_daily_limit` = raw `min`). Default is `10_000`, not unlimited.
     pub daily_spend_limit: u64,
     /// Global monthly spend cap (0 = disabled / unlimited).
     #[serde(default)]

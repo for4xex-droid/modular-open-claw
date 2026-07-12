@@ -8,7 +8,7 @@
 // B-004: Mock stays out of production release binaries unless `dev-mock` is opted in.
 #![cfg(any(test, debug_assertions, feature = "dev-mock"))]
 
-use aiome_core::commerce::CommerceEngine;
+use aiome_core::commerce::{CommerceEngine, FiatPaymentRails, Web3PaymentRails};
 use aiome_core::error::AiomeError;
 use aiome_core_contracts::commerce::EscrowRecord;
 use async_trait::async_trait;
@@ -64,6 +64,71 @@ impl MockCommerceEngine {
     /// 新規モックエンジンを生成する
     pub fn new() -> Self {
         Self::default()
+    }
+}
+
+#[cfg(any(test, debug_assertions, feature = "dev-mock"))]
+#[async_trait]
+impl FiatPaymentRails for MockCommerceEngine {
+    fn verify_signature(&self, _payload: &str, _sig_header: &str) -> Result<(), AiomeError> {
+        Ok(()) // モックなので常に成功
+    }
+
+    async fn create_checkout_session(
+        &self,
+        _agent_id: Uuid,
+        _price_id: &str,
+        _success_url: &str,
+        _cancel_url: &str,
+    ) -> Result<String, AiomeError> {
+        Ok("https://example.com/checkout-session-mock".into())
+    }
+
+    async fn create_portal_session(
+        &self,
+        _agent_id: Uuid,
+        _return_url: &str,
+    ) -> Result<String, AiomeError> {
+        Ok("https://example.com/portal-session-mock".to_string())
+    }
+
+    async fn create_subscription(
+        &self,
+        _agent_id: Uuid,
+        _plan_id: &str,
+    ) -> Result<String, AiomeError> {
+        Ok(format!("sub_{}", Uuid::new_v4()))
+    }
+
+    async fn cancel_subscription(
+        &self,
+        _agent_id: Uuid,
+        _subscription_id: &str,
+    ) -> Result<(), AiomeError> {
+        Ok(())
+    }
+}
+
+#[cfg(any(test, debug_assertions, feature = "dev-mock"))]
+#[async_trait]
+impl Web3PaymentRails for MockCommerceEngine {
+    async fn stake(&self, agent_id: Uuid, amount: u64) -> Result<(), AiomeError> {
+        let mut balance = self.balances.entry(agent_id).or_insert(1000);
+        if *balance >= amount {
+            *balance -= amount;
+            Ok(())
+        } else {
+            Err(AiomeError::Infrastructure {
+                reason: "Insufficient funds for staking".into(),
+            })
+        }
+    }
+
+    async fn slash(&self, agent_id: Uuid, amount: u64, _reason: &str) -> Result<(), AiomeError> {
+        // Slashed funds are gone
+        let mut balance = self.balances.entry(agent_id).or_insert(1000);
+        *balance = balance.saturating_sub(amount);
+        Ok(())
     }
 }
 
@@ -177,25 +242,6 @@ impl CommerceEngine for MockCommerceEngine {
         }
     }
 
-    async fn stake(&self, agent_id: Uuid, amount: u64) -> Result<(), AiomeError> {
-        let mut balance = self.balances.entry(agent_id).or_insert(1000);
-        if *balance >= amount {
-            *balance -= amount;
-            Ok(())
-        } else {
-            Err(AiomeError::Infrastructure {
-                reason: "Insufficient funds for staking".into(),
-            })
-        }
-    }
-
-    async fn slash(&self, agent_id: Uuid, amount: u64, _reason: &str) -> Result<(), AiomeError> {
-        // Slashed funds are gone
-        let mut balance = self.balances.entry(agent_id).or_insert(1000);
-        *balance = balance.saturating_sub(amount);
-        Ok(())
-    }
-
     async fn register_license(
         &self,
         _agent_id: Uuid,
@@ -208,36 +254,6 @@ impl CommerceEngine for MockCommerceEngine {
             asset_id
         );
         Ok(format!("lic_{}", Uuid::new_v4()))
-    }
-
-    fn verify_signature(&self, _payload: &str, _sig_header: &str) -> Result<(), AiomeError> {
-        Ok(()) // モックなので常に成功
-    }
-
-    async fn create_checkout_session(
-        &self,
-        _agent_id: Uuid,
-        _price_id: &str,
-        _success_url: &str,
-        _cancel_url: &str,
-    ) -> Result<String, AiomeError> {
-        Ok("https://example.com/checkout-session-mock".into())
-    }
-
-    async fn create_subscription(
-        &self,
-        _agent_id: Uuid,
-        _plan_id: &str,
-    ) -> Result<String, AiomeError> {
-        Ok(format!("sub_{}", Uuid::new_v4()))
-    }
-
-    async fn cancel_subscription(
-        &self,
-        _agent_id: Uuid,
-        _subscription_id: &str,
-    ) -> Result<(), AiomeError> {
-        Ok(())
     }
 
     async fn get_subscription_status(
@@ -356,14 +372,6 @@ impl CommerceEngine for MockCommerceEngine {
         _limit: u32,
     ) -> Result<Vec<aiome_core_contracts::commerce::TransactionRecord>, AiomeError> {
         Ok(Vec::new())
-    }
-
-    async fn create_portal_session(
-        &self,
-        _agent_id: Uuid,
-        _return_url: &str,
-    ) -> Result<String, AiomeError> {
-        Ok("https://example.com/portal-session-mock".to_string())
     }
 }
 

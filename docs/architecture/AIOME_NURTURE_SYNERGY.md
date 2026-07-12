@@ -970,6 +970,21 @@ classDiagram
 
 ```mermaid
 classDiagram
+    class FiatPaymentRails {
+        <<trait / aiome-contracts>>
+        +verify_signature(payload, sig_header) Result~()~
+        +create_checkout_session(...) Result~String~
+        +create_portal_session(...) Result~String~
+        +create_subscription(agent_id, plan_id) Result~String~
+        +cancel_subscription(agent_id, subscription_id) Result~()~
+    }
+
+    class Web3PaymentRails {
+        <<trait / aiome-contracts>>
+        +stake(agent_id, amount) Result~()~
+        +slash(agent_id, amount, reason) Result~()~
+    }
+
     class CommerceEngine {
         <<trait / aiome-contracts>>
         +get_balance(agent_id: Uuid) Result~u64~
@@ -980,23 +995,18 @@ classDiagram
         +escrow_create(agent_id, amount) Result~String~
         +escrow_release(escrow_id, recipient_id) Result~()~
         +escrow_refund(escrow_id) Result~()~
-        +stake(agent_id, amount) Result~()~
-        +slash(agent_id, amount, reason) Result~()~
         +register_license(agent_id, asset_id, license_type) Result~String~
-        +verify_signature(payload, sig_header) Result~()~
-
-        +create_subscription(agent_id, plan_id) Result~String~
-        +cancel_subscription(agent_id, subscription_id) Result~()~
         +get_subscription_status(agent_id) Result~SubscriptionStatus~
         +transfer(from_id, to_id, amount) Result~String~
         +deduct_generation_cost(agent_id, asset_id, amount, generation_type) Result~()~
-        +create_checkout_session(agent_id, price_id, success_url, cancel_url) Result~String~
-        +create_portal_session(agent_id, return_url) Result~String~
         +withdraw_points(actor_id, points) Result~()~
         +get_points(agent_id) Result~PointsBalance~
         +get_transaction_history(agent_id, limit) Result~Vec~TransactionRecord~~
         +get_wishlist(agent_id) Result~Vec~WishlistEntry~~
     }
+
+    FiatPaymentRails <|-- CommerceEngine : supertrait OP-083-A
+    Web3PaymentRails <|-- CommerceEngine : supertrait OP-083-A
 
     class GiftEngine {
         <<trait / aiome-contracts>>
@@ -1144,7 +1154,7 @@ classDiagram
     WorkflowConductor --> WorkflowStore
     WorkflowStore --> NodeType
 
-    note for CommerceEngine "Aiome OSS 側で定義\nNURTURE側で実装"
+    note for CommerceEngine "FiatPaymentRails + Web3PaymentRails supertrait\n(OP-083-A)。Arc~dyn CommerceEngine~ 維持\n日次/月次合成は nurture_core::spend_guard"
     note for LlmProvider "Aiome OSS 側で定義・実装\nNURTUREは触れない"
     note for IdempotencyStore "Sprint D: Webhook 冪等性 (48h TTL)"
 ```,StartLine:958,TargetContent:

@@ -1,3 +1,22 @@
+## 🔍 OP-083-A CommerceEngine supertrait（2026-07-13）
+
+- **変更内容**:
+    - [`libs/aiome-contracts/src/commerce.rs`](libs/aiome-contracts/src/commerce.rs) [MODIFY]: `FiatPaymentRails` / `Web3PaymentRails` / `CommerceEngine` supertrait
+    - 8 impl（mock/stripe/polar/nurture-bridge/aiome-node/lora/browser_red_team/api_integration）を 3 impl ブロック化
+    - `libs/core` / `nurture-bridge` re-export
+- **波及効果**: `Arc<dyn CommerceEngine>` の checkout/portal/webhook は無変更でコンパイル可。GiftEngine は兄弟 trait のまま。
+- **非対象**: x402 本番（OP-083-C）、OnChainAmount（OP-083-D）
+
+## 🔍 OP-083-B spend_guard（2026-07-13）
+
+- **変更内容**:
+    - [`commercial/libs/nurture-core/src/spend_guard.rs`](commercial/libs/nurture-core/src/spend_guard.rs) [NEW]: `effective_daily_limit` / `effective_monthly_limit` / `check_spend_limits`
+    - `interceptor.rs` / `commerce_impl.rs` / `nurture-api` `daily-stats` [MODIFY]: 二重 `effective_spend_limit` 削除・escrow 日次を wallet 尊重に修正
+    - `/reflexion`: `commerce_impl` escrow/deduct/validate → `check_spend_limits` 一本化 + escrow wallet-tighter Negative
+    - `EconomyPolicy.daily_spend_limit` [MODIFY]: 0=全拒否コメント
+- **波及効果**: ADR-050 硬化。表示 API（stream/agent_engine/watchtower via get_daily_limit / daily-stats）が wallet×policy 合成と一致。
+- **非対象**: `CoinWallet::check_*`、Phase 1 trait 分割、x402
+
 ## 🔍 ローカル LLM Pattern A/B + 衛生（2026-07-13）
 
 - **変更内容**:

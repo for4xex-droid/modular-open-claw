@@ -5,7 +5,7 @@
  * Licensed under the Business Source License 1.1 (BSL 1.1).
  */
 
-use aiome_core_contracts::commerce::CommerceEngine;
+use aiome_core_contracts::commerce::{CommerceEngine, FiatPaymentRails, Web3PaymentRails};
 use aiome_core_contracts::error::AiomeError;
 use async_trait::async_trait;
 use base64::engine::general_purpose::STANDARD;
@@ -15,19 +15,41 @@ use commerce_protocol::transaction::Transaction;
 use uuid::Uuid;
 
 use super::NurtureCommerceBridge;
+use commerce_protocol::error::NurtureError;
 use nurture_bridge::{sql_fetch_all, sql_tx_exec, sql_tx_fetch_optional};
+use nurture_core::{check_spend_limits, effective_daily_limit, effective_monthly_limit};
 
-fn effective_spend_limit(wallet_limit: u64, policy_limit: u64) -> u64 {
-    match (wallet_limit, policy_limit) {
-        (0, 0) => 0,
-        (w, 0) => w,
-        (0, p) => p,
-        (w, p) => w.min(p),
+/// Map spend_guard `NurtureError` → `AiomeError` while preserving call-site phrasing
+/// that existing tests assert (`daily spend limit` / `monthly spend limit`).
+fn map_spend_limit_err(err: NurtureError, context: &str) -> AiomeError {
+    match err {
+        NurtureError::DailyLimitExceeded { limit, current } => AiomeError::Infrastructure {
+            reason: format!(
+                "{context} would exceed daily spend limit. Effective Limit: {limit}, Projected: {current}"
+            ),
+        },
+        NurtureError::MonthlyLimitExceeded { limit, current } => AiomeError::Infrastructure {
+            reason: format!(
+                "{context} would exceed monthly spend limit. Effective Limit: {limit}, Projected: {current}"
+            ),
+        },
+        NurtureError::PolicyViolation(reason) => AiomeError::Infrastructure {
+            reason: format!("{context}: {reason}"),
+        },
+        other => AiomeError::Infrastructure {
+            reason: format!("{context}: {other}"),
+        },
     }
 }
 
 #[async_trait]
-impl CommerceEngine for NurtureCommerceBridge {
+impl FiatPaymentRails for NurtureCommerceBridge {
+    fn verify_signature(&self, _payload: &str, _sig_header: &str) -> Result<(), AiomeError> {
+        // INTENTIONAL DELEGATION: 実際の署名検証は nurture-api/src/routes/stripe.rs (StripeWebhookHandler) に委譲される
+        tracing::debug!("🛡️ [NurtureCommerceBridge] verify_signature() called - intentionally delegated, returning Ok");
+        Ok(())
+    }
+
     async fn create_checkout_session(
         &self,
         _agent_id: Uuid,
@@ -43,6 +65,69 @@ impl CommerceEngine for NurtureCommerceBridge {
         })
     }
 
+    async fn create_portal_session(
+        &self,
+        _agent_id: Uuid,
+        _return_url: &str,
+    ) -> Result<String, AiomeError> {
+        Err(AiomeError::Infrastructure {
+            reason: "Stripe Customer Portal is not available in Nurture Ledger context".to_string(),
+        })
+    }
+
+    async fn create_subscription(
+        &self,
+        _agent_id: uuid::Uuid,
+        plan_id: &str,
+    ) -> Result<String, AiomeError> {
+        tracing::debug!(
+            "🛡️ [NurtureCommerceBridge] create_subscription() called for plan {} - sealed with Err",
+            plan_id
+        );
+        Err(AiomeError::Infrastructure {
+            reason: "Subscriptions are not available in v1.1".to_string(),
+        })
+    }
+
+    async fn cancel_subscription(
+        &self,
+        _agent_id: uuid::Uuid,
+        subscription_id: &str,
+    ) -> Result<(), AiomeError> {
+        tracing::debug!(
+            "🛡️ [NurtureCommerceBridge] cancel_subscription() called for sub {} - sealed with Err",
+            subscription_id
+        );
+        Err(AiomeError::Infrastructure {
+            reason: "Subscriptions are not available in v1.1".to_string(),
+        })
+    }
+}
+
+#[async_trait]
+impl Web3PaymentRails for NurtureCommerceBridge {
+    async fn stake(&self, _agent_id: uuid::Uuid, _amount: u64) -> Result<(), AiomeError> {
+        tracing::debug!("🛡️ [NurtureCommerceBridge] stake() called - sealed with Err");
+        Err(AiomeError::Infrastructure {
+            reason: "Staking is not available in v1.1".to_string(),
+        })
+    }
+
+    async fn slash(
+        &self,
+        _agent_id: uuid::Uuid,
+        _amount: u64,
+        _reason: &str,
+    ) -> Result<(), AiomeError> {
+        tracing::debug!("🛡️ [NurtureCommerceBridge] slash() called - sealed with Err");
+        Err(AiomeError::Infrastructure {
+            reason: "Slashing is not available in v1.1".to_string(),
+        })
+    }
+}
+
+#[async_trait]
+impl CommerceEngine for NurtureCommerceBridge {
     async fn get_daily_limit(&self, agent_id: uuid::Uuid) -> Result<u64, AiomeError> {
         let policy = self.policy.read().await;
         let wallet = self
@@ -52,8 +137,12 @@ impl CommerceEngine for NurtureCommerceBridge {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;
-        Ok(wallet.daily_limit.min(policy.daily_spend_limit))
+        Ok(effective_daily_limit(
+            wallet.daily_limit,
+            policy.daily_spend_limit,
+        ))
     }
+
     async fn get_daily_spend(&self, agent_id: uuid::Uuid) -> Result<u64, AiomeError> {
         let wallet = self
             .ledger
@@ -85,14 +174,10 @@ impl CommerceEngine for NurtureCommerceBridge {
             .map_err(|e| AiomeError::Infrastructure {
                 reason: e.to_string(),
             })?;
-        let effective = if wallet.monthly_limit > 0 && policy.monthly_spend_limit > 0 {
-            wallet.monthly_limit.min(policy.monthly_spend_limit)
-        } else if wallet.monthly_limit > 0 {
-            wallet.monthly_limit
-        } else {
-            policy.monthly_spend_limit
-        };
-        Ok(effective)
+        Ok(effective_monthly_limit(
+            wallet.monthly_limit,
+            policy.monthly_spend_limit,
+        ))
     }
 
     async fn list_escrows(
@@ -151,39 +236,16 @@ impl CommerceEngine for NurtureCommerceBridge {
         }
 
         let policy = self.policy.read().await;
-        let new_daily =
-            wallet
-                .spent_today
-                .checked_add(amount)
-                .ok_or_else(|| AiomeError::Infrastructure {
-                    reason: "spent_today overflow detected".into(),
-                })?;
-        if new_daily > policy.daily_spend_limit {
-            return Err(AiomeError::Infrastructure {
-                reason: format!(
-                    "Escrow would exceed daily spend limit. Limit: {}, Current: {}, Requested: {}",
-                    policy.daily_spend_limit, wallet.spent_today, amount
-                ),
-            });
-        }
-
-        let effective_monthly =
-            effective_spend_limit(wallet.monthly_limit, policy.monthly_spend_limit);
-        if effective_monthly > 0 {
-            let new_monthly = wallet.spent_this_month.checked_add(amount).ok_or_else(|| {
-                AiomeError::Infrastructure {
-                    reason: "spent_this_month overflow detected".into(),
-                }
-            })?;
-            if new_monthly > effective_monthly {
-                return Err(AiomeError::Infrastructure {
-                    reason: format!(
-                        "Escrow would exceed monthly spend limit. Limit: {}, Current: {}, Requested: {}",
-                        effective_monthly, wallet.spent_this_month, amount
-                    ),
-                });
-            }
-        }
+        check_spend_limits(
+            wallet.spent_today,
+            wallet.spent_this_month,
+            amount,
+            wallet.daily_limit,
+            policy.daily_spend_limit,
+            wallet.monthly_limit,
+            policy.monthly_spend_limit,
+        )
+        .map_err(|e| map_spend_limit_err(e, "Escrow"))?;
 
         let safe_amount = i64::try_from(amount).map_err(|_| AiomeError::Infrastructure {
             reason: format!("Escrow amount {} exceeds maximum limit", amount),
@@ -386,23 +448,6 @@ impl CommerceEngine for NurtureCommerceBridge {
         Ok(())
     }
 
-    async fn stake(&self, _agent_id: uuid::Uuid, _amount: u64) -> Result<(), AiomeError> {
-        tracing::debug!("🛡️ [NurtureCommerceBridge] stake() called - sealed with Err");
-        Err(AiomeError::Infrastructure {
-            reason: "Staking is not available in v1.1".to_string(),
-        })
-    }
-    async fn slash(
-        &self,
-        _agent_id: uuid::Uuid,
-        _amount: u64,
-        _reason: &str,
-    ) -> Result<(), AiomeError> {
-        tracing::debug!("🛡️ [NurtureCommerceBridge] slash() called - sealed with Err");
-        Err(AiomeError::Infrastructure {
-            reason: "Slashing is not available in v1.1".to_string(),
-        })
-    }
     async fn deduct_generation_cost(
         &self,
         agent_id: uuid::Uuid,
@@ -435,40 +480,16 @@ impl CommerceEngine for NurtureCommerceBridge {
         }
 
         let policy = self.policy.read().await;
-        let effective_daily_limit = wallet.daily_limit.min(policy.daily_spend_limit);
-        let new_daily =
-            wallet
-                .spent_today
-                .checked_add(amount)
-                .ok_or_else(|| AiomeError::Infrastructure {
-                    reason: "spent_today overflow detected".into(),
-                })?;
-        if new_daily > effective_daily_limit {
-            return Err(AiomeError::Infrastructure {
-                reason: format!(
-                    "Generation would exceed daily spend limit. Effective Limit: {}, Current: {}, Requested: {}",
-                    effective_daily_limit, wallet.spent_today, amount
-                ),
-            });
-        }
-
-        let effective_monthly =
-            effective_spend_limit(wallet.monthly_limit, policy.monthly_spend_limit);
-        if effective_monthly > 0 {
-            let new_monthly = wallet.spent_this_month.checked_add(amount).ok_or_else(|| {
-                AiomeError::Infrastructure {
-                    reason: "spent_this_month overflow detected".into(),
-                }
-            })?;
-            if new_monthly > effective_monthly {
-                return Err(AiomeError::Infrastructure {
-                    reason: format!(
-                        "Generation would exceed monthly spend limit. Effective Limit: {}, Current: {}, Requested: {}",
-                        effective_monthly, wallet.spent_this_month, amount
-                    ),
-                });
-            }
-        }
+        check_spend_limits(
+            wallet.spent_today,
+            wallet.spent_this_month,
+            amount,
+            wallet.daily_limit,
+            policy.daily_spend_limit,
+            wallet.monthly_limit,
+            policy.monthly_spend_limit,
+        )
+        .map_err(|e| map_spend_limit_err(e, "Generation"))?;
 
         if let Some(a_id) = asset_id {
             // A2C Flow: Creator asset was used, use SettlementProtocol
@@ -738,6 +759,7 @@ impl CommerceEngine for NurtureCommerceBridge {
 
         Ok(())
     }
+
     async fn register_license(
         &self,
         agent_id: uuid::Uuid,
@@ -799,45 +821,7 @@ impl CommerceEngine for NurtureCommerceBridge {
 
         Ok(license_id.to_string())
     }
-    fn verify_signature(&self, _payload: &str, _sig_header: &str) -> Result<(), AiomeError> {
-        // INTENTIONAL DELEGATION: 実際の署名検証は nurture-api/src/routes/stripe.rs (StripeWebhookHandler) に委譲される
-        tracing::debug!("🛡️ [NurtureCommerceBridge] verify_signature() called - intentionally delegated, returning Ok");
-        Ok(())
-    }
 
-    async fn create_subscription(
-        &self,
-        _agent_id: uuid::Uuid,
-        plan_id: &str,
-    ) -> Result<String, AiomeError> {
-        tracing::debug!(
-            "🛡️ [NurtureCommerceBridge] create_subscription() called for plan {} - sealed with Err",
-            plan_id
-        );
-        Err(AiomeError::Infrastructure {
-            reason: "Subscriptions are not available in v1.1".to_string(),
-        })
-    }
-    async fn cancel_subscription(
-        &self,
-        _agent_id: uuid::Uuid,
-        subscription_id: &str,
-    ) -> Result<(), AiomeError> {
-        tracing::debug!(
-            "🛡️ [NurtureCommerceBridge] cancel_subscription() called for sub {} - sealed with Err",
-            subscription_id
-        );
-        Err(AiomeError::Infrastructure {
-            reason: "Subscriptions are not available in v1.1".to_string(),
-        })
-    }
-    async fn get_subscription_status(
-        &self,
-        _agent_id: uuid::Uuid,
-    ) -> Result<aiome_core_contracts::commerce::SubscriptionStatus, AiomeError> {
-        // サブスクリプション未実装時は None (未登録) を返す — これは安全なデフォルト値
-        Ok(aiome_core_contracts::commerce::SubscriptionStatus::None)
-    }
     async fn transfer(
         &self,
         from_id: uuid::Uuid,
@@ -982,58 +966,54 @@ impl CommerceEngine for NurtureCommerceBridge {
                 });
             }
 
-            // 3. 日次上限チェック (ポリシーとウォレットの厳しい方を適用)
+            // 3. 日次/月次上限 (spend_guard — OP-083-B)
             let policy = self.policy.read().await;
-            let effective_daily_limit = wallet.daily_limit.min(policy.daily_spend_limit);
-            let projected_spent = wallet.spent_today.checked_add(amount).ok_or_else(|| {
-                AiomeError::Infrastructure {
-                    reason: "spent_today overflow detected during validation".into(),
+            if let Err(e) = check_spend_limits(
+                wallet.spent_today,
+                wallet.spent_this_month,
+                amount,
+                wallet.daily_limit,
+                policy.daily_spend_limit,
+                wallet.monthly_limit,
+                policy.monthly_spend_limit,
+            ) {
+                match &e {
+                    NurtureError::DailyLimitExceeded { limit, current } => {
+                        tracing::warn!(
+                            agent_id = %agent_id,
+                            activity_type = %activity_type,
+                            amount = %amount,
+                            spent_today = %wallet.spent_today,
+                            effective_limit = %limit,
+                            projected = %current,
+                            "🚫 [validate_activity] Daily limit would be exceeded"
+                        );
+                    }
+                    NurtureError::MonthlyLimitExceeded { limit, current } => {
+                        tracing::warn!(
+                            agent_id = %agent_id,
+                            activity_type = %activity_type,
+                            amount = %amount,
+                            spent_this_month = %wallet.spent_this_month,
+                            effective_limit = %limit,
+                            projected = %current,
+                            "🚫 [validate_activity] Monthly limit would be exceeded"
+                        );
+                    }
+                    NurtureError::PolicyViolation(reason) => {
+                        tracing::error!(
+                            agent_id = %agent_id,
+                            activity_type = %activity_type,
+                            reason = %reason,
+                            "🚨 [validate_activity] spend overflow / policy"
+                        );
+                    }
+                    _ => {}
                 }
-            })?;
-
-            if projected_spent > effective_daily_limit {
-                tracing::warn!(
-                    agent_id = %agent_id,
-                    activity_type = %activity_type,
-                    amount = %amount,
-                    spent_today = %wallet.spent_today,
-                    effective_limit = %effective_daily_limit,
-                    "🚫 [validate_activity] Daily limit would be exceeded"
-                );
-                return Err(AiomeError::Infrastructure {
-                    reason: format!(
-                        "Daily limit would be exceeded for activity '{}': projected={}, limit={}",
-                        activity_type, projected_spent, effective_daily_limit
-                    ),
-                });
-            }
-
-            let effective_monthly_limit =
-                effective_spend_limit(wallet.monthly_limit, policy.monthly_spend_limit);
-            if effective_monthly_limit > 0 {
-                let projected_monthly =
-                    wallet.spent_this_month.checked_add(amount).ok_or_else(|| {
-                        AiomeError::Infrastructure {
-                            reason: "spent_this_month overflow detected during validation".into(),
-                        }
-                    })?;
-
-                if projected_monthly > effective_monthly_limit {
-                    tracing::warn!(
-                        agent_id = %agent_id,
-                        activity_type = %activity_type,
-                        amount = %amount,
-                        spent_this_month = %wallet.spent_this_month,
-                        effective_limit = %effective_monthly_limit,
-                        "🚫 [validate_activity] Monthly limit would be exceeded"
-                    );
-                    return Err(AiomeError::Infrastructure {
-                        reason: format!(
-                            "Monthly limit would be exceeded for activity '{}': projected={}, limit={}",
-                            activity_type, projected_monthly, effective_monthly_limit
-                        ),
-                    });
-                }
+                return Err(map_spend_limit_err(
+                    e,
+                    &format!("activity '{activity_type}'"),
+                ));
             }
         }
 
@@ -1189,15 +1169,5 @@ impl CommerceEngine for NurtureCommerceBridge {
                 memo: entry.memo,
             })
             .collect())
-    }
-
-    async fn create_portal_session(
-        &self,
-        _agent_id: Uuid,
-        _return_url: &str,
-    ) -> Result<String, AiomeError> {
-        Err(AiomeError::Infrastructure {
-            reason: "Stripe Customer Portal is not available in Nurture Ledger context".to_string(),
-        })
     }
 }

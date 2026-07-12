@@ -73,6 +73,7 @@ B5 実行前ゲート / `String` 戻り、B3=`Failed`、対象 5 箇所、napi �
 | **NT-1** | OP-057-R (1) | 手順 ✅ / 反映 ❌ | Vault |
 | **NT-2** | G1 / OP-078 ✅ | API+MC proxy DoD + §8 R-A〜R-D ✅（2026-07-13） | [`nt2_quickstart_unblock_plan.md`](nt2_quickstart_unblock_plan.md) §8（完了） |
 | **LL follow** | OP-080〜082 | Pattern A ✅ / B 実機❌ / git 未コミット | [`local_llm_ab_reflexion_plan.md`](local_llm_ab_reflexion_plan.md) §2（**NT-6 必須ブロッカー外**） |
+| **Commerce v3.3** | OP-083 | **B ✅ A ✅** → C/D=Federation後 | [`commerce_layer_tech_debt_plan_v3.md`](commerce_layer_tech_debt_plan_v3.md) |
 
 | **NT-3** | OP-002 | `BiomeCanvas.tsx:99` / `BiomeRenderer.tsx:187` DONE | 目視（**LL-C** = 同一） |
 | NT-4 | OP-013 | ✅ | 再実行不要 |

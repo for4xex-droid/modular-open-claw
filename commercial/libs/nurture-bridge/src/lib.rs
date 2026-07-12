@@ -71,7 +71,9 @@ pub mod supervisor {
 }
 
 pub mod commerce {
-    pub use aiome_core_contracts::commerce::{CommerceEngine, EscrowRecord};
+    pub use aiome_core_contracts::commerce::{
+        CommerceEngine, EscrowRecord, FiatPaymentRails, Web3PaymentRails,
+    };
 }
 
 pub mod error {

@@ -20,6 +20,7 @@ pub mod ledger;
 pub mod license;
 pub mod points;
 pub mod policy;
+pub mod spend_guard;
 pub mod uow;
 pub use coin::*;
 pub use customer::*;
@@ -27,3 +28,7 @@ pub use ledger::*;
 pub use license::*;
 pub use points::*;
 pub use policy::*;
+pub use spend_guard::{
+    check_daily_spend, check_monthly_spend, check_spend_limits, effective_daily_limit,
+    effective_monthly_limit,
+};

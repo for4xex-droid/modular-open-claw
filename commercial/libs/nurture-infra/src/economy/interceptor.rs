@@ -156,79 +156,61 @@ impl EconomyInterceptor {
             });
         }
 
-        // 日次上限チェック: ポリシーの daily_spend_limit とウォレットの daily_limit の
-        // 厳しい方 (小さい方) を実効上限とする。ウォレットが古いデフォルト値を保持している
-        // 場合でもポリシー側の上限が適用される。
-        let effective_daily_limit = wallet.daily_limit.min(daily_spend_limit);
-        let projected_spent = match wallet.spent_today.checked_add(tx.amount_coins) {
-            Some(v) => v,
-            None => {
-                tracing::error!(
-                    buyer_id = %wallet.owner.0,
-                    tx_id = %tx.id,
-                    spent_today = wallet.spent_today,
-                    amount = tx.amount_coins,
-                    "🚨 [Interceptor] spent_today の加算でオーバーフロー発生 — データ破損の可能性"
-                );
-                return Err(NurtureError::PolicyViolation(
-                    "システムエラー: 支出計算のオーバーフローを検知しました".to_string(),
-                ));
-            }
-        };
-
-        if tx.amount_coins > 0 && projected_spent > effective_daily_limit {
-            tracing::warn!(
-                buyer_id = %wallet.owner.0,
-                tx_id = %tx.id,
-                amount = tx.amount_coins,
-                wallet_daily_limit = wallet.daily_limit,
-                policy_daily_limit = daily_spend_limit,
-                effective_limit = effective_daily_limit,
-                spent_today = wallet.spent_today,
-                "🚫 [Interceptor] 日次上限超過により拒否"
-            );
-            return Err(NurtureError::DailyLimitExceeded {
-                limit: effective_daily_limit,
-                current: projected_spent,
-            });
-        }
-
-        // 月次上限チェック: ポリシーとウォレットの厳しい方。effective == 0 は無制限。
-        let effective_monthly_limit =
-            effective_spend_limit(wallet.monthly_limit, monthly_spend_limit);
-        if tx.amount_coins > 0 && effective_monthly_limit > 0 {
-            let projected_monthly = match wallet.spent_this_month.checked_add(tx.amount_coins) {
-                Some(v) => v,
-                None => {
+        // 日次/月次上限: spend_guard（日次=raw min / 月次=0無制限）。OP-083-B
+        if let Err(e) = nurture_core::spend_guard::check_spend_limits(
+            wallet.spent_today,
+            wallet.spent_this_month,
+            tx.amount_coins,
+            wallet.daily_limit,
+            daily_spend_limit,
+            wallet.monthly_limit,
+            monthly_spend_limit,
+        ) {
+            match &e {
+                NurtureError::DailyLimitExceeded { limit, current } => {
+                    tracing::warn!(
+                        buyer_id = %wallet.owner.0,
+                        tx_id = %tx.id,
+                        amount = tx.amount_coins,
+                        wallet_daily_limit = wallet.daily_limit,
+                        policy_daily_limit = daily_spend_limit,
+                        effective_limit = limit,
+                        spent_today = wallet.spent_today,
+                        projected = current,
+                        "🚫 [Interceptor] 日次上限超過により拒否"
+                    );
+                }
+                NurtureError::MonthlyLimitExceeded { limit, current } => {
+                    tracing::warn!(
+                        buyer_id = %wallet.owner.0,
+                        tx_id = %tx.id,
+                        amount = tx.amount_coins,
+                        wallet_monthly_limit = wallet.monthly_limit,
+                        policy_monthly_limit = monthly_spend_limit,
+                        effective_limit = limit,
+                        spent_this_month = wallet.spent_this_month,
+                        projected = current,
+                        "🚫 [Interceptor] 月次上限超過により拒否"
+                    );
+                }
+                NurtureError::PolicyViolation(reason) => {
                     tracing::error!(
                         buyer_id = %wallet.owner.0,
                         tx_id = %tx.id,
-                        spent_this_month = wallet.spent_this_month,
-                        amount = tx.amount_coins,
-                        "🚨 [Interceptor] spent_this_month の加算でオーバーフロー発生 — データ破損の可能性"
+                        reason = %reason,
+                        "🚨 [Interceptor] 支出計算オーバーフロー等"
                     );
-                    return Err(NurtureError::PolicyViolation(
-                        "システムエラー: 月次支出計算のオーバーフローを検知しました".to_string(),
-                    ));
                 }
-            };
-
-            if projected_monthly > effective_monthly_limit {
-                tracing::warn!(
-                    buyer_id = %wallet.owner.0,
-                    tx_id = %tx.id,
-                    amount = tx.amount_coins,
-                    wallet_monthly_limit = wallet.monthly_limit,
-                    policy_monthly_limit = monthly_spend_limit,
-                    effective_limit = effective_monthly_limit,
-                    spent_this_month = wallet.spent_this_month,
-                    "🚫 [Interceptor] 月次上限超過により拒否"
-                );
-                return Err(NurtureError::MonthlyLimitExceeded {
-                    limit: effective_monthly_limit,
-                    current: projected_monthly,
-                });
+                other => {
+                    tracing::error!(
+                        buyer_id = %wallet.owner.0,
+                        tx_id = %tx.id,
+                        error = %other,
+                        "🚨 [Interceptor] unexpected spend_guard error"
+                    );
+                }
             }
+            return Err(e);
         }
 
         // アノマリー検知: 高頻度取引チェック
@@ -284,16 +266,6 @@ impl EconomyInterceptor {
             "✅ [Interceptor] プリフライトチェック通過"
         );
         Ok(())
-    }
-}
-
-/// ウォレット上限とポリシー上限の厳しい方。両方 0 の場合は 0（無制限）。
-fn effective_spend_limit(wallet_limit: u64, policy_limit: u64) -> u64 {
-    match (wallet_limit, policy_limit) {
-        (0, 0) => 0,
-        (w, 0) => w,
-        (0, p) => p,
-        (w, p) => w.min(p),
     }
 }
 
