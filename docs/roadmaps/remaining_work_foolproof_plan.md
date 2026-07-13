@@ -4,7 +4,7 @@
 > **改訂**: v1.1 → **v1.2**（Human NT 拡充）→ **v1.3**（NT-2 実装ゲート分離）→ **v1.4**（2026-07-13: NT-2=done・§8 R-A〜R-D 閉じ / OPEN OP-078・077・079）→ **v1.5**（2026-07-13: Local LLM /reflexion 残リスク LL-A〜D → OP-080〜082）  
 > **根拠**: `OPEN.md` + `near_term_public_beta_plan.md` v5.1 + 運用正本（stripe-production-setup / QUICK_START_VERIFICATION / MESSAGING §8 / OPERATIONS_MANUAL §8 / release-preflight）  
 > **タスク正本**: [`OPEN.md`](../../OPEN.md)（本計画は手順のみ。ID の二重管理をしない）  
-> **ステータス**: Wave A1/A2/A3 ✅。NT-1 ✅。NT-2 ✅（§8 閉じ）。**いま NT-3**（OP-002 Biome 目視・human-only / LL-C）。残: NT-5/6/7 / Gate / OP-059-UI / LL follow（OP-080〜082・NT-6 ブロッカー外）
+> **ステータス**: Wave A1/A2/A3 ✅。NT-1 ✅。NT-2 ✅（§8 閉じ）。**いま NT-3**（OP-002 Biome 目視・human-only / LL-C）。残: NT-5/6/7 / Gate / LL follow（OP-081〜082・NT-6 ブロッカー外）。**OP-059-UI ✅ / OP-080 ✅ 2026-07-13**
 > **Human 実行の超詳細版（推奨）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）— Human コピペ正本。進行は **`/nt-assist`** + `scripts/nt_gate.py`（1ステップ・秘密禁止）。§2 H-1 は要約。
 
 ---
@@ -72,7 +72,7 @@ B5 実行前ゲート / `String` 戻り、B3=`Failed`、対象 5 箇所、napi �
 |----|------|------------|--------------|
 | **NT-1** | OP-057-R (1) | 手順 ✅ / 反映 ❌ | Vault |
 | **NT-2** | G1 / OP-078 ✅ | API+MC proxy DoD + §8 R-A〜R-D ✅（2026-07-13） | [`nt2_quickstart_unblock_plan.md`](nt2_quickstart_unblock_plan.md) §8（完了） |
-| **LL follow** | OP-080〜082 | Pattern A ✅ / B 実機❌ / git 未コミット | [`local_llm_ab_reflexion_plan.md`](local_llm_ab_reflexion_plan.md) §2（**NT-6 必須ブロッカー外**） |
+| **LL follow** | OP-080〜082 | Pattern A ✅ / **B 実機 ✅ OP-080** / git 未コミット(OP-081) | [`local_llm_ab_reflexion_plan.md`](local_llm_ab_reflexion_plan.md) §2（**NT-6 必須ブロッカー外**） |
 | **Commerce v3.3** | OP-083 | **B ✅ A ✅** → C/D=Federation後 | [`commerce_layer_tech_debt_plan_v3.md`](commerce_layer_tech_debt_plan_v3.md) |
 
 | **NT-3** | OP-002 | `BiomeCanvas.tsx:99` / `BiomeRenderer.tsx:187` DONE | 目視（**LL-C** = 同一） |
@@ -88,7 +88,7 @@ B5 実行前ゲート / `String` 戻り、B3=`Failed`、対象 5 箇所、napi �
 | **A1 / OP-059-C** | MESSAGING L179 + OPEN クローズ | ✅ 2026-07-10 | — |
 | **A2 / UI-SHELL** | App.tsx 786→456 + 6 ファイル分割 | ✅ 2026-07-11 | — |
 | **A3 / OP-075-B** | Fail-Closed **5** 箇所 | ✅ 2026-07-11 | — |
-| **OP-059-UI** | Settings `pro_monthly_kc_allowance` | 未着手 | 別承認後 |
+| **OP-059-UI** | Settings `pro_monthly_kc_allowance` | ✅ 2026-07-13 | — |
 
 ### 1.3 ゲート付き
 
@@ -245,7 +245,7 @@ Webhook7 / Pro / Negative復元
 
 | ID | OPEN | 要約 | ブロッカー |
 |----|------|------|------------|
-| **LL-A** | OP-080 | Pattern B 実機: `pattern-b-up` → API 煙 → `pattern-a-up` 復帰。Negative: 11434 競合 | **いいえ**（macOS quickstart は Pattern A で可） |
+| **LL-A** | OP-080 | Pattern B 実機 ✅ 2026-07-13（Positive + Negative dual-bind + A 復帰） | **いいえ**（macOS quickstart は Pattern A で可） |
 | **LL-B** | OP-081 | 未コミット diff の論理分割コミット（`.env` 除外） | いいえ（ユーザー承認後） |
 | **LL-C** | OP-002 | NT-3 Biome 目視 — **H-3 と同一** | **はい**（Public Beta Human ゲート） |
 | **LL-D** | OP-082 | Linux `extra_hosts`（需要ゲート後） | いいえ |
@@ -516,8 +516,8 @@ cargo test -p aiome-commerce -- --test-threads=1
 | KC 月次付与 | ✅ | `commerce_webhook/stripe.rs:346–381` |
 | 月間支出上限 | ✅ | ADR-050 + `interceptor.rs` + Settings `economy.monthly_spend_limit` |
 | ALLOWED キー | ✅ | `settings.rs:103` `pro_monthly_kc_allowance` |
-| Settings UI allowance | ❌ | **作らない**（OP-059-UI） |
-| stale 文 | ❌ | `MESSAGING.md:179` |
+| Settings UI allowance | ✅ | `SettingsPage.tsx` cockpit Commerce + Jest |
+| stale 文 | ✅ | `MESSAGING.md` 2026-07-13 更新 |
 
 ### 手順（確定文面）
 
@@ -526,7 +526,7 @@ cargo test -p aiome-commerce -- --test-threads=1
 ```markdown
 **【採否決定 2026-07-03 / 実装状況 2026-07-10】**: ハイブリッド案は採用済み。
 バックエンドは実装済み（月次 KC 付与: Stripe webhook / 月間支出上限: ADR-050 + interceptor + Settings）。
-Settings に `pro_monthly_kc_allowance` 入力 UI は未着手（OP-059-UI）。
+Settings に `pro_monthly_kc_allowance` 入力 UI 実装済み（OP-059-UI、2026-07-13）。
 **対外文書（LP・README）に含み枠の具体数値を書かないこと**は継続（L106・禁止表現 #1）。
 ```
 

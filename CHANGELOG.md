@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+### Verified (OP-080 Pattern B 2026-07-13)
+- **Local LLM Pattern B 実機**: `pattern-b-check` → `pattern-b-up` → `OLLAMA_HOST=host.docker.internal:11434` / `gemma4:26b` / `/health` PASS。Negative: container `aiome-ollama` 併走時の 11434 dual-bind リスクを記録し stop 後 B 復帰。`pattern-a-up` で Pattern A（`ollama:11434` / `gemma4:e4b`）復帰。
+
+### Added (OP-059-UI 2026-07-13)
+- **Settings**: cockpit Commerce セクションに `pro_monthly_kc_allowance` 入力（0=無効、最大 1,000,000 KC。Stripe `invoice.paid` 付与）。ja/en i18n + Jest 3 ケース追加。
+- **/reflexion**: placeholder を `0`（無効セマンティクス）に揃え、テストをラベル起点に変更（例示数値 1000 の暗示を排除）。
+
 ### Fixed (OP-083-A CommerceEngine supertrait 2026-07-13)
 - **トレイト分割**: `FiatPaymentRails`（checkout/portal/subscription/verify）+ `Web3PaymentRails`（stake/slash）を `CommerceEngine` の supertrait に。`Arc<dyn CommerceEngine>` 呼び出しは維持。8 impl 更新。`get_subscription_status` にデフォルト `None`。
 

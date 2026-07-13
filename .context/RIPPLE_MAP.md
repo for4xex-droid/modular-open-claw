@@ -1,3 +1,17 @@
+## 🔍 OP-080 Pattern B 実機（2026-07-13）
+
+- **変更内容**: コード変更なし。実機検証のみ（`local_llm_setup.sh` pattern-b / pattern-a）
+- **結果**: Positive PASS / Negative dual-bind 記録 / Pattern A 復帰 PASS
+- **非対象**: Pattern B を本番既定化、`.env` コミット
+
+## 🔍 OP-059-UI Pro monthly KC allowance Settings（2026-07-13）
+
+- **変更内容**:
+    - [`apps/management-console/src/components/SettingsPage.tsx`](apps/management-console/src/components/SettingsPage.tsx) [MODIFY]: cockpit Commerce に `pro_monthly_kc_allowance`
+    - ja/en i18n + `SettingsPage.test.tsx`（表示 / simple 非表示 / PUT key）
+- **波及効果**: Settings PUT のみ。webhook `parse_monthly_allowance` が読取時に解釈（Nurture 即時 sync なし）
+- **非対象**: Stripe webhook / ALLOWED_KEYS / LP 数値記載
+
 ## 🔍 OP-083-A CommerceEngine supertrait（2026-07-13）
 
 - **変更内容**:

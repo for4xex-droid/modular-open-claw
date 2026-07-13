@@ -386,6 +386,8 @@
     "saveSyncTools": "保存してツールを同期",
     "language": "言語",
     "monthlySpendLimit": "月間支出上限（KC、0 = 無制限）",
+    "proMonthlyKcAllowance": "Pro 月次 KC 含み枠",
+    "proMonthlyKcAllowanceHelp": "Stripe invoice.paid 成功時に付与する KC（0 = 無効、最大 1,000,000）。",
     "testDisabledInProd": "本番環境では SSRF 偵察を防ぐため接続テストは無効です。"
   },
   "setup": {

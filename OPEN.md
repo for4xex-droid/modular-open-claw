@@ -33,7 +33,7 @@
 - [x] **OP-078**: NT-2 /reflexion 残リスク §8 **R-A+R-B** → **2026-07-13 完了**（R-A: `--no-build` Generative FATAL → `--build` healthy；R-B 代理: クリーン volume Setup/login/Neg403/chat+MC proxy SSE → `down`。`nt_gate` browser=PASS）
 - [x] **OP-077**: api-server release 向け unused import 掃除（`router.rs` OpenApi / `karma.rs` tracing を `cfg(debug_assertions)` 化）→ **2026-07-13 完了**（NT-2 §8 R-C）
 - [x] **OP-079**: compose entrypoint の `/app/.intent_tmp` 二重 mkdir 撤去 → **2026-07-13 完了**（`/data/.intent_tmp` のみ・再作成後 healthy。NT-2 §8 R-D）
-- [ ] **OP-080**: Local LLM **Pattern B 実機検証**（`/reflexion` LL-A）— `pattern-b-check` → `pattern-b-up` → API 煙 → Negative（11434 競合）→ `pattern-a-up` 復帰。正本: [`local_llm_ab_reflexion_plan.md`](docs/roadmaps/local_llm_ab_reflexion_plan.md) §4（2026-07-13 計画化）
+- [x] **OP-080**: Local LLM **Pattern B 実機検証**（`/reflexion` LL-A）→ **2026-07-13 完了**（Positive: `host.docker.internal` + `gemma4:26b` + health。Negative: `aiome-ollama` 併走で 11434 dual-bind リスク記録、stop 後 B 復帰。`pattern-a-up` で A 復帰 + `ollama:11434` / `gemma4:e4b`）
 - [x] **OP-081**: Local LLM A/B + ViewMode + disk hygiene **git 分割コミット**（`/reflexion` LL-B）— `.env` 除外（2026-07-13 本コミットで反映）
 - [ ] **OP-082**: Pattern B **Linux** 向け `extra_hosts`（`/reflexion` LL-D）— Linux 需要ゲート後のみ。macOS quickstart は Pattern A 既定のまま（2026-07-13 計画化・低優先）
 - [ ] **OP-083**: **Commerce レイヤー技術負債 v3.3**（`/perfect-plan` 三度検証済 2026-07-13）— **B→A 先行**、C/D=Federation後。正本: [`commerce_layer_tech_debt_plan_v3.md`](docs/roadmaps/commerce_layer_tech_debt_plan_v3.md)。**B**=spend_guard（**日次/月次 0 セマンティクス分離**・7箇所）→ **A**=supertrait+verify→Fiat（8 impl）→ **C**=x402+Vault → **D**=u64↔U256。**日次0=無制限化禁止**。**Safety-Critical — フェーズごとに「実装しろ」承認必須**
@@ -68,8 +68,8 @@
 - [x] **OP-056**: フロント `useWorkflowApi` の `POST /api/v1/workflows/validate` とバックエンド `/api/v1/workflows/:id/validate` のパス不整合 → **2026-07-05 完了**（release_master_plan R1-13）
 - [x] **OP-057**: LP Stripe 決済基盤（Payment Link URL・Price ID・ローカル `.env`）→ 2026-07-05 完了（`plink_1TpXHCBcUTwo5TwLnO1BJneY` / `price_1TpXFpBcUTwo5TwLmK9SQbKL`）。**本番反映・Human 作業は ⏸️ 凍結 OP-057-R へ移管**（(2) 決済→Pro コードは 2026-07-05 完了済み）
 - [x] **OP-058**: `ProUpgradeModal`（402→アップグレード導線）→ 2026-07-04 解消（`App.tsx` ルートマウント + `STRIPE_PRICE_ID`）
-- [x] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠 + ✅ W-1 OXP relay 修正 + ✅ **R2-3 月間支出上限**（ADR-050、DB マイグレーション、インターセプタ、Settings UI `economy.monthly_spend_limit`、2026-07-06） → **2026-07-10 docs クローズ**（コードは先行完了。残: OP-059-UI = Settings allowance 入力）
-- [ ] **OP-059-UI**: Settings への `pro_monthly_kc_allowance` 入力 UI 実装（2026-07-10）
+- [x] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠 + ✅ W-1 OXP relay 修正 + ✅ **R2-3 月間支出上限**（ADR-050、DB マイグレーション、インターセプタ、Settings UI `economy.monthly_spend_limit`、2026-07-06） → **2026-07-10 docs クローズ**（コードは先行完了）
+- [x] **OP-059-UI**: Settings への `pro_monthly_kc_allowance` 入力 UI 実装 → **2026-07-13 完了**（cockpit Commerce セクション、`SettingsPage.test` 16 PASS）
 - [ ] **OP-062**: Tauri `NurtureMode::InProcess` variant — sidecar 起動と in-process の排他（ADR-012 残タスク）（2026-07-04）
 - [ ] **OP-068**: deny.toml `[advisories].ignore` に登録した 21 件（wasmtime 41.x / rustls-webpki 旧版 / idna 0.4 / quick-xml 0.39 / rand 0.8）の解消。実体は OP-030〜OP-034 の Upstream 待ちと同根。上流更新後に ignore を削除すること（2026-07-04。旧 OP-061 重複採番を 2026-07-05 改番）
 - [ ] **OP-063**: LP 用実プロダクト証拠ビジュアル撮影（MESSAGING §8 ショットリスト7点 + Quick Start GIF）。実データ・ダークテーマ・1920×1080 以上。バイラル32原則 #10 対応（ユーザー実施、2026-07-05）

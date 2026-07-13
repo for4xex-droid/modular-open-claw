@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-v10.0 以降、Wave 1/2・UI・OP-013・Vault・**OP-075/075-B・App.tsx 分割（2026-07-11）**が進み、Immune Fail-Open と god-shell は解消。残る主戦場は **OP-051（ADR-054）・OP-068 Upstream・OP-059-UI・Human NT-***。
+v10.0 以降、Wave 1/2・UI・OP-013・Vault・**OP-075/075-B・App.tsx 分割（2026-07-11）**が進み、Immune Fail-Open と god-shell は解消。残る主戦場は **OP-051（ADR-054）・OP-068 Upstream・Human NT-***（OP-059-UI は 2026-07-13 完了）。
 
 ### 主要な変化（v10 → v11）
 
@@ -177,7 +177,7 @@ v10.0 以降、Wave 1/2・UI・OP-013・Vault・**OP-075/075-B・App.tsx 分割�
 
 ## 9. Public Beta との関係（スコープ注意）
 
-直近の市場接触ゲート（`near_term_public_beta_plan.md` v5.1）は **Human 作業（NT-1 Vault 等）が律速**。P1（OP-075）/ OP-075-B / App.tsx 分割 / QW-19..23 / OP-054 可視性は **2026-07-10/11 実装済**。残る主戦場は OP-051 コード実装（ADR-054 承認後）・OP-068 Upstream・OP-059-UI・Human NT-*。
+直近の市場接触ゲート（`near_term_public_beta_plan.md` v5.1）は **Human 作業（NT-1 Vault 等）が律速**。P1（OP-075）/ OP-075-B / App.tsx 分割 / QW-19..23 / OP-054 可視性は **2026-07-10/11 実装済**。残る主戦場は OP-051 コード実装（ADR-054 承認後）・OP-068 Upstream・Human NT-*（OP-059-UI ✅ 2026-07-13）。
 
 ---
 

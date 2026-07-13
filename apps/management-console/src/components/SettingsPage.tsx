@@ -379,6 +379,21 @@ const SettingsPage: React.FC = () => {
                             saving={saving === 'economy.monthly_spend_limit'}
                         />
 
+                        <div>
+                            <SettingInput
+                                label={t('settings.proMonthlyKcAllowance', { defaultValue: 'Pro monthly KC allowance' }) as string}
+                                value={getSetting('pro_monthly_kc_allowance')}
+                                placeholder="0"
+                                onBlur={(v) => updateSetting('pro_monthly_kc_allowance', v, 'commerce')}
+                                saving={saving === 'pro_monthly_kc_allowance'}
+                            />
+                            <div className="ui-help-text">
+                                {t('settings.proMonthlyKcAllowanceHelp', {
+                                    defaultValue: 'KC granted on each Stripe invoice.paid (0 = disabled, max 1,000,000).',
+                                })}
+                            </div>
+                        </div>
+
                         {getSetting('commerce_provider') === 'stripe' && (
                             <>
                                 <div className="ui-field-stack ui-field-stack--xs ui-field-stack--mb-md">

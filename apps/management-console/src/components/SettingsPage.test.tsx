@@ -157,9 +157,57 @@ describe('SettingsPage Integrations', () => {
 
     expect(screen.getByText('settings.llmEngine')).toBeInTheDocument();
     expect(screen.getByText('settings.commerceEconomicBase')).toBeInTheDocument();
+    expect(screen.getByText('settings.proMonthlyKcAllowance')).toBeInTheDocument();
+    expect(screen.getByText('settings.proMonthlyKcAllowanceHelp')).toBeInTheDocument();
     expect(screen.getByText('settings.channelBridges')).toBeInTheDocument();
     expect(screen.getByText('settings.securityInfrastructure')).toBeInTheDocument();
     expect(screen.getByText('settings.featureFlags')).toBeInTheDocument();
+  });
+
+  it('hides Pro monthly KC allowance in simple mode', async () => {
+    mockViewMode = 'simple';
+    render(<SettingsPage />);
+
+    await screen.findByText('settings.appearance');
+    expect(screen.queryByText('settings.proMonthlyKcAllowance')).not.toBeInTheDocument();
+  });
+
+  it('persists pro_monthly_kc_allowance on blur', async () => {
+    mockViewMode = 'cockpit';
+    const mockAuthFetch = require('../lib/auth').authenticatedFetch;
+    mockAuthFetch.mockImplementation(async (url: string, options: { method?: string }) => {
+      if (url.includes('/api/v1/settings') && options?.method === 'PUT') {
+        return { ok: true };
+      }
+      return { ok: true, json: async () => [] };
+    });
+
+    render(<SettingsPage />);
+    await screen.findByText('settings.proMonthlyKcAllowance');
+
+    // Label → SettingInput root (parent of field-row) → input. Do not use placeholder
+    // (shared "0" with monthly spend; 0 = disabled semantics).
+    const label = screen.getByText('settings.proMonthlyKcAllowance');
+    const allowanceInput = label.closest('div')!.parentElement!.querySelector(
+      'input'
+    ) as HTMLInputElement;
+    expect(allowanceInput).toBeTruthy();
+    fireEvent.change(allowanceInput, { target: { value: '2500' } });
+    fireEvent.blur(allowanceInput);
+
+    await waitFor(() => {
+      expect(mockAuthFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/settings'),
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({
+            key: 'pro_monthly_kc_allowance',
+            value: '2500',
+            category: 'commerce',
+          }),
+        })
+      );
+    });
   });
 
   it('handles MCP Config Manager interactions', async () => {

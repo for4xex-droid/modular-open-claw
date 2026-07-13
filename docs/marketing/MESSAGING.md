@@ -176,9 +176,9 @@ A. ありません。MCP（Model Context Protocol）対応で外部ツールと�
 | 超過 | KC の追加チャージ（既存の Recharge UI をそのまま利用） |
 | 上限 | 月次支出上限を Settings で設定可能にする（既存 LLM 統計と連動） |
 
-**【採否決定 2026-07-03 / 実装状況 2026-07-10】**: ハイブリッド案は採用済み。
+**【採否決定 2026-07-03 / 実装状況 2026-07-13】**: ハイブリッド案は採用済み。
 バックエンドは実装済み（月次 KC 付与: Stripe webhook / 月間支出上限: ADR-050 + interceptor + Settings）。
-Settings に `pro_monthly_kc_allowance` 入力 UI は未着手（OP-059-UI）。
+Settings に `pro_monthly_kc_allowance` 入力 UI 実装済み（OP-059-UI、cockpit Commerce セクション）。
 **対外文書（LP・README）に含み枠の具体数値を書かないこと**は継続（L106・禁止表現 #1）。
 
 ## 10. 禁止表現リスト

@@ -386,6 +386,8 @@
     "saveSyncTools": "Save & Sync Tools",
     "language": "Language",
     "monthlySpendLimit": "Monthly spend limit (KC, 0 = unlimited)",
+    "proMonthlyKcAllowance": "Pro monthly KC allowance",
+    "proMonthlyKcAllowanceHelp": "KC granted on each Stripe invoice.paid (0 = disabled, max 1,000,000).",
     "testDisabledInProd": "Connection testing is disabled in production to protect against SSRF reconnaissance."
   },
   "setup": {
