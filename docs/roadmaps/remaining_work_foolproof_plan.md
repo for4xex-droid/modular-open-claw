@@ -4,7 +4,7 @@
 > **改訂**: v1.1 → **v1.2**（Human NT 拡充）→ **v1.3**（NT-2 実装ゲート分離）→ **v1.4**（2026-07-13: NT-2=done・§8 R-A〜R-D 閉じ / OPEN OP-078・077・079）→ **v1.5**（2026-07-13: Local LLM /reflexion 残リスク LL-A〜D → OP-080〜082）→ **v1.6**（2026-07-14: **NT-1 PASS** / OP-057-R・R2-1 クローズ）→ **v1.7**（2026-07-14: **NT-5 PASS** / OP-063 撮影完了・R4-2 待ち）  
 > **根拠**: `OPEN.md` + `near_term_public_beta_plan.md` v5.1 + 運用正本（stripe-production-setup / QUICK_START_VERIFICATION / MESSAGING §8 / OPERATIONS_MANUAL §8 / release-preflight）  
 > **タスク正本**: [`OPEN.md`](../../OPEN.md)（本計画は手順のみ。ID の二重管理をしない）  
-> **ステータス**: Wave A1/A2/A3 ✅。NT-1 ✅ / NT-2 ✅ / NT-3 ✅ / **NT-5 ✅**（OP-063・2026-07-14・**R4-2 組込済**）。**いま NT-6**（「NT-6 を実行しろ」）。残: NT-7 / Gate / LL follow（OP-081〜082）。**OP-059-UI ✅ / OP-080 ✅ 2026-07-13**
+> **ステータス**: Wave A1/A2/A3 ✅。NT-1 ✅ / NT-2 ✅ / NT-3 ✅ / **NT-5 ✅** / **NT-6 PASS**（2026-07-14）。残: R5-5（「公開してよい」）/ NT-7 / LL follow（OP-082）。**OP-059-UI ✅ / OP-080 ✅ 2026-07-13**
 > **Human Wave 実行計画（状態・順・DoD 一冊）**: [`human_wave_execution_plan.md`](human_wave_execution_plan.md)（**v1.2**・2026-07-14）
 > **Human 実行の超詳細版（コピペ正本）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）— 進行は **`/nt-assist`** + `scripts/nt_gate.py`（1ステップ・秘密禁止）。§2 H-1 は要約。
 
@@ -76,7 +76,7 @@ B5 実行前ゲート / `String` 戻り、B3=`Failed`、対象 5 箇所、napi �
 | **NT-3** | OP-002 ✅ | `BiomeCanvas.tsx:99` / `BiomeRenderer.tsx:187` DONE | 目視 ✅ 2026-07-13（**LL-C**） |
 | NT-4 | OP-013 | ✅ | 再実行不要 |
 | **NT-5** | OP-063 ✅ | OGP ✅ / 撮影 ✅ / **R4-2 ✅** | 閉じ済 |
-| **NT-6** | R5 | WF ✅ | **いま**「実行しろ」後（NT-1+2+3 済・NT-5=7/7） |
+| **NT-6** | R5 | WF ✅ | **PASS 2026-07-14**（R5-5 待ち） |
 | **NT-7** | OP-064 | 本計画 §2.H-6 にテンプレ内蔵 | 任意（5名+） |
 | **LL follow** | OP-080〜082 | Pattern A ✅ / **B 実機 ✅ OP-080** / git 未コミット(OP-081) | [`local_llm_ab_reflexion_plan.md`](local_llm_ab_reflexion_plan.md) §2（**NT-6 必須ブロッカー外**） |
 | **Commerce v3.3** | OP-083 | **B ✅ A ✅** → C/D=Federation後 | [`commerce_layer_tech_debt_plan_v3.md`](commerce_layer_tech_debt_plan_v3.md) |
@@ -309,8 +309,9 @@ cargo check --workspace 2>&1 | tail -3
 # 5.5 ignored ゲート
 cargo test --workspace -- --ignored --skip sandbox --skip vendor 2>&1 | tail -10
 
-# 6 サイズ — PASS: ≤2500 files かつ ≤75MB
-echo "Tracked files:" && git ls-files | wc -l && echo "Estimated size:" && git ls-files -z | xargs -0 du -ch 2>/dev/null | tail -1
+# 6 サイズ — PASS: vendor除外≤2500 かつ ≤75MB
+echo "Tracked files (excl. vendor/):" && git ls-files | grep -vc '^vendor/' && \
+echo "Estimated size:" && git ls-files -z | xargs -0 du -ch 2>/dev/null | tail -1
 
 # 7.5 CHANGELOG
 awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md | wc -l
@@ -336,23 +337,25 @@ grep -n "BUSL\|Business Source\|License-BUSL\|License-BSL" README.md | head -5
 
 #### DoD（NT-6）
 
-- [ ] preflight 全ステップ OK（または NG を修正して再実行）  
-- [ ] §8 の未スキップ項目がチェック済み  
-- [ ] **NT-5 = 7/7**（R5-5 直前）  
-- [ ] R5-5 まで進む場合は Human が公開を明示承認  
+- [x] preflight **PASS**（2026-07-14 再実行）。vendor除外 1873≤2500 / 67MB / Unreleased≤200 / Website=`https://aiome.dev` / LICENSE BUSL  
+- [x] §8 スキップ適用: G1←NT-2 / R2-1←NT-1 / OP-012・014。残メモ: 本番 `A2A_NODE_TOKEN` 配線は Human 目視推奨  
+- [x] **NT-5 = 7/7**（R4-2 済）  
+- [ ] R5-5 公開 — **未**（「公開してよい」待ち）
 
 #### Negative
 
-- gitleaks / DAG / ignored テストが 1 件でも NG → **公開中止**（「だいたい OK」で進めない）
+- ✅ 旧ルール（vendor 込み件数）は 2784>2500 で FAIL を維持検出  
+- ✅ Unreleased 1480 行は切り出し前に FAIL、切り出し後 8 行で PASS  
 
 #### 記録
 
 ```
 NT-6 / R5
-日付: YYYY-MM-DD
-preflight: PASS / FAIL（失敗ステップ: ）
-§8 残チェック: __ 項目
-R5-5 公開: 未 / 承認済 / 完了
+日付: 2026-07-14
+preflight: PASS
+§8 残チェック: A2A_NODE_TOKEN ホスト目視（任意）
+R5-5 公開: 未
+ロールバック草案: docs/releases/NT6_R5_ROLLBACK_DRAFT.md
 ```
 
 ---

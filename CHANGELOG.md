@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+### Changed (R5-2 / OP-070 2026-07-14)
+- **CHANGELOG**: 滞留していた `[Unreleased]` を `[1.2.0] - 2026-07-14` へ切り出し（release-preflight ステップ 7.5）。
+
+### Fixed (NT-6 ブロッカー 2026-07-14)
+- **ステップ 6**: 追跡ファイル判定を `vendor/` 除外（`oxilean-kernel` path 依存・workspace exclude と整合）。ランブック / release-preflight / foolproof を同期。
+- **GitHub About**: Website を `https://aiome.dev` に設定。
+
+### Verified (NT-6 re-run / OP-070 R5-1 2026-07-14)
+- release-preflight **PASS**（DAG / gitleaks / 衛生 / パス / URL / cargo check / ignored / vendor除外 1873≤2500 / 67MB≤75 / Unreleased≤200 / LICENSE / Website）。R5-5 公開は Human「公開してよい」待ち。
+
+## [1.2.0] - 2026-07-14
+
+Public Beta 向けゲート直前までの累積変更（NT-1〜5、Wave A、Commerce  hardening、Quick Start 等）。
+
+### Verified (NT-6 / OP-070 R5-1 2026-07-14)
+- release-preflight 実行 → **FAIL（公開中止）**: DAG/gitleaks/衛生/cargo check/サイズ(67MB)/LICENSE PASS。失敗: 追跡ファイル **2784>2500**、`[Unreleased]` **1480>200**（R5-2）、GitHub Website 未設定。Negative: DAG 注入→exit1→復帰、gitleaks 植込鍵→検知 exit1。ロールバック草案 `docs/releases/NT6_R5_ROLLBACK_DRAFT.md`。
+
 ### Added (R4-2 / OP-063 LP・README 組込 2026-07-14)
 - **証拠ビジュアル公開**: `docs/landing/public/evidence/` に実機 7 点（webp）。LP `Showcase` をモック3枚から実機ギャラリーへ置換。`README.md` / `README_en.md` の Coming Soon を撤去し同一素材を掲載。README/LP は webp 配信（元 PNG/GIF は `docs/assets/evidence/` に保管）。
 

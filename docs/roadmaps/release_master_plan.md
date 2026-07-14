@@ -137,11 +137,11 @@ R0 台帳照合 ──→ R1 コード完成（UI残 + 小粒P1） ──→ R2 
 
 | ID | タスク | 担当 | DoD |
 |---|---|---|---|
-| R5-1 | `/release-preflight` 全ステップ実行（0 / 0.5 / 1–8 / 5.5 / 7.5 — DAG・gitleaks・衛生・ローカルパス・URL・ビルド・ゲートテスト・サイズ・About・CHANGELOG・LICENSE）。実行順の正本は [`near_term_public_beta_plan.md`](near_term_public_beta_plan.md) NT-6 | Main | 全ステップ OK |
-| R5-2 | CHANGELOG [Unreleased] のバージョン切り出し（現在200行超過 → ステップ7.5 必須） | Sub | [Unreleased] 200行以下 |
-| R5-3 | ロールバック計画の明文化（Feature Flag 無効化・`git revert`・DB ダウングレード手順） | Main | リリースノートに記載 |
-| R5-4 | ドキュメント最終同期（README/README_en・RIPPLE_MAP・OPEN.md クローズ処理） | Sub | docs-sync チェック PASS |
-| R5-5 | タグ付与 + リリースノート + 公開 | **Human** 承認 → Main | GitHub Release 発行 |
+| R5-1 | `/release-preflight` 全ステップ実行（0 / 0.5 / 1–8 / 5.5 / 7.5 — DAG・gitleaks・衛生・ローカルパス・URL・ビルド・ゲートテスト・サイズ・About・CHANGELOG・LICENSE）。実行順の正本は [`near_term_public_beta_plan.md`](near_term_public_beta_plan.md) NT-6 | Main | **✅ PASS 2026-07-14**（再実行。vendor除外カウント） |
+| R5-2 | CHANGELOG [Unreleased] のバージョン切り出し（現在200行超過 → ステップ7.5 必須） | Sub | **✅ `[1.2.0] - 2026-07-14`** |
+| R5-3 | ロールバック計画の明文化（Feature Flag 無効化・`git revert`・DB ダウングレード手順） | Main | **✅ `docs/releases/NT6_R5_ROLLBACK_DRAFT.md`** |
+| R5-4 | ドキュメント最終同期（README/README_en・RIPPLE_MAP・OPEN.md クローズ処理） | Sub | 任意（台帳同期済） |
+| R5-5 | タグ付与 + リリースノート + 公開 | **Human** 承認 → Main | **未**（「公開してよい」待ち） |
 
 ---
 

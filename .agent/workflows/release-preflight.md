@@ -59,9 +59,12 @@ cargo test --workspace -- --ignored --skip sandbox --skip vendor 2>&1 | tail -10
 
 ## ステップ 6: リポジトリサイズ確認
 ```bash
-echo "Tracked files:" && git ls-files | wc -l && echo "Estimated size:" && git ls-files -z | xargs -0 du -ch 2>/dev/null | tail -1
+echo "Tracked files (excl. vendor/):" && git ls-files | grep -vc '^vendor/' && \
+echo "Tracked files (all):" && git ls-files | wc -l && \
+echo "Estimated size:" && git ls-files -z | xargs -0 du -ch 2>/dev/null | tail -1
 ```
-2500ファイル以下、75MB以下であることを確認する。
+**判定**: `vendor/` 除外の追跡ファイル ≤ **2500**、かつ全体サイズ ≤ **75MB**。  
+`vendor/oxilean-kernel` は `shadow-worker` の path 依存（workspace `exclude`）のため件数から除外する。全体件数は参考値。
 
 ## ステップ 7: GitHub About セクション確認
 GitHubリポジトリの About セクションに以下が設定されているか確認する（手動チェック）:

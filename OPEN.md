@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-14（NT-5）**
+**最終更新: 2026-07-14（NT-6 PASS）**
 
 > **実装手順の正本**:
 > - **Human Wave 実行計画（残 NT の状態・順・DoD 一冊）**: [`docs/roadmaps/human_wave_execution_plan.md`](docs/roadmaps/human_wave_execution_plan.md)（**v1.2**・2026-07-14）
@@ -30,7 +30,7 @@
 
 ## 🟠 P1 / 次期リリース
 
-- [ ] **OP-070**: **リリース・本番化マスタープラン**（`docs/roadmaps/release_master_plan.md` v1）の実行。**R0/R1/R2 コード完了**（2026-07-05〜06）。**R3-1 OP-012 ✅** / **R3-2 OP-014 ✅** / **R3-4 チェックリスト ✅** / **R2-4 OP-013 ✅**（2026-07-10）。**R3-4 公式 compose 実走 ✅（2026-07-13・API 代理+OP-078 ブラウザ代理 / NT-2 done）**。**R2-1 ✅（2026-07-14・NT-1）**。**R4-1 ✅ / R4-2 ✅（2026-07-14・NT-5 撮影 + LP/README 組込）**。残: R5 preflight + 公開。
+- [ ] **OP-070**: **リリース・本番化マスタープラン**（`docs/roadmaps/release_master_plan.md` v1）の実行。**R0/R1/R2 コード完了**（2026-07-05〜06）。**R3-1 OP-012 ✅** / **R3-2 OP-014 ✅** / **R3-4 チェックリスト ✅** / **R2-4 OP-013 ✅**（2026-07-10）。**R3-4 公式 compose 実走 ✅（2026-07-13・API 代理+OP-078 ブラウザ代理 / NT-2 done）**。**R2-1 ✅（2026-07-14・NT-1）**。**R4-1 ✅ / R4-2 ✅（2026-07-14・NT-5 撮影 + LP/README 組込）**。**R5-1 NT-6 PASS（2026-07-14 再実行）** / **R5-2 ✅**（`[1.2.0] - 2026-07-14` 切り出し） / **R5-3 ✅**（`docs/releases/NT6_R5_ROLLBACK_DRAFT.md`）。残: R5-4 docs-sync（任意） / **R5-5**（「公開してよい」）。
 - [x] **OP-078**: NT-2 /reflexion 残リスク §8 **R-A+R-B** → **2026-07-13 完了**（R-A: `--no-build` Generative FATAL → `--build` healthy；R-B 代理: クリーン volume Setup/login/Neg403/chat+MC proxy SSE → `down`。`nt_gate` browser=PASS）
 - [x] **OP-077**: api-server release 向け unused import 掃除（`router.rs` OpenApi / `karma.rs` tracing を `cfg(debug_assertions)` 化）→ **2026-07-13 完了**（NT-2 §8 R-C）
 - [x] **OP-079**: compose entrypoint の `/app/.intent_tmp` 二重 mkdir 撤去 → **2026-07-13 完了**（`/data/.intent_tmp` のみ・再作成後 healthy。NT-2 §8 R-D）

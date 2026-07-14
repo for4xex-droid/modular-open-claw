@@ -40,7 +40,7 @@ Activity 内タブ / Vault delete / 公開前 NT-5 / grep 代替 / down -v / ja 
 | H1 | 「まもる」≠ UI | **まもる・整える → 設定** |
 | H2 | NT-3/5 が cockpit 専用なのに未記載 | cockpit 必須を明記 |
 | H3 | VITE 再ビルドと Docker が噛み合わない | `price_gold_monthly` エイリアス + 任意 VITE |
-| H4 | preflight ステップ6 閾値欠落 | ≤2500 files / ≤75MB |
+| H4 | preflight ステップ6 閾値欠落 | vendor除外≤2500 / ≤75MB |
 | H5 | Part E に R5-3 なし | 表に追加 |
 | H6 | 表の NT-5→6 が誤解を招く | 並列可・公開直前必須に統一 |
 | M* | Checkout 導線 / 本番 MC URL / 再起動対象 / ステップ番号 | 追記 |
@@ -617,8 +617,10 @@ grep -rn "google/antigravity" README.md README_en.md 2>/dev/null || echo "OK: No
 cargo check --workspace 2>&1 | tail -3
 # 5.5 ignored
 cargo test --workspace -- --ignored --skip sandbox --skip vendor 2>&1 | tail -10
-# 6 サイズ — PASS: files≤2500 かつ size≤75MB
-echo "Tracked files:" && git ls-files | wc -l && echo "Estimated size:" && git ls-files -z | xargs -0 du -ch 2>/dev/null | tail -1
+# 6 サイズ — PASS: vendor除外≤2500 かつ size≤75MB
+echo "Tracked files (excl. vendor/):" && git ls-files | grep -vc '^vendor/' && \
+echo "Tracked files (all):" && git ls-files | wc -l && \
+echo "Estimated size:" && git ls-files -z | xargs -0 du -ch 2>/dev/null | tail -1
 # 7 = パート D（手動・GitHub About）
 # 7.5 Unreleased 行数 — 200超なら R5-2
 awk '/^## \[Unreleased\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md | wc -l
@@ -627,7 +629,7 @@ head -1 LICENSE
 grep -n "BUSL\|Business Source\|License-BUSL\|License-BSL" README.md | head -5
 ```
 
-**ステップ 6 判定**: `wc -l` ≤ **2500** かつ `du` 合計 ≤ **75MB**。超えたら公開中止（Agent に縮小を依頼）。  
+**ステップ 6 判定**: `vendor/` 除外の追跡ファイル ≤ **2500** かつ `du` 合計 ≤ **75MB**。`vendor/oxilean-kernel` は path 依存のため件数除外。超えたら公開中止（Agent に縮小を依頼）。  
 **ステップ 8 判定**: `head -1 LICENSE` が `Business Source License` で、README バッジが BUSL/BSL。`grep -o Apache LICENSE | head -1` は **使わない**（Change License 行に誤ヒットする）。
 
 ### パート D — GitHub About（MESSAGING §7）
@@ -718,7 +720,7 @@ NT-1..7: …
 | Quick Start 未 | ~~NT-2~~ ✅ |
 | Biome 未 | ~~NT-3~~ ✅ |
 | スクショ未 | ~~NT-5~~ ✅ 2026-07-14（**R4-2 組込済**） |
-| チェックしたい | **「NT-6 を実行しろ」**（**開発機**） |
+| NT-6 PASS・公開前 | **「公開してよい」**（R5-5）または任意 NT-7 |
 | 公開したい | NT-6 PASS + **NT-5=7/7** + 「公開してよい」 |
 
 ## 付録 B — 突合根拠

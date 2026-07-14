@@ -93,6 +93,18 @@
 - **波及効果**: Human はランブック全文を読まずに NT を進行可能。Agent は秘密を扱わない。
 - **非対象**: cell/commercial/docker-publish、OP-059-UI
 
+## 🔍 NT-6 PASS（ブロッカー解消 + 再実行 2026-07-14）
+
+- **変更内容**: R5-2 `[1.2.0]` 切り出し、GitHub Website=`https://aiome.dev`、ステップ6を `vendor/` 除外に修正。OPEN / human_wave / foolproof / release_master / CHANGELOG / RIPPLE 同期。
+- **波及効果**: R5-5 は Human「公開してよい」のみ。任意 NT-7 / R5-4。
+- **非対象**: タグ打ち、Release 発行、本番秘密の開示
+
+## 🔍 NT-6 release-preflight FAIL（2026-07-14）
+
+- **変更内容**: Part A ロールバック草案 `docs/releases/NT6_R5_ROLLBACK_DRAFT.md` [NEW]。OPEN OP-070 / human_wave / foolproof / runbook 付録 / CHANGELOG に FAIL 記録。公開・タグなし。
+- **波及効果**: R5-5 禁止。次 Human: 追跡≤2500 方針 / 「R5-2 を実装しろ」 / GitHub Website=`https://aiome.dev` → 「NT-6 を再実行しろ」。
+- **非対象**: R5-5、閾値の無断変更、本番 `.env` 秘密の開示
+
 ## 🔍 R4-2 LP/README 証拠組込（2026-07-14）
 
 - **変更内容**: `docs/landing/public/evidence/`（GIF+webp）、`Showcase.tsx` 実機ギャラリー、`README.md` / `README_en.md` Coming Soon 撤去。OPEN OP-063 / OP-070 R4-2 / release_master / human_wave / foolproof / CHANGELOG 同期。
