@@ -93,6 +93,12 @@
 - **波及効果**: Human はランブック全文を読まずに NT を進行可能。Agent は秘密を扱わない。
 - **非対象**: cell/commercial/docker-publish、OP-059-UI
 
+## 🔍 R5-5 Public Beta 公開（2026-07-14）
+
+- **変更内容**: Human「公開してOK」。タグ `v1.2.0` + GitHub Release。OPEN OP-070 `[x]`。human_wave / foolproof / release_master / CHANGELOG / runbook 同期。
+- **波及効果**: 公開ゲート完了。次は任意 NT-7 / Stripe 方針 B / ポストリリース。
+- **非対象**: Live キー切替、有償 KC マーケット
+
 ## 🔍 NT-6 PASS（ブロッカー解消 + 再実行 2026-07-14）
 
 - **変更内容**: R5-2 `[1.2.0]` 切り出し、GitHub Website=`https://aiome.dev`、ステップ6を `vendor/` 除外に修正。OPEN / human_wave / foolproof / release_master / CHANGELOG / RIPPLE 同期。

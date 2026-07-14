@@ -8,7 +8,10 @@
 - **GitHub About**: Website を `https://aiome.dev` に設定。
 
 ### Verified (NT-6 re-run / OP-070 R5-1 2026-07-14)
-- release-preflight **PASS**（DAG / gitleaks / 衛生 / パス / URL / cargo check / ignored / vendor除外 1873≤2500 / 67MB≤75 / Unreleased≤200 / LICENSE / Website）。R5-5 公開は Human「公開してよい」待ち。
+- release-preflight **PASS**（DAG / gitleaks / 衛生 / パス / URL / cargo check / ignored / vendor除外 1873≤2500 / 67MB≤75 / Unreleased≤200 / LICENSE / Website）。
+
+### Verified (R5-5 / OP-070 2026-07-14)
+- Human「公開してOK」承認。タグ **`v1.2.0`** + [GitHub Release](https://github.com/motivationstudio-llc/aiome/releases/tag/v1.2.0) 発行。リポジトリ public。Stripe は方針 A（Test）維持。
 
 ## [1.2.0] - 2026-07-14
 

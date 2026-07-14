@@ -1,8 +1,8 @@
 # リリース・本番化マスタープラン（Release Master Plan v1）
 
-- **ステータス**: 実装進行中（R0/R1/R2 コード完了 — **R2-1 ✅ 2026-07-14**（NT-1 / OP-057-R）/ R3-1・R3-2・R3-4 チェックリスト ✅ 2026-07-06 / R3-4 実走 ✅ 2026-07-13）。残 Human: R4 / R5。**Wave 1/2（OP-024/060/061/067/069）完了**。**TECH_DEBT Top5 のうち OP-075/054/029/076 完了**（2026-07-10）。OP-051 は ADR-054 Proposed。
+- **ステータス**: **Public Beta 公開完了（2026-07-14）** — `v1.2.0` Release。R0〜R5 ゲート完了。Stripe は方針 A（Test）。残 Human フォロー: R4-3/NT-7・方針 B。**Wave 1/2 / Top5 消化済**。OP-051 は ADR-054 Proposed。
 - **作成日**: 2026-07-05
-- **最終更新**: 2026-07-14
+- **最終更新**: 2026-07-14（R5-5）
 - **目的**: 残存タスク全量を単一の実行計画に統合し、Public Beta リリースと本番化を「計画通りに実装すれば確実に完了する」状態にする。
 - **正本関係**: タスク台帳の正本は `OPEN.md`。本計画は「リリースまでの実行順序・依存・完了基準」を定義する層であり、二重管理はしない（本計画の項目は必ず OP 番号で OPEN.md と対応させる）。
 - **根拠**: OPEN.md 全量精査 + ロードマップ14本の未完了項目調査（サブエージェント）+ CHANGELOG 突合。調査報告のうち以下4件は**陳腐化**を確認済み: W-1 OXP relay（✅ CHANGELOG L79）/ ProUpgradeModal マウント（✅ OP-058）/ LP main push（✅ 2026-07-05）/ Biome Phase 5 P5-1〜P5-5（✅ CHANGELOG「面白さの核」+ ADR-049）。
@@ -141,7 +141,7 @@ R0 台帳照合 ──→ R1 コード完成（UI残 + 小粒P1） ──→ R2 
 | R5-2 | CHANGELOG [Unreleased] のバージョン切り出し（現在200行超過 → ステップ7.5 必須） | Sub | **✅ `[1.2.0] - 2026-07-14`** |
 | R5-3 | ロールバック計画の明文化（Feature Flag 無効化・`git revert`・DB ダウングレード手順） | Main | **✅ `docs/releases/NT6_R5_ROLLBACK_DRAFT.md`** |
 | R5-4 | ドキュメント最終同期（README/README_en・RIPPLE_MAP・OPEN.md クローズ処理） | Sub | 任意（台帳同期済） |
-| R5-5 | タグ付与 + リリースノート + 公開 | **Human** 承認 → Main | **未**（「公開してよい」待ち） |
+| R5-5 | タグ付与 + リリースノート + 公開 | **Human** 承認 → Main | **✅ 2026-07-14**（`v1.2.0` + [Release](https://github.com/motivationstudio-llc/aiome/releases/tag/v1.2.0)） |
 
 ---
 
