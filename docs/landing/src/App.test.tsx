@@ -71,6 +71,14 @@ describe('App Routing', () => {
     expect(hasHeroText).not.toBeInTheDocument();
   });
 
+  it('renders tokushoho on /tokushoho/ (trailing slash)', () => {
+    window.location.pathname = '/tokushoho/';
+    render(<App />);
+    const hasTokushohoTitle = screen.queryAllByText(/特定商取引法/i).length > 0 ||
+                              screen.queryAllByText(/Specified Commercial/i).length > 0;
+    expect(hasTokushohoTitle).toBe(true);
+  });
+
   it('renders cancellation policy on /cancellation', () => {
     window.location.pathname = '/cancellation';
     render(<App />);

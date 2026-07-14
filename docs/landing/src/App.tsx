@@ -34,7 +34,8 @@ function App() {
     document.documentElement.lang = i18n.language;
   }, [i18n.language]);
 
-  const path = window.location.pathname;
+  // Trailing slash を正規化（GitHub Pages / 直打ち両対応）
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
 
   // Lightweight conditional routing
   if (path === '/privacy') {

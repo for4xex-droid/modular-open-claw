@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed (/reflexion OP-085 仕上げ 2026-07-15)
+- **commerce_policy.md**: 凍結バナー + Fiat→KC 記述を SUPERSEDED 明示（公開正本は TERMS/TOKUSHOHO/KC_LEGAL_POSITION）。
+- **LP ルーティング**: `/tokushoho/` 等の trailing slash を正規化。住所・電話の正本同期テストを追加。
+
 ### Fixed (OP-085 法務クリア仕上げ 2026-07-15)
 - **AiaaOnboardingWizard**: zero-UUID Checkout を禁止し、ログイン中 `agentId` のみ使用（未ログインは明示エラー）。Negative テスト追加。
 - **stripe-setup.md**: 14日トライアル前提の記述を撤去。Payment Link 検証を「意図しない 14 days free が残っていないこと」に更新。

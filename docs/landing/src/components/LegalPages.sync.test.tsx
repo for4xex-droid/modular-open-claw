@@ -58,4 +58,18 @@ describe('LegalPages sync with docs/legal canonical sources', () => {
     expect(legalPagesSource).not.toContain('チャージ代金');
     expect(legalPagesSource).not.toContain('理由の如何を問わず一切の返金');
   });
+
+  it('TokushohoPage discloses the same address and phone as TOKUSHOHO.md', () => {
+    const tokushoho = readFileSync(path.join(legalDir, 'TOKUSHOHO.md'), 'utf-8');
+    const addressMatch = tokushoho.match(/## 所在地\s*\n\n(.+)/);
+    const phoneMatch = tokushoho.match(/## 電話番号\s*\n\n([0-9-]+)/);
+    expect(addressMatch?.[1]).toBeTruthy();
+    expect(phoneMatch?.[1]).toBeTruthy();
+    // LP は括弧注記付き全文を載せるため、住所本文と電話番号のコアが含まれること
+    const addressCore = addressMatch![1].replace(/（.+$/, '').trim();
+    const phone = phoneMatch![1].trim();
+    expect(addressCore.length).toBeGreaterThan(0);
+    expect(legalPagesSource).toContain(addressCore);
+    expect(legalPagesSource).toContain(phone);
+  });
 });
