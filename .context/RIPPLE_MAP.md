@@ -1,3 +1,38 @@
+## 🔍 OP-085 法務クリア仕上げ（2026-07-15）
+
+- **変更内容**: AiaaOnboardingWizard 実 agent_id / トライアル文書整合 / 本店住所電話 / COMPLIANCE_CHECKLIST / OP-085 クローズ
+- **波及**: agency タブ Checkout のみ。`commerce.rs` 非変更
+- **非対象**: Stripe Live 切替（OP-084）、Payment Link Dashboard 操作（Human）
+
+## 🔍 OP-085 LG1/LG3/LG4 法務文書 v2 実装（2026-07-14）
+
+- **変更内容**:
+    - `docs/legal/` [MODIFY×3 + NEW×5]: TERMS v2.0 / TOKUSHOHO v2.0 / PRIVACY v2.0 + CANCELLATION_POLICY / KC_LEGAL_POSITION / CONSENT_SPEC / REVIEW_PACKAGE / README（正本管理）
+    - [`apps/api-server/src/routes/setup.rs`](apps/api-server/src/routes/setup.rs) [MODIFY]: `tos_version`（serde default・省略可）受理 + `tos_accepted_version` / `tos_accepted_at` を settings(legal) へ記録
+    - [`apps/api-server/src/api_integration_tests/setup.rs`](apps/api-server/src/api_integration_tests/setup.rs) [MODIFY]: 証跡 Positive + 非同意 400 Negative（3 PASS）
+    - MC: `config.ts`（`TOS_VERSION` / `LEGAL_BASE_URL`）、`SetupWizard.tsx`（全文リンク + tos_version 送信）、`ProUpgradeModal.tsx`（renewalNotice + 法務リンク 3 本）、i18n ja/en
+    - LP [Sub 完了]: `LegalPages.tsx` 4 ページ同期 + `App.tsx` `/cancellation` + `Footer(.test).tsx` + i18n 景表法是正 + `LegalPages.sync.test.tsx`（乖離検知・Negative 確認済）。LP 71 PASS / build PASS
+- **波及効果**: `SetupInitRequest` スキーマ拡張は Optional のため旧クライアント非破壊。auth ロジック（claims/token）は非変更。
+- **非対象**: 再同意モーダル（規約改訂時・将来）、Stripe trial 実装（OP-084 L1-5・Safety-Critical）、`commerce.rs` 系
+
+## 🔍 OP-085 法務ドキュメント整備計画策定（2026-07-14）
+
+- **変更内容**:
+    - [`docs/roadmaps/legal_docs_plan.md`](docs/roadmaps/legal_docs_plan.md) [NEW]: 法務文書整備計画 v1（LG0〜LG5、成果物 D-1〜D-8）
+    - コード変更なし（計画フェーズ。棚卸し読み取りのみ）
+- **照合根拠**: `docs/landing/src/components/LegalPages.tsx`（Privacy/Terms/Tokushoho）/ `docs/legal/` 5 本 / `commercial/docs/legal/` draft 2 本 / `SetupWizard.tsx` click-wrap
+- **波及効果（実装時 LG4）**: LP `LegalPages.tsx`・`Footer.test.tsx`・`Deployment.test.ts`、MC `SetupWizard(.test).tsx`・`ProUpgradeModal`・i18n ja/en、`docs/legal/*.md`
+- **非対象**: 有償 KC チャージ規約の本稼働（A-6/A-7 は凍結棚のまま）・`commerce_policy.md` / `voice_upload_terms.md` の改訂
+
+## 🔍 OP-084 実課金オープン計画策定（2026-07-14）
+
+- **変更内容**:
+    - [`docs/roadmaps/live_billing_open_plan.md`](docs/roadmaps/live_billing_open_plan.md) [NEW]: Stripe 方針 B（Live）切替計画 v1（L0〜L5）
+    - コード変更なし（計画フェーズ。読み取り照合のみ）
+- **照合根拠**: `preflight.rs` Fail-Closed / `commerce.rs` `resolve_price_id` / `commerce_webhook/{checkout,invoice,stripe}.rs` 閉ループ / `VoiceStore.tsx`・`AiaaOnboardingWizard.tsx`・`Pricing.tsx`・`LegalPages.tsx` の導線・表記
+- **波及効果（実装時）**: MC フロント 4 箇所（`STRIPE_PRICE_ID` 参照）+ LP Pricing/Legal + `NurtureDashboard.test.tsx` / `Pricing.link.test.tsx`
+- **非対象**: 有償 KC チャージ / マーケット α / OP-011 封印解除 / OP-083-C,D
+
 ## 🔍 OP-080 Pattern B 実機（2026-07-13）
 
 - **変更内容**: コード変更なし。実機検証のみ（`local_llm_setup.sh` pattern-b / pattern-a）

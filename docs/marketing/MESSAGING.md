@@ -98,13 +98,13 @@ Aiome（BSL 1.1、2030年に Apache 2.0 化）は、自律 AI エージェント
 | 段 | 対象 | 価格 | 得られるもの |
 |---|---|---|---|
 | 1. Free（Sovereign） | 個人・研究 | $0/月（セルフホスト） | OS 全機能・エージェント・コンソール・Mock 経済 |
-| 2. Pro（Autonomous） | パワーユーザー | $19.99/月（14日無料体験） | 実経済圏の解禁（自律購買・クリエイター市場・A2C）＋優先サポート |
+| 2. Pro（Autonomous） | パワーユーザー | $19.99/月（いつでも解約可） | 実経済圏の解禁（順次）＋優先サポート |
 | 3. Agency（B2B） | 代理店・企業 | 準備中（Coming Soon） | マルチテナント運用（顧客ごとのセル分離・メータリング） |
 | 4. マーケットプレイス | クリエイター・開発者 | 取引額の **15%**（クリエイター取り分 85%） | スキル・LoRA・音声アセット・Gig の流通 |
 
 - プラットフォーム手数料の公式レートは **15%** のみ（M-1 決定、2026-07-03）。25%/10% という旧表記は使用禁止。
 - Pro の将来形はハイブリッド（基本料＋KC 含み枠＋超過チャージ）。**現行 LP では $19.99/月**とし、含み枠の具体値は OP-059 実装完了まで記載しない。
-- 「14日間無料体験・カード登録の摩擦低減文言（No hidden fees / いつでも解約可）」を CTA に添える。
+- 「いつでも解約可・自動更新の明示（No hidden fees）」を CTA に添える。無料トライアルは**実装があるまで謳わない**。
 
 ## 6. FAQ 想定問答（LP・README 共通原稿）
 
@@ -144,7 +144,7 @@ A. ありません。MCP（Model Context Protocol）対応で外部ツールと�
 
 ### Pro 購入フローの公式説明（LP・サポート回答用）
 
-> Pro プラン（$19.99/月・14日間無料体験）のお支払いは、LP（https://aiome.dev/#pricing）の「プロへアップグレード」ボタンから Stripe の安全な決済ページで行えます。セルフホスト環境で Pro 機能（実経済圏）を有効化するには、決済後に `docs/operations/stripe-setup.md` の手順に従って Stripe キーを設定してください（`STRIPE_API_KEY` 未設定時は Mock モードで動作します）。
+> Pro プラン（$19.99/月・いつでも解約可）のお支払いは、LP（https://aiome.dev/#pricing）の「プロへアップグレード」ボタンから Stripe の安全な決済ページで行えます。セルフホスト環境で Pro 機能を有効化するには、決済後に `docs/operations/stripe-setup.md` の手順に従って Stripe キーを設定してください（`STRIPE_API_KEY` 未設定時は Mock モードで動作します）。
 
 ### LP Stripe Payment Link（公式 URL、2026-07-05）
 
@@ -155,7 +155,7 @@ A. ありません。MCP（Model Context Protocol）対応で外部ツールと�
 | **Price ID** | `price_1TpXFpBcUTwo5TwLmK9SQbKL` |
 | **コード配置** | `docs/landing/src/components/Pricing.tsx`（Pro CTA `href`） |
 | **商品名（Checkout 表示）** | Aiome Autonomous Pro（最新） |
-| **価格** | $19.99/月（14日無料トライアル後） |
+| **価格** | $19.99/月（自動更新・いつでも解約可） |
 | **税** | 日本からのアクセス時、Stripe Checkout に JCT 10% が加算され **$21.99/月** と表示される場合あり（LP 表記 $19.99 は税抜ベース） |
 | **旧 Link（無効）** | `https://buy.stripe.com/aFa9AS1Kc1l47mK3u5f7i01` — Stripe 側で **inactive**（「The link is no longer active.」）。本番 LP が旧 URL を配信している間は決済不可。**main push → Pages デプロイで解消**。 |
 

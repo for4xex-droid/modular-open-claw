@@ -70,4 +70,15 @@ describe('App Routing', () => {
                         screen.queryByText(/自己修復型AIエージェント/i);
     expect(hasHeroText).not.toBeInTheDocument();
   });
+
+  it('renders cancellation policy on /cancellation', () => {
+    window.location.pathname = '/cancellation';
+    render(<App />);
+    const hasCancellationTitle = screen.queryByText(/Cancellation & Refund/i) ||
+                                 screen.queryByText(/解約・返金ポリシー/i);
+    expect(hasCancellationTitle).toBeInTheDocument();
+    const hasHeroText = screen.queryByText(/Self-Healing AI Agent with Soul System/i) ||
+                        screen.queryByText(/自己修復型AIエージェント/i);
+    expect(hasHeroText).not.toBeInTheDocument();
+  });
 });

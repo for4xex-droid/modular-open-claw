@@ -11,6 +11,7 @@ import { useCheckoutSession } from '../../hooks/useCheckoutSession';
 import { cssVar } from '../../utils/cssVar';
 import { useTranslation } from '../../i18n';
 import { Modal } from '../ui/Modal';
+import { LEGAL_BASE_URL } from '../../config';
 
 interface ProUpgradeModalProps {
     priceId: string;
@@ -97,6 +98,16 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({ priceId, agent
                         <span style={styles.pricePeriod}>{t('pro.pricePeriod')}</span>
                         <div style={styles.trialBadge}>{t('pro.trialBadge')}</div>
                     </div>
+
+                    {/* 特商法（定期購入の最終確認画面表示義務）: 自動更新・解約条件の明示 */}
+                    <p style={styles.renewalNotice}>{t('pro.renewalNotice')}</p>
+                    <p style={styles.legalLinks}>
+                        <a href={`${LEGAL_BASE_URL}/terms`} target="_blank" rel="noopener noreferrer" style={styles.legalLink}>{t('pro.legalTerms')}</a>
+                        {' · '}
+                        <a href={`${LEGAL_BASE_URL}/tokushoho`} target="_blank" rel="noopener noreferrer" style={styles.legalLink}>{t('pro.legalTokushoho')}</a>
+                        {' · '}
+                        <a href={`${LEGAL_BASE_URL}/cancellation`} target="_blank" rel="noopener noreferrer" style={styles.legalLink}>{t('pro.legalCancellation')}</a>
+                    </p>
 
                     {error && <div style={styles.errorMessage}>{error}</div>}
                 </div>
@@ -254,6 +265,23 @@ const styles: { [key: string]: React.CSSProperties } = {
         border: '1px solid var(--accent-purple-20)',
         borderRadius: '20px',
         padding: '0.2rem 0.6rem',
+    },
+    renewalNotice: {
+        fontSize: '0.75rem',
+        color: 'var(--text-muted)',
+        textAlign: 'center',
+        margin: '0.25rem 0 0 0',
+        lineHeight: 1.4,
+    },
+    legalLinks: {
+        fontSize: '0.7rem',
+        color: 'var(--text-muted)',
+        textAlign: 'center',
+        margin: '0.4rem 0 0 0',
+    },
+    legalLink: {
+        color: 'var(--text-secondary)',
+        textDecoration: 'underline',
     },
     errorMessage: {
         color: 'var(--accent-rose)',

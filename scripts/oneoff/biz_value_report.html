@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aiome ビジネスバリュー・レポート 2026-07-10</title>
+<style>
+:root {
+  --bg-primary: #0b0d14;
+  --bg-secondary: #10131c;
+  --bg-tertiary: #181d2a;
+  --bg-glass-heavy: rgba(14, 18, 28, 0.82);
+  --bg-glass-light: rgba(255, 255, 255, 0.03);
+  --accent-cyan: #38bdf8;
+  --accent-cyan-30: rgba(56, 189, 248, 0.3);
+  --accent-cyan-10: rgba(56, 189, 248, 0.1);
+  --accent-purple: #a78bfa;
+  --accent-purple-30: rgba(167, 139, 250, 0.3);
+  --accent-purple-10: rgba(167, 139, 250, 0.1);
+  --accent-rose: #f472b6;
+  --accent-rose-10: rgba(244, 114, 182, 0.1);
+  --accent-emerald: #34d399;
+  --accent-emerald-10: rgba(52, 211, 153, 0.1);
+  --accent-amber: #fbbf24;
+  --accent-amber-10: rgba(251, 191, 36, 0.1);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  line-height: 1.7;
+  padding: 2rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes growBar { from { width: 0; } }
+section { animation: fadeUp 0.6s ease both; margin-bottom: 2.5rem; }
+section:nth-child(2) { animation-delay: 0.1s; }
+section:nth-child(3) { animation-delay: 0.2s; }
+section:nth-child(4) { animation-delay: 0.3s; }
+section:nth-child(5) { animation-delay: 0.4s; }
+h1 { font-size: 1.8rem; margin-bottom: 0.3rem; color: var(--accent-cyan); }
+h2 { font-size: 1.25rem; margin-bottom: 1rem; color: var(--accent-cyan); border-left: 3px solid var(--accent-cyan); padding-left: 0.75rem; }
+.meta { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 2.5rem; }
+.card {
+  background: var(--bg-glass-heavy);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  backdrop-filter: blur(12px);
+}
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border-glass); }
+th { color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.score-bar-wrap { background: var(--bg-tertiary); border-radius: 999px; height: 8px; overflow: hidden; min-width: 90px; }
+.score-bar { height: 100%; border-radius: 999px; animation: growBar 1s ease both; }
+.big-score { font-size: 3rem; font-weight: 800; color: var(--accent-cyan); }
+.tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; }
+.tag-p0 { background: var(--accent-rose-10); color: var(--accent-rose); border: 1px solid var(--accent-rose); }
+.tag-p1 { background: var(--accent-amber-10); color: var(--accent-amber); border: 1px solid var(--accent-amber); }
+.tag-p2 { background: var(--accent-cyan-10); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); }
+.yes { color: var(--accent-emerald); font-weight: 700; }
+.no { color: var(--accent-rose); font-weight: 700; }
+.partial { color: var(--accent-amber); font-weight: 700; }
+.aiome-feedback-btn {
+  background: var(--accent-purple-10);
+  color: var(--accent-purple);
+  border: 1px solid var(--accent-purple-30);
+  border-radius: var(--radius-md);
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.aiome-feedback-btn:hover { background: var(--accent-purple-30); transform: scale(1.03); }
+.tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.tab-btn {
+  background: var(--bg-glass-light);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 6px 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tab-btn.active { background: var(--accent-cyan-10); color: var(--accent-cyan); border-color: var(--accent-cyan-30); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeUp 0.35s ease both; }
+tr:hover td { background: var(--bg-glass-light); }
+.insight { font-size: 0.82rem; color: var(--text-secondary); }
+ul { padding-left: 1.4rem; }
+li { margin-bottom: 0.5rem; }
+.strategy { font-size: 0.92rem; color: var(--text-secondary); }
+.strategy strong { color: var(--text-primary); }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-top: 1rem; }
+@media (max-width: 800px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+.metric {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+}
+.metric .n { font-size: 1.25rem; font-weight: 800; color: var(--accent-cyan); }
+.metric .l { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+</style>
+</head>
+<body>
+
+<h1>Aiome ビジネスバリュー・レポート</h1>
+<p class="meta">評価日時: 2026-07-10 11:13 JST ｜ 対象: プロジェクト全体 (commit: f79a48e6) ｜ 前回: 2026-07-06 (3.4)</p>
+
+<section class="grid2">
+  <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.5rem;">
+    <div style="color:var(--text-secondary);font-size:0.85rem;font-weight:700;">総合バリュースコア</div>
+    <div class="big-score">3.4<span style="font-size:1.2rem;color:var(--text-muted);"> / 5.0</span></div>
+    <div style="color:var(--text-muted);font-size:0.8rem;">前回比 →。Wave 1/2 で技術負債は消化。天井は依然として市場接触（V-3）。</div>
+  </div>
+  <div class="card">
+    <svg viewBox="0 0 300 300" width="100%" style="max-width:280px;margin:0 auto;display:block;">
+      <!-- radar grid -->
+      <g stroke="var(--border-glass)" fill="none">
+        <polygon points="150,40 236,85 236,175 150,220 64,175 64,85"/>
+        <polygon points="150,70 210,100 210,160 150,190 90,160 90,100"/>
+        <polygon points="150,100 184,115 184,145 150,160 116,145 116,115"/>
+        <line x1="150" y1="150" x2="150" y2="40"/>
+        <line x1="150" y1="150" x2="236" y2="85"/>
+        <line x1="150" y1="150" x2="236" y2="175"/>
+        <line x1="150" y1="150" x2="150" y2="220"/>
+        <line x1="150" y1="150" x2="64" y2="175"/>
+        <line x1="150" y1="150" x2="64" y2="85"/>
+      </g>
+      <!-- scores: V1=5 V2=3 V3=2 V4=4 V5=3 V6=3 V7=4 ; radius 110 -->
+      <!-- angles: -90, -30, 30, 90, 150, 210, 270 deg from center -->
+      <polygon
+        fill="rgba(56,189,248,0.18)"
+        stroke="var(--accent-cyan)"
+        stroke-width="2"
+        points="150,40 210,100 193,175 150,194 90,160 90,100 193,85"/>
+      <text x="150" y="28" text-anchor="middle" fill="var(--text-secondary)" font-size="10">V-1 技術 (5)</text>
+      <text x="250" y="80" text-anchor="start" fill="var(--text-secondary)" font-size="10">V-2 Moat (3)</text>
+      <text x="250" y="185" text-anchor="start" fill="var(--text-secondary)" font-size="10">V-3 PMF (2)</text>
+      <text x="150" y="240" text-anchor="middle" fill="var(--text-secondary)" font-size="10">V-4 収益 (4)</text>
+      <text x="50" y="185" text-anchor="end" fill="var(--text-secondary)" font-size="10">V-5 運用 (3)</text>
+      <text x="50" y="80" text-anchor="end" fill="var(--text-secondary)" font-size="10">V-6 Eco (3)</text>
+      <text x="210" y="55" text-anchor="start" fill="var(--text-secondary)" font-size="10">V-7 物語 (4)</text>
+    </svg>
+  </div>
+</section>
+
+<section class="card">
+  <h2>定量スナップショット</h2>
+  <div class="metrics">
+    <div class="metric"><div class="n">308,965</div><div class="l">Rust LOC</div></div>
+    <div class="metric"><div class="n">3,729</div><div class="l">#[test] 件数</div></div>
+    <div class="metric"><div class="n">0</div><div class="l">deep-scan Errors</div></div>
+    <div class="metric"><div class="n">57</div><div class="l">ADR</div></div>
+    <div class="metric"><div class="n">671</div><div class="l">Commits</div></div>
+    <div class="metric"><div class="n">5</div><div class="l">Contributors</div></div>
+    <div class="metric"><div class="n">2</div><div class="l">TODO/FIXME</div></div>
+    <div class="metric"><div class="n">17</div><div class="l">Crates (apps+libs)</div></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>バリューレーダー詳細</h2>
+  <table>
+    <tr><th>#</th><th>軸</th><th style="width:130px;">スコア</th><th>前回比</th><th>キーインサイト</th></tr>
+    <tr><td>V-1</td><td>技術的成熟度</td><td><div class="score-bar-wrap"><div class="score-bar" style="width:100%;background:var(--accent-emerald);"></div></div>5/5</td><td>→</td><td class="insight">Wave 1/2 完了（OP-024/060/061/067/069）。Rust LOC 30.9万・#[test] 3,729・deep-scan Errors 0・TODO 2。進捗&gt;80% を維持。これ以上の技術スコア上昇余地はほぼない</td></tr>
+    <tr><td>V-2</td><td>防御可能性</td><td><div class="score-bar-wrap"><div class="score-bar" style="width:60%;background:var(--accent-cyan);"></div></div>3/5</td><td>→</td><td class="insight">TLA+×Merkle 経済×A2C は依然ユニーク。一方 OpenFang / XKernel / OpenOS が「Agent OS」語彙を先取り。OS 基盤単体では6ヶ月再現可能帯。moat は経済圏+体験に限定</td></tr>
+    <tr><td>V-3</td><td>市場適合性</td><td><div class="score-bar-wrap"><div class="score-bar" style="width:40%;background:var(--accent-rose);"></div></div>2/5</td><td>→</td><td class="insight">コンパニオン収益化市場は活況（Idyll/MyCompanions/Passes）。Aiome はユーザー0・OP-064 未着手のまま。PMF 未検証が全軸の天井</td></tr>
+    <tr><td>V-4</td><td>収益化経路</td><td><div class="score-bar-wrap"><div class="score-bar" style="width:80%;background:var(--accent-emerald);"></div></div>4/5</td><td>→</td><td class="insight">Stripe→Pro・Portal・月間上限は既存。OP-060 DLQ 再送 + OP-061 OXP fail-closed で課金経路の信頼性は強化。残ブロッカーは R2-1 本番 env（Human）のみ</td></tr>
+    <tr><td>V-5</td><td>運用リスク</td><td><div class="score-bar-wrap"><div class="score-bar" style="width:60%;background:var(--accent-cyan);"></div></div>3/5</td><td>→</td><td class="insight">Safety-Critical 経路の fail-closed は前進。cargo audit は許容 warning 1。支配的リスクはバスファクター≒1（contributors 5 でも実質単一）で据え置き</td></tr>
+    <tr><td>V-6</td><td>エコシステム</td><td><div class="score-bar-wrap"><div class="score-bar" style="width:60%;background:var(--accent-cyan);"></div></div>3/5</td><td>→</td><td class="insight">W2 ワークフロー実行エンジン完了は内部拡張。外部開発者流通・サードパーティ MCP マーケットはゼロ。ネットワーク効果は未稼働</td></tr>
+    <tr><td>V-7</td><td>ナラティブ</td><td><div class="score-bar-wrap"><div class="score-bar" style="width:80%;background:var(--accent-emerald);"></div></div>4/5</td><td>→</td><td class="insight">「所有できる自律 AI の OS。稼がせて、監視して、証明する。」は強い。OGP 画像は配置済み。OP-063 証拠ショット/GIF とプロモ動画が未完のため 5 には届かず</td></tr>
+  </table>
+</section>
+
+<section class="card">
+  <h2>競合比較マトリクス</h2>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="t1">機能比較</button>
+    <button class="tab-btn" data-tab="t2">ポジショニング</button>
+  </div>
+  <div class="tab-panel active" id="t1">
+    <table>
+      <tr><th>機能</th><th>Aiome</th><th>OpenFang</th><th>LangGraph</th><th>XKernel / OpenOS</th></tr>
+      <tr><td>カテゴリ</td><td>Agent OS + 経済圏</td><td>Agent OS（Rust）</td><td>Agent Framework</td><td>Agent-native OS / AOS</td></tr>
+      <tr><td>言語 / 配布</td><td>Rust + Tauri</td><td>Rust 単一バイナリ</td><td>Python ライブラリ</td><td>Rust / Go</td></tr>
+      <tr><td>形式検証 (TLA+)</td><td class="yes">✅ 経済保存則</td><td class="no">❌</td><td class="no">❌</td><td class="no">❌</td></tr>
+      <tr><td>内蔵エージェント経済</td><td class="yes">✅ B2A/A2A/A2C</td><td class="no">❌</td><td class="no">❌</td><td class="no">❌</td></tr>
+      <tr><td>AI→ユーザー恩返し (A2C)</td><td class="yes">✅ 唯一</td><td class="no">❌</td><td class="no">❌</td><td class="no">❌</td></tr>
+      <tr><td>育成体験 (Biome)</td><td class="yes">✅</td><td class="no">❌</td><td class="no">❌</td><td class="no">❌</td></tr>
+      <tr><td>永続ワークフロー / HITL</td><td class="yes">✅ W2 完了</td><td class="partial">△ Hands</td><td class="yes">✅ 業界標準</td><td class="partial">△ 設計中心</td></tr>
+      <tr><td>チャネル数 / コミュニティ</td><td class="partial">△ 少数</td><td class="yes">✅ 多数 + GitHub</td><td class="yes">✅ 巨大</td><td class="partial">△ 初期</td></tr>
+      <tr><td>収益化導線 (Stripe)</td><td class="yes">✅ 稼働中</td><td class="no">❌</td><td class="no">❌（アプリ側）</td><td class="no">❌</td></tr>
+      <tr><td>ライセンス</td><td>BSL→Apache</td><td>MIT</td><td>MIT</td><td>OSS 系</td></tr>
+    </table>
+  </div>
+  <div class="tab-panel" id="t2">
+    <table>
+      <tr><th>観点</th><th>評価</th></tr>
+      <tr><td>Aiome だけが持つもの</td><td class="insight">①経済が OS 契約層に内蔵 ②TLA+ 経済保存則 ③A2C「恩返し」④Biome 育成。ポジションは「Agent OS」ではなく<strong style="color:var(--text-primary);">所有できる自律 AI 経済圏</strong></td></tr>
+      <tr><td>競合が持ち Aiome にないもの</td><td class="insight">OpenFang: チャネル数・公開コミュニティ。LangGraph: エンタープライズ採用・監査可能なグラフ実行のデファクト。XKernel/OpenOS: 「エージェントを第一級市民」とするカーネル語彙の先取り</td></tr>
+      <tr><td>市場シグナル (2026-07)</td><td class="insight">Framework vs Agent OS の区分が業界で定着。消費者側は AI companion / influencer 収益化が急成長（Idyll 70% share、Passes 多ストリーム）。Aiome の交点（統治可能な自律 + 経済）はブルーオーシャンだが未検証</td></tr>
+      <tr><td>脅威</td><td class="insight">「Rust Agent OS」の心理的定番を OpenFang が先取り。OS 基盤で戦わず、経済圏+体験で戦う方針は前回から不変で正しい</td></tr>
+    </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>ROI 最大のアクション</h2>
+  <table>
+    <tr><th>優先度</th><th>アクション</th><th>期待効果</th><th>工数</th><th></th></tr>
+    <tr>
+      <td><span class="tag tag-p0">P0</span></td>
+      <td>R2-1 本番 Stripe env 反映 + R3-4 実走（Human）— Day 1 課金を本番で通す</td>
+      <td>V-4 を 4→5 に近づける。Public Beta の最低条件</td>
+      <td>~0.5–1日（Human）</td>
+      <td><button class="aiome-feedback-btn" data-aiome-feedback="R2-1 本番 Stripe env 反映と R3-4 実走のチェックリストを、docs/operations/stripe-production-setup.md と release_master_plan に照らして再確認し、Human が今日やる手順だけを1ページに要約してください。" data-autosend="true">Auto-Plan</button></td>
+    </tr>
+    <tr>
+      <td><span class="tag tag-p0">P0</span></td>
+      <td>OP-064: ベータ 5–10 人獲得 + 実名テスティモニアル（市場接触）</td>
+      <td>V-3 を 2→3+。総合スコアの天井を初めて動かす</td>
+      <td>~2–4週（Human）</td>
+      <td><button class="aiome-feedback-btn" data-aiome-feedback="OP-064 ベータユーザー獲得の実行計画を作成してください。ターゲットペルソナ、招待文面、初週オンボーディング、テスティモニアル収集テンプレを含めてください。" data-autosend="true">Auto-Plan</button></td>
+    </tr>
+    <tr>
+      <td><span class="tag tag-p1">P1</span></td>
+      <td>OP-063: LP 証拠ビジュアル 7点 + Quick Start GIF 撮影</td>
+      <td>V-7 を 4→5。獲得ファネルの信頼コストを下げる</td>
+      <td>~1–2日（Human）</td>
+      <td><button class="aiome-feedback-btn" data-aiome-feedback="OP-063 の MESSAGING §8 ショットリストに沿って、撮影チェックリストとファイル配置先（docs/landing/public）を具体化してください。" data-autosend="true">Auto-Plan</button></td>
+    </tr>
+    <tr>
+      <td><span class="tag tag-p2">P2</span></td>
+      <td>エージェント側の追加機能開発は凍結し、ローンチ資材（R4）と市場接触に集中</td>
+      <td>V-1 は既に 5。これ以上のコード投資の限界効用は低い</td>
+      <td>継続方針</td>
+      <td><button class="aiome-feedback-btn" data-aiome-feedback="OPEN.md の未解決タスクを『市場接触に効く Human タスク』と『ポストリリース技術負債』に再分類した表を作ってください。" data-autosend="true">Auto-Plan</button></td>
+    </tr>
+  </table>
+</section>
+
+<section class="grid2">
+  <div class="card">
+    <h2>最大の強み (Top Moats)</h2>
+    <ul>
+      <li><strong>経済が OS 契約</strong> — Stripe→Nurture coin-charge が OXP fail-closed + DLQ 再送まで閉じた（OP-060/061）</li>
+      <li><strong>形式検証された経済保存則</strong> — TLA+ は Framework 競合が持たない</li>
+      <li><strong>A2C 恩返しナラティブ</strong> — コンパニオン市場の「課金」ではなく「AI が返す」差別化</li>
+      <li><strong>ローンチ可能なコードベース</strong> — deep-scan 0 / テスト数千 / ADR 57</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>最大のリスク (Critical Gaps)</h2>
+    <ul>
+      <li><strong>ユーザー 0 / PMF 未検証</strong> — V-3=2 が総合の天井</li>
+      <li><strong>本番課金 env 未反映</strong> — コードは完成、Human ゲートのみ</li>
+      <li><strong>バスファクター ≈ 1</strong> — ドキュメントは厚いが人的冗長性なし</li>
+      <li><strong>Agent OS 語彙の先取り競争</strong> — OpenFang 等が心理的定番を取りに来ている</li>
+    </ul>
+  </div>
+</section>
+
+<section class="card">
+  <h2>戦略メモ</h2>
+  <p class="strategy">
+    <strong>前回（7/6）からの変化:</strong> エンジニアリング側の残存 Safety タスク（Fail-Closed / OXP / DLQ / htmd / test_helpers）は消化済み。
+    総合スコアが <strong>3.4→3.4（横ばい）</strong>なのは、投資家視点では正しい。コード品質の改善はもうスコアに乗らない。
+    <br><br>
+    <strong>投資家が言うこと:</strong>「技術は十分。誰が使っているのか？」
+    <br><br>
+    <strong>次の一手:</strong> AI エージェントに追加機能を書かせるフェーズは終了。Human が R2-1 / OP-063 / OP-064 を動かす週にする。
+    市場接触が1件でも起きれば、次回 /biz-value で初めて V-3 が動き、総合が 3.5+ に乗る可能性がある。
+  </p>
+</section>
+
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const card = btn.closest('.card');
+    card.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    card.querySelector('#' + tab).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>

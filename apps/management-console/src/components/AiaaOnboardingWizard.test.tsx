@@ -14,53 +14,80 @@ jest.mock('../lib/auth', () => ({
 }));
 
 jest.mock('../config', () => ({
-  API_BASE: 'http://localhost'
+  API_BASE: 'http://localhost',
+  STRIPE_PRICE_ID: 'price_gold_monthly',
 }));
 
 jest.mock('../i18n', () => ({
   useTranslation: () => ({ t: () => undefined })
 }));
 
+const mockIdentity = {
+  agentId: '11111111-1111-1111-1111-111111111111' as string | null,
+  isEkycVerified: false,
+};
+
+jest.mock('../hooks/useAgentIdentity', () => ({
+  useAgentIdentity: () => mockIdentity,
+}));
+
 describe('AiaaOnboardingWizard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIdentity.agentId = '11111111-1111-1111-1111-111111111111';
   });
 
-  it('generates a checkout session link successfully (RED -> GREEN)', async () => {
+  it('generates a checkout session link with the logged-in agent id', async () => {
     (authenticatedFetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => ({ url: 'https://checkout.stripe.com/pay/cs_test_mock_from_api' })
     });
 
     render(<AiaaOnboardingWizard />);
-    
-    // Step 1: Discovery Session
+
     const nameInput = screen.getByPlaceholderText('Client / Company Name');
     fireEvent.change(nameInput, { target: { value: 'Test Corp' } });
-    
-    const nextButton = screen.getByText(/Next Step/i);
-    expect(nextButton).not.toBeDisabled();
-    fireEvent.click(nextButton);
-    
-    // Step 2: Economics & ROI
+    fireEvent.click(screen.getByText(/Next Step/i));
+
     const generateButton = await screen.findByText('Generate Blueprint & Checkout Link');
     fireEvent.click(generateButton);
-    
-    // Wait for Step 3: Blueprint Ready
+
     await waitFor(() => {
       expect(screen.getByText('Blueprint Ready!')).toBeInTheDocument();
     });
-    
+
     expect(screen.getByText('https://checkout.stripe.com/pay/cs_test_mock_from_api')).toBeInTheDocument();
-    
     expect(authenticatedFetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/v1/commerce/checkout-session/create'),
       expect.objectContaining({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: expect.stringContaining('agent_id'),
+        body: expect.stringContaining('11111111-1111-1111-1111-111111111111'),
       })
     );
+    expect(authenticatedFetch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        body: expect.not.stringContaining('00000000-0000-0000-0000-000000000000'),
+      })
+    );
+  });
+
+  it('rejects checkout without agent identity (no zero-UUID)', async () => {
+    mockIdentity.agentId = null;
+
+    render(<AiaaOnboardingWizard />);
+
+    const nameInput = screen.getByPlaceholderText('Client / Company Name');
+    fireEvent.change(nameInput, { target: { value: 'Test Corp' } });
+    fireEvent.click(screen.getByText(/Next Step/i));
+
+    const generateButton = await screen.findByText('Generate Blueprint & Checkout Link');
+    fireEvent.click(generateButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Agent identity is required/i)).toBeInTheDocument();
+    });
+    expect(authenticatedFetch).not.toHaveBeenCalled();
   });
 
   it('handles API errors gracefully', async () => {
@@ -70,16 +97,14 @@ describe('AiaaOnboardingWizard', () => {
     });
 
     render(<AiaaOnboardingWizard />);
-    
+
     const nameInput = screen.getByPlaceholderText('Client / Company Name');
     fireEvent.change(nameInput, { target: { value: 'Test Corp' } });
-    
-    const nextButton = screen.getByText(/Next Step/i);
-    fireEvent.click(nextButton);
-    
+    fireEvent.click(screen.getByText(/Next Step/i));
+
     const generateButton = await screen.findByText('Generate Blueprint & Checkout Link');
     fireEvent.click(generateButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/Error generating checkout link/i)).toBeInTheDocument();
     });

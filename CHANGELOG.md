@@ -1,5 +1,42 @@
 ## [Unreleased]
 
+### Fixed (OP-085 法務クリア仕上げ 2026-07-15)
+- **AiaaOnboardingWizard**: zero-UUID Checkout を禁止し、ログイン中 `agentId` のみ使用（未ログインは明示エラー）。Negative テスト追加。
+- **stripe-setup.md**: 14日トライアル前提の記述を撤去。Payment Link 検証を「意図しない 14 days free が残っていないこと」に更新。
+- **OP-085**: エージェント側クローズ（COMPLIANCE_CHECKLIST ✅。Human はデプロイ後目視 + Link 確認）。
+
+### Changed (OP-085 特商法 本店住所・電話の公開表記 2026-07-15)
+- `TOKUSHOHO.md` v2.2 / LP: 所在地を「京都府京都市出雲路俵町35」、電話を「080-3804-0184」に更新（請求開示方式からフル記載へ）。COMPLIANCE_CHECKLIST T3/T4 ✅。
+
+### Changed (OP-085 弁護士必須撤廃 + コンプライアンス強化 2026-07-15)
+- **方針**: 弁護士レビューを Live 必須ゲートから外す（任意相談のみ）。正本チェックは `docs/legal/COMPLIANCE_CHECKLIST.md`。
+- **景表**: 「14日間無料トライアル」表示を LP/MC/README/MESSAGING から撤去（実装があるまで謳わない）。CTA は「いつでも解約可・自動更新」に統一。
+- **特商法/解約 v2.1**: ホームページ・分量（1か月）・トライアル非提供の明示・24時間未使用の善意返金窓口（Cursor 等の実務参考）。`TOS_VERSION` → v2.1。
+- **LP 反映**: `LegalPages.tsx` を TERMS/TOKUSHOHO v2.1・CANCELLATION v1.1 に同期（71 テスト PASS）。
+
+### Changed (衛生: 残置物取捨 2026-07-15)
+- **削除**（trash）: `rewrite_main.py`（過去に除去済みの再出現残骸）、`scripts/prod_hotfix_libssl_image.sh` / `prod_pack_distroless_from_bin.sh`（libssl ホットフィックス・誤再実行リスク）。
+- **隔離**: NT-1 本番 one-shot 3 本 + `biz_value_report.html` → `scripts/oneoff/`（README + 再実行禁止ヘッダ）。
+- **gitignore**: `.cursor/`、`apps/api-server/static/*`（`index.html` 例外 — ローカルビルド成果物の誤コミット防止）。
+
+### Fixed (/reflexion OP-085 2026-07-15)
+- **C-1**: 利用規約 §4 が非公開の内部文書（KC_LEGAL_POSITION.md）を規約の一部として参照していた矛盾を解消（正本 + LP。自己完結の文言に修正）。
+- **B-2 前倒し解消**: VoiceStore の「チャージ」文言（`voice.recharge` / `kcSectionDesc` / `kcRecharge`）を撤去 — 実体は Pro サブスク Checkout のため「Pro に登録する（$19.99/月・自動更新）」+ KC 無償明記に変更（ja/en）。OP-084 L1-1 の主要部を消化。MC 421 / LP 71 PASS 維持。
+
+### Added (OP-085 LG1/LG3/LG4 法務文書 v2 + 同意証跡 2026-07-14)
+- **正本改訂**: `docs/legal/` — `TERMS_OF_SERVICE.md` v2.0（Pro サブスク条項新設・返金/免責を消費者契約法配慮版に・KC 無償ポイント化・定型約款変更条項・日本語正文条項）、`TOKUSHOHO.md` v2.0（サブスク対応: 支払時期/自動更新/解約方法/追加費用/動作環境）、`PRIVACY_POLICY.md` v2.0（当社が Stripe 経由で取得する情報の節を新設、「GDPR準拠」表現を緩和）。
+- **新規正本**: `CANCELLATION_POLICY.md`（解約手順・返金条件）、`KC_LEGAL_POSITION.md`（資金決済法非該当の内部整理 + 封印監査ポイント + 有償化解除条件）、`CONSENT_SPEC.md`（click-wrap 仕様）、`REVIEW_PACKAGE.md`（弁護士レビュー論点 9 件 + リスク受容記録）、`docs/legal/README.md`（正本管理規約・凍結棚）。commercial 側 draft 2 本に凍結バナー。
+- **同意証跡**: `setup_init` が `tos_accepted_version` / `tos_accepted_at` を settings（legal）へ記録（`tos_version` は省略可・旧クライアント互換）。SetupWizard に規約/プライバシー全文リンク + `TOS_VERSION`（`config.ts`）送信。統合テスト 2 本追加（証跡記録 Positive / 非同意 400 Negative）。
+- **課金前の情報提供**: ProUpgradeModal に自動更新・解約条件の明示行（`pro.renewalNotice`）+ 利用規約/特商法/解約ポリシーへのリンク（特商法 2022 改正の最終確認画面表示義務への対応）。
+- **LP 反映（Sub 委譲）**: `LegalPages.tsx` 4 ページを正本 v2 に同期 + `/cancellation` ルート/フッターリンク新設 + pricing の景表法是正（`pro_f2/f3`「順次解禁」明示・disclaimer 強化）+ **乖離検知テスト** `LegalPages.sync.test.tsx`（正本ヘッダ ⇄ LP `lastUpdated` 照合 + 封印文言監査。Negative: lastUpdated 改変で FAIL 確認済み）。LP 71 テスト + build PASS。
+- **LG0 確定**: 価格 USD 単一表記 / 解約は期間末まで有効 / 日本法・京都地裁 / 事業者表記は現行方式維持（レビュー論点化）/ 日本語正文 / 弁護士レビューを Live 前ゲート化 / トライアルは実装追随（OP-084 L1-5 起票、未実装なら表示撤去が Live 条件）。
+
+### Added (OP-085 法務ドキュメント整備計画 2026-07-14)
+- **計画書**: `docs/roadmaps/legal_docs_plan.md` v1 — 法務資産 8 点の棚卸し（LP 3 ページ / `docs/legal/` 5 本 / commercial draft 2 本）とギャップ 9 件を特定し、成果物 D-1〜D-8（特商法 v2 / 規約 v2 サブスク条項 / プライバシー v2 決済データ / 解約ポリシー / KC 無償宣言 / 同意仕様 / レビューパッケージ / 正本管理規約）を LG0〜LG5 で定義。OP-084 L2（実課金の法務ゲート）の詳細展開。
+
+### Added (OP-084 実課金オープン計画 2026-07-14)
+- **計画書**: `docs/roadmaps/live_billing_open_plan.md` v1 — Stripe 方針 B（Live）切替の全タスクを実コード照合で定義（L0〜L5、/perfect-plan 5 Gate 自己適用済み）。検出ブロッカー: LP Payment Link mode 未確認（live 疑い・最優先）、VoiceStore「チャージ」導線が Pro サブスク Checkout を開く誤認リスク、AiaaOnboardingWizard の zero-UUID 403 死に導線、特商法表記と実オファーの不一致。バックエンド（Fail-Closed preflight / エイリアス解決 / Webhook 閉ループ）は Live 対応済みと確認。
+
 ### Changed (R5-2 / OP-070 2026-07-14)
 - **CHANGELOG**: 滞留していた `[Unreleased]` を `[1.2.0] - 2026-07-14` へ切り出し（release-preflight ステップ 7.5）。
 

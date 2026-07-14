@@ -21,7 +21,7 @@ Proプラン（$19.99/月）の定期支払い用の価格IDを作成します�
    - **料金体系**: 定期支払い
    - **価格**: `19.99` (通貨: USD)
    - **請求周期**: 毎月
-   - **無料トライアル**: 14日（Payment Link 側で設定済みの場合は Dashboard 上も一致させる）
+   - **無料トライアル**: **現時点では未設定（アプリ/LP でも謳わない）**。Dashboard でトライアルを付ける場合は、Price / Payment Link / アプリ表示を必ず一致させること
 3. 商品を保存すると、`price_` から始まる **価格ID (Price ID)** が生成されます（例: `price_1Pxxx...`）。
 4. このIDをコピーし、環境変数 `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` および管理コンソールの `VITE_STRIPE_PRICE_ID` に設定します。
 
@@ -34,12 +34,12 @@ LP の「プロへアップグレード」は Stripe Payment Link を直リン�
 | **現行 Payment Link** | `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03` |
 | **Payment Link ID** | `plink_1TpXHCBcUTwo5TwLnO1BJneY` |
 | **Price ID（Pro $19.99/月）** | `price_1TpXFpBcUTwo5TwLmK9SQbKL` |
-| **価格** | $19.99/月（14日無料トライアル） |
+| **価格** | $19.99/月（自動更新・いつでも解約可。**無料トライアルは現時点で提供しない**） |
 | **旧 Link（参照禁止）** | `https://buy.stripe.com/aFa9AS1Kc1l47mK3u5f7i01` — Stripe 側 **inactive** |
 
 **本番反映**: コード変更後、`main` ブランチへ push すると `.github/workflows/deploy-landing.yml` が GitHub Pages（https://aiome.dev）へデプロイします。**push 前の本番 LP は旧 JS バンドルを配信し、無効 Link へ遷移するため決済できません。**
 
-**検証**: 新 Link をブラウザで開き、Checkout に「Aiome Autonomous Pro」「$19.99/month after 14 days free」が表示されることを確認。日本 IP では JCT 込み **$21.99/月** 表示の場合あり。
+**検証**: 新 Link をブラウザで開き、Checkout に「Aiome Autonomous Pro」「$19.99/month」が表示され、**意図しない「14 days free」が残っていないこと**を確認（残っていれば Dashboard でトライアルを外すか、文書側をトライアルありに合わせる）。日本 IP では JCT 込み **$21.99/月** 表示の場合あり。
 
 **Price ID 整合（2026-07-05 確定）**: 上記 Payment Link に紐づく Price ID は **`price_1TpXFpBcUTwo5TwLmK9SQbKL`**。以下に同一値を設定すること（OP-057）。
 

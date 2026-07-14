@@ -168,7 +168,8 @@
     "terms": "Terms of Service",
     "github": "GitHub",
     "twitter": "X (formerly Twitter)",
-    "tokushoho": "Specified Commercial Transactions Act"
+    "tokushoho": "Specified Commercial Transactions Act",
+    "cancellation": "Cancellation & Refund"
   },
   "pricing": {
     "title": "Owning is free. Go Pro to unlock the economy.",
@@ -180,7 +181,7 @@
     "month": "/month",
     "free_cta": "Start for Free",
     "pro_cta": "Upgrade to Pro",
-    "pro_trial": "14-day free trial · Autopay at $19.99/mo after · Cancel anytime",
+    "pro_trial": "$19.99/mo, auto-renews · Cancel anytime (access until period end)",
     "free_f1": "Self-Healing AI Agent with Soul System",
     "free_f2": "4 official playbooks — SEO, social, research, support from day one",
     "free_f3": "26-screen management console — audit, approve, analyze",
@@ -188,14 +189,14 @@
     "free_f5": "WASM Skill Ecosystem + mock economy mode",
     "free_f6": "60-Second Autonomous Demo — watch AI trade",
     "pro_f1": "Everything in Free, plus:",
-    "pro_f2": "Real economy unlocked — AI earns and invests 24/7",
-    "pro_f3": "Creator Marketplace — sell LoRA, VRM, Voice assets (85% goes to you)",
+    "pro_f2": "Real economy unlock (rolling out) — AI earns and invests 24/7",
+    "pro_f3": "Creator Marketplace (rolling out) — sell LoRA, VRM, Voice assets (85% goes to you)",
     "pro_f4": "A2C Gifts — AI sends you real-world rewards",
     "pro_f5": "Dream Mode — AI explores and learns while you sleep",
     "pro_f6": "Shadow Clones — deploy multiple AI instances",
     "pro_f7": "BuzzProtocol — AI-powered trend analysis & content optimization",
     "pro_f8": "Priority Support + Early Feature Access",
-    "disclaimer": "Economy features do not guarantee any income. Marketplace transactions carry a 15% platform fee."
+    "disclaimer": "Economy features (real economy and Creator Marketplace) are rolling out gradually and are currently available in mock economy mode. They do not guarantee any income. Marketplace transactions carry a 15% platform fee."
   },
   "live_demo": {
     "title": "60-Second Autonomous Demo",

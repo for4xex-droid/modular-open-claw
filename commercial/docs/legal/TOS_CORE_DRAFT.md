@@ -1,5 +1,7 @@
 # Project NURTURE: 利用規約 (TOS) コア条項ドラフト
 
+> ⏸️ **凍結中（2026-07-14）**: 本ドラフトは有償 KC チャージ（Phase 2）開放時に使用する。現在 KC は無償ポイントであり本条項は効力を持たない。再稼働条件は [`docs/legal/KC_LEGAL_POSITION.md`](../../../docs/legal/KC_LEGAL_POSITION.md) §4 を参照。
+
 > **Version**: 0.1.0-draft
 > **Target**: エージェンティック・コマースにおける自律AIによる消費行動への法的同意
 

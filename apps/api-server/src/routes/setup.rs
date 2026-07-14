@@ -25,6 +25,9 @@ pub struct SetupInitRequest {
     pub view_mode: String,
     pub language: String,
     pub tos_accepted: bool,
+    /// 同意した利用規約の版（docs/legal/CONSENT_SPEC.md §2）。旧クライアント互換のため省略可。
+    #[serde(default)]
+    pub tos_version: Option<String>,
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
@@ -153,6 +156,24 @@ pub async fn setup_init(
         .job_queue
         .get_inner()
         .update_setting("tos_accepted", "true", "legal", false)
+        .await?;
+    // 同意証跡: どの版に・いつ同意したかを記録する（規約改訂時の再同意判定に使用）
+    if let Some(version) = payload
+        .tos_version
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty() && v.len() <= 32)
+    {
+        state
+            .job_queue
+            .get_inner()
+            .update_setting("tos_accepted_version", version, "legal", false)
+            .await?;
+    }
+    state
+        .job_queue
+        .get_inner()
+        .update_setting("tos_accepted_at", &Utc::now().to_rfc3339(), "legal", false)
         .await?;
 
     // 4. Initialize SOUL programmatically

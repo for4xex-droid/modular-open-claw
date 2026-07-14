@@ -315,7 +315,7 @@ Both **Aiome Core** and **Nurture Commercial Engine** are unified under the **Bu
 | Tier | Audience | Price |
 |---|---|---|
 | **Free (Sovereign)** | Personal / research self-hosting | **$0/month** — full OS features including Mock economy |
-| **Pro (Autonomous)** | Real economy unlocked | **$19.99/month** (14-day free trial) |
+| **Pro (Autonomous)** | Real economy unlocked (rolling out) | **$19.99/month** (cancel anytime) |
 | **Agency (B2B)** | Multi-tenant operations | Coming Soon |
 
 Purchase Pro via the [official landing page (aiome.dev/#pricing)](https://aiome.dev/#pricing) Stripe Payment Link. External copy SSOT: [`docs/marketing/MESSAGING.md`](docs/marketing/MESSAGING.md). Stripe setup: [`docs/operations/stripe-setup.md`](docs/operations/stripe-setup.md).

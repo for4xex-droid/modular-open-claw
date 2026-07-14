@@ -8,7 +8,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, User, ShieldAlert, Loader2, Eye, EyeOff, BookOpen, Check } from 'lucide-react';
 import { useTranslation } from '../i18n';
-import { API_BASE } from '../config';
+import { API_BASE, TOS_VERSION, LEGAL_BASE_URL } from '../config';
 import { setAuthToken, authenticatedFetch } from '../lib/auth';
 import { reloadApp } from '../lib/navigation';
 import { SectionHeader } from './ui/SectionHeader';
@@ -254,7 +254,8 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                 ai_name: aiName || "Watchtower",
                 view_mode: viewMode,
                 language: navigator.language.startsWith('ja') ? 'ja' : 'en',
-                tos_accepted: tosAccepted
+                tos_accepted: tosAccepted,
+                tos_version: TOS_VERSION
             };
 
             const res = await fetch(`${API_BASE}/api/v1/setup/init`, {
@@ -342,6 +343,15 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                             />
                             <div className="ui-card--pad-md" style={WIZARD_TOS_SCROLL}>
                                 <p>{t('setup.tosContent') || 'By using Aiome, you agree to local data processing. You are responsible for the actions of your autonomous agents.'}</p>
+                                <p style={{ marginTop: '0.75rem' }}>
+                                    <a href={`${LEGAL_BASE_URL}/terms`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>
+                                        {t('setup.tosFullLink') || 'Read the full Terms of Service'}
+                                    </a>
+                                    {' · '}
+                                    <a href={`${LEGAL_BASE_URL}/privacy`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>
+                                        {t('setup.privacyFullLink') || 'Privacy Policy'}
+                                    </a>
+                                </p>
                             </div>
                             
                             <div className="ui-field-row" style={WIZARD_CENTER_ROW}>

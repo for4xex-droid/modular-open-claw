@@ -48,6 +48,7 @@ export function Footer() {
           <div className="flex gap-6">
             <a href="/privacy" className="hover:text-white transition-colors">{t('footer.privacy')}</a>
             <a href="/terms" className="hover:text-white transition-colors">{t('footer.terms')}</a>
+            <a href="/cancellation" className="hover:text-white transition-colors">{t('footer.cancellation')}</a>
             <a href="/tokushoho" className="hover:text-white transition-colors">{t('footer.tokushoho')}</a>
           </div>
         </div>

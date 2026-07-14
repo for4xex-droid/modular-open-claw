@@ -44,8 +44,8 @@ describe('Pricing Component', () => {
 
     // Pro features
     expect(screen.getByText('Everything in Free, plus:')).toBeInTheDocument();
-    expect(screen.getByText('Real economy unlocked — AI earns and invests 24/7')).toBeInTheDocument();
-    expect(screen.getByText('Creator Marketplace — sell LoRA, VRM, Voice assets (85% goes to you)')).toBeInTheDocument();
+    expect(screen.getByText('Real economy unlock (rolling out) — AI earns and invests 24/7')).toBeInTheDocument();
+    expect(screen.getByText('Creator Marketplace (rolling out) — sell LoRA, VRM, Voice assets (85% goes to you)')).toBeInTheDocument();
   });
 
   it('switches content to Japanese when language changes', async () => {

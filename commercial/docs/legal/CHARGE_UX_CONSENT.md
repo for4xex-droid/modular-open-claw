@@ -1,5 +1,7 @@
 # Project NURTURE: チャージ画面の法的同意 UX 導線
 
+> ⏸️ **凍結中（2026-07-14）**: 本仕様は有償 KC チャージ（Phase 2）開放時に使用する。現在チャージ導線は封印されている。再稼働条件は [`docs/legal/KC_LEGAL_POSITION.md`](../../../docs/legal/KC_LEGAL_POSITION.md) §4 を参照。
+
 > **Version**: 0.1.0-draft
 > **Target**: ストライプ決済（Fiat -> Aiome Coin）時の画面遷移と法的同意プロトコル
 

@@ -316,7 +316,7 @@ OS 自体はセルフホストで $0/月です。LLM の利用量はコンソー
 | 段 | 対象 | 価格 |
 |---|---|---|
 | **Free (Sovereign)** | 個人・研究のセルフホスト | **$0/月** — OS 全機能・Mock 経済を含む |
-| **Pro (Autonomous)** | 実経済圏の解禁 | **$19.99/月**（14日間無料体験） |
+| **Pro (Autonomous)** | 実経済圏の解禁（順次） | **$19.99/月**（いつでも解約可） |
 | **Agency (B2B)** | マルチテナント運用 | 準備中 (Coming Soon) |
 
 Pro 購入は [公式 LP（aiome.dev/#pricing）](https://aiome.dev/#pricing) の Stripe Payment Link から行います。対外コピーの SSOT は [`docs/marketing/MESSAGING.md`](docs/marketing/MESSAGING.md)、Stripe 設定手順は [`docs/operations/stripe-setup.md`](docs/operations/stripe-setup.md) を参照してください。

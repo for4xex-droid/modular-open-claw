@@ -167,3 +167,11 @@ test_logic
 # Biome Engine build artifacts
 /libs/biome-engine/target/
 
+# Local IDE / Cursor config (machine-specific absolute paths)
+.cursor/
+
+# api-server ServeDir 用のローカルビルド成果物（Docker は distroless.Dockerfile が COPY）
+# 追跡対象は index.html のみ。assets/avatar/vrm 等を誤コミットするとサイズゲートを直撃する
+/apps/api-server/static/*
+!/apps/api-server/static/index.html
+

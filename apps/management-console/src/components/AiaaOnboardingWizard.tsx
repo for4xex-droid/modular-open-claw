@@ -11,6 +11,7 @@ import { Briefcase, Link as LinkIcon, CheckCircle, ChevronRight, AlertCircle, Lo
 import { authenticatedFetch } from '../lib/auth';
 import { API_BASE, STRIPE_PRICE_ID } from '../config';
 import { useTranslation } from '../i18n';
+import { useAgentIdentity } from '../hooks/useAgentIdentity';
 
 interface DiscoveryData {
   clientName: string;
@@ -23,6 +24,7 @@ interface DiscoveryData {
 
 export const AiaaOnboardingWizard = () => {
   const { t } = useTranslation();
+  const { agentId } = useAgentIdentity();
   const [step, setStep] = useState(1);
   const [data, setData] = useState<DiscoveryData>({
     clientName: '',
@@ -41,13 +43,21 @@ export const AiaaOnboardingWizard = () => {
     setIsLoading(true);
     setError(null);
     try {
+      // B-3: zero-UUID は RBAC で 403。ログイン中エージェントの ID のみ使用する。
+      if (!agentId) {
+        throw new Error(
+          t('aiaa.missingAgent') ||
+            'Agent identity is required. Open Pro upgrade from the main console instead.'
+        );
+      }
+
       const res = await authenticatedFetch(`${API_BASE}/api/v1/commerce/checkout-session/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          agent_id: '00000000-0000-0000-0000-000000000000', // Dummy agent ID for onboarding
+          agent_id: agentId,
           price_id: STRIPE_PRICE_ID,
           success_url: `${window.location.origin}/checkout/success/`,
           cancel_url: `${window.location.origin}/checkout/cancel`

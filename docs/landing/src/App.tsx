@@ -23,7 +23,7 @@ import { Pricing } from './components/Pricing';
 import { Faq } from './components/Faq';
 import { CTA } from './components/CTA';
 import { Footer } from './components/Footer';
-import { PrivacyPage, TermsPage, TokushohoPage } from './components/LegalPages';
+import { PrivacyPage, TermsPage, TokushohoPage, CancellationPage } from './components/LegalPages';
 import './i18n/config';
 
 function App() {
@@ -45,6 +45,9 @@ function App() {
   }
   if (path === '/tokushoho') {
     return <TokushohoPage />;
+  }
+  if (path === '/cancellation') {
+    return <CancellationPage />;
   }
 
   return (
