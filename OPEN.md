@@ -1,8 +1,9 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-13**
+**最終更新: 2026-07-14（NT-5）**
 
 > **実装手順の正本**:
+> - **Human Wave 実行計画（残 NT の状態・順・DoD 一冊）**: [`docs/roadmaps/human_wave_execution_plan.md`](docs/roadmaps/human_wave_execution_plan.md)（**v1.2**・2026-07-14）
 > - **Human 実行ランブック（NT-1〜7・コピペ超詳細）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）  
 > - **Agent アシスト（推奨・1ステップ進行）**: [`.agent/workflows/nt-assist.md`](.agent/workflows/nt-assist.md)（`/nt-assist`）+ [`scripts/nt_gate.py`](scripts/nt_gate.py)
 > - **残存ワーク統合（Human + Agent・foolproof）**: [`docs/roadmaps/remaining_work_foolproof_plan.md`](docs/roadmaps/remaining_work_foolproof_plan.md)（**v1.2**・2026-07-10・Human NT-* 詳細化 + Agent `/perfect-plan` PASS）
@@ -25,11 +26,11 @@
 - [x] **OP-071**: `GET /api/v1/ekyc/status` 常時 500 → **2026-07-07 解決**（ユーザー承認のうえ U0-B1: `jwt_auth_middleware` を route layer 適用、U0-B3: status ハンドラから Stripe セッション作成除去、U0-B2: トーストデデュープ + パネル内再試行。CHANGELOG [Unreleased] 参照）
 - [x] **OP-072**: UI 情報設計の確定改修（Phase U6）— **2026-07-07 完了**（U0-B + U6-1〜8 実装、Jest 394 PASS、hex ゲート GREEN、`sync:tokens` template ベース idempotent 同期対応）
 - [x] **OP-001**: v8.3 リリースタスク（17個）の実装と検証 → **2026-07-05 クローズ**（照合結果: 17項目の正本リストは memory/2026-06-11.md に件数のみで列挙が現存せず。CHANGELOG L840–854 + コミット dbb2b92c/12196ad1 で実装をコード実体確認、2026-06-12 の memory Open ゼロ。残課題は OP-002 / biome_lenia_overhaul_plan / OP-066 に分散済みのため再定義不要）
-- [ ] **OP-002**: BiomeBackground + alpha:false 修正の目視検証（ブラウザ確認）（2026-06-30）。/reflexion **LL-C** = NT-3 = foolproof H-3
+- [x] **OP-002**: BiomeBackground + alpha:false 修正の目視検証（ブラウザ確認）→ **2026-07-13 完了**（NT-3 / LL-C / H-3: Human Positive PASS + Negative canvas 非表示確認。コックピット → そだてる → ワールド）
 
 ## 🟠 P1 / 次期リリース
 
-- [ ] **OP-070**: **リリース・本番化マスタープラン**（`docs/roadmaps/release_master_plan.md` v1）の実行。**R0/R1/R2 コード完了**（2026-07-05〜06）。**R3-1 OP-012 ✅** / **R3-2 OP-014 ✅** / **R3-4 チェックリスト ✅** / **R2-4 OP-013 ✅**（2026-07-10）。**R3-4 公式 compose 実走 ✅（2026-07-13・API 代理+OP-078 ブラウザ代理 / NT-2 done）**。残: R2-1 本番 Vault+非秘密（Human）/ R4 ローンチ資材（Human）/ R5 preflight + 公開。
+- [ ] **OP-070**: **リリース・本番化マスタープラン**（`docs/roadmaps/release_master_plan.md` v1）の実行。**R0/R1/R2 コード完了**（2026-07-05〜06）。**R3-1 OP-012 ✅** / **R3-2 OP-014 ✅** / **R3-4 チェックリスト ✅** / **R2-4 OP-013 ✅**（2026-07-10）。**R3-4 公式 compose 実走 ✅（2026-07-13・API 代理+OP-078 ブラウザ代理 / NT-2 done）**。**R2-1 ✅（2026-07-14・NT-1）**。**R4-1 ✅ / R4-2 ✅（2026-07-14・NT-5 撮影 + LP/README 組込）**。残: R5 preflight + 公開。
 - [x] **OP-078**: NT-2 /reflexion 残リスク §8 **R-A+R-B** → **2026-07-13 完了**（R-A: `--no-build` Generative FATAL → `--build` healthy；R-B 代理: クリーン volume Setup/login/Neg403/chat+MC proxy SSE → `down`。`nt_gate` browser=PASS）
 - [x] **OP-077**: api-server release 向け unused import 掃除（`router.rs` OpenApi / `karma.rs` tracing を `cfg(debug_assertions)` 化）→ **2026-07-13 完了**（NT-2 §8 R-C）
 - [x] **OP-079**: compose entrypoint の `/app/.intent_tmp` 二重 mkdir 撤去 → **2026-07-13 完了**（`/data/.intent_tmp` のみ・再作成後 healthy。NT-2 §8 R-D）
@@ -66,16 +67,15 @@
 - [x] **OP-076**: MCP/i18n/example を `$STRIPE_API_KEY` に統一（Nurture `STRIPE_SECRET_KEY` は非変更）→ **2026-07-10 完了**
 - [x] **OP-055**: `immune_system.rs` 内 MockJQ（約700行）の共有化 → 2026-07-03 完了（新クレートではなく `infrastructure::testing::mock_jq` クレート内モジュールとして抽出）
 - [x] **OP-056**: フロント `useWorkflowApi` の `POST /api/v1/workflows/validate` とバックエンド `/api/v1/workflows/:id/validate` のパス不整合 → **2026-07-05 完了**（release_master_plan R1-13）
-- [x] **OP-057**: LP Stripe 決済基盤（Payment Link URL・Price ID・ローカル `.env`）→ 2026-07-05 完了（`plink_1TpXHCBcUTwo5TwLnO1BJneY` / `price_1TpXFpBcUTwo5TwLmK9SQbKL`）。**本番反映・Human 作業は ⏸️ 凍結 OP-057-R へ移管**（(2) 決済→Pro コードは 2026-07-05 完了済み）
+- [x] **OP-057**: LP Stripe 決済基盤（Payment Link URL・Price ID・ローカル `.env`）→ 2026-07-05 完了（`plink_1TpXHCBcUTwo5TwLnO1BJneY` / `price_1TpXFpBcUTwo5TwLmK9SQbKL`）。**本番反映は OP-057-R ✅ 2026-07-14**（(2) 決済→Pro コードは 2026-07-05 完了済み）
 - [x] **OP-058**: `ProUpgradeModal`（402→アップグレード導線）→ 2026-07-04 解消（`App.tsx` ルートマウント + `STRIPE_PRICE_ID`）
 - [x] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠 + ✅ W-1 OXP relay 修正 + ✅ **R2-3 月間支出上限**（ADR-050、DB マイグレーション、インターセプタ、Settings UI `economy.monthly_spend_limit`、2026-07-06） → **2026-07-10 docs クローズ**（コードは先行完了）
 - [x] **OP-059-UI**: Settings への `pro_monthly_kc_allowance` 入力 UI 実装 → **2026-07-13 完了**（cockpit Commerce セクション、`SettingsPage.test` 16 PASS）
 - [ ] **OP-062**: Tauri `NurtureMode::InProcess` variant — sidecar 起動と in-process の排他（ADR-012 残タスク）（2026-07-04）
 - [ ] **OP-068**: deny.toml `[advisories].ignore` に登録した 21 件（wasmtime 41.x / rustls-webpki 旧版 / idna 0.4 / quick-xml 0.39 / rand 0.8）の解消。実体は OP-030〜OP-034 の Upstream 待ちと同根。上流更新後に ignore を削除すること（2026-07-04。旧 OP-061 重複採番を 2026-07-05 改番）
-- [ ] **OP-063**: LP 用実プロダクト証拠ビジュアル撮影（MESSAGING §8 ショットリスト7点 + Quick Start GIF）。実データ・ダークテーマ・1920×1080 以上。バイラル32原則 #10 対応（ユーザー実施、2026-07-05）
 - [ ] **OP-064**: ベータユーザー 5〜10 人の獲得と実名テスティモニアル収集。launch（本格トラフィック獲得）の前提条件。バイラル32原則 #14/#29 対応（ユーザー実施、2026-07-05）
 - [x] **OP-065**: Pro 価格改定 $9.99 → **$19.99/月**（2026-07-05 ユーザー決定）。MESSAGING.md / LP i18n / README / ProUpgradeModal 表示 / stripe-setup.md / .env.example を同期。Stripe Payment Link・Price ID の実体差し替えは OP-057 に統合。
-- [x] **OP-066**: UI 全体改善計画 — **2026-07-05 R1 完了**（U0–U5-B + U4 A2UI。Jest 392 PASS / hex 0 / deep-scan 0）。残: U2-4 の `variant` props 統合（任意・Context 化で履歴分断は解消済み）、U1-3 ギフト/ギルド（FE 未実装のため対象外）、OP-002 目視（Human）。
+- [x] **OP-066**: UI 全体改善計画 — **2026-07-05 R1 完了**（U0–U5-B + U4 A2UI。Jest 392 PASS / hex 0 / deep-scan 0）。残: U2-4 の `variant` props 統合（任意・Context 化で履歴分断は解消済み）、U1-3 ギフト/ギルド（FE 未実装のため対象外）。OP-002 目視 ✅ 2026-07-13。
 - [x] **OP-073**: **W2 ワークフロー実行エンジン本実装** — W2-0〜W2-8 完了（2026-07-08）。E2E 3本 PASS、`cargo test --workspace` PASS。Human SSRF Walkthrough A/B/C PASSED（2026-07-09）。
 - [x] **OP-074**: **WorkflowExecutionTracker 再起動復旧** — **2026-07-09 完了**（`recover_orphan_executions` + store クエリ + 起動時呼び出し。CHANGELOG [Unreleased] 参照）
 
@@ -94,10 +94,12 @@
 ## ⏸️ 凍結（解除条件つき）
 
 - [ ] **OP-040**: OGP 画像（og:image）・プロモーション動画の埋め込み — **OGP 画像は 2026-07-09 解除・配置完了**（`docs/assets/logo/` + `docs/landing/public/ogp.png` / `aiome-hero-white.png`）。**プロモーション動画は凍結継続**（音声素材提供待ち）。
-- [ ] **OP-057-R**: OP-057 残タスク。**(1)** 本番ホストへの秘密・非秘密反映 — **Human 待ち**（進行: `/nt-assist` NT-1 + `python3 scripts/nt_gate.py step0`。正本 [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)）。**(2)** 決済→Pro — **2026-07-05 コード完了**。
 
 ## ✅ 解決（直近のみ保持）
 
+- [x] **OP-063**: LP 用証拠ビジュアル（MESSAGING §8 / NT-5）→ **2026-07-14 撮影完了** + **R4-2 組込完了**（`docs/assets/evidence/2026-07-14/` 7/7、LP Showcase 実機画像、README/README_en 同期）
+- [x] **OP-057-R**: OP-057 残タスク → **2026-07-14 完了**（**(1)** NT-1 / R2-1: `app.aiome.dev` 方針 A（Test）・Step0 distroless PASS・Vault（key-proxy）・Webhook7 + whsec・MC Checkout→PlanBadge Pro・Negative（`STRIPE_API_KEY` 削除→拒否→復元）。**(2)** 決済→Pro コードは 2026-07-05 完了済み）
+- [x] **OP-002**: Biome `alpha:false` 目視（NT-3 / LL-C）→ **2026-07-13 完了**（Human PASS + Negative）
 - [x] **OP-075-B**: Immune Fail-Open 残（napi・goal_processor・nurture-api MCP・skill_handler）の Fail-Closed 修正 → **2026-07-10/11 完了**（B1–B5 + N-B5 `test_execute_wasm_skill_immune_db_error_fail_closed` PASS。/reflexion 96）
 - [x] **OP-013**: Stripe E2E テストの実行と結合挙動の継続確認（P2-2）→ **2026-07-10 完了**（NT-4: commerce 28 PASS / commerce_e2e 2 PASS / aiome-commerce 65 PASS。Positive: subscription checkout unlock・signature green。Negative: missing signature・production rejects test secrets）
 - [x] **OP-061**: OXP `generate_header` 統一 + forget Bearer/`NURTURE_INTERNAL_SECRET` + stripe `require_oxp_header` fail-closed — **2026-07-10 完了**（ユーザー明示「修正」承認。CHANGELOG Fixed 2026-07-10、delete_account 5テスト + aiome-commerce generate_oxp_header 3テスト PASS。forget URL は `state.nurture_url`/`NURTURE_API_URL` 正本）

@@ -211,10 +211,15 @@
     "start": "Start Demo"
   },
   "showcase": {
-    "title": "Management Console Showcase",
-    "desc": "Take control of your autonomous swarm with our premium glassmorphic dashboard.",
-    "img1_alt": "Agent Console Dashboard",
-    "img2_alt": "DemoView Execution Timeline",
-    "img3_alt": "Aiome Avatar Customizer"
+    "title": "Management Console — Real Screens",
+    "desc": "Captured from a running instance: audit, approvals, economy, workflows, chat, and LLM cost stats — the Governed and Earning pillars in plain sight.",
+    "gif_alt": "Quick Start demo — setup through home",
+    "gif_caption": "Quick Start demo (live recording)",
+    "img_audit": "Audit log — every action recorded",
+    "img_buzz": "Social approvals — humans decide",
+    "img_economy": "Coins & points — AI that earns",
+    "img_workflow": "Workflow builder — compose the work",
+    "img_agent": "AI chat — the living console",
+    "img_stats": "LLM usage — costs you can see"
   }
 }

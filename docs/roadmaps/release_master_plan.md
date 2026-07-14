@@ -1,8 +1,8 @@
 # リリース・本番化マスタープラン（Release Master Plan v1）
 
-- **ステータス**: 実装進行中（R0/R1/R2 コード完了 — R2-1 Human 待ち / R3-1・R3-2・R3-4 チェックリスト ✅ 2026-07-06 / R3-4 実走 Human 待ち）。**Wave 1/2（OP-024/060/061/067/069）完了**。**TECH_DEBT Top5 のうち OP-075/054/029/076 完了**（2026-07-10）。OP-051 は ADR-054 Proposed。
+- **ステータス**: 実装進行中（R0/R1/R2 コード完了 — **R2-1 ✅ 2026-07-14**（NT-1 / OP-057-R）/ R3-1・R3-2・R3-4 チェックリスト ✅ 2026-07-06 / R3-4 実走 ✅ 2026-07-13）。残 Human: R4 / R5。**Wave 1/2（OP-024/060/061/067/069）完了**。**TECH_DEBT Top5 のうち OP-075/054/029/076 完了**（2026-07-10）。OP-051 は ADR-054 Proposed。
 - **作成日**: 2026-07-05
-- **最終更新**: 2026-07-11
+- **最終更新**: 2026-07-14
 - **目的**: 残存タスク全量を単一の実行計画に統合し、Public Beta リリースと本番化を「計画通りに実装すれば確実に完了する」状態にする。
 - **正本関係**: タスク台帳の正本は `OPEN.md`。本計画は「リリースまでの実行順序・依存・完了基準」を定義する層であり、二重管理はしない（本計画の項目は必ず OP 番号で OPEN.md と対応させる）。
 - **根拠**: OPEN.md 全量精査 + ロードマップ14本の未完了項目調査（サブエージェント）+ CHANGELOG 突合。調査報告のうち以下4件は**陳腐化**を確認済み: W-1 OXP relay（✅ CHANGELOG L79）/ ProUpgradeModal マウント（✅ OP-058）/ LP main push（✅ 2026-07-05）/ Biome Phase 5 P5-1〜P5-5（✅ CHANGELOG「面白さの核」+ ADR-049）。
@@ -100,7 +100,7 @@ R0 台帳照合 ──→ R1 コード完成（UI残 + 小粒P1） ──→ R2 
 
 | ID | タスク | 対応 OP | 担当 | DoD |
 |---|---|---|---|---|
-| R2-1 | 本番ホストへの秘密・非秘密反映（Vault: `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET`、非秘密: `STRIPE_TEST_MODE` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` / `VITE_STRIPE_PRICE_ID`） | OP-057-R (1) | **Human**（手順書 ✅ `stripe-production-setup.md` Vault 正本化 2026-07-10） | 本番 API が実 Price ID を返す + テスト決済 Pro unlock |
+| R2-1 | 本番ホストへの秘密・非秘密反映（Vault: `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET`、非秘密: `STRIPE_TEST_MODE` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` / `VITE_STRIPE_PRICE_ID`） | OP-057-R (1) | **✅ 2026-07-14**（NT-1・方針 A Test・`app.aiome.dev` Checkout→Pro + Negative 復元） | 本番 API が実 Price ID を返す + テスト決済 Pro unlock |
 | R2-2 | 決済→セルフホスト Pro ライセンス自動有効化（Stripe Webhook → `register_license`） | OP-057-R (2) | Main + **人間レビュー** | Positive: テスト決済→Pro 反映 / Negative: 不正署名 Webhook 拒否 / Revert 確認 |
 | R2-3 | 月間支出上限（W-7d）: DB マイグレーション（**要 ADR**）+ Settings UI 入力欄 | OP-059 残 | Main + **人間レビュー** | 上限超過購入がインターセプタで拒否される Negative Test |
 | R2-4 | ✅ Stripe E2E の実行・結合確認 → **2026-07-10 PASS**（NT-4） | OP-013 | Main | 済（commerce 28 / e2e 2 / aiome-commerce 65） |
@@ -125,8 +125,8 @@ R0 台帳照合 ──→ R1 コード完成（UI残 + 小粒P1） ──→ R2 
 
 | ID | タスク | 対応 OP | 担当 | DoD |
 |---|---|---|---|---|
-| R4-1 | 証拠ビジュアル7点 + Quick Start GIF 撮影（MESSAGING.md §8 ショットリスト。実データ・ダーク・1920×1080+） | OP-063 | **Human**（撮影手順書・画面準備は Main） | 7点 + GIF 1本 |
-| R4-2 | LP / README への撮影素材組込 | OP-063 | Sub | LP ビルド PASS・デプロイ |
+| R4-1 | 証拠ビジュアル7点 + Quick Start GIF 撮影（MESSAGING.md §8 ショットリスト。実データ・ダーク・1920×1080+） | OP-063 | **✅ 2026-07-14**（NT-5・`docs/assets/evidence/2026-07-14/` 7/7・Human PASS） | 7点 + GIF 1本 |
+| R4-2 | LP / README への撮影素材組込 | OP-063 | **✅ 2026-07-14**（Showcase 実機 7 点 + README/README_en、Coming Soon 撤去） | LP ビルド PASS・デプロイ |
 | R4-3 | ベータユーザー 5〜10人獲得 + 実名テスティモニアル | OP-064 | **Human** | 5名以上 |
 | R4-4 | GitHub About / Topics / Social Preview 設定（MESSAGING.md §7） | PR-7 | **Human** | 設定完了 |
 | R4-5 | Show HN / Product Hunt 投稿文ドラフト（MESSAGING.md SSOT 準拠、禁止表現リスト遵守） | — | Main | ユーザー承認済みドラフト |

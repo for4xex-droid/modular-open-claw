@@ -98,6 +98,64 @@ fn test_no_pending_placeholders_in_readme() -> Result<(), Box<dyn std::error::Er
 }
 
 #[test]
+fn test_nt5_evidence_assets_present_for_r4_2() -> Result<(), Box<dyn std::error::Error>> {
+    let root = workspace_root();
+    let date_dir = root.join("docs/assets/evidence/2026-07-14");
+    let lp_dir = root.join("docs/landing/public/evidence");
+
+    let stills = [
+        "02-audit",
+        "03-buzz-approval",
+        "04-nurture-economy",
+        "05-workflow-builder",
+        "06-agent-diorama",
+        "07-prompt-stats",
+    ];
+
+    // Canonical archive (png) + delivery (webp) under docs/assets
+    assert!(
+        date_dir.join("01-quickstart.webp").exists() || date_dir.join("01-quickstart.gif").exists(),
+        "missing quickstart demo under {}",
+        date_dir.display()
+    );
+    for name in stills {
+        let webp = date_dir.join(format!("{name}.webp"));
+        let png = date_dir.join(format!("{name}.png"));
+        assert!(
+            webp.exists() || png.exists(),
+            "missing evidence still {name} under {}",
+            date_dir.display()
+        );
+    }
+
+    // LP public delivery set (webp)
+    assert!(
+        lp_dir.join("01-quickstart.webp").exists() || lp_dir.join("01-quickstart.gif").exists(),
+        "missing LP quickstart under {}",
+        lp_dir.display()
+    );
+    for name in stills {
+        assert!(
+            lp_dir.join(format!("{name}.webp")).exists(),
+            "missing LP evidence webp {name} under {}",
+            lp_dir.display()
+        );
+    }
+
+    // README must reference delivery paths (not Coming Soon demo stub)
+    let readme = fs::read_to_string(root.join("README.md"))?;
+    assert!(
+        readme.contains("docs/assets/evidence/2026-07-14/"),
+        "README.md must embed NT-5 evidence paths"
+    );
+    assert!(
+        !readme.contains("*(Coming Soon)*"),
+        "README demo section must not say Coming Soon"
+    );
+    Ok(())
+}
+
+#[test]
 fn test_official_ogp_assets_are_present_and_valid_png() -> Result<(), Box<dyn std::error::Error>> {
     let root = workspace_root();
     let assets = [

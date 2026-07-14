@@ -17,6 +17,8 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  /** NT-5 証拠撮影は playwright.nt5.config.ts 専用（実ログイン・別 baseURL） */
+  testIgnore: ['**/nt5_evidence*.spec.ts'],
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

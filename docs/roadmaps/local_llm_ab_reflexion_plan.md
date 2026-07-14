@@ -42,7 +42,7 @@
 |----|----------|------|--------|------|------------|------|
 | **LL-A** | **Pattern B 実機** | — | ✅ 2026-07-13 | Human または Agent | Positive/Negative/A復帰 記録済（§4.4） | **OP-080** ✅ |
 | **LL-B** | ViewMode / LLM compose+scripts / disk hygiene / CHANGELOG 等が**未コミット** | ロールバック困難・レビュー不能 | ユーザー「コミットしろ」承認後、論理単位で分割: (1) ViewModeProvider + test.tsx (2) `docker-compose.quickstart.native-ollama.yml` + `local_llm_setup.sh` (3) `disk_hygiene.sh` + `.gitignore` (4) docs。**.env / 秘密は除外** | Agent（ユーザー依頼時） | 各コミットで関連テスト PASS；`git status` クリーン（意図的 untracked 除く） | **OP-081** |
-| **LL-C** | **NT-3 Biome 目視未実施** | Public Beta の R1-16 / OP-002 未クローズ | 既存 foolproof **H-3** 手順のまま Human 実行。cockpit → そだてる → ワールド。不透明グレー板なし = PASS | **Human-only** | foolproof H-3 記録テンプレ + OPEN **OP-002** `[x]` | **OP-002**（既存） |
+| **LL-C** | **NT-3 Biome 目視** | — | ✅ 2026-07-13 Human PASS（cockpit → ワールド + Negative） | **Human-only** | OPEN **OP-002** `[x]` | **OP-002** ✅ |
 | **LL-D** | Pattern B が **Linux で `host.docker.internal` 未保証** | Linux 開発者が Pattern B 失敗 | macOS では現状 doc のみ。Linux 需要が出た PR で `extra_hosts` 追加 + VERIFICATION 1 行。今は実装しない | Agent（Linux 需要ゲート後） | Linux ホストで `pattern-b-up` → api healthy | **OP-082**（任意・低優先） |
 
 ---
@@ -117,6 +117,6 @@ Pattern A 復帰: PASS（OLLAMA_HOST=http://ollama:11434 / gemma4:e4b / health�
 [x] Pattern A 実機 + gemma4:e4b pull
 [x] LL-A Pattern B 実機（OP-080）— 2026-07-13
 [ ] LL-B git 分割コミット（OP-081・ユーザー承認後）
-[ ] LL-C NT-3 目視（OP-002）
+[x] LL-C NT-3 目視（OP-002）— 2026-07-13 Human PASS
 [ ] LL-D Linux extra_hosts（OP-082・任意）
 ```

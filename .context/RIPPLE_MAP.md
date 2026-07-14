@@ -93,6 +93,25 @@
 - **波及効果**: Human はランブック全文を読まずに NT を進行可能。Agent は秘密を扱わない。
 - **非対象**: cell/commercial/docker-publish、OP-059-UI
 
+## 🔍 R4-2 LP/README 証拠組込（2026-07-14）
+
+- **変更内容**: `docs/landing/public/evidence/`（GIF+webp）、`Showcase.tsx` 実機ギャラリー、`README.md` / `README_en.md` Coming Soon 撤去。OPEN OP-063 / OP-070 R4-2 / release_master / human_wave / foolproof / CHANGELOG 同期。
+- **波及効果**: Pages デプロイ後に aiome.dev `#showcase` で実機画像表示。次 Human は NT-6。
+- **非対象**: OGP 再生成、旧 `*_mock.webp` 削除（未参照のまま残置可）
+
+## 🔍 NT-5 証拠ビジュアル PASS（2026-07-14）
+
+- **変更内容**: `docs/assets/evidence/2026-07-14/` 7/7。OPEN OP-063 撮影完了・R4-2 待ち。`human_wave` v1.2 / foolproof v1.7 / release_master R4-1 / CHANGELOG 同期。撮影補助: `e2e/nt5_evidence.spec.ts` + `playwright.nt5.config.ts`（`NT5_ADMIN_PASSWORD` 必須・通常 e2e から隔離）。
+- **/reflexion (2026-07-14)**: パスワード直書き撤去、auth-bypass stills 削除、default playwright `testIgnore`。
+- **波及効果**: 公開ゲートの NT-5=7/7 充足。次 Human は NT-6。R4-2 は明示「R4-2 を実装しろ」後。
+- **非対象**: LP 組込（R4-2）、GIF 1920 再エンコード必須化
+
+## 🔍 NT-1 Stripe 本番反映 PASS（2026-07-14）
+
+- **変更内容**: コード非変更。Human NT-1 / OP-057-R (1) / OP-070 R2-1 クローズ。`OPEN.md` / `human_wave_execution_plan.md` v1.1 / foolproof v1.6 / `release_master_plan` R2-1 / CHANGELOG 同期。
+- **波及効果**: NT-6 の R2-1 前提充足。次 Human は NT-5（OP-063）または「NT-6 を実行しろ」。
+- **非対象**: Live 切替（方針 B）、UI バグ修正（ViewMode リロード / VoiceStore）
+
 ## 🔍 compose api-server → distroless（2026-07-11・Human runbook v1.5→v1.6）
 
 - **変更内容**:

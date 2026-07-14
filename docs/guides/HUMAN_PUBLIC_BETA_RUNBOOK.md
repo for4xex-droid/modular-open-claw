@@ -714,11 +714,11 @@ NT-1..7: …
 
 | 状況 | 次 |
 |------|-----|
-| Stripe 未 | NT-1（**先に Step 0 distroless** → GUI Vault） |
-| Quick Start 未 | NT-2（**container 名注意**） |
-| Biome 未 | NT-3 |
-| スクショ未 | NT-5（Activity 内タブ） |
-| チェックしたい | 「NT-6 を実行しろ」（**開発機**・NT-5 未完でも preflight 可） |
+| Stripe 未 | ~~NT-1~~ ✅ 2026-07-14（方針 A・`app.aiome.dev`） |
+| Quick Start 未 | ~~NT-2~~ ✅ |
+| Biome 未 | ~~NT-3~~ ✅ |
+| スクショ未 | ~~NT-5~~ ✅ 2026-07-14（**R4-2 組込済**） |
+| チェックしたい | **「NT-6 を実行しろ」**（**開発機**） |
 | 公開したい | NT-6 PASS + **NT-5=7/7** + 「公開してよい」 |
 
 ## 付録 B — 突合根拠

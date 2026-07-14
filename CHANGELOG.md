@@ -1,5 +1,27 @@
 ## [Unreleased]
 
+### Added (R4-2 / OP-063 LP・README 組込 2026-07-14)
+- **証拠ビジュアル公開**: `docs/landing/public/evidence/` に実機 7 点（webp）。LP `Showcase` をモック3枚から実機ギャラリーへ置換。`README.md` / `README_en.md` の Coming Soon を撤去し同一素材を掲載。README/LP は webp 配信（元 PNG/GIF は `docs/assets/evidence/` に保管）。
+
+### Fixed (/reflexion R4-2 2026-07-14)
+- **配信最適化**: README/LP を webp 配信に統一（デモ ~355KB、静止画各 ~30–40KB）。CHANGELOG の「R4-2 待ち」矛盾を解消。`marketing_assets_test` に NT-5/R4-2 パス存在テスト追加。未参照 `*_mock` を public から撤去。
+
+### Fixed (/reflexion NT-5 capture scripts 2026-07-14)
+- **e2e NT-5**: パスワード直書き削除（`NT5_ADMIN_PASSWORD` 必須）、auth-bypass 静止画 spec 削除、通常 `playwright.config.ts` から `nt5_evidence*` を `testIgnore`、専用 config は `nt5_evidence.spec.ts` のみ。第2周: `beforeAll` で秘密未設定を早期 FAIL、`resolveFfmpeg` の死んだ候補を実探索に修正。
+
+### Verified (NT-5 / OP-063 2026-07-14)
+- **証拠ビジュアル 7/7**: `docs/assets/evidence/2026-07-14/`（Quick Start + 監査 / SNS承認 / エコノミー / ワークフロー / エージェント / 使用量）。Human PASS。**R4-2 組込済**（LP Showcase + README）。次 Human は **NT-6**（「NT-6 を実行しろ」）または任意 **NT-7**。
+
+### Verified (NT-1 / OP-057-R / R2-1 2026-07-14)
+- **Stripe 本番反映（方針 A = Test）**: Step0 distroless PASS → Vault（`STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET`）→ Webhook 7 + restart → MC Checkout → PlanBadge **Pro**。Negative: Vault から API キー削除→api 拒否/起動不能→復元後ログイン復旧。OPEN OP-057-R クローズ / OP-070 R2-1 ✅。次 Human は **NT-5**（証拠 7 点）または公開前 **NT-6**。
+- **運用メモ**: 本番 static は compose bind-mount がイメージ内 dist を上書きし得るため、フロント再ビルド後はホスト static 同期が必要。`read -s` 後は `export` 必須。
+
+### Verified (NT-3 / OP-002 2026-07-13)
+- **Biome 目視**: Human Positive PASS（コックピット → そだてる → ワールド、不透明グレー板なし）+ Negative（canvas 一時非表示で下層確認）。OPEN OP-002 / LL-C クローズ。次 Human は NT-1。
+
+### Docs (Human Wave 実行計画 2026-07-13 / v1.2 2026-07-14)
+- **roadmap**: 残 Human Public Beta（NT-1/3/5/6/7）の状態・DAG・DoD・Negative・記録テンプレを [`docs/roadmaps/human_wave_execution_plan.md`](docs/roadmaps/human_wave_execution_plan.md) に集約（**v1.2**: NT-1+NT-5 PASS 反映）。コピペ手順はランブック v1.6 へ委譲。
+
 ### Verified (OP-080 Pattern B 2026-07-13)
 - **Local LLM Pattern B 実機**: `pattern-b-check` → `pattern-b-up` → `OLLAMA_HOST=host.docker.internal:11434` / `gemma4:26b` / `/health` PASS。Negative: container `aiome-ollama` 併走時の 11434 dual-bind リスクを記録し stop 後 B 復帰。`pattern-a-up` で Pattern A（`ollama:11434` / `gemma4:e4b`）復帰。
 

@@ -1,11 +1,12 @@
 # 残存ワーク Foolproof 実行計画（v1.4）
 
 > **作成**: 2026-07-10（v1.0）  
-> **改訂**: v1.1 → **v1.2**（Human NT 拡充）→ **v1.3**（NT-2 実装ゲート分離）→ **v1.4**（2026-07-13: NT-2=done・§8 R-A〜R-D 閉じ / OPEN OP-078・077・079）→ **v1.5**（2026-07-13: Local LLM /reflexion 残リスク LL-A〜D → OP-080〜082）  
+> **改訂**: v1.1 → **v1.2**（Human NT 拡充）→ **v1.3**（NT-2 実装ゲート分離）→ **v1.4**（2026-07-13: NT-2=done・§8 R-A〜R-D 閉じ / OPEN OP-078・077・079）→ **v1.5**（2026-07-13: Local LLM /reflexion 残リスク LL-A〜D → OP-080〜082）→ **v1.6**（2026-07-14: **NT-1 PASS** / OP-057-R・R2-1 クローズ）→ **v1.7**（2026-07-14: **NT-5 PASS** / OP-063 撮影完了・R4-2 待ち）  
 > **根拠**: `OPEN.md` + `near_term_public_beta_plan.md` v5.1 + 運用正本（stripe-production-setup / QUICK_START_VERIFICATION / MESSAGING §8 / OPERATIONS_MANUAL §8 / release-preflight）  
 > **タスク正本**: [`OPEN.md`](../../OPEN.md)（本計画は手順のみ。ID の二重管理をしない）  
-> **ステータス**: Wave A1/A2/A3 ✅。NT-1 ✅。NT-2 ✅（§8 閉じ）。**いま NT-3**（OP-002 Biome 目視・human-only / LL-C）。残: NT-5/6/7 / Gate / LL follow（OP-081〜082・NT-6 ブロッカー外）。**OP-059-UI ✅ / OP-080 ✅ 2026-07-13**
-> **Human 実行の超詳細版（推奨）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）— Human コピペ正本。進行は **`/nt-assist`** + `scripts/nt_gate.py`（1ステップ・秘密禁止）。§2 H-1 は要約。
+> **ステータス**: Wave A1/A2/A3 ✅。NT-1 ✅ / NT-2 ✅ / NT-3 ✅ / **NT-5 ✅**（OP-063・2026-07-14・**R4-2 組込済**）。**いま NT-6**（「NT-6 を実行しろ」）。残: NT-7 / Gate / LL follow（OP-081〜082）。**OP-059-UI ✅ / OP-080 ✅ 2026-07-13**
+> **Human Wave 実行計画（状態・順・DoD 一冊）**: [`human_wave_execution_plan.md`](human_wave_execution_plan.md)（**v1.2**・2026-07-14）
+> **Human 実行の超詳細版（コピペ正本）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）— 進行は **`/nt-assist`** + `scripts/nt_gate.py`（1ステップ・秘密禁止）。§2 H-1 は要約。
 
 ---
 
@@ -70,16 +71,15 @@ B5 実行前ゲート / `String` 戻り、B3=`Failed`、対象 5 箇所、napi �
 
 | NT | OPEN | コード状態 | 次アクション |
 |----|------|------------|--------------|
-| **NT-1** | OP-057-R (1) | 手順 ✅ / 反映 ❌ | Vault |
+| **NT-1** | OP-057-R (1) ✅ | 手順 ✅ / 反映 ✅ 2026-07-14 | 閉じ済 |
 | **NT-2** | G1 / OP-078 ✅ | API+MC proxy DoD + §8 R-A〜R-D ✅（2026-07-13） | [`nt2_quickstart_unblock_plan.md`](nt2_quickstart_unblock_plan.md) §8（完了） |
+| **NT-3** | OP-002 ✅ | `BiomeCanvas.tsx:99` / `BiomeRenderer.tsx:187` DONE | 目視 ✅ 2026-07-13（**LL-C**） |
+| NT-4 | OP-013 | ✅ | 再実行不要 |
+| **NT-5** | OP-063 ✅ | OGP ✅ / 撮影 ✅ / **R4-2 ✅** | 閉じ済 |
+| **NT-6** | R5 | WF ✅ | **いま**「実行しろ」後（NT-1+2+3 済・NT-5=7/7） |
+| **NT-7** | OP-064 | 本計画 §2.H-6 にテンプレ内蔵 | 任意（5名+） |
 | **LL follow** | OP-080〜082 | Pattern A ✅ / **B 実機 ✅ OP-080** / git 未コミット(OP-081) | [`local_llm_ab_reflexion_plan.md`](local_llm_ab_reflexion_plan.md) §2（**NT-6 必須ブロッカー外**） |
 | **Commerce v3.3** | OP-083 | **B ✅ A ✅** → C/D=Federation後 | [`commerce_layer_tech_debt_plan_v3.md`](commerce_layer_tech_debt_plan_v3.md) |
-
-| **NT-3** | OP-002 | `BiomeCanvas.tsx:99` / `BiomeRenderer.tsx:187` DONE | 目視（**LL-C** = 同一） |
-| NT-4 | OP-013 | ✅ | 再実行不要 |
-| **NT-5** | OP-063 | OGP ✅ / 撮影 ❌ | 7+GIF |
-| **NT-6** | R5 | WF ✅ | 「実行しろ」後 |
-| **NT-7** | OP-064 | 本計画 §2.H-6 にテンプレ内蔵 | 任意（5名+） |
 
 ### 1.2 Agent（承認後）
 
@@ -134,7 +134,7 @@ NT-4 ✅ 済み（再実行不要）
 
 ---
 
-### H-1 NT-1 = R2-1 = OP-057-R (1) — Stripe 本番反映 🔐
+### H-1 NT-1 = R2-1 = OP-057-R (1) — Stripe 本番反映 🔐【✅ 2026-07-14 PASS】
 
 **Human 実行の詳細正本（重複時はこちら）**: [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) **NT-1（v1.6+）** — Step 0→A→B→C→D。  
 **技術正本**: [`docs/operations/stripe-production-setup.md`](../operations/stripe-production-setup.md)  
@@ -142,70 +142,17 @@ NT-4 ✅ 済み（再実行不要）
 
 > 本 H-1 はチェックリスト要約。**コマンドの全文コピペはランブック NT-1 を開いて実行**する（ここに再掲しない＝重複防止）。
 
-#### 事前チェック（全部 Yes で開始）
-
-- [ ] 方針 A（test）または B（live）を決めた  
-- [ ] Price ID を控えた（チャットに全文禁止）  
-- [ ] 本番ホストに `VAULT_SECRET` / `VAULT_MASTER_PASSWORD`  
-- [ ] compose に `STRIPE_API_KEY=` 代入なし  
-- [ ] compose の api-server が `docker/distroless.Dockerfile`（ファイル）
-
-#### Step 0 — distroless を本番に載せる（必須・ランブック詳細へ委譲）
-
-本番イメージが MC 付き distroless であることを保証するため、ホスト環境で `git pull`、`chown`、`build`、`up -d` を実行し、稼働 Labels を確認します。
-
-> [!IMPORTANT]
-> プロセスの `restart` だけでは Docker イメージは更新されません。必ず詳細手順とコマンドを [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-1 **Step 0** で確認し、実行してください（コマンドの重複を避けるため、本節でのコマンド全文は省略しランブックへ委譲します）。
-
-- [ ] Step 0 DoD PASS  
-
-#### Step A — 秘密（AbyssVault）
-
-**推奨**: 本番 MC → **まもる・整える → 設定 → Abyss Vault**（Step 0 後）。CLI は同一 Vault DB 時のみ。
-
-- [ ] `STRIPE_API_KEY` 格納  
-- [ ] `STRIPE_WEBHOOK_SECRET` 格納（または Step C 後に完了とメモ）
-
-#### Step B — 非秘密（ホスト env / compose パススルー）
-
-**方針 A**: `STRIPE_TEST_MODE=true` + test Price  
-**方針 B**: `STRIPE_TEST_MODE=false` + live Price  
-
-`VITE_STRIPE_PRICE_ID` は任意（`price_gold_monthly` エイリアス可）。詳細はランブック / stripe-production-setup §2.1。
-
-- [ ] TEST_MODE 一致  
-- [ ] ホスト Price 設定済  
-- [ ] 方針 B で Price 空起動しない  
-
-#### Step C — Webhook（Stripe Dashboard）
-
-ランブック NT-1 Step C（イベント 7・whsec・`restart api-server`＝注入再読込）。
-
-- [ ] Webhook 登録 + 注入ログ OK（値は出ない）
-
-#### Step D — DoD（Positive）
-
-| # | 確認 | 合格条件 |
-|---|------|----------|
-| D0 | 稼働 distroless | Step 0 DoD |
-| D1 | Checkout 開始 | PlanBadge / コインとポイント / 402 |
-| D2 | アプリ Checkout 1 件 | LP Link 単独不可 |
-| D3 | Pro unlock | PlanBadge 等 |
-| D4 | compose 衛生 | キー代入なし |
-
-#### Negative
-
-GUI/CLI で API キー一時削除 → restart → 拒否 → **復元** → restart。
-
-#### 完了記録
+#### 完了記録（2026-07-14）
 
 ```
 NT-1 / OP-057-R(1) / R2-1
-日付: YYYY-MM-DD
+日付: 2026-07-14
 Step0 distroless: PASS
-Vault: GUI|CLI / 方針: A|B / Price末尾4: ____
+Vault: key-proxy / 方針: A / Price末尾4: pDj5
 Webhook7 / Pro / Negative復元
 ```
+
+→ OPEN OP-057-R / OP-070 R2-1 **✅ クローズ済**。NT-5 ✅。次は **NT-6**。
 
 #### Agent 禁止
 
@@ -235,7 +182,7 @@ Webhook7 / Pro / Negative復元
 
 #### Human / Agent フォロー
 
-手順・記録は **VERIFICATION**。残リスク **§8 R-A〜R-D すべて ✅**（2026-07-13）。`nt_gate` browser=PASS。次は NT-3。
+手順・記録は **VERIFICATION**。残リスク **§8 R-A〜R-D すべて ✅**（2026-07-13）。`nt_gate` browser=PASS。NT-1 ✅ / NT-3 ✅ / NT-5 ✅。次は NT-6。
 
 ---
 
@@ -247,7 +194,7 @@ Webhook7 / Pro / Negative復元
 |----|------|------|------------|
 | **LL-A** | OP-080 | Pattern B 実機 ✅ 2026-07-13（Positive + Negative dual-bind + A 復帰） | **いいえ**（macOS quickstart は Pattern A で可） |
 | **LL-B** | OP-081 | 未コミット diff の論理分割コミット（`.env` 除外） | いいえ（ユーザー承認後） |
-| **LL-C** | OP-002 | NT-3 Biome 目視 — **H-3 と同一** | **はい**（Public Beta Human ゲート） |
+| **LL-C** | OP-002 ✅ | NT-3 Biome 目視 — **H-3 と同一** → **2026-07-13 PASS** | **はい**（Public Beta Human ゲート・閉じ済） |
 | **LL-D** | OP-082 | Linux `extra_hosts`（需要ゲート後） | いいえ |
 
 **Agent 禁止**: Pattern B を本番 compose 既定にする / `.env` コミット / LL-C を代理 PASS。
@@ -287,79 +234,34 @@ Webhook7 / Pro / Negative復元
 
 ```
 NT-3 / OP-002
-日付: YYYY-MM-DD
-結果: PASS / FAIL
-ブラウザ: Chrome / Safari / …
+日付: 2026-07-13
+結果: PASS
+ブラウザ: （Human 報告）
 スクショ: （任意・個人情報なし）
 ```
 
-完了時: OPEN OP-002 を `[x]`。
+完了時: OPEN OP-002 を `[x]` → **✅ 2026-07-13 クローズ**。
 
 ---
 
-### H-4 NT-5 = OP-063 = R4-1 — 証拠ビジュアル
+### H-4 NT-5 = OP-063 = R4-1 — 証拠ビジュアル【✅ 2026-07-14 PASS】
 
 **正本**: [`docs/marketing/MESSAGING.md`](../marketing/MESSAGING.md) **§8**（L129–141）
 
-#### 要件（全ショット共通）
-
-- [ ] 実データ（ダミープレースホルダ画面だけは不可）  
-- [ ] ダークテーマ  
-- [ ] **1920×1080 以上**  
-- [ ] 個人情報・API キー・トークンが映らない  
-- [ ] OGP の再生成は不要（既存 `docs/landing/public/ogp.png` 等）
-
-#### 推奨保存先（リポジトリ外でも可。入れるならパスを統一）
-
-```text
-docs/assets/evidence/YYYY-MM-DD/
-  01-quickstart.gif          # 約30秒
-  02-audit.png
-  03-buzz-approval.png
-  04-nurture-economy.png
-  05-workflow-builder.png
-  06-agent-diorama.png
-  07-prompt-stats.png
-```
-
-#### ショットチェックリスト
-
-| # | 内容 | UI 到達 | ファイル | 済 |
-|---|------|---------|----------|----|
-| 1 | SetupWizard → Playbook → Home（GIF ~30s） | 初回 or 設定リセット相当 | `01-quickstart.gif` | [ ] |
-| 2 | 監査ログ | **アクティビティ**（`karma`）を開き内部タブ「監査ログ」 | `02-audit.png` | [ ] |
-| 3 | 承認キュー | **SNS承認**（`buzz-approval`） | `03-buzz-approval.png` | [ ] |
-| 4 | エコノミー | **コインとポイント**（`nurture`） | `04-nurture-economy.png` | [ ] |
-| 5 | ワークフロー | **ワークフロー**（`workflow-builder`） | `05-workflow-builder.png` | [ ] |
-| 6 | チャット+アバター | **AIとはなす**（`agent`）+ Diorama | `06-agent-diorama.png` | [ ] |
-| 7 | LLM 統計 | **アクティビティ** → 内部タブ「使用量」 | `07-prompt-stats.png` | [ ] |
-
-> **注意（2026-07-11）**: `audit` / `prompt-stats` はサイドバー独立項目ではない（U6-5）。詳細は [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-5。
-
-#### DoD
-
-- [ ] 静止画 6 + GIF 1（上表 7 点）が揃う  
-- [ ] 各ファイルが 1920×1080 以上（GIF はフレーム解像度）  
-- [ ] 秘密の映り込みなし（自分で目視）
-
-#### Negative
-
-- キーや `.env` が写ったショットは **破棄して撮り直し**（リポジトリに入れない）
-
-#### 後続（本 NT の外）
-
-- R4-2: LP / README への組込は Agent/Sub（「R4-2 を実装しろ」後）
-
-#### 記録
+#### 完了記録（2026-07-14）
 
 ```
 NT-5 / OP-063
-日付: YYYY-MM-DD
-パス: docs/assets/evidence/…
-結果: 7/7 PASS / 欠番: …
+日付: 2026-07-14
+パス: docs/assets/evidence/2026-07-14/
+結果: 7/7 PASS / 欠番: なし
 ```
 
-完了時: OPEN OP-063 を `[x]`（組込未なら「撮影完了・R4-2 待ち」と注記）。
+→ OPEN OP-063 **✅ 撮影 + R4-2 組込完了**。次は **NT-6**。
+
+#### 後続
+
+- ~~R4-2~~ ✅ 2026-07-14（LP Showcase + README）
 
 ---
 
@@ -1019,7 +921,13 @@ W（常時）
 ## 11. ユーザー指示テンプレ
 
 ```
-NT-1 を進める
+NT-6 を実行しろ
+```
+```
+NT-5 を進める（済・再実行時のみ）
+```
+```
+NT-1 を進める（済・再実行時のみ）
 ```
 ```
 NT-2 を進める
@@ -1028,13 +936,10 @@ NT-2 を進める
 NT-3 を進める
 ```
 ```
-NT-5 を進める
-```
-```
-NT-6 を実行しろ
-```
-```
 NT-7 を進める（任意）
+```
+```
+R4-2 を実装しろ
 ```
 ```
 Wave A1 を実装しろ
