@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-14（R5-5 / v1.2.0 Public Beta 公開）**
+**最終更新: 2026-07-16（OP-084 L0–L2/L5 準備・L3 Human ゲート）**
 
 > **実装手順の正本**:
 > - **Human Wave 実行計画（残 NT の状態・順・DoD 一冊）**: [`docs/roadmaps/human_wave_execution_plan.md`](docs/roadmaps/human_wave_execution_plan.md)（**v1.2**・2026-07-14）
@@ -30,7 +30,7 @@
 
 ## 🟠 P1 / 次期リリース
 
-- [ ] **OP-084**: **実課金オープン（Stripe 方針 B / Live 切替）**（2026-07-14 計画策定）— 正本: [`live_billing_open_plan.md`](docs/roadmaps/live_billing_open_plan.md)（L0〜L5）。スコープ = Pro サブスクのみ。法務ブロッカー（B-2/B-3/B-4）は OP-085 で消化。**残**: L0-1 Payment Link mode 確認、L3 Live 切替。**Safety-Critical — フェーズごと「実装しろ」承認必須**
+- [ ] **OP-084**: **実課金オープン（Stripe 方針 B / Live 切替）** — 正本: [`live_billing_open_plan.md`](docs/roadmaps/live_billing_open_plan.md) **v1.1**。**済**: L0（Link=`pk_test`）/ L1-1·2·4 / L2-1〜3（OP-085）/ L5-1·2 手順。**Human 残**: L2-4 プロフィール → **L3** Vault+Live Price+Webhook → L4 3段階検証。**Agent 待ち**: L3-1 後の L1-3（LP live Link）+ L5-3 クローズ。**Safety-Critical — L3 前に「L3 を実装しろ」必須**
 - [x] **OP-070**: **リリース・本番化マスタープラン**（`docs/roadmaps/release_master_plan.md` v1）の実行 → **2026-07-14 Public Beta 公開完了**（R5-1〜R5-3 ✅ / **R5-5**: タグ `v1.2.0` + [GitHub Release](https://github.com/motivationstudio-llc/aiome/releases/tag/v1.2.0)。リポジトリは public。Stripe は方針 A Test のまま。残フォローは OP-064 / 方針 B / ポストリリース）。
 - [x] **OP-078**: NT-2 /reflexion 残リスク §8 **R-A+R-B** → **2026-07-13 完了**（R-A: `--no-build` Generative FATAL → `--build` healthy；R-B 代理: クリーン volume Setup/login/Neg403/chat+MC proxy SSE → `down`。`nt_gate` browser=PASS）
 - [x] **OP-077**: api-server release 向け unused import 掃除（`router.rs` OpenApi / `karma.rs` tracing を `cfg(debug_assertions)` 化）→ **2026-07-13 完了**（NT-2 §8 R-C）
@@ -98,7 +98,7 @@
 
 ## ✅ 解決（直近のみ保持）
 
-- [x] **OP-085**: **法務ドキュメント整備** → **2026-07-15 エージェント側完了**（正本: [`COMPLIANCE_CHECKLIST.md`](docs/legal/COMPLIANCE_CHECKLIST.md)。TERMS/TOKUSHOHO v2.2・解約 v1.1・同意証跡・トライアル表示撤去・VoiceStore 文言是正・AiaaOnboardingWizard zero-UUID 禁止・本店住所/電話公開。弁護士必須なし）。**Human 残**: LP デプロイ後の目視 / Payment Link の「14 days free」有無確認 /（Live 時）Stripe プロフィール
+- [x] **OP-085**: **法務ドキュメント整備** → **2026-07-15 エージェント完了 + 2026-07-16 公開検証完了**（正本: [`COMPLIANCE_CHECKLIST.md`](docs/legal/COMPLIANCE_CHECKLIST.md) §7）。Deploy Landing Page success・公開 bundle に特商法住所/電話・トライアル非提供・解約可文言。Payment Link に「14 days free」なし（`pk_test` = Test）。**Live プロフィール/領収書は OP-084** に移管。
 - [x] **OP-063**: LP 用証拠ビジュアル（MESSAGING §8 / NT-5）→ **2026-07-14 撮影完了** + **R4-2 組込完了**（`docs/assets/evidence/2026-07-14/` 7/7、LP Showcase 実機画像、README/README_en 同期）
 - [x] **OP-057-R**: OP-057 残タスク → **2026-07-14 完了**（**(1)** NT-1 / R2-1: `app.aiome.dev` 方針 A（Test）・Step0 distroless PASS・Vault（key-proxy）・Webhook7 + whsec・MC Checkout→PlanBadge Pro・Negative（`STRIPE_API_KEY` 削除→拒否→復元）。**(2)** 決済→Pro コードは 2026-07-05 完了済み）
 - [x] **OP-002**: Biome `alpha:false` 目視（NT-3 / LL-C）→ **2026-07-13 完了**（Human PASS + Negative）

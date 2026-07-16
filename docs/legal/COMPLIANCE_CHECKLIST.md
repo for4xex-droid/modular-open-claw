@@ -1,7 +1,7 @@
 # コンプライアンス必須記載チェックリスト（Pro サブスク）
 
 **版**: v1.0  
-**最終更新日**: 2026-07-15  
+**最終更新日**: 2026-07-16  
 **前提**: 有償 KC・換金・マーケットは**凍結**。対象は **Aiome Pro（月額 $19.99 USD）のみ**。  
 **方針（2026-07-15）**: 弁護士レビューは**必須ゲートではない**。本チェックリスト + 公開文書のセルフ監査で Live 準備を進める。
 
@@ -84,13 +84,13 @@
 
 根拠: [`KC_LEGAL_POSITION.md`](KC_LEGAL_POSITION.md)
 
-## 7. Live 前の Human 作業（エージェント不可）
+## 7. Live 前の Human / 公開検証
 
-| 作業 | 理由 |
+| 作業 | 状態（2026-07-16 実行） |
 |---|---|
 | 特商法の**詳細住所・電話番号**を手元で確定し、請求対応できるようにする | ✅ 2026-07-15 公開表記に本店住所・電話を記載済み |
-| LP 再デプロイ後の公開ページ目視 | main push 後に GitHub Pages が更新。目視は Human |
-| Stripe Payment Link の Checkout 画面に「14 days free」が**残っていない**こと | Dashboard。残っていればトライアル解除 or 文書をトライアルありに合わせる |
-| Stripe Dashboard（Live）のビジネスプロフィール・領収書メール | 運用側（OP-084 Live 時） |
+| LP 再デプロイ後の公開ページ検証 | ✅ **Deploy Landing Page** success（`2026-07-14T16:57:50Z`）。公開 JS bundle（`/assets/index-*.js`）に所在地・電話・「提供していません」・`pro_trial`=解約可文言を確認。直 URL `/tokushoho` 等は GH Pages SPA のため HTTP 404→`404.html` リダイレクト（ブラウザでは表示可） |
+| Stripe Payment Link の Checkout に「14 days free」が**残っていない**こと | ✅ `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03` を取得。`14 days free` / `free trial` / `trial_period` **0 件**。`noTrialOrSetupModeHeader` あり。公開鍵は **`pk_test_` のみ**（Test mode。Live 切替は OP-084） |
+| Stripe Dashboard（Live）のビジネスプロフィール・領収書メール | ⏳ **OP-084 L2-4 / L3**（Live 切替時。本 OP-085 スコープ外） |
 
 弁護士への相談は**任意**（複雑な海外消費者法・行政照会時など）。本リポジトリの Live ゲート条件には含めない。

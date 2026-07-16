@@ -14,11 +14,14 @@ describe('Footer Component', () => {
     expect(screen.getByText(/2026 MotivationStudio LLC/i)).toBeInTheDocument();
   });
 
-  it('renders privacy, terms, cancellation, and tokushoho links', () => {
+  it('renders support, privacy, terms, cancellation, and tokushoho links', () => {
     render(<Footer />);
+    expect(screen.getByText('Customer Support')).toBeInTheDocument();
     expect(screen.getByText('Privacy Policy')).toBeInTheDocument();
     expect(screen.getByText('Terms of Service')).toBeInTheDocument();
     expect(screen.getByText('Cancellation & Refund')).toBeInTheDocument();
+
+    expect(screen.getByText('Customer Support').closest('a')).toHaveAttribute('href', '/support');
 
     const cancellationLink = screen.getByText('Cancellation & Refund');
     expect(cancellationLink.closest('a')).toHaveAttribute('href', '/cancellation');

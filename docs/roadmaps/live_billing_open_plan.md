@@ -1,9 +1,28 @@
-# 実課金オープン計画（Stripe Live Switch Plan v1）
+# 実課金オープン計画（Stripe Live Switch Plan v1.1）
 
-- **ステータス**: 計画策定（2026-07-14）— 実装未着手。**Safety-Critical Zone を含むため、各フェーズの着手には「実装しろ」等の明示承認が必須**
+- **ステータス**: **L0〜L2（法務・UI）消化済 / L3〜L4 は Human ゲート待ち（2026-07-16）**。L3 本番切替は Vault・Live 鍵を含む **Safety-Critical** — ホスト操作前に「L3 を実装しろ」等の明示が必要
 - **対応 OP**: **OP-084**（OPEN.md P1）
 - **目的**: Public Beta（v1.2.0、Stripe 方針 A = Test）から、**実通貨決済（方針 B = Live）** へ安全に切り替えるための全タスクを検証・定義する
 - **正本関係**: タスク台帳は `OPEN.md`。切替手順のコピペ正本は [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-1（方針 B 分岐）+ [`stripe-production-setup.md`](../operations/stripe-production-setup.md)。本計画は「Live 固有の追加タスク・順序・DoD」を定義する層
+
+### 進捗（2026-07-16）
+
+| Phase | 状態 | 根拠 |
+|---|---|---|
+| L0-1 | ✅ | LP Link `aFa00i9cEaVE4ay4y9f7i03` → 公開鍵 **`pk_test_` のみ**（Test）。緊急遮断不要 |
+| L0-2 | ✅ | スコープ = Pro $19.99/月のみ（§1）。OP-085 / 本実行で維持 |
+| L1-1 | ✅ | VoiceStore: 「Pro に登録する」+ KC 無償明記（OP-085） |
+| L1-2 | ✅ | AiaaOnboardingWizard: `useAgentIdentity`（zero-UUID 禁止） |
+| L1-3 | ⏳ | **L3-1 の live Payment Link 作成後**に LP CTA 差し替え |
+| L1-4 | ✅ | LP/MC `$19.99` 整合 |
+| L1-5 | — | 任意・非ブロッカー（表示撤去済） |
+| L2-1〜3 | ✅ | OP-085（COMPLIANCE_CHECKLIST ✅） |
+| L2-4 | ⏳ **Human** | Stripe Live ビジネスプロフィール・領収書・税務判断 |
+| L3 | ⏳ **Human** | 下記 §6 チェックリスト |
+| L4 | ⏳ | L3 後。Verification Protocol 3 段階必須 |
+| L5-1 | ✅ | `NT6_R5_ROLLBACK_DRAFT.md` に Live 課金停止を追記 |
+| L5-2 | ✅ 手順 | `stripe-production-setup.md` §5。Dashboard アラート設定は Human |
+| L5-3 | ⏳ | L4 PASS 後に OPEN クローズ |
 
 ---
 
@@ -152,5 +171,38 @@ L5 運用・ロールバック整備 → 台帳クローズ
 - **Gate 5 実行順序**: L3-1（live Price 作成）が L1-3（LP 差し替え）の前提のため、L1-3 のみ L3-1 後に実施。他に循環なし
 
 ---
+
+---
+
+## 6. Human 実行チェックリスト — L2-4 / L3 / L4（いまの残件）
+
+> エージェントは Stripe Dashboard・本番 Vault・実カードに触れない。以下を Human が実施し、完了報告後に Agent が L1-3（LP live Link 差し替え）と L5-3（台帳クローズ）を行う。
+
+### L2-4 — Live アカウント整備
+
+- [ ] Stripe Dashboard → **Live mode** → Settings → Business settings（事業名・住所・サポートメール）
+- [ ] 公開 URL（LP・2026-07-16）:
+  - 顧客サポート: `https://aiome.dev/support`（**新設**・デプロイ後に有効）
+  - プライバシー: `https://aiome.dev/privacy`
+  - 利用規約: `https://aiome.dev/terms`
+  - 特商法: `https://aiome.dev/tokushoho`
+- [ ] Customer emails: 領収書 / 失敗通知を有効化
+- [ ] Radar 既定のまま or 方針決定を記録
+- [ ] Stripe Tax 要否を判断（不要なら「見送り」と記録）
+
+### L3 — 方針 B 切替（正本: Runbook NT-1 + `stripe-production-setup.md`）
+
+- [ ] **L3-1** Live Product/Price（**$19.99 USD/月**）作成 → `price_...` を手元記録（チャット禁止）+ live Payment Link 作成
+- [ ] **L3-2** 本番 MC → Abyss Vault に `STRIPE_API_KEY=sk_live_...` / `STRIPE_WEBHOOK_SECRET=whsec_...`（値は対話入力のみ）
+- [ ] **L3-3** ホスト: `STRIPE_TEST_MODE=false` + `STRIPE_PRICE_SUBSCRIPTION_MONTHLY=<live price>` → api-server 再起動（Price 空なら起動拒否 = 正常）
+- [ ] **L3-4** Live Webhook: `https://<domain>/api/v1/commerce/webhook` + 必須 7 イベント
+- [ ] Agent へ: live Payment Link URL のみ共有 → **L1-3** LP 差し替えを依頼（「L1-3 を実装しろ」）
+
+### L4 — 検証（省略禁止）
+
+- [ ] **L4-1 Positive**: 実カード 1 件 → Pro unlock
+- [ ] **L4-2 Negative**: 改ざん Webhook / `whsec_test` 拒否
+- [ ] **L4-3 Negative**: payment_failed 相当 → suspend
+- [ ] **L4-4 Revert**: 返金 + サブスクキャンセル → 正常復帰
 
 *本計画の実行はフェーズごとにユーザーの明示承認を得ること（AGENTS.md Scope Lock / Safety-Critical Zone）。*

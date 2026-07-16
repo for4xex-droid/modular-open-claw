@@ -44,8 +44,9 @@ export function Footer() {
             </a>
           </div>
 
-          {/* Legal Links */}
-          <div className="flex gap-6">
+          {/* Legal / Support Links */}
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
+            <a href="/support" className="hover:text-white transition-colors">{t('footer.support')}</a>
             <a href="/privacy" className="hover:text-white transition-colors">{t('footer.privacy')}</a>
             <a href="/terms" className="hover:text-white transition-colors">{t('footer.terms')}</a>
             <a href="/cancellation" className="hover:text-white transition-colors">{t('footer.cancellation')}</a>

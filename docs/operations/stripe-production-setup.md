@@ -2,7 +2,7 @@
 
 Stripe の本番アカウント申請承認に伴い、Aiome 課金システムを本番（実決済）モードへ切り替えるための設定手順です。
 
-**最終更新: 2026-07-10** — release_master_plan **R2-1** / near_term **NT-1** 手順書（Human 作業の正本）。凍結台帳 **OP-057-R** チェックリストと対応。
+**最終更新: 2026-07-16** — OP-084 向け: Pro 価格表記を **$19.99 USD/月** に同期 + §5 監視手順。release_master_plan **R2-1** / NT-1 / OP-084 L3 の正本。
 
 > **OP-057-R チェックリスト（本番反映）**
 > 0. [ ] **環境**: 本番に distroless イメージをデプロイ（[`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-1 **Step 0** を実行。`restart` だけではイメージは更新されません）
@@ -25,7 +25,7 @@ Stripe の本番アカウント申請承認に伴い、Aiome 課金システム�
    - **商品名**: 例「Aiome Monthly Subscription」
    - **価格モデル**: 「継続 (Recurring)」
    - **請求期間**: 「月次 (Monthly)」
-   - **金額**: プラットフォーム規定のサブスクリプション金額（例: ¥2,980/月）
+   - **金額**: **$19.99 USD / 月**（Aiome Pro。JPY 併記しない — 為替誤表示防止。正本: `docs/legal/TOKUSHOHO.md`）
 4. 保存後、商品詳細ページに表示される **`price_` から始まる「価格 ID」** (Price ID) をコピーして記録します。
    - ※この値は環境変数 `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` に設定します。
 
@@ -156,3 +156,14 @@ Aiome 課金システムは、以下の堅牢設計原則 (Security Hardening) �
    - `stripe_webhook_events` テーブルを用いた一意のトランザクション管理により、Stripe からの重複した Webhook 送信による二重ライセンス付与や状態矛盾を自動で防ぎます。
 3. **不正・チャージバック対策 (Anti-Dispute Guard)**
    - `charge.dispute.created` を受信した際、即座に該当エージェントのアカウントを `suspend` 状態に遷移させ、SSE 経由で排他的に `dispute_received` イベントをリアルタイムブロードキャストして防御します。
+
+## 5. Live 後の監視（OP-084 L5-2）
+
+| 頻度 | 確認先 | 見るもの |
+|---|---|---|
+| 切替直後 24h | Stripe Dashboard → Developers → Webhooks | 失敗配信（4xx/5xx）・署名エラー |
+| 切替直後 24h | api-server ログ | `commerce/webhook` 拒否・unlock/suspend |
+| 週次（任意） | Stripe Dashboard → Payments / Customers | 異常返金・dispute |
+| アラート（Human） | Stripe Dashboard → Settings → Notifications | 決済失敗・dispute メールを有効化 |
+
+緊急停止手順: [`docs/releases/NT6_R5_ROLLBACK_DRAFT.md`](../releases/NT6_R5_ROLLBACK_DRAFT.md)「Live 課金停止」。

@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+### Added (LP サポートページ 2026-07-16)
+- **`/support`**: カスタマーサポートページ新設（メール・電話・法務リンク）。Footer / sitemap / ルーティング / テスト。Stripe Business 用 URL:
+  - サポート `https://aiome.dev/support`
+  - プライバシー `https://aiome.dev/privacy`
+  - 利用規約 `https://aiome.dev/terms`
+  - 特商法 `https://aiome.dev/tokushoho`
+
+### Changed (OP-084 実行準備 2026-07-16)
+- **live_billing_open_plan v1.1**: L0〜L2（法務/UI）消化記録 + Human L3/L4 チェックリスト §6。L5-1 Live 課金停止を `NT6_R5_ROLLBACK_DRAFT.md` に追記。
+- **stripe-production-setup**: 商品価格例を **$19.99 USD/月** に修正 + §5 Live 監視手順。OPEN OP-084 を L3 Human ゲート待ちに更新。
+
+### Changed (OP-085 公開検証クローズ 2026-07-16)
+- **COMPLIANCE_CHECKLIST §7**: LP Deploy success・公開 bundle（住所/電話/トライアル非提供）・Payment Link「14 days free」なし（`pk_test`）を記録。Live プロフィールは OP-084 へ移管。OPEN / legal_docs_plan 同期。
+
 ### Fixed (/reflexion OP-085 仕上げ 2026-07-15)
 - **commerce_policy.md**: 凍結バナー + Fiat→KC 記述を SUPERSEDED 明示（公開正本は TERMS/TOKUSHOHO/KC_LEGAL_POSITION）。
 - **LP ルーティング**: `/tokushoho/` 等の trailing slash を正規化。住所・電話の正本同期テストを追加。

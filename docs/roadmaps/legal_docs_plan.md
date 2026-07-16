@@ -1,6 +1,6 @@
 # 法務ドキュメント整備計画（Legal Docs Plan v2）
 
-- **ステータス**: **エージェント側クリア（2026-07-15）**。正本 [`COMPLIANCE_CHECKLIST.md`](../legal/COMPLIANCE_CHECKLIST.md)。**Human 残**: LP デプロイ後目視 / Payment Link のトライアル表示確認。弁護士必須なし。
+- **ステータス**: **完了（2026-07-16）**。正本 [`COMPLIANCE_CHECKLIST.md`](../legal/COMPLIANCE_CHECKLIST.md)。エージェント実装 2026-07-15 + 公開検証（LP Deploy / Payment Link 非トライアル / Test mode）2026-07-16。Live プロフィールは OP-084。弁護士必須なし。
 - **v2 変更点**: LG0 6 点の確定値を §「LG0 確定値」に記録。実コード走査で追加ギャップ G-10〜G-13 を検出（トライアル表示・GDPR 表現・封印中機能の便益表示・同意バージョン記録）。実装は低コスト Sub 併用（LP 反映を委譲）
 - **対応 OP**: **OP-085**（OPEN.md P1）
 - **位置づけ**: [`live_billing_open_plan.md`](live_billing_open_plan.md)（OP-084）**Phase L2 の詳細展開**。本計画の完了が実課金（Stripe Live）オープンの法務ゲートを充足する

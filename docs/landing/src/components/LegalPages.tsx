@@ -441,6 +441,72 @@ export function TokushohoPage() {
 }
 
 // -------------------------------------------------------------
+// Customer Support Page（Stripe Business「顧客サポート URL」用）
+// -------------------------------------------------------------
+export function SupportPage() {
+  const { t } = useTranslation();
+
+  return (
+    <LegalLayout title={t('footer.support', 'カスタマーサポート')} lastUpdated="2026-07-16">
+      <section className="space-y-4">
+        <p className="text-gray-400">
+          Aiome（運営: motivationstudio, LLC / モチベーションスタジオ合同会社）のカスタマーサポート窓口です。
+          課金・解約・不具合・法務文書に関するお問い合わせは、以下までご連絡ください。
+        </p>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-bold text-white">連絡先</h2>
+        <ul className="list-disc pl-6 space-y-2">
+          <li>
+            メール:{' '}
+            <a href="mailto:project.aiome@gmail.com" className="text-brand-cyan hover:underline">
+              project.aiome@gmail.com
+            </a>
+            （推奨）
+          </li>
+          <li>電話: 080-3804-0184（受付: 原則 3 営業日以内に折り返し）</li>
+          <li>
+            公式サイト:{' '}
+            <a href="https://aiome.dev" className="text-brand-cyan hover:underline">
+              https://aiome.dev
+            </a>
+          </li>
+        </ul>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-bold text-white">関連ページ</h2>
+        <ul className="list-disc pl-6 space-y-2">
+          <li>
+            <a href="/privacy" className="text-brand-cyan hover:underline">プライバシーポリシー</a>
+          </li>
+          <li>
+            <a href="/terms" className="text-brand-cyan hover:underline">利用規約</a>
+          </li>
+          <li>
+            <a href="/tokushoho" className="text-brand-cyan hover:underline">特定商取引法に基づく表記</a>
+          </li>
+          <li>
+            <a href="/cancellation" className="text-brand-cyan hover:underline">解約・返金ポリシー</a>
+          </li>
+        </ul>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-bold text-white">解約について</h2>
+        <p>
+          Pro サブスクリプションの解約は、管理コンソールの Stripe カスタマーポータルからいつでも行えます。
+          手順の詳細は「
+          <a href="/cancellation" className="text-brand-cyan hover:underline">解約・返金ポリシー</a>
+          」をご確認ください。
+        </p>
+      </section>
+    </LegalLayout>
+  );
+}
+
+// -------------------------------------------------------------
 // Cancellation & Refund Policy Page
 // -------------------------------------------------------------
 export function CancellationPage() {

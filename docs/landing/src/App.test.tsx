@@ -89,4 +89,13 @@ describe('App Routing', () => {
                         screen.queryByText(/自己修復型AIエージェント/i);
     expect(hasHeroText).not.toBeInTheDocument();
   });
+
+  it('renders customer support on /support', () => {
+    window.location.pathname = '/support';
+    render(<App />);
+    const hasSupportTitle = screen.queryByText(/Customer Support/i) ||
+                            screen.queryByText(/カスタマーサポート/i);
+    expect(hasSupportTitle).toBeInTheDocument();
+    expect(screen.getByText(/project\.aiome@gmail\.com/i)).toBeInTheDocument();
+  });
 });
