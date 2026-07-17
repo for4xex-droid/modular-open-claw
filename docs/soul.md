@@ -6,18 +6,18 @@
 Detailed documentation for the `soul` crate.
 
 ### 📂 Source Files
-- `src/anamnesis.rs`
-- `src/pipeline.rs`
-- `src/defense.rs`
-- `src/model.rs`
-- `src/biome_traits.rs`
-- `src/engine.rs`
-- `src/attachment.rs`
-- `src/somatic.rs`
-- `src/adapter.rs`
 - `src/lib.rs`
+- `src/engine.rs`
 - `src/semantic_recaller.rs`
-- `src/bounding_middleware.rs`
 - `src/predictive.rs`
+- `src/anamnesis.rs`
+- `src/attachment.rs`
+- `src/model.rs`
 - `src/error.rs`
+- `src/defense.rs`
+- `src/biome_traits.rs`
+- `src/bounding_middleware.rs`
+- `src/adapter.rs`
 - `src/instinct.rs`
+- `src/somatic.rs`
+- `src/pipeline.rs`

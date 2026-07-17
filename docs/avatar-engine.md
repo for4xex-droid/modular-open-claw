@@ -6,10 +6,10 @@
 Detailed documentation for the `avatar-engine` crate.
 
 ### 📂 Source Files
+- `src/lib.rs`
 - `src/asset_manifest.rs`
-- `src/proportions.rs`
-- `src/loader.rs`
 - `src/resampler.rs`
 - `src/physics.rs`
+- `src/proportions.rs`
 - `src/lip_sync.rs`
-- `src/lib.rs`
+- `src/loader.rs`

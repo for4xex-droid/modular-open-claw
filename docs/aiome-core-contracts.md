@@ -6,26 +6,26 @@
 Detailed documentation for the `aiome-core-contracts` crate.
 
 ### 📂 Source Files
-- `src/audit.rs`
-- `src/delegation.rs`
-- `src/voice_vault.rs`
-- `src/traits.rs`
 - `src/vault_backend.rs`
-- `src/forecast.rs`
-- `src/ekyc.rs`
 - `src/types.rs`
-- `src/syndicate.rs`
-- `src/live_types.rs`
-- `src/treasure.rs`
-- `src/contracts.rs`
-- `src/gig.rs`
-- `src/a2a.rs`
-- `src/oxilean.rs`
-- `src/trajectory.rs`
 - `src/lib.rs`
-- `src/invariant.rs`
+- `src/contracts.rs`
 - `src/expression.rs`
 - `src/commune.rs`
+- `src/traits.rs`
+- `src/audit.rs`
+- `src/oxilean.rs`
+- `src/invariant.rs`
+- `src/trajectory.rs`
 - `src/lora_marketplace.rs`
+- `src/delegation.rs`
+- `src/gig.rs`
+- `src/voice_vault.rs`
+- `src/forecast.rs`
+- `src/syndicate.rs`
+- `src/ekyc.rs`
+- `src/live_types.rs`
+- `src/a2a.rs`
+- `src/treasure.rs`
 - `src/events.rs`
 - `src/a2a/agent_card.rs`
