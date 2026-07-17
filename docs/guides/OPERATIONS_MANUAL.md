@@ -103,7 +103,8 @@ NURTURE_DRM_MASTER_KEY=your_drm_key              # release 必須。Desktop debu
 # NURTURE_A2C_DRY_RUN=1                           # A2C 恩返し: 未設定/1/true=ログのみ。0 のみで Tremendous 実送信（Human 確認後）
 
 # --- Security (Production) ---
-A2A_NODE_TOKEN=your_a2a_token                    # release ビルド必須。未設定時は api-server が起動失敗
+A2A_NODE_TOKEN=your_a2a_token                    # release ビルド必須。未設定/空文字時は起動失敗
+# production compose: api-server の A2A_NODE_TOKEN は A2A_AUTH_TOKEN をパススルー（同値）
 # JWT_ISSUER=aiome                                # 設定時は JWT の iss を検証
 # JWT_AUDIENCE=aiome-api                          # 設定時は JWT の aud を検証
 
@@ -254,7 +255,7 @@ RUST_LOG=info cargo run -p api-server
 - [ ] **Nurture S2S (OP-061)**: `NURTURE_API_URL` と `NURTURE_INTERNAL_SECRET` をセットで設定。forget / coin-charge / stripe proxy は同鍵で OXP+Bearer。URL のみ・secret なしは forget が 500（fail-closed）
 - [ ] **Coin-charge DLQ (OP-060)**: 起動ログに `Coin Charge DLQ worker` が出ること。`outbox_dead_letters` の `coin_charge_failed` が滞留し続ける場合は URL/secret/Nurture 到達性を確認（不正 JSON は `coin_charge_failed_poison` に隔離）
 - [ ] Tauri デスクトップ (release): `NURTURE_DRM_MASTER_KEY` が環境変数または `{data_dir}/.nurture_drm_master_key` で解決できるか確認
-- [ ] api-server (release): `A2A_NODE_TOKEN` が設定されているか確認（未設定時は起動失敗）
+- [ ] api-server (release): `A2A_NODE_TOKEN` が非空で設定されているか確認（未設定/空文字時は起動失敗）。production compose は `A2A_AUTH_TOKEN` を `A2A_NODE_TOKEN` にパススルー
 - [ ] nurture-api (cloud-storage): `S3_BUCKET_NAME` が設定されているか確認（未設定時は Mock へフォールバックせず起動エラー）
 - [ ] CI Postgres テスト: `docker-compose.test.yml` を用いた `db_config_test` がローカルで PASS するか確認
 - [ ] **PostgreSQL 本番検証 (OP-012)**: `bash scripts/verify-production-postgres.sh` が Positive / Negative / Revert すべて PASS すること（`docker-compose.production-verify.yml`、ポート `127.0.0.1:5434`）

@@ -800,7 +800,6 @@
     "kcRecharge": "Pro に登録する",
     "proSectionTitle": "Aiome Pro",
     "proSectionDesc": "Buzz・Treasure・LoRA 市場・ギフト・ギルド・TTS など Pro 限定機能の月額プラン。",
-    "manageSubscription": "サブスク管理",
     "authorPrefix": "作成者: ",
     "securing": "セキュリティ処理中...",
     "purchase": "購入",
@@ -1326,7 +1325,8 @@
   "pro": {
     "badgeFree": "Free · アップグレード",
     "badgeFreeTooltip": "クリックして Pro の機能を確認",
-    "badgeProTooltip": "Pro プランが有効です",
+    "badgeProTooltip": "Pro プランが有効です — クリックでお支払い管理",
+    "manageBilling": "お支払い管理",
     "modalTitle": "Aiome Pro を解放",
     "modalSubtitle": "完全自律と本番向け経済圏で AI OS を強化します。",
     "featureBuzz": "Buzz 自動生成",

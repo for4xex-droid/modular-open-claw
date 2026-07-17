@@ -49,6 +49,84 @@ fn map_stripe_status(
     }
 }
 
+fn is_pro_eligible_stripe_status(status: &stripe_billing::SubscriptionStatus) -> bool {
+    use stripe_billing::SubscriptionStatus as StripeStatus;
+    matches!(status, StripeStatus::Active | StripeStatus::Trialing)
+}
+
+fn pick_preferred_by<T, F>(items: &[T], is_preferred: F) -> Option<&T>
+where
+    F: Fn(&T) -> bool,
+{
+    items
+        .iter()
+        .find(|item| is_preferred(item))
+        .or_else(|| items.first())
+}
+
+/// Prefer an active/trialing subscription when Stripe returns multiple records.
+fn pick_preferred_subscription(
+    subs: &[stripe_billing::Subscription],
+) -> Option<&stripe_billing::Subscription> {
+    pick_preferred_by(subs, |s| is_pro_eligible_stripe_status(&s.status))
+}
+
+#[cfg(test)]
+mod pick_preferred_subscription_tests {
+    use super::*;
+    use stripe_billing::SubscriptionStatus as StripeStatus;
+
+    struct SubFixture {
+        status: StripeStatus,
+    }
+
+    fn pick_fixture(subs: &[SubFixture]) -> Option<&SubFixture> {
+        pick_preferred_by(subs, |s| is_pro_eligible_stripe_status(&s.status))
+    }
+
+    #[test]
+    fn prefers_active_over_canceled_when_listed_first() {
+        let subs = vec![
+            SubFixture {
+                status: StripeStatus::Canceled,
+            },
+            SubFixture {
+                status: StripeStatus::Active,
+            },
+        ];
+        let picked = pick_fixture(&subs).expect("subscription");
+        assert!(matches!(picked.status, StripeStatus::Active));
+    }
+
+    #[test]
+    fn prefers_trialing_over_past_due() {
+        let subs = vec![
+            SubFixture {
+                status: StripeStatus::PastDue,
+            },
+            SubFixture {
+                status: StripeStatus::Trialing,
+            },
+        ];
+        let picked = pick_fixture(&subs).expect("subscription");
+        assert!(matches!(picked.status, StripeStatus::Trialing));
+    }
+
+    #[test]
+    fn falls_back_to_first_when_no_active_or_trialing() {
+        let subs = vec![
+            SubFixture {
+                status: StripeStatus::Canceled,
+            },
+            SubFixture {
+                status: StripeStatus::PastDue,
+            },
+        ];
+        let picked = pick_fixture(&subs).expect("subscription");
+        assert!(matches!(picked.status, StripeStatus::Canceled));
+    }
+}
+
 impl StripeCommerceEngine {
     pub fn new(
         api_key: SecretString,
@@ -1027,7 +1105,7 @@ impl CommerceEngine for StripeCommerceEngine {
             .await
             .map_infra_err_context("Stripe list subscriptions failed")?;
 
-        if let Some(sub) = list_res.data.first() {
+        if let Some(sub) = pick_preferred_subscription(&list_res.data) {
             Ok(map_stripe_status(sub.status.clone()))
         } else {
             Ok(aiome_core_contracts::commerce::SubscriptionStatus::None)

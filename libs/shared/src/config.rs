@@ -284,10 +284,15 @@ impl AiomeConfig {
             SecretString::from(key)
         });
 
-        let a2a_node_token = env::var("A2A_NODE_TOKEN").ok().map(|key| {
-            crate::security::scrub_env("A2A_NODE_TOKEN");
-            SecretString::from(key)
-        });
+        // Empty string must not count as "set" — compose often injects A2A_NODE_TOKEN=
+        // when the host var is unset, which would otherwise bypass release FATAL.
+        let a2a_node_token = env::var("A2A_NODE_TOKEN")
+            .ok()
+            .filter(|key| !key.is_empty())
+            .map(|key| {
+                crate::security::scrub_env("A2A_NODE_TOKEN");
+                SecretString::from(key)
+            });
 
         Ok(Self {
             db_path,
@@ -492,5 +497,22 @@ mod tests {
 
         let default_config = AiomeConfig::default();
         assert_eq!(default_config.local_llm_concurrency, 2);
+    }
+
+    #[test]
+    #[serial]
+    fn test_a2a_node_token_empty_string_is_unset() {
+        std::env::set_var("A2A_NODE_TOKEN", "");
+        let config = AiomeConfig::load().expect("Failed to load config");
+        assert!(
+            config.a2a_node_token.is_none(),
+            "empty A2A_NODE_TOKEN must be treated as unset"
+        );
+        std::env::remove_var("A2A_NODE_TOKEN");
+
+        std::env::set_var("A2A_NODE_TOKEN", "prod-a2a-token");
+        let config_set = AiomeConfig::load().expect("Failed to load config");
+        assert!(config_set.a2a_node_token.is_some());
+        std::env::remove_var("A2A_NODE_TOKEN");
     }
 }

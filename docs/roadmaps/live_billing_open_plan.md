@@ -1,6 +1,6 @@
 # 実課金オープン計画（Stripe Live Switch Plan v1.1）
 
-- **ステータス**: **L0〜L2（法務・UI）消化済 / L3〜L4 は Human ゲート待ち（2026-07-16）**。L3 本番切替は Vault・Live 鍵を含む **Safety-Critical** — ホスト操作前に「L3 を実装しろ」等の明示が必要
+- **ステータス**: **L0〜L2・L3-1 消化済 / L3-2〜4・L4 は Human ゲート待ち（2026-07-16）**。LP Payment Link は既に Live。API が Test の間は付与漏れリスクあり。L3-2〜4 は Vault・Live 鍵を含む **Safety-Critical** — 「L3 を実装しろ」必須
 - **対応 OP**: **OP-084**（OPEN.md P1）
 - **目的**: Public Beta（v1.2.0、Stripe 方針 A = Test）から、**実通貨決済（方針 B = Live）** へ安全に切り替えるための全タスクを検証・定義する
 - **正本関係**: タスク台帳は `OPEN.md`。切替手順のコピペ正本は [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-1（方針 B 分岐）+ [`stripe-production-setup.md`](../operations/stripe-production-setup.md)。本計画は「Live 固有の追加タスク・順序・DoD」を定義する層
@@ -9,16 +9,17 @@
 
 | Phase | 状態 | 根拠 |
 |---|---|---|
-| L0-1 | ✅ | LP Link `aFa00i9cEaVE4ay4y9f7i03` → 公開鍵 **`pk_test_` のみ**（Test）。緊急遮断不要 |
-| L0-2 | ✅ | スコープ = Pro $19.99/月のみ（§1）。OP-085 / 本実行で維持 |
+| L0-1 | ⚠️→記録訂正 2026-07-16 | LP Link `aFa00i9cEaVE4ay4y9f7i03` = Stripe API **`livemode=true`**（Live）。HTML の `pk_test` は誤判定だった。**API が Test のままだと「Live 課金なのに Pro 付与されない」事故リスク** → L3-2〜4 完了まで注意 |
+| L0-2 | ✅ | スコープ = Pro $19.99/月のみ（§1） |
 | L1-1 | ✅ | VoiceStore: 「Pro に登録する」+ KC 無償明記（OP-085） |
 | L1-2 | ✅ | AiaaOnboardingWizard: `useAgentIdentity`（zero-UUID 禁止） |
-| L1-3 | ⏳ | **L3-1 の live Payment Link 作成後**に LP CTA 差し替え |
+| L1-3 | ✅ | 現行 LP CTA = 上記 Live Payment Link（差し替え不要） |
 | L1-4 | ✅ | LP/MC `$19.99` 整合 |
 | L1-5 | — | 任意・非ブロッカー（表示撤去済） |
 | L2-1〜3 | ✅ | OP-085（COMPLIANCE_CHECKLIST ✅） |
-| L2-4 | ⏳ **Human** | Stripe Live ビジネスプロフィール・領収書・税務判断 |
-| L3 | ⏳ **Human** | 下記 §6 チェックリスト |
+| L2-4 | ✅ **2026-07-16 Human** | Live / 特商法一致 / Successful payments ON / card fail ON / Radar 既定 / Tax 見送り |
+| L3-1 | ✅ **既存** | Live Product `Aiome Autonomous Pro（最新）` / Price **`price_1TpXFpBcUTwo5TwLmK9SQbKL`**（$19.99 USD/月）/ Payment Link 上記（新規作成不要） |
+| L3-2〜4 | ⏳ **Human** | Vault `sk_live_` + `STRIPE_TEST_MODE=false` + live Price env + Live Webhook |
 | L4 | ⏳ | L3 後。Verification Protocol 3 段階必須 |
 | L5-1 | ✅ | `NT6_R5_ROLLBACK_DRAFT.md` に Live 課金停止を追記 |
 | L5-2 | ✅ 手順 | `stripe-production-setup.md` §5。Dashboard アラート設定は Human |
@@ -45,8 +46,8 @@
 
 | # | 問題 | 根拠 | 影響 |
 |---|---|---|---|
-| B-1 | **LP Payment Link の mode 未確認**。`docs/landing/src/components/Pricing.tsx` の `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03` は `test_` プレフィックスがなく **live リンクの疑い**。現在 Webhook/api-server は Test 構成のため、live 決済を受けても Pro 付与ループが動かない（**取りっぱぐれではなく「取ったのに提供しない」方向の事故**） | `Pricing.tsx` L115 | 🔴 最優先確認 |
-| B-2 | **VoiceStore「チャージ」導線の誤認リスク**。KC チャージ風の UI が Pro サブスク用 `STRIPE_PRICE_ID` で Checkout（`mode=Subscription` 固定）を開く。Live では「コインを買うつもりが月額契約」となり特商法・ダークパターン該当リスク | `VoiceStore.tsx` L65–71 / `stripe/mod.rs` L331 | 🔴 |
+| B-1 | **LP Payment Link は Live 確定**（`plink_…` / `livemode=true`、2026-07-16 CLI）。API/Webhook が Test のままだと Live 決済を受けても Pro 付与されない | `Pricing.tsx` + Stripe API | 🔴 **L3-2〜4 で解消** |
+| B-2 | **VoiceStore「チャージ」導線の誤認リスク**（~~旧~~）→ **✅ L1-1 で解消**（Pro 登録明示 + KC 無償明記。Portal CTA 出し分けは 2026-07-17 MC 反映済） | `VoiceStore.tsx` / L1-1 | ✅ |
 | B-3 | **AiaaOnboardingWizard の死に導線**。ダミー `agent_id`（zero UUID）で Checkout 要求 → RBAC `req.agent_id != auth.agent_id` で 403 確定 | `AiaaOnboardingWizard.tsx` L50 / `commerce.rs` L629 | 🟠 |
 | B-4 | **特商法表記が実態と不一致**。LP `TokushohoPage` は「KC 購入画面」前提の記述だが、Live スコープは Pro サブスクのみ。月額サブスクの解約手順（Customer Portal）・課金タイミングの記載がない。「理由の如何を問わず一切返金しない」の消費者契約法上の妥当性も未確認 | `LegalPages.tsx` L105/L154/L166 | 🔴 Human 法務 |
 | B-5 | Stripe Live アカウント側の整備（ビジネスプロフィール・領収書メール・税務処理の要否）が未実施 | Stripe Dashboard（Human） | 🟠 |
@@ -176,27 +177,31 @@ L5 運用・ロールバック整備 → 台帳クローズ
 
 ## 6. Human 実行チェックリスト — L2-4 / L3 / L4（いまの残件）
 
-> エージェントは Stripe Dashboard・本番 Vault・実カードに触れない。以下を Human が実施し、完了報告後に Agent が L1-3（LP live Link 差し替え）と L5-3（台帳クローズ）を行う。
+> エージェントは Stripe Dashboard・本番 Vault・実カードに触れない。L3-2〜4 / L4 を Human が実施し、完了報告後に Agent が L5-3（台帳クローズ）を行う。
 
-### L2-4 — Live アカウント整備
+### L2-4 — Live アカウント整備 ✅ 2026-07-16 Human 報告
 
-- [ ] Stripe Dashboard → **Live mode** → Settings → Business settings（事業名・住所・サポートメール）
-- [ ] 公開 URL（LP・2026-07-16）:
-  - 顧客サポート: `https://aiome.dev/support`（**新設**・デプロイ後に有効）
-  - プライバシー: `https://aiome.dev/privacy`
-  - 利用規約: `https://aiome.dev/terms`
-  - 特商法: `https://aiome.dev/tokushoho`
-- [ ] Customer emails: 領収書 / 失敗通知を有効化
-- [ ] Radar 既定のまま or 方針決定を記録
-- [ ] Stripe Tax 要否を判断（不要なら「見送り」と記録）
+> 顧客メール設定の正本手順: [`stripe-production-setup.md`](../operations/stripe-production-setup.md) **§6**。
+
+- [x] Dashboard **Live**
+- [x] 事業名・住所・メール・URL が特商法と一致
+- [x] 領収書メール ON（Successful payments）
+- [x] 支払失敗メール ON（Send emails when card payments fail）
+- [x] Radar = 既定
+- [x] Tax = 見送り
 
 ### L3 — 方針 B 切替（正本: Runbook NT-1 + `stripe-production-setup.md`）
 
-- [ ] **L3-1** Live Product/Price（**$19.99 USD/月**）作成 → `price_...` を手元記録（チャット禁止）+ live Payment Link 作成
-- [ ] **L3-2** 本番 MC → Abyss Vault に `STRIPE_API_KEY=sk_live_...` / `STRIPE_WEBHOOK_SECRET=whsec_...`（値は対話入力のみ）
-- [ ] **L3-3** ホスト: `STRIPE_TEST_MODE=false` + `STRIPE_PRICE_SUBSCRIPTION_MONTHLY=<live price>` → api-server 再起動（Price 空なら起動拒否 = 正常）
-- [ ] **L3-4** Live Webhook: `https://<domain>/api/v1/commerce/webhook` + 必須 7 イベント
-- [ ] Agent へ: live Payment Link URL のみ共有 → **L1-3** LP 差し替えを依頼（「L1-3 を実装しろ」）
+- [x] **L3-1** 既存確認（2026-07-16 CLI `--live`）:
+  - Product: `Aiome Autonomous Pro（最新）`（active）
+  - Price: `price_1TpXFpBcUTwo5TwLmK9SQbKL` = **1999 USD / month**（`livemode=true`）
+  - Payment Link: `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03`（`livemode=true`・LP 掲載済）
+  - 旧 $9.99 / 非 active Product は触らない（archive 済み想定）
+- [ ] **L3-2** 本番 MC（`https://app.aiome.dev/`）→ Abyss Vault に `STRIPE_API_KEY=sk_live_…` / `STRIPE_WEBHOOK_SECRET=whsec_…`（チャット禁止）
+- [ ] **L3-3** 本番ホスト env: `STRIPE_TEST_MODE=false` + `STRIPE_PRICE_SUBSCRIPTION_MONTHLY=price_1TpXFpBcUTwo5TwLmK9SQbKL` → api-server 再起動。**env のみなら** `restart` 可。**イメージ更新が必要なら** distroless rebuild + `up -d --force-recreate --no-deps --no-build api-server`（`restart` だけではイメージは変わらない。正本: `stripe-production-setup.md` OP-057-R 0）
+- [ ] **L3-4** Live Webhook URL = `https://app.aiome.dev/api/v1/commerce/webhook` + **7 イベント**（現状 workers 転送 endpoint はイベント不足。Dashboard 編集 or `scripts/op084_l3_webhook_cutover.sh` + `sk_live_`）
+- [x] **L1-3** LP CTA 差し替え不要（上記 Link が既に Live）
+- [x] **Agent 2026-07-16**: forwarder `FORWARD_URL` を app.aiome.dev に修正・切替スクリプト追加。CLI `rk_live` では webhook update 不可のため L3-2〜4 の本番投入は Human 実行が必須
 
 ### L4 — 検証（省略禁止）
 

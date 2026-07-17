@@ -800,7 +800,6 @@
     "kcRecharge": "Subscribe to Pro",
     "proSectionTitle": "Aiome Pro",
     "proSectionDesc": "Monthly subscription for Buzz, Treasure, LoRA market, gifts, guilds, and TTS.",
-    "manageSubscription": "Manage subscription",
     "authorPrefix": "by ",
     "securing": "Securing...",
     "purchase": "Purchase",
@@ -1326,7 +1325,8 @@
   "pro": {
     "badgeFree": "Free · Upgrade",
     "badgeFreeTooltip": "Click to explore Pro features",
-    "badgeProTooltip": "Pro plan is active",
+    "badgeProTooltip": "Pro plan is active — click to manage billing",
+    "manageBilling": "Manage billing",
     "modalTitle": "Unlock Aiome Pro",
     "modalSubtitle": "Supercharge your AI OS with full autonomy and production-ready economics.",
     "featureBuzz": "Buzz Auto-Generation",

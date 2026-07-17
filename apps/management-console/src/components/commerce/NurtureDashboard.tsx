@@ -7,9 +7,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE, STRIPE_PRICE_ID } from "../../config";
-import { authenticatedFetch, getAuthToken } from "../../lib/auth";
+import { authenticatedFetch } from "../../lib/auth";
 import { useCheckoutSession } from "../../hooks/useCheckoutSession";
-import { openProUpgradeModal } from "../../hooks/useSubscriptionStatus";
+import { openProUpgradeModal, useSubscriptionStatus } from "../../hooks/useSubscriptionStatus";
+import { useAgentIdentity } from "../../hooks/useAgentIdentity";
 import { useTranslation, useLanguage } from "../../i18n";
 import { useCoinBalance } from "../../hooks/useCoinBalance";
 
@@ -57,32 +58,24 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const token = getAuthToken();
-  let agentId = "agent-001";
-  if (token) {
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      agentId = payload.sub || payload.agent_id || "agent-001";
-    } catch {
-      // ignore
-    }
-  }
+  const { agentId } = useAgentIdentity();
+  const resolvedAgentId = agentId ?? "agent-001";
+  const { isPro, isLoading: isSubscriptionLoading } = useSubscriptionStatus();
+  const {
+    handlePortal,
+    isPortalLoading,
+    error: portalError,
+  } = useCheckoutSession(STRIPE_PRICE_ID, resolvedAgentId);
 
-  const { handleCheckout, isLoading: isCheckoutLoading, error: checkoutError } = useCheckoutSession(STRIPE_PRICE_ID, agentId);
-
-  useEffect(() => {
-    if (checkoutError) {
-      setError(checkoutError);
-    }
-  }, [checkoutError]);
+  const displayError = portalError ?? error;
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
     setError(null);
     try {
       const [ptsRes, histRes] = await Promise.all([
-        authenticatedFetch(`${API_BASE}/api/v1/commerce/points/${agentId}`, { signal }),
-        authenticatedFetch(`${API_BASE}/api/v1/commerce/history/${agentId}`, { signal }),
+        authenticatedFetch(`${API_BASE}/api/v1/commerce/points/${resolvedAgentId}`, { signal }),
+        authenticatedFetch(`${API_BASE}/api/v1/commerce/history/${resolvedAgentId}`, { signal }),
       ]);
 
       if (ptsRes.ok) {
@@ -108,7 +101,7 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
     } finally {
       setIsLoading(false);
     }
-  }, [agentId, t]);
+  }, [resolvedAgentId, t]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -150,40 +143,31 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
             flexDirection: "column",
             gap: "0.35rem",
             padding: "0.75rem 1rem",
-            borderColor: "var(--accent-emerald-30)",
-          }}>
-            <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--accent-emerald)", textTransform: "uppercase" }}>
-              {t('nurture.kcPointsSection')}
-            </span>
-            <button
-              className="primary-button"
-              onClick={handleCheckout}
-              disabled={isLoading || isCheckoutLoading}
-              style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--accent-emerald)", color: "var(--black-100)" }}
-            >
-              {isCheckoutLoading ? t('nurture.loading') : t('nurture.buyPoints')}
-            </button>
-            <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", maxWidth: "200px" }}>
-              {t('nurture.buyPointsHint')}
-            </span>
-          </div>
-          <div className="config-card" style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.35rem",
-            padding: "0.75rem 1rem",
             borderColor: "var(--accent-purple-30)",
           }}>
             <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--accent-purple)", textTransform: "uppercase" }}>
               {t('nurture.proSection')}
             </span>
-            <button
-              className="primary-button"
-              onClick={() => openProUpgradeModal()}
-              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-            >
-              {t('nurture.upgradePro')}
-            </button>
+            {isPro ? (
+              <button
+                className="primary-button"
+                onClick={() => void handlePortal()}
+                disabled={isLoading || isPortalLoading || isSubscriptionLoading}
+                title={portalError ?? undefined}
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
+                {isPortalLoading ? t('nurture.loading') : t('pro.manageBilling')}
+              </button>
+            ) : (
+              <button
+                className="primary-button"
+                onClick={() => openProUpgradeModal()}
+                disabled={isLoading || isSubscriptionLoading}
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
+                {t('nurture.upgradePro')}
+              </button>
+            )}
           </div>
           <button
             className="secondary-button"
@@ -206,7 +190,7 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
       </div>
 
       <AnimatePresence>
-        {error && (
+        {displayError && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -227,7 +211,7 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
           >
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <ShieldCheck size={20} />
-              <span style={{ fontWeight: 600 }}>{error}</span>
+              <span style={{ fontWeight: 600 }}>{displayError}</span>
             </div>
             <button
               type="button"
@@ -335,7 +319,7 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
               </thead>
               <tbody>
                 {history.map((record, i) => {
-                  const isCredit = record.credit_account.includes(agentId);
+                  const isCredit = record.credit_account.includes(resolvedAgentId);
                   return (
                     <motion.tr
                       key={record.id}
@@ -346,11 +330,11 @@ export default function NurtureDashboard({ onNavigateToStore }: { onNavigateToSt
                     >
                       <td style={{ padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                         {isCredit ? (
-                          <span style={{ color: "var(--accent-emerald)", display: "flex", alignItems: "center", gap: "4px", background: "var(--accent-emerald-10)", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem" }}>
+                          <span style={{ color: "var(--accent-emerald)", display: "flex", alignItems: "center", gap: "var(--space-2xs)", background: "var(--accent-emerald-10)", padding: "var(--space-2xs) var(--space-xs)", borderRadius: "var(--radius-sm)", fontSize: "0.8rem" }}>
                             <ArrowUpRight size={14} /> {t('nurture.received')}
                           </span>
                         ) : (
-                          <span style={{ color: "var(--accent-rose)", display: "flex", alignItems: "center", gap: "4px", background: "var(--accent-rose-10)", padding: "4px 8px", borderRadius: "4px", fontSize: "0.8rem" }}>
+                          <span style={{ color: "var(--accent-rose)", display: "flex", alignItems: "center", gap: "var(--space-2xs)", background: "var(--accent-rose-10)", padding: "var(--space-2xs) var(--space-xs)", borderRadius: "var(--radius-sm)", fontSize: "0.8rem" }}>
                             <ArrowDownRight size={14} /> {t('nurture.sent')}
                           </span>
                         )}

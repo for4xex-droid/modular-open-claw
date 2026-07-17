@@ -187,6 +187,51 @@ async fn test_stripe_get_subscription_status_mock() {
 }
 
 #[tokio::test]
+async fn test_create_portal_session_not_found_without_customer() {
+    // Non-mock engine: missing stripe_customers row must Fail-Closed before Stripe API.
+    let pool = SqlitePoolOptions::new()
+        .connect("sqlite::memory:")
+        .await
+        .unwrap();
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS stripe_customers (
+            id TEXT PRIMARY KEY,
+            customer_id TEXT UNIQUE NOT NULL,
+            agent_id TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let engine = StripeCommerceEngine::new(
+        SecretString::from("sk_test_not_mock_key".to_string()), // gitleaks:allow
+        SecretString::from("whsec_not_test".to_string()),
+        pool,
+        None,
+        None,
+    );
+    assert!(!engine.is_mock);
+
+    let agent_id = Uuid::new_v4();
+    let result = engine
+        .create_portal_session(agent_id, "https://app.aiome.dev/")
+        .await;
+
+    match result {
+        Err(AiomeError::NotFound { reason }) => {
+            assert!(
+                reason.contains("Stripe customer not found"),
+                "unexpected NotFound reason: {reason}"
+            );
+        }
+        other => panic!("expected NotFound, got: {other:?}"),
+    }
+}
+
+#[tokio::test]
 async fn test_stripe_cancel_subscription_live_error() {
     let pool = SqlitePoolOptions::new()
         .connect("sqlite::memory:")

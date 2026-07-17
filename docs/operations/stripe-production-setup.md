@@ -2,7 +2,7 @@
 
 Stripe の本番アカウント申請承認に伴い、Aiome 課金システムを本番（実決済）モードへ切り替えるための設定手順です。
 
-**最終更新: 2026-07-16** — OP-084 向け: Pro 価格表記を **$19.99 USD/月** に同期 + §5 監視手順。release_master_plan **R2-1** / NT-1 / OP-084 L3 の正本。
+**最終更新: 2026-07-17** — OP-084: Pro **$19.99 USD/月**・§5 監視・**§6 顧客メール**・**§7 Customer Portal Human チェックリスト**。
 
 > **OP-057-R チェックリスト（本番反映）**
 > 0. [ ] **環境**: 本番に distroless イメージをデプロイ（[`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-1 **Step 0** を実行。`restart` だけではイメージは更新されません）
@@ -75,9 +75,9 @@ cargo run --bin abyss-vault -- status
 ホストの `.env`、または `docker-compose.production.yml` の api-server パススルーに以下を設定します。
 
 ```bash
-# === Stripe Production — non-secrets ===
+# === Stripe Production — non-secrets（OP-084 方針 B / Live）===
 STRIPE_TEST_MODE="false"
-STRIPE_PRICE_SUBSCRIPTION_MONTHLY="price_xxxx"
+STRIPE_PRICE_SUBSCRIPTION_MONTHLY="price_1TpXFpBcUTwo5TwLmK9SQbKL"
 ```
 
 > [!IMPORTANT]
@@ -125,12 +125,16 @@ VITE_STRIPE_PRICE_ID="price_xxxx"   # STRIPE_PRICE_SUBSCRIPTION_MONTHLY と同�
 
 Stripe から決済結果や解約イベントなどをリアルタイムに受信するため、Webhook エンドポイントを登録します。
 
-### 登録手順
-1. Stripe Dashboard の「開発者 (Developers)」→「Webhook」メニューへ移動します。
-2. 「エンドポイントを追加」をクリックします。
-3. 以下の情報を入力します：
-   - **エンドポイント URL**: `https://<YOUR_DOMAIN>/api/v1/commerce/webhook`
-   - **受信するイベント**: 以下の **7 つのイベント** を必ず選択して追加します。
+### 登録手順（OP-084 / 本番ドメイン確定値）
+1. Stripe Dashboard を **Live** にする →「開発者 (Developers)」→「Webhook」。
+2. 既存 endpoint を編集するか「エンドポイントを追加」。
+3. 値:
+   - **URL（正本）**: `https://app.aiome.dev/api/v1/commerce/webhook`
+   - **受信イベント**: 下表の **7 つすべて**
+4. Signing secret（`whsec_…`）を Abyss Vault の `STRIPE_WEBHOOK_SECRET` に格納し、api-server を再起動。
+5. （任意・CLI）`sk_live_` を一時 export して [`scripts/op084_l3_webhook_cutover.sh`](../../scripts/op084_l3_webhook_cutover.sh) を実行（Stripe CLI の `rk_live` では update 不可）。
+
+> 2026-07-16 時点: Live に workers.dev 転送用 endpoint が残っている場合がある。正本 URL は **app.aiome.dev**。不足イベント（`customer.subscription.updated` / `charge.dispute.created` / `checkout.session.expired`）を必ず追加すること。
 
 ### 受信すべき必須イベント一覧
 
@@ -167,3 +171,87 @@ Aiome 課金システムは、以下の堅牢設計原則 (Security Hardening) �
 | アラート（Human） | Stripe Dashboard → Settings → Notifications | 決済失敗・dispute メールを有効化 |
 
 緊急停止手順: [`docs/releases/NT6_R5_ROLLBACK_DRAFT.md`](../releases/NT6_R5_ROLLBACK_DRAFT.md)「Live 課金停止」。
+
+## 6. 顧客向けメール設定（OP-084 L2-4・正確版）
+
+> **重要**: Stripe では「領収書」と「サブスク失敗・更新通知」が**別画面**にある。  
+> 1 画面に全部のトグルは無い。`From = project.aiome@gmail.com` を Customer emails で直接設定する UI も**無い**（送信元は Stripe。返信先・サポート表示は Business のサポートメール）。
+
+前提: Dashboard 左上が **Live**（テストモード OFF）。
+
+### 6.A 領収書・返金レシート — Settings → Business → Customer emails
+
+直リンク: [https://dashboard.stripe.com/settings/emails](https://dashboard.stripe.com/settings/emails)  
+（メニュー表記: **Settings → Business → Customer emails**。古い説明の「Billing → Customer emails」は使わない）
+
+| トグル（画面上の名前） | 推奨 | 備考 |
+|---|---|---|
+| **Successful payments**（Email customers about / Payments 配下） | **ON** | 決済成功時の自動領収書。失敗時は送られない（仕様） |
+| **Refunds** | **ON**（表示がある場合） | 返金時のレシート。画面に無いアカウントもある → その場合は手動 Send receipt で可 |
+
+**やらない／できないこと**
+
+- 「Failed payments」をこの画面で探す → **無い**（§6.B へ）
+- 「Subscription 更新・キャンセル」をこの画面で探す → **無い**（§6.B へ）
+- From / Reply-to を Gmail に書き換える欄 → **無い**。サポート連絡先は **Settings → Business**（Public details / サポートメール）に `project.aiome@gmail.com` を入れる。独自ドメイン From が必要なら Stripe のカスタムメールドメイン検証（任意・非必須）
+
+### 6.B 支払失敗・サブスク通知 — Settings → Billing → Subscriptions and emails
+
+直リンク目安: Dashboard 検索で `Subscriptions and emails`、または **Settings → Billing → Subscriptions and emails**  
+（公式: [Send customer emails](https://docs.stripe.com/invoicing/send-email) / [Automate customer emails](https://docs.stripe.com/billing/revenue-recovery/customer-emails)）
+
+**Email notifications and customer management** 付近で:
+
+| 設定（英語 UI の代表表記） | 推奨 | 備考 |
+|---|---|---|
+| **Send emails when card payments fail** | **ON** | サブスクのカード失敗通知。Customer emails ではなく**ここ** |
+| Send emails about upcoming renewals | 任意 ON | 更新リマインダ |
+| Send emails about expiring cards | 任意 ON | カード期限切れ |
+| Trial ending reminder | **OFF 可** | Aiome は現時点トライアル非提供 |
+| Payment method updates / Subscription management → **Customer Portal** | **推奨** | メール内の「支払い方法更新」「解約」リンク先。特商法の解約導線と一致 |
+
+### 6.C DoD（これだけできれば L2-4 メール要件クリア）
+
+1. Live の **Customer emails** で **Successful payments = ON**
+2. Live の **Subscriptions and emails** で **Send emails when card payments fail = ON**
+3. Business の**サポートメール**が `project.aiome@gmail.com`（または確実に届く転送先）
+4. （任意）Refunds ON / Customer Portal リンク設定
+
+テストモードでは、自分の検証済みチームメール以外へ自動メールが飛ばないことがある（Stripe 仕様）。本番確認は Live の少額決済（L4）で行う。
+
+---
+
+## 7. Customer Portal（Live）— Human 検証チェックリスト
+
+MC の「お支払い管理」導線（`POST /api/v1/commerce/customer-portal/create`）と特商法・解約ポリシーの正本経路。コード変更なし。**Live モード**で実施。
+
+1. [x] [Billing → Customer portal](https://dashboard.stripe.com/settings/billing/portal) で構成を**保存済み**（Test/Live は別設定）。— Human 2026-07-17
+2. [x] **Cancel subscriptions** が有効（期間末キャンセルで可。即時キャンセルは任意）。— Human 2026-07-17
+3. [x] **Update payment method** が有効（推奨）。— Human 2026-07-17
+4. [x] **Business** の公開名・サポート連絡先（メール/URL）が埋まっている（§6 と整合）。— Human 2026-07-17
+5. [x] **Positive**: 本番 Pro ユーザーが MC →「お支払い管理」→ Stripe Portal が開き、Cancel 操作まで到達できる。— Human 2026-07-17
+6. [x] **Negative（Fail-Closed）**: Stripe Customer 未登録の agent で Portal API が 404/エラーとなり、誤って空 Portal を開かない。— **Agent 代行 2026-07-17**: 本番 `POST .../customer-portal/create` 未認証 → **HTTP 401**（URL なし）+ 単体 `test_create_portal_session_not_found_without_customer`（DB 未登録 → `NotFound`、Stripe 未呼出）PASS。
+
+### 7.D DoD 記録（クローズ）
+
+```
+OP-084 Portal §7 PASS
+日付: 2026-07-17
+担当: Human（A/B）+ Agent 代行（C・本記録）
+A: Cancel ON / Payment method ON / Business 連絡先 OK（Live Dashboard）
+B: お支払い管理 → Portal → Cancel UI 到達（Human 本番確認。期間末 Cancel 確定は任意）
+C: 二層で代替 — (1) 本番未認証 POST → HTTP 401（URL なし）
+               (2) 単体 test_create_portal_session_not_found_without_customer
+                   → DB 未登録で NotFound（Stripe 未呼出）PASS
+   ※別 Free アカウントでの Live 404 手動は未実施（コスト対効果でコード+401 に委譲）
+MC: 本番 static 反映済み（rsync apps/api-server/static）
+結果: Portal 導線ゲート CLEAR
+
+--- billing_closeout R2（UI ゲート・≠ L4 実決済）2026-07-17 Agent ---
+Positive: health=200 / index → main-DrW5KfL_.js / LockedOverlay-BLJhwnQo.js 配信
+Negative: POST /api/v1/commerce/customer-portal/create 未認証 → 401
+Revert: 一時障害注入なし。失敗時ロールバック用 static.bak-20260717-r1b をホストに保持
+注: Free/Pro CTA のブラウザ目視は §7 B（Human）継続。本 R2 は H4（Live 実カード）の代替ではない
+```
+
+DoD: 上記記録により OP-084 の Portal 導線ゲートはクリア。

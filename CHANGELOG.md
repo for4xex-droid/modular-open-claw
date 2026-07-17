@@ -1,5 +1,32 @@
 ## [Unreleased]
 
+### Changed (課金 UI 動的切替・Portal 導線 2026-07-17)
+- **MC 課金 CTA**: Free → Upgrade / Checkout、Pro →「お支払い管理」→ Customer Portal。NurtureDashboard の偽「ポイント購入」（実 Pro Checkout）を除去。PlanBadge（Pro クリック）・VoiceStore・NurtureDashboard で `isPro` 出し分け。
+- **ProUpgradeModal**: `isPro` 時は Checkout を開始せず Portal へ誘導（402 後の二重課金防止）。
+- **subscription refresh**: `visibilitychange` で `useSubscriptionStatus` が再取得。CheckoutSuccess は `isPro` 反映まで短ポーリング。
+- **Backend**: `get_subscription_status` が複数 sub 時に `active`/`trialing` を優先。`expression` の Pro 判定に `Trialing` を追加（auth/FE と一致）。
+- **i18n**: `pro.manageBilling`（お支払い管理 / Manage billing）。Human: [`stripe-production-setup.md`](docs/operations/stripe-production-setup.md) §7 Portal チェックリスト。
+- **Portal Negative**: `test_create_portal_session_not_found_without_customer`（未登録 → `NotFound`）。§7 C を Agent 代行でクローズ（本番未認証 401 + 単体 PASS）。
+- **§7.D DoD 記録**: Portal 導線ゲート CLEAR（Human A/B + Agent C、2026-07-17）。
+- **/reflexion**: clippy `needless_lifetimes` 除去。ProUpgradeModal は subscription loading 中に Checkout を開かない。PlanBadge は Portal エラーを tooltip 表示。visibility refresh は in-flight ガード（ref）。§7.D C の委譲範囲を過大表記しないよう明記。
+- **/reflexion (2)**: subscription refresh の pending coalesce（空振り防止）。CheckoutSuccess は fetch 成功時のみ poll 回数を消費。ProUpgradeModal は loading 中オープンをキュー。cssVar hex フォールバック除去・PlanBadge `radius-md`。
+- **/reflexion (3)**: CheckoutSuccess を setInterval→逐次 setTimeout に変更（並列 tick 競合排除）+ テスト追加。refresh coalesce に最大 3 pass 上限。trialBadge `radius-lg`。
+- **/reflexion (4)**: VoiceStore が subscription loading 中に Upgrade を出さない。LP Cancellation を「お支払い管理」に同期（正本日付 2026-07-17）+ sync テストで「サブスク管理」再混入禁止。Nurture 履歴バッジを tokens 参照に。
+- **/reflexion (5)**: LockedOverlay を loading 中 fail-closed（Free 機能フラッシュ防止）+ テスト。ProUpgradeModal は Pro 遷移時に自動クローズ／Checkout ガード。死蔵 `voice.manageSubscription` 削除。
+- **/reflexion (6)**: `useSubscriptionStatus` の `isLoading` 初期値を true（初回 Free CTA フラッシュ防止）。`A2A_NODE_TOKEN` 空文字を未設定扱い（compose パススルー時の release FATAL すり抜け防止）。`docker-compose.production.yml` で `A2A_NODE_TOKEN=${A2A_AUTH_TOKEN}` を配線。
+- **本番反映（billing_closeout v1.1）**: MC static 再 rsync（fail-closed FE）/ LP Cancellation「お支払い管理」を GH Pages 向け commit / OPEN OP-084 の「L1–L4 済」過大表記を訂正（残=L3-2〜L4）。計画正本: [`billing_closeout_plan.md`](docs/roadmaps/billing_closeout_plan.md)。
+
+### Changed (OP-084 L3 切替準備 2026-07-16)
+- **L3-1 既存確認**: Live Product/Price/`price_1TpXFpBcUTwo5TwLmK9SQbKL` / LP Link=`livemode=true`。L0-1 の Test 誤判定を訂正。
+- **L3 Agent 準備**: `scripts/op084_l3_webhook_cutover.sh`（`sk_live_` 必須。CLI `rk_live` では webhook update 不可）。forwarder `FORWARD_URL` → `https://app.aiome.dev/api/v1/commerce/webhook`。`stripe-production-setup` に本番 Price/Webhook URL 確定値。
+- **Human 残**: Vault / ホスト env / Dashboard またはスクリプトでの Webhook 7 イベント更新 → L4。
+
+### Changed (OP-084 L2-4 Human PASS 2026-07-16)
+- Live プロフィール・特商法一致・領収書/失敗メール ON・Radar 既定・Tax 見送りを Human 完了として OPEN / live_billing_open_plan / COMPLIANCE_CHECKLIST に記録。
+
+### Fixed (OP-084 L2-4 顧客メール手順 2026-07-16)
+- **stripe-production-setup §6**: 誤った「Customer emails に全部・From=Gmail」を撤去。正本は (A) Business→Customer emails の Successful payments/Refunds、(B) Billing→Subscriptions and emails の card payments fail。live_billing_open_plan / COMPLIANCE_CHECKLIST 同期。
+
 ### Added (LP サポートページ 2026-07-16)
 - **`/support`**: カスタマーサポートページ新設（メール・電話・法務リンク）。Footer / sitemap / ルーティング / テスト。Stripe Business 用 URL:
   - サポート `https://aiome.dev/support`

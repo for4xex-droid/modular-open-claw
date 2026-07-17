@@ -8,6 +8,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import VoiceStore from './VoiceStore';
 import { authenticatedFetch } from '../lib/auth';
 import { useAgentIdentity } from '../hooks/useAgentIdentity';
+import { useSubscriptionStatus } from '../hooks/useSubscriptionStatus';
 import { CoinBalanceProvider } from '../hooks/useCoinBalance';
 
 // Mock dependencies
@@ -33,6 +34,11 @@ jest.mock('../lib/auth', () => ({
 
 jest.mock('../hooks/useAgentIdentity', () => ({
     useAgentIdentity: jest.fn()
+}));
+
+jest.mock('../hooks/useSubscriptionStatus', () => ({
+  useSubscriptionStatus: jest.fn(() => ({ isPro: false, isLoading: false })),
+  openProUpgradeModal: jest.fn(),
 }));
 
 jest.mock('./common/Toast', () => ({
@@ -110,6 +116,34 @@ describe('VoiceStore Commerce Integration', () => {
     expect(body).toHaveProperty('item_id');
     expect(body).toHaveProperty('metadata');
     expect(body.metadata).toHaveProperty('amount_coins');
+  });
+
+  it('shows upgrade CTA when not Pro and hides portal', async () => {
+    (useSubscriptionStatus as jest.Mock).mockReturnValue({ isPro: false, isLoading: false });
+    renderVoiceStore();
+    await waitFor(() => {
+      expect(screen.getByText('pro.upgrade')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('pro.manageBilling')).not.toBeInTheDocument();
+  });
+
+  it('shows manage billing when Pro and hides upgrade', async () => {
+    (useSubscriptionStatus as jest.Mock).mockReturnValue({ isPro: true, isLoading: false });
+    renderVoiceStore();
+    await waitFor(() => {
+      expect(screen.getByText('pro.manageBilling')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('pro.upgrade')).not.toBeInTheDocument();
+  });
+
+  it('hides upgrade and portal CTAs while subscription is loading', async () => {
+    (useSubscriptionStatus as jest.Mock).mockReturnValue({ isPro: false, isLoading: true });
+    renderVoiceStore();
+    await waitFor(() => {
+      expect(screen.getByText('1,000 KC')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('pro.upgrade')).not.toBeInTheDocument();
+    expect(screen.queryByText('pro.manageBilling')).not.toBeInTheDocument();
   });
 
   it('disables purchase button when eKYC is not verified', async () => {

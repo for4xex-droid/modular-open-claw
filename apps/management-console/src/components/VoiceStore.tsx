@@ -13,7 +13,7 @@ import { useCheckoutSession } from '../hooks/useCheckoutSession';
 import { useTranslation } from '../i18n';
 import { useAgentIdentity } from '../hooks/useAgentIdentity';
 import { useCoinBalance } from '../hooks/useCoinBalance';
-import { openProUpgradeModal } from '../hooks/useSubscriptionStatus';
+import { openProUpgradeModal, useSubscriptionStatus } from '../hooks/useSubscriptionStatus';
 import { useToast } from './common/Toast';
 
 interface VoiceAsset {
@@ -55,6 +55,7 @@ const mockAssets: VoiceAsset[] = [
 export default function VoiceStore() {
     const { t } = useTranslation();
   const { agentId, isEkycVerified } = useAgentIdentity();
+  const { isPro, isLoading: isSubscriptionLoading } = useSubscriptionStatus();
   const { balance, error: balanceError, refetch: refetchBalance } = useCoinBalance();
   const { showToast } = useToast();
   const [assets, setAssets] = useState<VoiceAsset[]>(mockAssets);
@@ -255,22 +256,33 @@ export default function VoiceStore() {
               {t('voice.proSectionTitle')}
             </span>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              <button 
-                className="primary-button" 
-                style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
-                onClick={() => openProUpgradeModal()}
-                disabled={!agentId}
-              >
-                {t('pro.upgrade')}
-              </button>
-              <button 
-                className="secondary-button" 
-                style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
-                onClick={handlePortal}
-                disabled={isManagingPortal || !agentId}
-              >
-                {isManagingPortal ? t('common.processing') : t('voice.manageSubscription')}
-              </button>
+              {isSubscriptionLoading ? (
+                <button
+                  className="secondary-button"
+                  style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+                  disabled
+                >
+                  …
+                </button>
+              ) : !isPro ? (
+                <button 
+                  className="primary-button" 
+                  style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+                  onClick={() => openProUpgradeModal()}
+                  disabled={!agentId}
+                >
+                  {t('pro.upgrade')}
+                </button>
+              ) : (
+                <button 
+                  className="secondary-button" 
+                  style={{ padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+                  onClick={handlePortal}
+                  disabled={isManagingPortal || !agentId}
+                >
+                  {isManagingPortal ? t('common.processing') : t('pro.manageBilling')}
+                </button>
+              )}
             </div>
             <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{t('voice.proSectionDesc')}</span>
           </div>

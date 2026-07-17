@@ -5,13 +5,14 @@
  * Licensed under the Business Source License 1.1.
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import NurtureDashboard from './NurtureDashboard';
 import { authenticatedFetch } from '../../lib/auth';
 import { CoinBalanceProvider } from '../../hooks/useCoinBalance';
 import { LanguageProvider } from '../../i18n';
+import { useSubscriptionStatus } from '../../hooks/useSubscriptionStatus';
+import { useCheckoutSession } from '../../hooks/useCheckoutSession';
 
-// Mock the auth and config
 jest.mock('../../lib/auth', () => ({
   authenticatedFetch: jest.fn(),
   getAuthToken: jest.fn(() => 'mock.token.part'),
@@ -30,71 +31,114 @@ jest.mock('../../hooks/useAgentIdentity', () => ({
   useAgentIdentity: jest.fn(() => ({ agentId: 'agent-001', isEkycVerified: true })),
 }));
 
+jest.mock('../../hooks/useSubscriptionStatus', () => ({
+  useSubscriptionStatus: jest.fn(),
+  openProUpgradeModal: jest.fn(),
+}));
 
-describe('NurtureDashboard Commerce Integration', () => {
+jest.mock('../../hooks/useCheckoutSession', () => ({
+  useCheckoutSession: jest.fn(),
+}));
+
+const mockUseSubscriptionStatus = useSubscriptionStatus as jest.Mock;
+const mockUseCheckoutSession = useCheckoutSession as jest.Mock;
+
+function mockFetchSuccess() {
+  (authenticatedFetch as jest.Mock).mockImplementation((url: string) => {
+    if (url.includes('/commerce/points')) {
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            balance: 1000,
+            lifetime_earned: 1000,
+            lifetime_withdrawn: 0,
+            conversion_rate_bps: 100,
+          }),
+      });
+    }
+    if (url.includes('/commerce/balance')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ balance: 500 }),
+      });
+    }
+    if (url.includes('/commerce/history')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+    }
+    return Promise.reject(new Error('Not found'));
+  });
+}
+
+function renderDashboard() {
+  return render(
+    <LanguageProvider>
+      <CoinBalanceProvider>
+        <NurtureDashboard />
+      </CoinBalanceProvider>
+    </LanguageProvider>,
+  );
+}
+
+describe('NurtureDashboard billing CTAs', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFetchSuccess();
+    mockUseCheckoutSession.mockReturnValue({
+      handlePortal: jest.fn(),
+      isPortalLoading: false,
+      error: null,
+    });
   });
 
-  it('renders Buy Points button and handles checkout session creation', async () => {
-    // Arrange: Mock the initial data fetch
-    (authenticatedFetch as jest.Mock).mockImplementation((url) => {
-      if (url.includes('/commerce/points')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ balance: 1000, lifetime_earned: 1000, lifetime_withdrawn: 0, conversion_rate_bps: 100 }),
-        });
-      }
-      if (url.includes('/commerce/balance')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ balance: 500 }),
-        });
-      }
-      if (url.includes('/commerce/history')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([]),
-        });
-      }
-      // Mock the checkout session creation
-      if (url.includes('/commerce/checkout-session/create')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ url: 'https://checkout.stripe.com/test_url' }),
-        });
-      }
-      return Promise.reject(new Error('Not found'));
+  it('shows Upgrade to Pro when not subscribed', async () => {
+    mockUseSubscriptionStatus.mockReturnValue({
+      isPro: false,
+      isLoading: false,
     });
 
-    render(
-      <LanguageProvider>
-        <CoinBalanceProvider>
-          <NurtureDashboard />
-        </CoinBalanceProvider>
-      </LanguageProvider>,
-    );
+    renderDashboard();
 
-    // Wait for the balance to load
     await waitFor(() => {
-      expect(screen.getAllByText(/1,000/)[0]).toBeInTheDocument();
+      expect(screen.getByText('Upgrade to Pro')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Manage billing')).not.toBeInTheDocument();
+    expect(screen.queryByText('Buy Points (KC)')).not.toBeInTheDocument();
+  });
+
+  it('shows Manage billing when Pro', async () => {
+    mockUseSubscriptionStatus.mockReturnValue({
+      isPro: true,
+      isLoading: false,
     });
 
-    // Act: Click Buy Points button
-    const buyButton = screen.getByText('Buy Points (KC)');
-    expect(buyButton).toBeInTheDocument();
-    
-    fireEvent.click(buyButton);
+    renderDashboard();
 
-    // Assert: Verify API was called and redirect occurred
     await waitFor(() => {
-      expect(authenticatedFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/v1/commerce/checkout-session/create'),
-        expect.objectContaining({
-          method: 'POST',
-          body: expect.any(String), // We can refine this later
-        })
-      );
+      expect(screen.getByText('Manage billing')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Upgrade to Pro')).not.toBeInTheDocument();
+    expect(screen.queryByText('Buy Points (KC)')).not.toBeInTheDocument();
+  });
+
+  it('shows portal error in the error banner when manage billing fails', async () => {
+    mockUseSubscriptionStatus.mockReturnValue({
+      isPro: true,
+      isLoading: false,
+    });
+    mockUseCheckoutSession.mockReturnValue({
+      handlePortal: jest.fn(),
+      isPortalLoading: false,
+      error: 'Failed to create customer portal session',
+    });
+
+    renderDashboard();
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to create customer portal session')).toBeInTheDocument();
     });
   });
 });

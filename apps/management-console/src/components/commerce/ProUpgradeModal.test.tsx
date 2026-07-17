@@ -14,6 +14,10 @@ import { useCheckoutSession } from '../../hooks/useCheckoutSession';
 // mock custom hook
 jest.mock('../../hooks/useCheckoutSession');
 
+jest.mock('../../hooks/useSubscriptionStatus', () => ({
+    useSubscriptionStatus: jest.fn(),
+}));
+
 jest.mock('../../i18n', () => ({
     useTranslation: () => ({
         t: (key: string, opts?: { feature?: string }) => {
@@ -47,17 +51,25 @@ jest.mock('../../config', () => ({
     API_BASE: 'http://localhost:3000',
 }));
 
+import { useSubscriptionStatus } from '../../hooks/useSubscriptionStatus';
+
 const mockUseCheckoutSession = useCheckoutSession as jest.Mock;
+const mockUseSubscriptionStatus = useSubscriptionStatus as jest.Mock;
 
 describe('ProUpgradeModal component', () => {
     let handleCheckoutMock: jest.Mock;
+    let handlePortalMock: jest.Mock;
 
     beforeEach(() => {
         jest.clearAllMocks();
         handleCheckoutMock = jest.fn();
+        handlePortalMock = jest.fn();
+        mockUseSubscriptionStatus.mockReturnValue({ isPro: false, isLoading: false });
         mockUseCheckoutSession.mockReturnValue({
             handleCheckout: handleCheckoutMock,
+            handlePortal: handlePortalMock,
             isLoading: false,
+            isPortalLoading: false,
             error: null,
         });
     });
@@ -112,5 +124,57 @@ describe('ProUpgradeModal component', () => {
         fireEvent.keyDown(document, { key: 'Escape' });
 
         expect(screen.queryByText('Unlock Aiome Pro')).not.toBeInTheDocument();
+    });
+
+    it('should open portal instead of modal when already Pro', () => {
+        mockUseSubscriptionStatus.mockReturnValue({ isPro: true, isLoading: false });
+
+        render(<ProUpgradeModal priceId="price_123" />);
+
+        fireEvent(window, new CustomEvent('pro-upgrade-modal-open'));
+
+        expect(handlePortalMock).toHaveBeenCalled();
+        expect(screen.queryByText('Unlock Aiome Pro')).not.toBeInTheDocument();
+        expect(handleCheckoutMock).not.toHaveBeenCalled();
+    });
+
+    it('should not open modal or portal while subscription is loading', () => {
+        mockUseSubscriptionStatus.mockReturnValue({ isPro: false, isLoading: true });
+
+        render(<ProUpgradeModal priceId="price_123" />);
+
+        fireEvent(window, new CustomEvent('pro-upgrade-modal-open'));
+
+        expect(handlePortalMock).not.toHaveBeenCalled();
+        expect(handleCheckoutMock).not.toHaveBeenCalled();
+        expect(screen.queryByText('Unlock Aiome Pro')).not.toBeInTheDocument();
+    });
+
+    it('should open modal after subscription loading finishes when open was queued', () => {
+        mockUseSubscriptionStatus.mockReturnValue({ isPro: false, isLoading: true });
+        const { rerender } = render(<ProUpgradeModal priceId="price_123" />);
+
+        fireEvent(window, new CustomEvent('pro-upgrade-modal-open'));
+        expect(screen.queryByText('Unlock Aiome Pro')).not.toBeInTheDocument();
+
+        mockUseSubscriptionStatus.mockReturnValue({ isPro: false, isLoading: false });
+        rerender(<ProUpgradeModal priceId="price_123" />);
+
+        expect(screen.getByText('Unlock Aiome Pro')).toBeInTheDocument();
+        expect(handleCheckoutMock).not.toHaveBeenCalled();
+    });
+
+    it('closes open modal when subscription becomes Pro', () => {
+        mockUseSubscriptionStatus.mockReturnValue({ isPro: false, isLoading: false });
+        const { rerender } = render(<ProUpgradeModal priceId="price_123" />);
+
+        fireEvent(window, new CustomEvent('pro-upgrade-modal-open'));
+        expect(screen.getByText('Unlock Aiome Pro')).toBeInTheDocument();
+
+        mockUseSubscriptionStatus.mockReturnValue({ isPro: true, isLoading: false });
+        rerender(<ProUpgradeModal priceId="price_123" />);
+
+        expect(screen.queryByText('Unlock Aiome Pro')).not.toBeInTheDocument();
+        expect(handleCheckoutMock).not.toHaveBeenCalled();
     });
 });

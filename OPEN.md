@@ -1,8 +1,9 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-16（OP-084 L0–L2/L5 準備・L3 Human ゲート）**
+**最終更新: 2026-07-17（課金クローズアウト R1–R3 / OPEN 過大表記訂正）**
 
 > **実装手順の正本**:
+> - **課金クローズアウト（Agent 残レーン）**: [`docs/roadmaps/billing_closeout_plan.md`](docs/roadmaps/billing_closeout_plan.md)（**v1.1**・2026-07-17）
 > - **Human Wave 実行計画（残 NT の状態・順・DoD 一冊）**: [`docs/roadmaps/human_wave_execution_plan.md`](docs/roadmaps/human_wave_execution_plan.md)（**v1.2**・2026-07-14）
 > - **Human 実行ランブック（NT-1〜7・コピペ超詳細）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）  
 > - **Agent アシスト（推奨・1ステップ進行）**: [`.agent/workflows/nt-assist.md`](.agent/workflows/nt-assist.md)（`/nt-assist`）+ [`scripts/nt_gate.py`](scripts/nt_gate.py)
@@ -30,7 +31,7 @@
 
 ## 🟠 P1 / 次期リリース
 
-- [ ] **OP-084**: **実課金オープン（Stripe 方針 B / Live 切替）** — 正本: [`live_billing_open_plan.md`](docs/roadmaps/live_billing_open_plan.md) **v1.1**。**済**: L0（Link=`pk_test`）/ L1-1·2·4 / L2-1〜3（OP-085）/ L5-1·2 手順。**Human 残**: L2-4 プロフィール → **L3** Vault+Live Price+Webhook → L4 3段階検証。**Agent 待ち**: L3-1 後の L1-3（LP live Link）+ L5-3 クローズ。**Safety-Critical — L3 前に「L3 を実装しろ」必須**
+- [ ] **OP-084**: **実課金オープン（Stripe 方針 B / Live 切替）** — 正本: [`live_billing_open_plan.md`](docs/roadmaps/live_billing_open_plan.md) **v1.1** + Agent 残: [`billing_closeout_plan.md`](docs/roadmaps/billing_closeout_plan.md) **v1.1**。**済**: L1–L2 / L3-1 / §7 Portal DoD PASS / MC+BE 課金 UI 本番反映（closeout R1–R2）。**残**: **L3-2〜L4（Human）** → L5-3。※「L1–L4 済」は過大表記だったため 2026-07-17 訂正
 - [x] **OP-070**: **リリース・本番化マスタープラン**（`docs/roadmaps/release_master_plan.md` v1）の実行 → **2026-07-14 Public Beta 公開完了**（R5-1〜R5-3 ✅ / **R5-5**: タグ `v1.2.0` + [GitHub Release](https://github.com/motivationstudio-llc/aiome/releases/tag/v1.2.0)。リポジトリは public。Stripe は方針 A Test のまま。残フォローは OP-064 / 方針 B / ポストリリース）。
 - [x] **OP-078**: NT-2 /reflexion 残リスク §8 **R-A+R-B** → **2026-07-13 完了**（R-A: `--no-build` Generative FATAL → `--build` healthy；R-B 代理: クリーン volume Setup/login/Neg403/chat+MC proxy SSE → `down`。`nt_gate` browser=PASS）
 - [x] **OP-077**: api-server release 向け unused import 掃除（`router.rs` OpenApi / `karma.rs` tracing を `cfg(debug_assertions)` 化）→ **2026-07-13 完了**（NT-2 §8 R-C）

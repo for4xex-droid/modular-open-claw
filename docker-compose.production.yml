@@ -98,6 +98,8 @@ services:
       # DEPRECATED: Legacy auth. Retained for backward compatibility during JWT migration.
       # Remove after confirming all clients use JWT auth (see ADR-019).
       - API_SERVER_SECRET=${API_SERVER_SECRET}
+      # release 必須: A2A gRPC client auth（shadow-worker 側 A2A_AUTH_TOKEN と同値）
+      - A2A_NODE_TOKEN=${A2A_AUTH_TOKEN}
       - FEDERATION_SECRET=${FEDERATION_SECRET}
       - TIMESFM_AUTH_TOKEN=${TIMESFM_AUTH_TOKEN}
       - TIMESFM_SIDECAR_URL=http://timesfm-sidecar:3025

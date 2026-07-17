@@ -4,7 +4,15 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { API_BASE } from '../config';
 import { authenticatedFetch } from '../lib/auth';
 import { useAgentIdentity } from './useAgentIdentity';
@@ -25,7 +33,8 @@ export interface UseSubscriptionStatusResult {
   isPro: boolean;
   isLoading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  /** Resolves true when a network fetch ran; false if coalesced/skipped. */
+  refresh: () => Promise<boolean>;
 }
 
 const SubscriptionContext = createContext<UseSubscriptionStatusResult | null>(null);
@@ -33,39 +42,77 @@ const SubscriptionContext = createContext<UseSubscriptionStatusResult | null>(nu
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { agentId } = useAgentIdentity();
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // Fail-closed: treat as loading until the first refresh settles (avoids Free CTA flash).
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isLoadingRef = useRef(false);
+  const pendingRefreshRef = useRef(false);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<boolean> => {
     if (!agentId) {
       setStatus(null);
       setError(null);
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await authenticatedFetch(
-        `${API_BASE}/api/v1/commerce/subscription/${agentId}`
-      );
-      if (!res.ok) {
-        const text = await res.text();
-        setError(text || `Subscription fetch failed (${res.status})`);
-        setStatus(null);
-        return;
-      }
-      const data = (await res.json()) as SubscriptionStatus;
-      setStatus(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Subscription fetch failed');
-      setStatus(null);
-    } finally {
       setIsLoading(false);
+      isLoadingRef.current = false;
+      pendingRefreshRef.current = false;
+      return false;
     }
+    if (isLoadingRef.current) {
+      pendingRefreshRef.current = true;
+      return false;
+    }
+
+    let fetched = false;
+    // Cap follow-up coalesces so a visibility stampede cannot spin forever.
+    const maxPasses = 3;
+    for (let pass = 0; pass < maxPasses; pass += 1) {
+      pendingRefreshRef.current = false;
+      isLoadingRef.current = true;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await authenticatedFetch(
+          `${API_BASE}/api/v1/commerce/subscription/${agentId}`
+        );
+        if (!res.ok) {
+          const text = await res.text();
+          setError(text || `Subscription fetch failed (${res.status})`);
+          setStatus(null);
+        } else {
+          const data = (await res.json()) as SubscriptionStatus;
+          setStatus(data);
+        }
+        fetched = true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Subscription fetch failed');
+        setStatus(null);
+        fetched = true;
+      } finally {
+        isLoadingRef.current = false;
+        setIsLoading(false);
+      }
+      if (!pendingRefreshRef.current) {
+        break;
+      }
+    }
+    pendingRefreshRef.current = false;
+
+    return fetched;
   }, [agentId]);
 
   useEffect(() => {
     void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      // Always invoke refresh(); in-flight calls coalesce via pendingRefreshRef.
+      if (document.visibilityState === 'visible') {
+        void refresh();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [refresh]);
 
   const isPro = status === 'active' || status === 'trialing';

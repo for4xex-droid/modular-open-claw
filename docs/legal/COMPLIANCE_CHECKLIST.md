@@ -91,6 +91,6 @@
 | 特商法の**詳細住所・電話番号**を手元で確定し、請求対応できるようにする | ✅ 2026-07-15 公開表記に本店住所・電話を記載済み |
 | LP 再デプロイ後の公開ページ検証 | ✅ **Deploy Landing Page** success（`2026-07-14T16:57:50Z`）。公開 JS bundle（`/assets/index-*.js`）に所在地・電話・「提供していません」・`pro_trial`=解約可文言を確認。直 URL `/tokushoho` 等は GH Pages SPA のため HTTP 404→`404.html` リダイレクト（ブラウザでは表示可） |
 | Stripe Payment Link の Checkout に「14 days free」が**残っていない**こと | ✅ `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03` を取得。`14 days free` / `free trial` / `trial_period` **0 件**。`noTrialOrSetupModeHeader` あり。公開鍵は **`pk_test_` のみ**（Test mode。Live 切替は OP-084） |
-| Stripe Dashboard（Live）のビジネスプロフィール・領収書メール | ⏳ **OP-084 L2-4 / L3**（Live 切替時。本 OP-085 スコープ外） |
+| Stripe Dashboard（Live）のビジネスプロフィール・顧客メール | ✅ **2026-07-16** L2-4 Human（Live・特商法一致・領収書 ON・失敗通知 ON・Radar 既定・Tax 見送り。手順: [`stripe-production-setup.md`](../operations/stripe-production-setup.md) §6） |
 
 弁護士への相談は**任意**（複雑な海外消費者法・行政照会時など）。本リポジトリの Live ゲート条件には含めない。

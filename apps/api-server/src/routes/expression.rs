@@ -88,6 +88,7 @@ pub async fn generate_expression(
     let is_pro = matches!(
         sub_status,
         aiome_core_contracts::commerce::SubscriptionStatus::Active
+            | aiome_core_contracts::commerce::SubscriptionStatus::Trialing
     );
 
     if !is_pro {

@@ -5,9 +5,10 @@
  * Licensed under the Business Source License 1.1.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Sparkles, Check, X, CreditCard } from 'lucide-react';
 import { useCheckoutSession } from '../../hooks/useCheckoutSession';
+import { useSubscriptionStatus } from '../../hooks/useSubscriptionStatus';
 import { cssVar } from '../../utils/cssVar';
 import { useTranslation } from '../../i18n';
 import { Modal } from '../ui/Modal';
@@ -32,16 +33,48 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({ priceId, agent
     const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
     const [triggerFeatureKey, setTriggerFeatureKey] = useState<string | undefined>();
-    const { handleCheckout, isLoading, error } = useCheckoutSession(priceId, agentId);
+    const { isPro, isLoading: isSubscriptionLoading } = useSubscriptionStatus();
+    const { handleCheckout, handlePortal, isLoading, isPortalLoading, error } = useCheckoutSession(priceId, agentId);
+    const pendingOpenRef = useRef<{ featureKey?: string } | null>(null);
+
+    const tryOpen = useCallback((featureKey?: string) => {
+        // Avoid Free-modal / Checkout while status is unknown (Pro race after Portal return).
+        if (isSubscriptionLoading) {
+            pendingOpenRef.current = { featureKey };
+            return;
+        }
+        pendingOpenRef.current = null;
+        if (isPro) {
+            setIsOpen(false);
+            void handlePortal();
+            return;
+        }
+        setTriggerFeatureKey(featureKey);
+        setIsOpen(true);
+    }, [isPro, isSubscriptionLoading, handlePortal]);
+
+    useEffect(() => {
+        if (!isSubscriptionLoading && pendingOpenRef.current) {
+            const pending = pendingOpenRef.current;
+            pendingOpenRef.current = null;
+            tryOpen(pending.featureKey);
+        }
+    }, [isSubscriptionLoading, tryOpen]);
+
+    // If plan flips to Pro while the upgrade modal is open, close it (no Checkout).
+    useEffect(() => {
+        if (isPro && isOpen) {
+            setIsOpen(false);
+        }
+    }, [isPro, isOpen]);
 
     useEffect(() => {
         const handle402Event = () => {
-            setIsOpen(true);
+            tryOpen();
         };
         const handleOpenEvent = (e: Event) => {
             const detail = (e as CustomEvent<{ featureKey?: string }>).detail;
-            setTriggerFeatureKey(detail?.featureKey);
-            setIsOpen(true);
+            tryOpen(detail?.featureKey);
         };
 
         window.addEventListener('stripe-402-payment-required', handle402Event);
@@ -50,7 +83,7 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({ priceId, agent
             window.removeEventListener('stripe-402-payment-required', handle402Event);
             window.removeEventListener('pro-upgrade-modal-open', handleOpenEvent);
         };
-    }, []);
+    }, [tryOpen]);
 
     return (
         <Modal
@@ -63,10 +96,10 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({ priceId, agent
         >
                 <div style={styles.header}>
                     <div style={styles.sparkleContainer}>
-                        <Sparkles size={32} color={cssVar('--accent-purple', '#bc8cff')} style={styles.iconGlow} />
+                        <Sparkles size={32} color={cssVar('--accent-purple')} style={styles.iconGlow} />
                     </div>
                     <button type="button" onClick={() => setIsOpen(false)} style={styles.closeButton} aria-label={t('pro.closeModal')}>
-                        <X size={18} color={cssVar('--text-secondary', '#94a3b8')} />
+                        <X size={18} color={cssVar('--text-secondary')} />
                     </button>
                 </div>
 
@@ -83,7 +116,7 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({ priceId, agent
                         {FEATURE_KEYS.map(({ title, desc }) => (
                             <div key={title} style={styles.featureItem}>
                                 <div style={styles.checkIconWrapper}>
-                                    <Check size={14} color={cssVar('--accent-emerald', '#10b981')} />
+                                    <Check size={14} color={cssVar('--accent-emerald')} />
                                 </div>
                                 <div>
                                     <h4 style={styles.featureTitle}>{t(title)}</h4>
@@ -116,7 +149,18 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({ priceId, agent
                     <button type="button" onClick={() => setIsOpen(false)} style={styles.cancelButton} disabled={isLoading}>
                         {t('pro.cancel')}
                     </button>
-                    <button type="button" onClick={handleCheckout} style={styles.upgradeButton} disabled={isLoading}>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (isPro) {
+                                void handlePortal();
+                                return;
+                            }
+                            void handleCheckout();
+                        }}
+                        style={styles.upgradeButton}
+                        disabled={isLoading || isPortalLoading || isSubscriptionLoading}
+                    >
                         {isLoading ? (
                             <span style={styles.spinner}></span>
                         ) : (
@@ -263,7 +307,7 @@ const styles: { [key: string]: React.CSSProperties } = {
         color: 'var(--accent-purple)',
         backgroundColor: 'var(--accent-purple-10)',
         border: '1px solid var(--accent-purple-20)',
-        borderRadius: '20px',
+        borderRadius: 'var(--radius-lg)',
         padding: '0.2rem 0.6rem',
     },
     renewalNotice: {

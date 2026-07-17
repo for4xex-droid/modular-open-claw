@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { CheckCircle, RefreshCw } from 'lucide-react';
 import { useTranslation } from '../../i18n';
 import { useSubscriptionStatus } from '../../hooks/useSubscriptionStatus';
@@ -16,10 +16,49 @@ interface CheckoutSuccessProps {
 export const CheckoutSuccess: React.FC<CheckoutSuccessProps> = ({ onGoHome }) => {
   const { t } = useTranslation();
   const { status, isPro, isLoading, refresh } = useSubscriptionStatus();
+  const pollCountRef = useRef(0);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // Sequential short polling (max 3 attempts, ~2s apart). Avoids overlapping
+  // setInterval ticks; each attempt awaits refresh before scheduling the next.
+  useEffect(() => {
+    if (isPro) {
+      pollCountRef.current = 0;
+      return;
+    }
+    if (pollCountRef.current >= 3) {
+      return;
+    }
+
+    let cancelled = false;
+    let timeoutId: number | undefined;
+
+    const scheduleNext = () => {
+      timeoutId = window.setTimeout(() => {
+        void (async () => {
+          if (cancelled || pollCountRef.current >= 3) {
+            return;
+          }
+          pollCountRef.current += 1;
+          await refresh();
+          if (!cancelled && pollCountRef.current < 3) {
+            scheduleNext();
+          }
+        })();
+      }, 2000);
+    };
+
+    scheduleNext();
+    return () => {
+      cancelled = true;
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [isPro, refresh]);
 
   return (
     <div
