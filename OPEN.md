@@ -1,9 +1,9 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-18（OP-084 L5-3 / Live 切替クローズ）**
+**最終更新: 2026-07-18（billing_closeout R4 完了）**
 
 > **実装手順の正本**:
-> - **課金クローズアウト**: [`docs/roadmaps/billing_closeout_plan.md`](docs/roadmaps/billing_closeout_plan.md)（**v1.3**・2026-07-18・H4 PASS / L5-3 済。R4 任意のみ残）
+> - **課金クローズアウト**: [`docs/roadmaps/billing_closeout_plan.md`](docs/roadmaps/billing_closeout_plan.md)（**v1.5**・2026-07-18・R1–R4 / H4 / L5-3 **完了**）
 > - **Human Wave 実行計画（残 NT の状態・順・DoD 一冊）**: [`docs/roadmaps/human_wave_execution_plan.md`](docs/roadmaps/human_wave_execution_plan.md)（**v1.2**・2026-07-14）
 > - **Human 実行ランブック（NT-1〜7・コピペ超詳細）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）  
 > - **Agent アシスト（推奨・1ステップ進行）**: [`.agent/workflows/nt-assist.md`](.agent/workflows/nt-assist.md)（`/nt-assist`）+ [`scripts/nt_gate.py`](scripts/nt_gate.py)
@@ -31,7 +31,7 @@
 
 ## 🟠 P1 / 次期リリース
 
-- [x] **OP-070**: **リリース・本番化マスタープラン**（`docs/roadmaps/release_master_plan.md` v1）の実行 → **2026-07-14 Public Beta 公開完了**（R5-1〜R5-3 ✅ / **R5-5**: タグ `v1.2.0` + [GitHub Release](https://github.com/motivationstudio-llc/aiome/releases/tag/v1.2.0)。リポジトリは public。**方針 B（Live）は OP-084 で 2026-07-18 クローズ**。残フォローは OP-064 / ポストリリース / closeout R4 任意）。
+- [x] **OP-070**: **リリース・本番化マスタープラン**（`docs/roadmaps/release_master_plan.md` v1）の実行 → **2026-07-14 Public Beta 公開完了**（R5-1〜R5-3 ✅ / **R5-5**: タグ `v1.2.0` + [GitHub Release](https://github.com/motivationstudio-llc/aiome/releases/tag/v1.2.0)。リポジトリは public。**方針 B（Live）は OP-084 で 2026-07-18 クローズ** / **closeout R4 完了**。残フォローは OP-064 / ポストリリース）。
 - [x] **OP-078**: NT-2 /reflexion 残リスク §8 **R-A+R-B** → **2026-07-13 完了**（R-A: `--no-build` Generative FATAL → `--build` healthy；R-B 代理: クリーン volume Setup/login/Neg403/chat+MC proxy SSE → `down`。`nt_gate` browser=PASS）
 - [x] **OP-077**: api-server release 向け unused import 掃除（`router.rs` OpenApi / `karma.rs` tracing を `cfg(debug_assertions)` 化）→ **2026-07-13 完了**（NT-2 §8 R-C）
 - [x] **OP-079**: compose entrypoint の `/app/.intent_tmp` 二重 mkdir 撤去 → **2026-07-13 完了**（`/data/.intent_tmp` のみ・再作成後 healthy。NT-2 §8 R-D）
@@ -98,7 +98,7 @@
 
 ## ✅ 解決（直近のみ保持）
 
-- [x] **OP-084**: **実課金オープン（Stripe 方針 B / Live 切替）** → **2026-07-18 H4 PASS + L5-3 クローズ**（正本: [`live_billing_open_plan.md`](docs/roadmaps/live_billing_open_plan.md) v1.2 + [`billing_closeout_plan.md`](docs/roadmaps/billing_closeout_plan.md) v1.3）。L3-2 Vault `sk_live`/`whsec`・L3-3 `STRIPE_TEST_MODE=false`+live Price・L3-4 正本 Webhook 7 イベント＋legacy disabled・L4-1 Live Checkout→unlock・L4-2 偽署名 400・L4-3 `subscription.deleted`→suspend・L4-4 返金/クレジット+cancel→Free。任意残: closeout **R4**（A2A 空文字ガードの次回 api-server rebuild 同梱）
+- [x] **OP-084**: **実課金オープン（Stripe 方針 B / Live 切替）** → **2026-07-18 H4 PASS + L5-3 クローズ + R4 完了**（正本: [`live_billing_open_plan.md`](docs/roadmaps/live_billing_open_plan.md) v1.2 + [`billing_closeout_plan.md`](docs/roadmaps/billing_closeout_plan.md) **v1.5**）。L3-2 Vault `sk_live`/`whsec`・L3-3 `STRIPE_TEST_MODE=false`+live Price・L3-4 正本 Webhook 7 イベント＋legacy disabled・L4-1 Live Checkout→unlock・L4-2 偽署名 400・L4-3 `subscription.deleted`→suspend・L4-4 返金/クレジット+cancel→Free。closeout **R4 ✅**（空文字ガード本番同梱 + P/N/R）
 - [x] **OP-085**: **法務ドキュメント整備** → **2026-07-15 エージェント完了 + 2026-07-16 公開検証完了**（正本: [`COMPLIANCE_CHECKLIST.md`](docs/legal/COMPLIANCE_CHECKLIST.md) §7）。Deploy Landing Page success・公開 bundle に特商法住所/電話・トライアル非提供・解約可文言。Payment Link に「14 days free」なし（`pk_test` = Test）。**Live プロフィール/領収書は OP-084** に移管。
 - [x] **OP-063**: LP 用証拠ビジュアル（MESSAGING §8 / NT-5）→ **2026-07-14 撮影完了** + **R4-2 組込完了**（`docs/assets/evidence/2026-07-14/` 7/7、LP Showcase 実機画像、README/README_en 同期）
 - [x] **OP-057-R**: OP-057 残タスク → **2026-07-14 完了**（**(1)** NT-1 / R2-1: `app.aiome.dev` 方針 A（Test）・Step0 distroless PASS・Vault（key-proxy）・Webhook7 + whsec・MC Checkout→PlanBadge Pro・Negative（`STRIPE_API_KEY` 削除→拒否→復元）。**(2)** 決済→Pro コードは 2026-07-05 完了済み）

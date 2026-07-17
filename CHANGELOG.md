@@ -1,8 +1,19 @@
 ## [Unreleased]
 
+### Changed (billing_closeout R4 完了 2026-07-18)
+- **本番 api-server**: distroless rebuild で `A2A_NODE_TOKEN` 空文字→FATAL ガードを同梱。Verification Protocol PASS（Positive health 200 / Negative FATAL / Revert 200）。ラベル根拠は `security.distroless=true`。
+- **compose**: `GENERATIVE_ENGINE=${GENERATIVE_ENGINE}` を api-server にパススルー（ホスト `.env` 必須。デフォルト付与なし）。
+- **運用注意**: 本番ホストは SQLite（`data/api`）。Postgres 前提の `AIOME_DB_PATH` を無差別 rsync しないこと（R4 時に一時障害→ホスト hotfix）。
+- **台帳**: `billing_closeout_plan` v1.5 / OPEN の R4 残をクローズ。
+- **/reflexion**: CHANGELOG「R4 残」矛盾・計画の死参照（v1.4 §2）・`GENERATIVE_ENGINE:-falai` の Fail-Closed 誤称を是正。ラベル表記を `security.distroless=true` に統一。
+- **/reflexion (2)**: `remaining_work_foolproof_plan` の「R4 任意」陳腐化を解消。closeout に `static/*` コミット除外を再掲（HEAD 旧 HTML への restore 禁止）。`.env.example` に prod パススルー（デフォルトなし）を追記。
+
+### Changed (billing_closeout R4 計画 v1.4 2026-07-18)
+- **`billing_closeout_plan` v1.4**: 任意 R4 を NT-1 Step 0 委譲 + Positive/Negative/Revert で実行可能化。/perfect-plan 第3周 PASS。
+
 ### Changed (OP-084 Live 切替クローズ / L5-3 2026-07-18)
 - **方針 B（Live）オープン完了**: Human H1–H4 PASS（Vault `sk_live`/`whsec`・`STRIPE_TEST_MODE=false`・正本 Webhook 7 イベント・legacy `we_1TlVbZ…` disabled・実カード Verification Protocol）。L4-3 は `customer.subscription.deleted` → suspend（payment_failed 相当）。L4-4 返金/クレジット＋即時キャンセル → Pro→Free。
-- **台帳**: OPEN OP-084 を ✅ 解決へ移管。`live_billing_open_plan` v1.2 / `billing_closeout_plan` v1.3 / `release_master_plan` の方針 B フォロー消し込み。任意残は closeout **R4**（A2A 空文字ガードの本番イメージ同梱）。
+- **台帳**: OPEN OP-084 を ✅ 解決へ移管。`live_billing_open_plan` v1.2 / `billing_closeout_plan` / `release_master_plan` の方針 B フォロー消し込み。**R4 は同日完了**（空文字ガード本番同梱 + P/N/R）。
 
 ### Changed (課金 UI 動的切替・Portal 導線 2026-07-17)
 - **MC 課金 CTA**: Free → Upgrade / Checkout、Pro →「お支払い管理」→ Customer Portal。NurtureDashboard の偽「ポイント購入」（実 Pro Checkout）を除去。PlanBadge（Pro クリック）・VoiceStore・NurtureDashboard で `isPro` 出し分け。

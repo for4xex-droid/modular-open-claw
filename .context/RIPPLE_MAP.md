@@ -1,8 +1,17 @@
+## 🔍 billing_closeout R4 完了（2026-07-18）
+
+- **変更内容**: 本番 api-server distroless rebuild（`shared::config` 空文字ガード同梱）/ compose `GENERATIVE_ENGINE=${GENERATIVE_ENGINE}`（デフォルトなし）/ 台帳 v1.5
+- **検証**: Positive health 200 / Negative `A2A_NODE_TOKEN=` → FATAL / Revert 200（ラベル `security.distroless=true`）
+- **事故**: compose の Postgres `AIOME_DB_PATH` を SQLite ホストへ rsync → 起動失敗。ホストで DB URL/depends_on を hotfix（bak 保管）
+- **/reflexion**: CHANGELOG の「R4 残」矛盾解消・計画の死参照除去・`:-falai` デフォルト誤称を是正
+- **/reflexion (2)**: foolproof 計画の R4 陳腐化解消・`static/*` コミット除外再掲・`.env.example` prod 注記
+- **非対象**: 本番 Postgres 移行、nurture-api 既存障害、whitespace trim
+
 ## 🔍 OP-084 Live 切替クローズ / L5-3（2026-07-18）
 
-- **変更内容**: コード変更なし（台帳同期）。OPEN OP-084 ✅ / `live_billing_open_plan` v1.2 / `billing_closeout_plan` v1.3 / `release_master_plan` 方針 B 消し込み / CHANGELOG
+- **変更内容**: コード変更なし（台帳同期）。OPEN OP-084 ✅ / `live_billing_open_plan` v1.2 / `billing_closeout_plan` / `release_master_plan` 方針 B 消し込み / CHANGELOG
 - **運用事実**: 本番 Vault Live 鍵・Webhook 正本 7 イベント・legacy disabled・H4 Verification Protocol PASS
-- **残**: closeout **R4**（A2A 空文字ガードの次回 api-server rebuild 同梱・任意）
+- **残**: closeout R4 → **✅ 同日完了**
 - **非対象**: 有償 KC / OP-083-C,D / Portal 再実装
 
 ## 🔍 OP-085 法務クリア仕上げ（2026-07-15）

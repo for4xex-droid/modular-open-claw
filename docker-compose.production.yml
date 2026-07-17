@@ -87,6 +87,8 @@ services:
       - CELL_ID=${CELL_ID:-cell-0}
       # Bind-mounted data volume; required so UID 65532 can write (DEV_MODE workspace under /app is not writable).
       - AIOME_DATA_DIR=/app/data
+      # Release FATAL unless host sets comfyui|falai (no default — unset must not silently become falai).
+      - GENERATIVE_ENGINE=${GENERATIVE_ENGINE}
       - KEY_PROXY_URL=http://key-proxy:9999
       - VAULT_SECRET=${VAULT_SECRET}
       # Federation v1.5 activated
