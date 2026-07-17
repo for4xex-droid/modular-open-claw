@@ -15,6 +15,7 @@
 - **/reflexion (5)**: LockedOverlay を loading 中 fail-closed（Free 機能フラッシュ防止）+ テスト。ProUpgradeModal は Pro 遷移時に自動クローズ／Checkout ガード。死蔵 `voice.manageSubscription` 削除。
 - **/reflexion (6)**: `useSubscriptionStatus` の `isLoading` 初期値を true（初回 Free CTA フラッシュ防止）。`A2A_NODE_TOKEN` 空文字を未設定扱い（compose パススルー時の release FATAL すり抜け防止）。`docker-compose.production.yml` で `A2A_NODE_TOKEN=${A2A_AUTH_TOKEN}` を配線。
 - **本番反映（billing_closeout v1.1）**: MC static 再 rsync（fail-closed FE）/ LP Cancellation「お支払い管理」を GH Pages 向け commit / OPEN OP-084 の「L1–L4 済」過大表記を訂正（残=L3-2〜L4）。計画正本: [`billing_closeout_plan.md`](docs/roadmaps/billing_closeout_plan.md)。
+- **/reflexion (7)**: closeout 計画 §0 を実行後事実に同期（v1.2）。`op084_l3_webhook_cutover.sh` の誤った `restart` 固定指示を recreate 注記へ。SECURITY_DESIGN に A2A 空文字=未設定を追記。
 
 ### Changed (OP-084 L3 切替準備 2026-07-16)
 - **L3-1 既存確認**: Live Product/Price/`price_1TpXFpBcUTwo5TwLmK9SQbKL` / LP Link=`livemode=true`。L0-1 の Test 誤判定を訂正。

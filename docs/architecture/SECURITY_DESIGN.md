@@ -225,7 +225,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Internal Economy API Idempotency (2026-07)**: `nurture-api` internal routes (`/internal/transfer`, `/internal/instant-refund`, `/internal/withdraw-points`) require `idempotency_key` and route through `IdempotencyGate` backed by `IdempotencyStore`. Failed operations release reserved keys via `delete_key` so legitimate retries are not blocked for the TTL window.
 - **Auth Token Rate Limiting (2026-07)**: `/api/v1/auth/token` is limited to 5 requests per minute per IP to mitigate brute-force attacks.
 - **JWT Claim Pinning (2026-07)**: When `JWT_ISSUER` / `JWT_AUDIENCE` are set, token validation enforces `iss` and `aud` claims.
-- **A2A Fail-Closed Boot (2026-07)**: Release builds require `A2A_NODE_TOKEN`; debug builds may use a dev placeholder with a warning.
+- **A2A Fail-Closed Boot (2026-07)**: Release builds require a non-empty `A2A_NODE_TOKEN` (`shared::config` treats `""` as unset so compose passthrough cannot bypass FATAL); debug builds may use a dev placeholder with a warning. Production compose maps `A2A_AUTH_TOKEN` → `A2A_NODE_TOKEN`.
 - **Frontend Type Hardening**: Eradicates the use of `any` types in global Catch blocks across the Management Console and deeply nested Trajectory records. Enforces TypeScript's safe `err: unknown` pattern with explicit `instanceof Error` boundaries, mathematically neutralizing runtime TypeErrors caused by unhandled upstream panics.
 - **Cell-Based Architecture (CBA) Namespacing (Stage 0)**: Implements the 1-process=1-cell invariant. `AppDataResolver` strictly validates the `CELL_ID` environment variable using `is_safe_cell_id` (alphanumeric, max 64 chars) to prevent path traversal risks. Additionally, infrastructure scripts (e.g. `backup.sh`) are fortified with robust regex guards to neutralize any shell injection vectors before reaching OS execution.
 - **Production Fallback Safety (Phase 4)**: Renamed test mocks (`MockPromptRegistry`) to explicit production fallbacks (`NoopPromptRegistry`), eliminating the risk of `cfg(test)` conditional compilation bugs breaking production boot sequences, thus aligning with fail-graceful operations.
@@ -280,4 +280,4 @@ For SEO integrations like WordPress, Aiome avoids direct API token injection int
 The `key-proxy` no longer accepts `?key=` query-parameter authentication. Secrets must be supplied via `Authorization: Bearer` or approved header fallbacks only. This prevents vault credentials from appearing in access logs or Referer headers.
 
 ---
-*最終更新: 2026-07-11 (OP-075-B peripheral Fail-Closed + N-B5; OP-075 evaluate_security; OP-061 forget: NURTURE_INTERNAL_SECRET + NURTURE_API_URL 正本、wishlist GDPR purge 2026-07-07)*
+*最終更新: 2026-07-17 (A2A_NODE_TOKEN empty-string = unset / compose A2A_AUTH_TOKEN passthrough; prior: OP-075-B 2026-07-11)*

@@ -1,25 +1,25 @@
-# 課金クローズアウト計画（v1.1・/perfect-plan 再検証 2026-07-17）
+# 課金クローズアウト計画（v1.2・/reflexion 2026-07-17）
 
-- **ステータス**: Agent R1a–R3 **実行中→記録済** / Human L3–L4 は Safety-Critical で別承認
+- **ステータス**: Agent R1a–R3 **完了**（2026-07-17）/ Human L3–L4 は Safety-Critical で別承認
+- **完了記録**: R1a=`3ab70c5e` + Deploy Landing success / R1b=`main-DrW5KfL_.js` + `static.bak-20260717-r1b` / R2=§7.D / R3=`ad9461a5` OPEN・live plan・CHANGELOG / push=`4998e5ea`
 - **継承元**: `billing_hardening_deploy`（A/B-1/B-2 済）+ `live_billing_open_plan.md` v1.1
 - **目的**: 抜け漏れ・重複・車輪の再発明なしに、残作業だけを閉じる
-- **v1.1 差分**: R1 を LP / MC 再 rsync に分割。R2≠H4 を明記。R1 公開確認を SPA 対応。R3 に OPEN 訂正文面と live plan 陳腐化修正を必須化。
+- **v1.2**: §0 を実行後事実に更新。cutover スクリプトの restart 誤誘導を除去。
 
-## 0. 事実（実コード照合・再検証）
+## 0. 事実（実行後・2026-07-17）
 
 | 項目 | 状態 | 根拠 |
 |---|---|---|
-| Portal API/FE | ✅ 再実装不要 | `router.rs` + `useCheckoutSession.handlePortal` / OP-010 CLOSED |
-| Trialing + pick_preferred | ✅ 再実装不要 | `stripe/mod.rs` / `expression.rs` / FE `isPro` |
-| MC static（B-1）/ api-server（B-2） | ✅ 反映済 | health 200 / Portal 未認証 401 |
-| reflexion(6) `isLoading` 初期 true | ⏳ **WT のみ・本番未 rsync** | `useSubscriptionStatus.tsx` L45–46。R2 前に **R1b** 必須 |
-| §7 Portal Human DoD | ✅ PASS | `stripe-production-setup.md` §7.D |
-| LP Cancellation | ✅ WT / ❌ HEAD・公開 | HEAD L527 に「サブスク管理」。正本 `CANCELLATION_POLICY.md` は「お支払い管理」済 |
-| LP 公開経路 | GH Pages | `deploy-landing.yml`（ソース build。`dist/` は gitignore） |
+| Portal API/FE | ✅ 再実装不要 | `customer-portal/create` + `handlePortal` / OP-010 CLOSED |
+| Trialing + pick_preferred | ✅ | `stripe/mod.rs` / `expression.rs` / FE `isPro` |
+| MC static + api-server | ✅ | health 200 / Portal 401 / `main-DrW5KfL_.js` |
+| fail-closed `isLoading` 初期 true | ✅ 本番 rsync 済（R1b） | LockedOverlay-BLJhwnQo.js 配信 |
+| §7 Portal Human DoD | ✅ PASS | `stripe-production-setup.md` §7.D + R2 追記 |
+| LP Cancellation | ✅ main + GH Pages | 「サブスク管理」なし / sync テスト PASS / Actions success |
 | A2A compose | ✅ 本番済 | `A2A_NODE_TOKEN=${A2A_AUTH_TOKEN}` |
-| A2A 空文字 FATAL | ⏳ ローカルのみ | `config.rs` filter + 単体テスト。R4 任意 |
-| OP-084 L3-2〜L4 | ⏳ Human | live plan §6（L3-3 文面はまだ `restart` — R3 で訂正） |
-| OPEN「L1–L4 済」 | ❌ 過大表記 | R3 で必須訂正 |
+| A2A 空文字 FATAL（config filter） | ⏳ コードは main 済・**本番イメージ未同梱** | R4 任意（次回 rebuild） |
+| OP-084 L3-2〜L4 | ⏳ Human | live plan §6 |
+| OPEN 過大表記 | ✅ 訂正済 | 済=L1–L2/L3-1、残=L3-2〜L4 |
 
 **スコープ外**: Portal 再構築、OP-083-C/D、有償 KC、自律購買、subscription SSE push、Vault/鍵の Agent 操作。
 
