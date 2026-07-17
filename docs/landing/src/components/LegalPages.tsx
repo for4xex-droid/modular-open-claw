@@ -513,7 +513,7 @@ export function CancellationPage() {
   const { t } = useTranslation();
 
   return (
-    <LegalLayout title={t('footer.cancellation', '解約・返金ポリシー')} lastUpdated="2026-07-15">
+    <LegalLayout title={t('footer.cancellation', '解約・返金ポリシー')} lastUpdated="2026-07-17">
       <section className="space-y-4">
         <p className="text-gray-400">
           本ポリシーは、Aiome Pro（月額サブスクリプション）の解約手続と返金の取り扱いを定めるものです。
@@ -524,7 +524,7 @@ export function CancellationPage() {
         <h2 className="text-xl font-bold text-white">1. 解約の手順</h2>
         <ol className="list-decimal pl-6 space-y-2">
           <li>Aiome 管理コンソールにログインします。</li>
-          <li>コマース画面等の「お支払い管理」または「サブスク管理」から <strong>Stripe カスタマーポータル</strong> を開きます。</li>
+          <li>コマース画面等の「<strong>お支払い管理</strong>」から <strong>Stripe カスタマーポータル</strong> を開きます。</li>
           <li>ポータル内の「プランをキャンセル」を選択し、画面の案内に従って解約を確定します。</li>
         </ol>
         <p>解約はいつでも可能で、違約金は発生しません。電話や書面のみの解約手続は要求しません。</p>

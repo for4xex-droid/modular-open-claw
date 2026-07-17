@@ -57,6 +57,8 @@ describe('LegalPages sync with docs/legal canonical sources', () => {
   it('does not contain sealed legacy refund/charge language', () => {
     expect(legalPagesSource).not.toContain('チャージ代金');
     expect(legalPagesSource).not.toContain('理由の如何を問わず一切の返金');
+    // UI 正本は「お支払い管理」（pro.manageBilling）。旧「サブスク管理」表記の再混入を防ぐ。
+    expect(legalPagesSource).not.toContain('サブスク管理');
   });
 
   it('TokushohoPage discloses the same address and phone as TOKUSHOHO.md', () => {
