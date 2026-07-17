@@ -5,4 +5,5 @@ compatibility_date = "2026-06-23"
 [vars]
 # 転送先の本番サーバーAPIエンドポイントURLを設定します
 # デプロイ後に、本番環境のドメインに合わせて書き換えてください
-FORWARD_URL = "https://api.aiome.dev/api/v1/commerce/webhook"
+# 本番 API は app.aiome.dev 配下（/health で api-server 応答を確認済み）。api.aiome.dev は使わない。
+FORWARD_URL = "https://app.aiome.dev/api/v1/commerce/webhook"

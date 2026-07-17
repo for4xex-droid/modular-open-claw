@@ -1,12 +1,12 @@
-# 課金クローズアウト計画（v1.2・/reflexion 2026-07-17）
+# 課金クローズアウト計画（v1.3・L5-3 2026-07-18）
 
-- **ステータス**: Agent R1a–R3 **完了**（2026-07-17）/ Human L3–L4 は Safety-Critical で別承認
-- **完了記録**: R1a=`3ab70c5e` + Deploy Landing success / R1b=`main-DrW5KfL_.js` + `static.bak-20260717-r1b` / R2=§7.D / R3=`ad9461a5` OPEN・live plan・CHANGELOG / push=`4998e5ea`
-- **継承元**: `billing_hardening_deploy`（A/B-1/B-2 済）+ `live_billing_open_plan.md` v1.1
+- **ステータス**: Agent R1a–R3 **完了** / Human H1–H4 **PASS** / **L5-3 台帳クローズ済**（2026-07-18）。任意残は **R4** のみ
+- **完了記録**: R1a=`3ab70c5e` / R1b=`main-DrW5KfL_.js` / R2=§7.D / R3=`ad9461a5` / H4 PASS（L4-3=`subscription.deleted`→suspend）/ L5-3=本更新
+- **継承元**: `billing_hardening_deploy`（A/B-1/B-2 済）+ `live_billing_open_plan.md` v1.2
 - **目的**: 抜け漏れ・重複・車輪の再発明なしに、残作業だけを閉じる
-- **v1.2**: §0 を実行後事実に更新。cutover スクリプトの restart 誤誘導を除去。
+- **v1.3**: H4→L5-3 完了を §0 に反映。R4 は次回 api-server rebuild 時の任意同梱。
 
-## 0. 事実（実行後・2026-07-17）
+## 0. 事実（実行後・2026-07-18）
 
 | 項目 | 状態 | 根拠 |
 |---|---|---|
@@ -18,8 +18,8 @@
 | LP Cancellation | ✅ main + GH Pages | 「サブスク管理」なし / sync テスト PASS / Actions success |
 | A2A compose | ✅ 本番済 | `A2A_NODE_TOKEN=${A2A_AUTH_TOKEN}` |
 | A2A 空文字 FATAL（config filter） | ⏳ コードは main 済・**本番イメージ未同梱** | R4 任意（次回 rebuild） |
-| OP-084 L3-2〜L4 | ⏳ Human | live plan §6 |
-| OPEN 過大表記 | ✅ 訂正済 | 済=L1–L2/L3-1、残=L3-2〜L4 |
+| OP-084 L3-2〜L4 / L5-3 | ✅ | H4 PASS 2026-07-18 + OPEN クローズ |
+| OPEN 過大表記 | ✅ 訂正済→クローズ | OP-084 を ✅ 解決へ移管 |
 
 **スコープ外**: Portal 再構築、OP-083-C/D、有償 KC、自律購買、subscription SSE push、Vault/鍵の Agent 操作。
 
@@ -50,9 +50,8 @@ R4 shared 空文字ガード同梱      ║  → 報告後 Agent: L5-3 台帳ク
 
 ### R3 訂正文（OPEN OP-084 1行の置換指針）
 
-**済**: L1–L2 / L3-1 / §7 Portal DoD / MC+BE 課金 UI 本番反映（closeout R1–R2）。  
-**残**: L3-2〜L4（Human）→ L5-3。**正本**: `live_billing_open_plan.md` + 本計画。  
-**やってはいけない表記**: 「済: L1–L4」「残: L5 のみ」。
+**履歴（R3 時点）**: 済=L1–L2/L3-1/§7/R1–R2、残=L3-2〜L4→L5-3。  
+**2026-07-18**: L3–L5 完了。OPEN OP-084 ✅。任意残=R4 のみ。
 
 ### R3 で直す live plan 陳腐化（再実装なし・docs のみ）
 
@@ -73,15 +72,16 @@ R4 shared 空文字ガード同梱      ║  → 報告後 Agent: L5-3 台帳ク
 |---|---|---|
 | H1–H3 | Vault / env / Webhook | Agent 非関与。H2 は R3 訂正後の recreate 注記に従う |
 | H4 | 実カード Verification Protocol | **R2 の代替にならない** |
-| L5-3 | OPEN クローズ | H4 PASS 報告後のみ |
+| L5-3 | OPEN クローズ | ✅ 2026-07-18（H4 PASS 後） |
 
 ## 4. 成功基準
 
-1. 公開 LP が「お支払い管理」のみ（「サブスク管理」再混入なし）。
-2. 本番 MC に reflexion(6) fail-closed が載っている（R1b）。
-3. R2 検証記録あり（かつ H4 未完を偽らない）。
-4. OPEN が live plan と一致。
-5. Portal/Trialing の新規コードが増えていない。
+1. ✅ 公開 LP が「お支払い管理」のみ（「サブスク管理」再混入なし）。
+2. ✅ 本番 MC に reflexion(6) fail-closed が載っている（R1b）。
+3. ✅ R2 検証記録あり + **H4 PASS（2026-07-18）**。
+4. ✅ OPEN が live plan と一致（OP-084 クローズ）。
+5. ✅ Portal/Trialing の新規コードが増えていない。
+6. 任意: R4 で A2A 空文字ガードを本番イメージに同梱。
 
 ## 5. /perfect-plan 第2周（v1.1）
 

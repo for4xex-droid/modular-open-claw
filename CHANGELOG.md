@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Changed (OP-084 Live 切替クローズ / L5-3 2026-07-18)
+- **方針 B（Live）オープン完了**: Human H1–H4 PASS（Vault `sk_live`/`whsec`・`STRIPE_TEST_MODE=false`・正本 Webhook 7 イベント・legacy `we_1TlVbZ…` disabled・実カード Verification Protocol）。L4-3 は `customer.subscription.deleted` → suspend（payment_failed 相当）。L4-4 返金/クレジット＋即時キャンセル → Pro→Free。
+- **台帳**: OPEN OP-084 を ✅ 解決へ移管。`live_billing_open_plan` v1.2 / `billing_closeout_plan` v1.3 / `release_master_plan` の方針 B フォロー消し込み。任意残は closeout **R4**（A2A 空文字ガードの本番イメージ同梱）。
+
 ### Changed (課金 UI 動的切替・Portal 導線 2026-07-17)
 - **MC 課金 CTA**: Free → Upgrade / Checkout、Pro →「お支払い管理」→ Customer Portal。NurtureDashboard の偽「ポイント購入」（実 Pro Checkout）を除去。PlanBadge（Pro クリック）・VoiceStore・NurtureDashboard で `isPro` 出し分け。
 - **ProUpgradeModal**: `isPro` 時は Checkout を開始せず Portal へ誘導（402 後の二重課金防止）。

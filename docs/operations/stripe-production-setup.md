@@ -2,17 +2,17 @@
 
 Stripe の本番アカウント申請承認に伴い、Aiome 課金システムを本番（実決済）モードへ切り替えるための設定手順です。
 
-**最終更新: 2026-07-17** — OP-084: Pro **$19.99 USD/月**・§5 監視・**§6 顧客メール**・**§7 Customer Portal Human チェックリスト**。
+**最終更新: 2026-07-18** — OP-084 **方針 B（Live）クローズ**: Pro **$19.99 USD/月**・§5 監視・**§6 顧客メール**・**§7 Portal**・L3/L4 PASS。
 
-> **OP-057-R チェックリスト（本番反映）**
-> 0. [ ] **環境**: 本番に distroless イメージをデプロイ（[`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-1 **Step 0** を実行。`restart` だけではイメージは更新されません）
-> 1. [ ] **秘密**: AbyssVault に `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` を格納し、api-server を再起動（§2.A）
-> 2. [ ] **非秘密**: `STRIPE_TEST_MODE=false` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` をホスト env または compose パススルーで設定（§2.B）
-> 3. [ ] ホストに `STRIPE_PRICE_SUBSCRIPTION_MONTHLY` を設定（§2.B）。`VITE_STRIPE_PRICE_ID` は任意（未設定時は `price_gold_monthly` エイリアス → §2.1）
-> 4. [ ] Stripe Dashboard Webhook 登録（§3）
-> 5. [ ] 本番 API が実 Price ID を返すこと + **テスト決済 1 件で Pro unlock**（DoD: R2-1 / NT-1）
+> **OP-057-R / OP-084 チェックリスト（本番反映）**
+> 0. [x] **環境**: 本番 distroless api-server（NT-1 Step 0 済。イメージ更新時は recreate）
+> 1. [x] **秘密**: AbyssVault に Live `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET`（2026-07-17）→ api-server 再起動
+> 2. [x] **非秘密**: `STRIPE_TEST_MODE=false` / `STRIPE_PRICE_SUBSCRIPTION_MONTHLY=price_1TpXFpBcUTwo5TwLmK9SQbKL`
+> 3. [x] ホスト Price 設定済。`VITE_STRIPE_PRICE_ID` は任意（エイリアス経路で可）
+> 4. [x] Live Webhook 正本 `https://app.aiome.dev/api/v1/commerce/webhook` + 7 イベント（legacy workers.dev disabled）
+> 5. [x] Live 実カード 1 件 → Pro unlock + L4 Negative/Revert PASS（2026-07-17〜18）
 >
-> 決済→Pro 自動有効化（OP-057-R (2)）は 2026-07-05 コード完了。デプロイ前の人間レビューは `OPEN.md` OP-057-R を参照。
+> 決済→Pro 自動有効化（OP-057-R (2)）は 2026-07-05 コード完了。OP-084 L5-3 台帳クローズ済。
 
 ---
 

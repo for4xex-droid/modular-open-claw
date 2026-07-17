@@ -1,15 +1,15 @@
-# 実課金オープン計画（Stripe Live Switch Plan v1.1）
+# 実課金オープン計画（Stripe Live Switch Plan v1.2）
 
-- **ステータス**: **L0〜L2・L3-1 消化済 / L3-2〜4・L4 は Human ゲート待ち（2026-07-16）**。LP Payment Link は既に Live。API が Test の間は付与漏れリスクあり。L3-2〜4 は Vault・Live 鍵を含む **Safety-Critical** — 「L3 を実装しろ」必須
-- **対応 OP**: **OP-084**（OPEN.md P1）
+- **ステータス**: **✅ L0〜L5 完了（2026-07-18）** — Human H4 PASS（L3-2〜L4）+ Agent L5-3 台帳クローズ。本番は方針 B（Live）。任意フォロー: `billing_closeout_plan` **R4**（A2A 空文字ガードの次回 api-server rebuild）
+- **対応 OP**: **OP-084**（OPEN.md ✅ 解決・2026-07-18）
 - **目的**: Public Beta（v1.2.0、Stripe 方針 A = Test）から、**実通貨決済（方針 B = Live）** へ安全に切り替えるための全タスクを検証・定義する
 - **正本関係**: タスク台帳は `OPEN.md`。切替手順のコピペ正本は [`HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md) NT-1（方針 B 分岐）+ [`stripe-production-setup.md`](../operations/stripe-production-setup.md)。本計画は「Live 固有の追加タスク・順序・DoD」を定義する層
 
-### 進捗（2026-07-16）
+### 進捗（2026-07-18 クローズ）
 
 | Phase | 状態 | 根拠 |
 |---|---|---|
-| L0-1 | ⚠️→記録訂正 2026-07-16 | LP Link `aFa00i9cEaVE4ay4y9f7i03` = Stripe API **`livemode=true`**（Live）。HTML の `pk_test` は誤判定だった。**API が Test のままだと「Live 課金なのに Pro 付与されない」事故リスク** → L3-2〜4 完了まで注意 |
+| L0-1 | ✅ 記録訂正 2026-07-16 | LP Link `aFa00i9cEaVE4ay4y9f7i03` = **`livemode=true`**。L3 完了により API/Webhook も Live 整合 |
 | L0-2 | ✅ | スコープ = Pro $19.99/月のみ（§1） |
 | L1-1 | ✅ | VoiceStore: 「Pro に登録する」+ KC 無償明記（OP-085） |
 | L1-2 | ✅ | AiaaOnboardingWizard: `useAgentIdentity`（zero-UUID 禁止） |
@@ -18,12 +18,12 @@
 | L1-5 | — | 任意・非ブロッカー（表示撤去済） |
 | L2-1〜3 | ✅ | OP-085（COMPLIANCE_CHECKLIST ✅） |
 | L2-4 | ✅ **2026-07-16 Human** | Live / 特商法一致 / Successful payments ON / card fail ON / Radar 既定 / Tax 見送り |
-| L3-1 | ✅ **既存** | Live Product `Aiome Autonomous Pro（最新）` / Price **`price_1TpXFpBcUTwo5TwLmK9SQbKL`**（$19.99 USD/月）/ Payment Link 上記（新規作成不要） |
-| L3-2〜4 | ⏳ **Human** | Vault `sk_live_` + `STRIPE_TEST_MODE=false` + live Price env + Live Webhook |
-| L4 | ⏳ | L3 後。Verification Protocol 3 段階必須 |
+| L3-1 | ✅ **既存** | Live Product / Price **`price_1TpXFpBcUTwo5TwLmK9SQbKL`** / Payment Link 上記 |
+| L3-2〜4 | ✅ **2026-07-17 Human+Agent** | Vault `sk_live`/`whsec`・env Live・正本 Webhook 7 イベント・legacy disabled |
+| L4 | ✅ **2026-07-17〜18 Human** | L4-1 unlock / L4-2 偽署名 400 / L4-3 deleted→suspend / L4-4 返金+cancel→Free |
 | L5-1 | ✅ | `NT6_R5_ROLLBACK_DRAFT.md` に Live 課金停止を追記 |
 | L5-2 | ✅ 手順 | `stripe-production-setup.md` §5。Dashboard アラート設定は Human |
-| L5-3 | ⏳ | L4 PASS 後に OPEN クローズ |
+| L5-3 | ✅ **2026-07-18** | OPEN / CHANGELOG / RIPPLE_MAP / release_master_plan / closeout 計画同期 |
 
 ---
 
@@ -46,7 +46,7 @@
 
 | # | 問題 | 根拠 | 影響 |
 |---|---|---|---|
-| B-1 | **LP Payment Link は Live 確定**（`plink_…` / `livemode=true`、2026-07-16 CLI）。API/Webhook が Test のままだと Live 決済を受けても Pro 付与されない | `Pricing.tsx` + Stripe API | 🔴 **L3-2〜4 で解消** |
+| B-1 | **LP Payment Link は Live 確定**（`plink_…` / `livemode=true`）。API/Webhook も Live 整合済（2026-07-18） | `Pricing.tsx` + Stripe API | ✅ **L3–L4 で解消** |
 | B-2 | **VoiceStore「チャージ」導線の誤認リスク**（~~旧~~）→ **✅ L1-1 で解消**（Pro 登録明示 + KC 無償明記。Portal CTA 出し分けは 2026-07-17 MC 反映済） | `VoiceStore.tsx` / L1-1 | ✅ |
 | B-3 | **AiaaOnboardingWizard の死に導線**。ダミー `agent_id`（zero UUID）で Checkout 要求 → RBAC `req.agent_id != auth.agent_id` で 403 確定 | `AiaaOnboardingWizard.tsx` L50 / `commerce.rs` L629 | 🟠 |
 | B-4 | **特商法表記が実態と不一致**。LP `TokushohoPage` は「KC 購入画面」前提の記述だが、Live スコープは Pro サブスクのみ。月額サブスクの解約手順（Customer Portal）・課金タイミングの記載がない。「理由の如何を問わず一切返金しない」の消費者契約法上の妥当性も未確認 | `LegalPages.tsx` L105/L154/L166 | 🔴 Human 法務 |
@@ -175,9 +175,9 @@ L5 運用・ロールバック整備 → 台帳クローズ
 
 ---
 
-## 6. Human 実行チェックリスト — L2-4 / L3 / L4（いまの残件）
+## 6. Human 実行チェックリスト — L2-4 / L3 / L4（✅ 2026-07-18 クローズ）
 
-> エージェントは Stripe Dashboard・本番 Vault・実カードに触れない。L3-2〜4 / L4 を Human が実施し、完了報告後に Agent が L5-3（台帳クローズ）を行う。
+> L3-2〜4 / L4 は Human 実施済。Agent は L5-3 台帳クローズ済。運用監視は §5 / `stripe-production-setup.md` §5。
 
 ### L2-4 — Live アカウント整備 ✅ 2026-07-16 Human 報告
 
@@ -197,17 +197,17 @@ L5 運用・ロールバック整備 → 台帳クローズ
   - Price: `price_1TpXFpBcUTwo5TwLmK9SQbKL` = **1999 USD / month**（`livemode=true`）
   - Payment Link: `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03`（`livemode=true`・LP 掲載済）
   - 旧 $9.99 / 非 active Product は触らない（archive 済み想定）
-- [ ] **L3-2** 本番 MC（`https://app.aiome.dev/`）→ Abyss Vault に `STRIPE_API_KEY=sk_live_…` / `STRIPE_WEBHOOK_SECRET=whsec_…`（チャット禁止）
-- [ ] **L3-3** 本番ホスト env: `STRIPE_TEST_MODE=false` + `STRIPE_PRICE_SUBSCRIPTION_MONTHLY=price_1TpXFpBcUTwo5TwLmK9SQbKL` → api-server 再起動。**env のみなら** `restart` 可。**イメージ更新が必要なら** distroless rebuild + `up -d --force-recreate --no-deps --no-build api-server`（`restart` だけではイメージは変わらない。正本: `stripe-production-setup.md` OP-057-R 0）
-- [ ] **L3-4** Live Webhook URL = `https://app.aiome.dev/api/v1/commerce/webhook` + **7 イベント**（現状 workers 転送 endpoint はイベント不足。Dashboard 編集 or `scripts/op084_l3_webhook_cutover.sh` + `sk_live_`）
+- [x] **L3-2** 本番 MC Abyss Vault に `STRIPE_API_KEY=sk_live_…` / `STRIPE_WEBHOOK_SECRET=whsec_…`（2026-07-17 Human・チャット禁止）
+- [x] **L3-3** ホスト `STRIPE_TEST_MODE=false` + `STRIPE_PRICE_SUBSCRIPTION_MONTHLY=price_1TpXFpBcUTwo5TwLmK9SQbKL` → api-server restart（Vault 再注入・health 200）
+- [x] **L3-4** Live Webhook URL = `https://app.aiome.dev/api/v1/commerce/webhook` + **7 イベント**。legacy `we_1TlVbZ…`（workers.dev）**disabled**（2026-07-17 Human+Agent 照合）
 - [x] **L1-3** LP CTA 差し替え不要（上記 Link が既に Live）
-- [x] **Agent 2026-07-16**: forwarder `FORWARD_URL` を app.aiome.dev に修正・切替スクリプト追加。CLI `rk_live` では webhook update 不可のため L3-2〜4 の本番投入は Human 実行が必須
+- [x] **Agent 2026-07-16**: forwarder `FORWARD_URL` を app.aiome.dev に修正・切替スクリプト追加
 
-### L4 — 検証（省略禁止）
+### L4 — 検証（省略禁止）✅ 2026-07-17〜18 Human PASS
 
-- [ ] **L4-1 Positive**: 実カード 1 件 → Pro unlock
-- [ ] **L4-2 Negative**: 改ざん Webhook / `whsec_test` 拒否
-- [ ] **L4-3 Negative**: payment_failed 相当 → suspend
-- [ ] **L4-4 Revert**: 返金 + サブスクキャンセル → 正常復帰
+- [x] **L4-1 Positive**: 実カード 1 件 → `checkout.session.completed` / `invoice.paid` → Pro unlock（本番ログ Verified）
+- [x] **L4-2 Negative**: 偽署名 Webhook → 400（Agent 再確認）
+- [x] **L4-3 Negative**: `customer.subscription.deleted` → suspend（payment_failed 相当・本番ログ）
+- [x] **L4-4 Revert**: 返金/クレジットノート + 即時キャンセル → Pro→Free（UI + ログ）
 
 *本計画の実行はフェーズごとにユーザーの明示承認を得ること（AGENTS.md Scope Lock / Safety-Critical Zone）。*

@@ -1,3 +1,10 @@
+## 🔍 OP-084 Live 切替クローズ / L5-3（2026-07-18）
+
+- **変更内容**: コード変更なし（台帳同期）。OPEN OP-084 ✅ / `live_billing_open_plan` v1.2 / `billing_closeout_plan` v1.3 / `release_master_plan` 方針 B 消し込み / CHANGELOG
+- **運用事実**: 本番 Vault Live 鍵・Webhook 正本 7 イベント・legacy disabled・H4 Verification Protocol PASS
+- **残**: closeout **R4**（A2A 空文字ガードの次回 api-server rebuild 同梱・任意）
+- **非対象**: 有償 KC / OP-083-C,D / Portal 再実装
+
 ## 🔍 OP-085 法務クリア仕上げ（2026-07-15）
 
 - **変更内容**: AiaaOnboardingWizard 実 agent_id / トライアル文書整合 / 本店住所電話 / COMPLIANCE_CHECKLIST / OP-085 クローズ
