@@ -8,6 +8,7 @@ Detailed documentation for the `key-proxy` crate.
 ### 📂 Source Files
 - `src/tests.rs`
 - `src/auth.rs`
+- `src/telemetry.rs`
 - `src/config.rs`
 - `src/main.rs`
 - `src/quota.rs`
