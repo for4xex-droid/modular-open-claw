@@ -244,7 +244,7 @@ C: 二層で代替 — (1) 本番未認証 POST → HTTP 401（URL なし）
                (2) 単体 test_create_portal_session_not_found_without_customer
                    → DB 未登録で NotFound（Stripe 未呼出）PASS
    ※別 Free アカウントでの Live 404 手動は未実施（コスト対効果でコード+401 に委譲）
-MC: 本番 static 反映済み（rsync apps/api-server/static）
+MC: 本番 static 反映済み（rsync apps/api-server/static）— 以降は [`MC_STATIC_DEPLOY.md`](../guides/MC_STATIC_DEPLOY.md) / `./scripts/sync_mc_static.sh`（OP-087）
 結果: Portal 導線ゲート CLEAR
 
 --- billing_closeout R2（UI ゲート・≠ L4 実決済）2026-07-17 Agent ---

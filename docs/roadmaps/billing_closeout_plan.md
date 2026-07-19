@@ -20,7 +20,7 @@
 
 **スコープ外**: Portal 再構築、OP-083、有償 KC、whitespace trim、shadow-worker rebuild、本番 Postgres 移行（別件）
 
-**コミット除外**: `apps/api-server/static/*`（R1b 配信物。ローカル `index.html` が Vite SPA でも git HEAD の旧 HTML との差分はコミットしない。本番へは rsync のみ）
+**コミット除外**: `apps/api-server/static/*`（R1b 配信物。ローカル `index.html` が Vite SPA でも git HEAD の旧 HTML との差分はコミットしない。本番へは rsync のみ）。以降の正本: [`mc_static_deploy_plan.md`](mc_static_deploy_plan.md)（OP-087）
 
 ## 1. R4 実行結果（2026-07-18）
 

@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Added (OP-087 MC static deploy plan 2026-07-20)
+- **MC 配布計画 FINAL**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md) — ソース=`management-console`、UI 更新=ホスト static（bind-mount）Path B 必須。Human 許可→Agent 実行 / 今期 bind-mount 維持 / index スタブ→後日 untrack。
+- **OP-087 P1–P3**: `scripts/sync_mc_static.sh` + TDD `scripts/test_sync_mc_static.sh`（Positive/Negative/Revert/Stub）、[`docs/guides/MC_STATIC_DEPLOY.md`](docs/guides/MC_STATIC_DEPLOY.md)、追跡 `static/index.html` を製品 UI ではないスタブに置換。`sync_production_sources.sh` は非変更。
+
 ### Added (OP-083-C/D 2026-07-20)
 - **OP-083-C/D 実行正本**: [`docs/roadmaps/op083_cd_x402_plan.md`](docs/roadmaps/op083_cd_x402_plan.md) v1.0 — 「Federation」混線を解消。着手ゲート=Q2（`base-sepolia` + `X402_RPC_URL`）+ SC。ADR-053 transport は非ブロッカー。C は実署名まで（broadcast 禁止）。
 - **commerce 計画 v3.4**: ゲート再定義。OPEN / hardening C2 / foolproof / value_10x F-5 / implementation_plan 同期。
