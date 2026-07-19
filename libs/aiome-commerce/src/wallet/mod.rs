@@ -115,9 +115,8 @@ mod tests {
             wallet.address(),
             AgentWallet::from_hex_key(MOCK_KEY).unwrap().address()
         );
-        match prev {
-            Some(v) => std::env::set_var("X402_SIGNER_KEY", v),
-            None => {}
+        if let Some(v) = prev {
+            std::env::set_var("X402_SIGNER_KEY", v);
         }
     }
 }
