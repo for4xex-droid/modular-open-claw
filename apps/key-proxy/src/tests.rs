@@ -409,7 +409,7 @@ async fn test_vault_status_endpoint() {
 
     assert_eq!(response.status_code(), StatusCode::OK);
     let res: VaultStatusResponse = response.json();
-    assert_eq!(res.total, 18);
+    assert_eq!(res.total, shared::security::ALLOWED_VAULT_SECRETS.len());
     assert_eq!(res.configured, 0);
 
     // GEMINI_API_KEY を保存して status が変化するか確認
