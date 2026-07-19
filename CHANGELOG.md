@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Added (OP-086 Wave D 2026-07-19)
+- **Wave D 本番クローズ**: key-proxy イメージ再ビルド + `--force-recreate --no-deps` 適用。Vault DB サイズ維持（12288 bytes）、configured=17/18、`stripe_set=True`。A1 本番 poller `Unauthenticated` 0。B1 401 スモーク PASS。
+- **compose key-proxy `CELL_ID`**: 再ビルド後 `AppDataResolver` 必須化に伴い `CELL_ID=${CELL_ID:-cell-0}` を key-proxy environment に追加（recreate クラッシュループ解消）。
+- **/reflexion (Wave D)**: compose 警告に `CELL_ID` 追記。`sync_production_sources.sh` allowlist に `scripts/` 追加。`restore_vault_from_env.py --status-only` 追加（健全 Vault 検証は PUT 禁止）。
+
 ### Added (OP-086 Wave B 2026-07-18)
 - **B1 OP-025**: `apps/key-proxy/src/telemetry.rs` — `caller_id` sanitize、cost/stream/embed metrics、span 記録。auth 401 を `emit_unauthorized_access` で構造化（Bearer・Vault 値は非出力）。クォータキーも sanitize 後を使用。
 - **B3 OP-023**: 本番ホットパス（grpc/security/llm/vault/key-proxy/api bootstrap・internal·shadow）を `enforce_unwrap_deny.py` で棚卸し → illegal unwrap **0**（置換不要・テスト内は対象外）。

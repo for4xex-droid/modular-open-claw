@@ -41,10 +41,11 @@ services:
   # Secrets live in SQLite under AIOME_DATA_DIR; process memory is mlock'd.
   # KEEP production.Dockerfile: healthcheck uses curl (present in runtime image).
   #
-  # ⚠ OP-086: NEVER `force-recreate` key-proxy without (1) host volume below and
-  # (2) Vault restore if the DB was wiped. Empty Vault → api-server FATAL
-  # (`Mock provider is not allowed in production`). Prefer
-  # `scripts/restore_vault_from_env.py` after any wipe.
+  # ⚠ OP-086: NEVER `force-recreate` key-proxy without (1) host volume below,
+  # (2) `CELL_ID` in environment (AppDataResolver FATAL without it), and
+  # (3) Vault restore if the DB was wiped. Empty Vault → api-server FATAL
+  # (`Mock provider is not allowed in production`). Intact Vault check:
+  # `scripts/restore_vault_from_env.py --status-only`. Full restore only after wipe.
   key-proxy:
     build:
       context: .
@@ -54,6 +55,7 @@ services:
     environment:
       - KEY_PROXY_PORT=9999
       - BIND_ALL=true
+      - CELL_ID=${CELL_ID:-cell-0}
       - AIOME_DATA_DIR=/app/data
       - ABYSS_VAULT_PATH=/app/data/abyss_vault.db
       - VAULT_SECRET=${VAULT_SECRET}

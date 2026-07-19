@@ -2,7 +2,8 @@
 
 > **作成**: 2026-07-13  
 > **出典**: Local LLM A/B 実装 + `/reflexion`（Loop2 合格 96/100）の**残リスク**  
-> **目的**: Pattern B 実機未検証・未コミット diff・NT-3 目視を、NT-2 §8 と同型の台帳で後追い可能にする  
+> **改訂**: 2026-07-19 — OP-081 git 分割コミット ✅（OPEN 2026-07-13）  
+> **目的**: Pattern B 実機未検証・NT-3 目視を、NT-2 §8 と同型の台帳で後追い可能にする  
 > **非目標**: Pattern A スタックの即時切替、本番 compose 変更、`.env` のコミット
 
 ---
@@ -15,7 +16,7 @@
 | Pattern B compose（`depends_on: !reset null`） | ✅ config + **実機 PASS** | LL-A / OP-080 ✅ 2026-07-13 |
 | ViewModeProvider + テスト 15 件 | ✅ PASS | MC dist 反映済（quickstart） |
 | disk_hygiene / local_llm_setup | ✅ スクリプト + bash -n | — |
-| git コミット | ❌ 大量未コミット | **LL-B**（ユーザー承認後） |
+| git コミット | ✅ OP-081 2026-07-13 | LL-B 完了 |
 | NT-3 Biome 目視 | ❌ Human-only | 既存 **OP-002** → **LL-C** |
 | Linux Pattern B | ○ 未検証 | macOS 前提。必要時 **LL-D** |
 

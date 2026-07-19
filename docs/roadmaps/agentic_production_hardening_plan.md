@@ -1,6 +1,6 @@
-# Agentic 本番硬化計画（v1.2・Wave A+B 実装 2026-07-18）
+# Agentic 本番硬化計画（v1.3・Wave D 本番クローズ 2026-07-19）
 
-- **ステータス**: Wave A+B コード ✅ / 本番 UI 復旧済（Vault 再投入 + key-proxy volume）。**B1 telemetry の本番反映は key-proxy イメージ再ビルド待ち**（[Planned]）。Wave C はゲート待ち
+- **ステータス**: Wave A+B+D ✅ / 本番 key-proxy 再ビルド・B1 telemetry 反映済 / A1 本番 Unauthenticated 0。**Wave C はゲート待ち**
 - **目的**: Human 後回しで、エージェントがコードから本番稼働の確実性を上げる
 - **正本 ID**: OPEN **OP-086**
 - **継承**: `billing_closeout_plan` v1.5（R4 済）/ OPEN / R4 本番ログ
@@ -28,7 +28,7 @@
 | F6 | nurture-api Postgres 依存は sqlite overlay / profile で制御 | `production.sqlite.yml` |
 | F7 | OP-083-C/D = Federation 後。OP-051 = ADR-054 Proposed（Wave C） | commerce plan / ADR-054 |
 | F8 | ✅ key-proxy Vault は `./data/key-proxy` volume + `ABYSS_VAULT_PATH` | compose + `.gitignore` |
-| F9 | [Planned] B1 telemetry の本番反映は key-proxy イメージ再ビルド待ち | OPEN OP-086 |
+| F9 | ✅ B1 telemetry 本番反映（key-proxy イメージ再ビルド + recreate） | OPEN OP-086 Wave D |
 
 ## 2. 優先度 Wave（Agent のみ・上から実行）
 
@@ -36,8 +36,8 @@
 
 | ID | 作業 | サイズ | 検証 |
 |---|---|---|---|
-| **A1** | ✅ コード: compose に `A2A_AUTH_TOKEN` / AUTH 空文字 filter / `a2a_grpc_auth_token()` フォールバック（poller + FormalProofGate）/ 単体4本 PASS | S | 本番: recreate 後 Unauthenticated 消滅を確認 |
-| **A2** | ✅ コード: key-proxy healthcheck → `curl -f …/api/v1/health` | S | 本番: `docker compose ps` で healthy |
+| **A1** | ✅ コード: compose に `A2A_AUTH_TOKEN` / AUTH 空文字 filter / `a2a_grpc_auth_token()` フォールバック（poller + FormalProofGate）/ 単体4本 PASS | S | ✅ 本番: poller `Unauthenticated` 0（Wave D 2026-07-19） |
+| **A2** | ✅ コード: key-proxy healthcheck → `curl -f …/api/v1/health` | S | ✅ 本番: healthy（Wave D 2026-07-19） |
 | **A3** | ✅ `docker-compose.production.sqlite.yml` + `scripts/sync_production_sources.sh`（compose 既定スキップ） | M | `compose config --services` に postgres が出ない |
 | **A4** | ✅ sqlite overlay で nurture/samsara を SQLite URL + postgres depends 除去 | M | nurture Restarting 解消（ホスト適用後） |
 
@@ -45,10 +45,22 @@
 
 | ID | 作業 | サイズ | 検証 |
 |---|---|---|---|
-| **B1** | ✅ OP-025: `telemetry.rs`（sanitize + metrics）/ span `caller_id` / auth 401 構造化（秘密非出力）+ Negative 単体 | M | `cargo test -p key-proxy` 34 PASS |
+| **B1** | ✅ OP-025: `telemetry.rs`（sanitize + metrics）/ span `caller_id` / auth 401 構造化（秘密非出力）+ Negative 単体 | M | ✅ `cargo test -p key-proxy` 34 PASS + 本番 401 スモーク（Wave D） |
 | **B2** | ✅ OP-082: `docker-compose.quickstart.native-ollama.yml` に `extra_hosts: host.docker.internal:host-gateway` | S | compose 構文 OK |
-| **⚠ 本番教訓** | ✅ compose に `./data/key-proxy:/app/data` + `ABYSS_VAULT_PATH` + recreate 警告。`restore_vault_from_env.py` で再投入。health 200 確認済 | — | Vault `STRIPE_API_KEY` + `/health` 200 |
+| **⚠ 本番教訓** | ✅ compose `./data/key-proxy` volume + recreate 警告 + `CELL_ID`。健全時 `--status-only`、wipe 時のみ restore PUT | — | Vault `STRIPE_API_KEY` + `/health` 200 |
 | **B3** | ✅ OP-023: ホットパス棚卸し（grpc/security/llm/vault/key-proxy/api bootstrap/internal/shadow）。`enforce_unwrap_deny.py` → **0 violations**。テスト内 unwrap は非対象 | L | スクリプト PASS。本番置換なし（既にクリーン） |
+
+### Wave D — 本番クローズ（2026-07-19）
+
+| ID | 作業 | 検証 |
+|---|---|---|
+| **D0** | ✅ Preflight: volume + Vault DB バックアップ + baseline healthy | vault_db 12288 bytes、backup 済 |
+| **D1** | ✅ `sync_production_sources.sh` + `SYNC_COMPOSE=1` | allowlist + compose 同期 |
+| **D2** | ✅ key-proxy `build` + `up -d --force-recreate --no-deps --no-build`（`-f docker-compose.production.yml` のみ。sqlite overlay は samsara→postgres 依存で key-proxy 単体 recreate に不要） | healthy、新イメージ適用 |
+| **⚠ 教訓** | ✅ recreate 後 `CELL_ID` 必須 → compose key-proxy に `CELL_ID=${CELL_ID:-cell-0}` 追加 | クラッシュループ解消 |
+| **D3** | ✅ Vault 整合: configured=17/18、`stripe_set=True`、DB サイズ維持 | `restore_vault_from_env.py --status-only`（健全時 PUT 禁止） |
+| **D4** | ✅ A1 本番: api-server 30m ログ `Unauthenticated` **0** | — |
+| **D5** | ✅ B1 スモーク: 不正 Bearer → 401 + 構造化 WARN（秘密非出力） | — |
 
 ### Wave C — ゲート待ち（計画に残すだけ）
 

@@ -1,9 +1,9 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-18（OP-086 Wave A+B 完了）**
+**最終更新: 2026-07-19（OP-086 Wave D 本番クローズ）**
 
 > **実装手順の正本**:
-> - **Agentic 本番硬化（Human 後回し）**: [`docs/roadmaps/agentic_production_hardening_plan.md`](docs/roadmaps/agentic_production_hardening_plan.md)（**v1.2**・Wave A+B ✅・Wave C ゲート待ち）
+> - **Agentic 本番硬化（Human 後回し）**: [`docs/roadmaps/agentic_production_hardening_plan.md`](docs/roadmaps/agentic_production_hardening_plan.md)（**v1.3**・Wave A+B+D ✅・Wave C ゲート待ち）
 > - **課金クローズアウト**: [`docs/roadmaps/billing_closeout_plan.md`](docs/roadmaps/billing_closeout_plan.md)（**v1.5**・2026-07-18・R1–R4 / H4 / L5-3 **完了**）
 > - **Human Wave 実行計画（残 NT の状態・順・DoD 一冊）**: [`docs/roadmaps/human_wave_execution_plan.md`](docs/roadmaps/human_wave_execution_plan.md)（**v1.2**・2026-07-14）
 > - **Human 実行ランブック（NT-1〜7・コピペ超詳細）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）  
@@ -96,7 +96,7 @@
 
 ## ✅ 解決（直近のみ保持）
 
-- [x] **OP-086**: **Agentic 本番硬化** → **2026-07-18 Wave A+B 完了**（正本 v1.2）。A1–A4 / B1 OP-025 telemetry / B2 OP-082 extra_hosts / B3 OP-023 unwrap 0 / key-proxy volume。本番 Vault 再投入+UI 復旧。**B1 本番イメージ再ビルドは [Planned]**。Wave C=ゲート待ち。CHANGELOG [Unreleased]
+- [x] **OP-086**: **Agentic 本番硬化** → **2026-07-19 Wave D 本番クローズ**（正本 v1.3）。A1–A4 / B1–B3 コード ✅ + **Wave D**: key-proxy 本番再ビルド・B1 telemetry 反映・A1 Unauthenticated 0・Vault 整合。compose key-proxy に `CELL_ID` 追加。Wave C=ゲート待ち。CHANGELOG [Unreleased]
 - [x] **OP-025**: key-proxy `caller_id` metrics/span + 401 構造化（秘密非出力）→ **2026-07-18**（OP-086 B1、`cargo test -p key-proxy` 34 PASS）
 - [x] **OP-023**: ホットパス unwrap 棚卸し → **2026-07-18**（OP-086 B3、`enforce_unwrap_deny.py` 0）
 - [x] **OP-082**: Pattern B Linux `extra_hosts` → **2026-07-18**（OP-086 B2）

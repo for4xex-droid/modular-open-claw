@@ -26,6 +26,7 @@ ALLOW=(
   --include='/apps/management-console/***'
   --include='/apps/key-proxy/***'
   --include='/apps/shadow-worker/***'
+  --include='/scripts/***'
   --include='/docker/***'
   --include='/commercial/***'
   --exclude='*'

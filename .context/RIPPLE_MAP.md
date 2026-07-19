@@ -1,3 +1,13 @@
+## 🔍 OP-086 Wave D 本番クローズ（2026-07-19）
+
+- **変更**:
+  - 本番 key-proxy イメージ再ビルド + recreate（B1 telemetry 本番反映）
+  - `docker-compose.production.yml` key-proxy に `CELL_ID=${CELL_ID:-cell-0}` 追加（recreate 後クラッシュループ解消）
+  - 台帳: OPEN OP-086 Wave D ✅ / plan v1.3 / CHANGELOG
+- **検証**: key-proxy healthy / Vault configured=17/18 / A1 Unauthenticated 0 / B1 401 スモーク / app `/health` 200
+- **/reflexion**: compose 警告 CELL_ID 追記 / sync allowlist `scripts/` / `restore_vault_from_env.py --status-only`（健全 Vault は PUT 禁止）
+- **波及**: auth/commerce/Vault 暗号ロジック非変更。metrics/401 構造化ログのみ本番反映
+
 ## 🔍 OP-086 Wave B 完了（2026-07-18）
 
 - **変更内容**:
@@ -8,7 +18,7 @@
 - **検証**: `cargo test -p key-proxy` 34 PASS / clippy `-D warnings` OK / `enforce_unwrap_deny.py` 0
 - **/reflexion**: async log キャプチャ flaky を同期 unit に分離。B1 本番イメージは `[Planned]`
 - **/reflexion (2)–(12)**: コード硬化一式 + 計画 §1 事実表を現行同期（D-004）。B1 本番イメージは `[Planned]`
-- **波及**: key-proxy イメージ再ビルド後に metrics が本番ログへ。Vault 暗号・commerce・JWT 検証ロジックは非変更
+- **波及**: key-proxy 本番 metrics/401 構造化ログ反映済（Wave D 2026-07-19）。Vault 暗号・commerce・JWT 検証ロジックは非変更
 - **後回し**: Wave C（OP-051/083-C/D）、Human OP-064、Prometheus 本格ダッシュボード
 
 ## 🔍 OP-086 Wave A 実装（2026-07-18）

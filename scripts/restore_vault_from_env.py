@@ -5,9 +5,12 @@ Auth uses the container's existing VAULT_SECRET env (never passed on docker argv
 The Bearer header is written via printf into a temp file and passed with curl -H @file
 so shell metacharacters in the secret do not break `sh -c` quoting.
 Secret values are sent only on curl stdin (--data-binary @-).
+
+Use ``--status-only`` when the Vault DB is intact (Wave D D3); PUT restore is for wipes only.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import subprocess
@@ -70,23 +73,7 @@ def load_env(path: Path) -> dict[str, str]:
     return out
 
 
-def main() -> int:
-    root = Path(os.environ.get("AIOME_ROOT", "/app/aiome"))
-    env_path = root / ".env"
-    if not env_path.is_file():
-        print(f"ERROR: missing {env_path}", file=sys.stderr)
-        return 1
-
-    env = load_env(env_path)
-    # Host .env must have values to restore; auth itself uses container VAULT_SECRET.
-    if not env.get("VAULT_SECRET"):
-        print(
-            "ERROR: VAULT_SECRET missing in host .env "
-            "(required as presence check; auth uses container env)",
-            file=sys.stderr,
-        )
-        return 1
-
+def ensure_container_vault_secret() -> int:
     pre = subprocess.run(
         [
             "docker",
@@ -104,6 +91,53 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
+    return 0
+
+
+def fetch_vault_status() -> tuple[int, dict | None]:
+    status = subprocess.run(
+        ["docker", "exec", "aiome-key-proxy-1", "sh", "-c", _CURL_STATUS],
+        capture_output=True,
+        text=True,
+    )
+    if status.returncode != 0 or not status.stdout:
+        print("ERROR: vault admin/status request failed", file=sys.stderr)
+        return 4, None
+    try:
+        return 0, json.loads(status.stdout)
+    except json.JSONDecodeError:
+        print("ERROR: vault admin/status returned invalid JSON", file=sys.stderr)
+        return 5, None
+
+
+def print_vault_status(data: dict) -> bool:
+    configured = data.get("configured")
+    total = data.get("total")
+    print(f"vault_status configured={configured}/{total}")
+    set_keys = [s["key"] for s in data.get("secrets", []) if s.get("is_set")]
+    print("vault_set_keys=", ",".join(set_keys))
+    stripe_set = "STRIPE_API_KEY" in set_keys
+    print("stripe_set=", stripe_set)
+    configured_count = int(configured) if configured is not None else 0
+    return stripe_set and configured_count > 0
+
+
+def run_status_only() -> int:
+    rc = ensure_container_vault_secret()
+    if rc != 0:
+        return rc
+    rc, data = fetch_vault_status()
+    if rc != 0 or data is None:
+        return rc
+    ok = print_vault_status(data)
+    print("mode=status-only")
+    return 0 if ok else 6
+
+
+def run_restore(env: dict[str, str]) -> int:
+    rc = ensure_container_vault_secret()
+    if rc != 0:
+        return rc
 
     present = [k for k in KEYS if env.get(k)]
     print(f"will_store_count={len(present)}")
@@ -132,25 +166,42 @@ def main() -> int:
             print(f"FAIL {k} http={code!r} stderr={err!r}")
             fail += 1
 
-    status = subprocess.run(
-        ["docker", "exec", "aiome-key-proxy-1", "sh", "-c", _CURL_STATUS],
-        capture_output=True,
-        text=True,
-    )
-    if status.returncode == 0 and status.stdout:
-        try:
-            data = json.loads(status.stdout)
-            print(
-                f"vault_status configured={data.get('configured')}/{data.get('total')}"
-            )
-            set_keys = [s["key"] for s in data.get("secrets", []) if s.get("is_set")]
-            print("vault_set_keys=", ",".join(set_keys))
-            print("stripe_set=", "STRIPE_API_KEY" in set_keys)
-        except json.JSONDecodeError:
-            print("vault_status_raw_len", len(status.stdout))
+    rc, data = fetch_vault_status()
+    if rc == 0 and data is not None:
+        print_vault_status(data)
 
     print(f"done ok={ok} fail={fail}")
     return 0 if fail == 0 and ok > 0 else 1
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Restore or inspect key-proxy Vault")
+    parser.add_argument(
+        "--status-only",
+        action="store_true",
+        help="Read admin/status only; do not PUT secrets (use when Vault DB is intact)",
+    )
+    args = parser.parse_args()
+
+    if args.status_only:
+        return run_status_only()
+
+    root = Path(os.environ.get("AIOME_ROOT", "/app/aiome"))
+    env_path = root / ".env"
+    if not env_path.is_file():
+        print(f"ERROR: missing {env_path}", file=sys.stderr)
+        return 1
+
+    env = load_env(env_path)
+    if not env.get("VAULT_SECRET"):
+        print(
+            "ERROR: VAULT_SECRET missing in host .env "
+            "(required as presence check; auth uses container env)",
+            file=sys.stderr,
+        )
+        return 1
+
+    return run_restore(env)
 
 
 if __name__ == "__main__":
