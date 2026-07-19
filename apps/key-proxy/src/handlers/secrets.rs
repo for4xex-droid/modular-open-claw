@@ -6,6 +6,7 @@
  */
 
 use crate::config::AppState;
+use crate::telemetry::sanitize_for_log;
 use axum::{Json, extract::State, http::StatusCode};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -31,7 +32,7 @@ pub async fn handle_get_secrets(
         if !shared::security::ALLOWED_VAULT_SECRETS.contains(&key.as_str()) {
             tracing::warn!(
                 "🛡️ [KeyProxy] Security violation: key '{}' is not in the allowed secrets whitelist",
-                key
+                sanitize_for_log(key)
             );
             return Err((
                 StatusCode::BAD_REQUEST,
@@ -43,12 +44,12 @@ pub async fn handle_get_secrets(
             Ok(val) => {
                 result.insert(key.clone(), (*val).clone());
             }
-            Err(e) => {
+            Err(_e) => {
                 // 部分成功 (Partial Success): 存在しないキーはスキップし、警告ログを出力する
+                // Do not log vault error details (may include path/context).
                 tracing::warn!(
-                    "⚠️ [KeyProxy] Requested secret for key '{}' was not found in vault: {:?}",
-                    key,
-                    e
+                    "⚠️ [KeyProxy] Requested secret for key '{}' was not found in vault",
+                    sanitize_for_log(key)
                 );
             }
         }

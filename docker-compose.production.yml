@@ -38,8 +38,13 @@ services:
     restart: always
 
   # The Abyss Vault (Key Proxy)
-  # Responsible for holding sensitive API keys in memory (locked).
-  # KEEP production.Dockerfile: healthcheck uses `nc` (distroless has no shell/nc).
+  # Secrets live in SQLite under AIOME_DATA_DIR; process memory is mlock'd.
+  # KEEP production.Dockerfile: healthcheck uses curl (present in runtime image).
+  #
+  # ⚠ OP-086: NEVER `force-recreate` key-proxy without (1) host volume below and
+  # (2) Vault restore if the DB was wiped. Empty Vault → api-server FATAL
+  # (`Mock provider is not allowed in production`). Prefer
+  # `scripts/restore_vault_from_env.py` after any wipe.
   key-proxy:
     build:
       context: .
@@ -49,10 +54,15 @@ services:
     environment:
       - KEY_PROXY_PORT=9999
       - BIND_ALL=true
+      - AIOME_DATA_DIR=/app/data
+      - ABYSS_VAULT_PATH=/app/data/abyss_vault.db
       - VAULT_SECRET=${VAULT_SECRET}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - JWT_PRIVATE_KEY_B64=${JWT_PRIVATE_KEY_B64}
       - VAULT_MASTER_PASSWORD=${VAULT_MASTER_PASSWORD}
+    volumes:
+      # Persist abyss_vault.db across recreate (host: ./data/key-proxy).
+      - ./data/key-proxy:/app/data
     cap_add:
       - IPC_LOCK # REQUIRED for mlockall() security
     security_opt:
@@ -67,7 +77,8 @@ services:
         soft: -1
         hard: -1
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "9999"]
+      # production.Dockerfile installs curl, not nc (R4 false-unhealthy).
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9999/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -101,6 +112,8 @@ services:
       # Remove after confirming all clients use JWT auth (see ADR-019).
       - API_SERVER_SECRET=${API_SERVER_SECRET}
       # release 必須: A2A gRPC client auth（shadow-worker 側 A2A_AUTH_TOKEN と同値）
+      # AUTH は OxiLean poller / FormalProofGate、NODE は A2aGrpcClient FATAL ガード用。
+      - A2A_AUTH_TOKEN=${A2A_AUTH_TOKEN}
       - A2A_NODE_TOKEN=${A2A_AUTH_TOKEN}
       - FEDERATION_SECRET=${FEDERATION_SECRET}
       - TIMESFM_AUTH_TOKEN=${TIMESFM_AUTH_TOKEN}

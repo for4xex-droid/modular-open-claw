@@ -13,6 +13,7 @@ use crate::{
         secrets::handle_get_secrets,
         vault_admin::VaultStatusResponse,
     },
+    quota::check_and_increment_quota,
 };
 use axum::{
     Router,
@@ -131,6 +132,69 @@ async fn test_llm_complete_unauthorized() {
     assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 }
 
+/// Negative: CRLF in caller_id must not appear raw in quota logs (span + warn).
+#[tokio::test]
+async fn test_quota_unknown_caller_sanitizes_crlf_in_logs() {
+    use std::io::{self, Write};
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Clone, Default)]
+    struct BufWriter(Arc<Mutex<Vec<u8>>>);
+    impl Write for BufWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let buf = BufWriter::default();
+    let writer = buf.clone();
+    let subscriber = tracing_subscriber::fmt()
+        .with_writer(move || writer.clone())
+        .with_ansi(false)
+        .finish();
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    let state = create_test_state().await;
+    let result = check_and_increment_quota(&state, "evil\ninjected").await;
+    assert_eq!(result, Err(StatusCode::FORBIDDEN));
+
+    let logs = String::from_utf8_lossy(&buf.0.lock().unwrap()).into_owned();
+    assert!(
+        !logs.contains("evil\ninjected"),
+        "raw CRLF caller_id must not appear in logs: {logs}"
+    );
+    assert!(
+        logs.contains("evil_injected") || logs.contains("Unknown caller"),
+        "expected sanitized unknown-caller log: {logs}"
+    );
+}
+
+/// Negative: wrong Bearer must 401 (log non-leak is covered by telemetry unit test).
+#[tokio::test]
+async fn test_auth_wrong_bearer_returns_unauthorized() {
+    let state = create_test_state().await;
+    let app = build_test_router(state);
+    let server = TestServer::new(app).unwrap();
+
+    let response = server
+        .post("/api/v1/llm/complete")
+        .add_header(
+            axum::http::header::AUTHORIZATION,
+            "Bearer definitely-not-the-vault-secret-leak-probe",
+        )
+        .json(&serde_json::json!({
+            "prompt": "hello",
+            "caller_id": "test-caller",
+            "endpoint": "gemini"
+        }))
+        .await;
+    assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+}
+
 #[tokio::test]
 async fn test_llm_embed_unauthorized() {
     let state = create_test_state().await;
@@ -178,12 +242,14 @@ fn test_gemini_payload_serialization_without_system_prompt() {
 #[test]
 fn test_gemini_passthrough_url_construction() {
     let path = "v1beta/models/gemini-2.0-flash:generateContent".to_string();
-    let query_string = Some("key=TEST_DUMMY_KEY".to_string());
-    let expected = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=TEST_DUMMY_KEY";
+    // Client may still send key=; strip before build (auth moves to x-goog-api-key).
+    let cleaned = crate::handlers::passthrough::strip_api_key_query("key=TEST_DUMMY_KEY&alt=sse");
+    let expected = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?alt=sse";
 
     let constructed =
-        crate::handlers::passthrough::build_gemini_passthrough_url(&path, query_string.as_deref());
+        crate::handlers::passthrough::build_gemini_passthrough_url(&path, Some(cleaned.as_str()));
     assert_eq!(constructed, expected);
+    assert!(!constructed.contains("key="));
 }
 
 #[test]
@@ -420,6 +486,15 @@ async fn test_vault_store_invalid_key() {
         .await;
 
     assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
+    let body = response.text();
+    assert!(
+        body.contains("not allowed by policy"),
+        "expected policy message: {body}"
+    );
+    assert!(
+        !body.contains("vault:") && !body.contains("sqlite"),
+        "client body must not leak backend errors: {body}"
+    );
 }
 
 #[tokio::test]

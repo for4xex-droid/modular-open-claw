@@ -23,6 +23,7 @@ pub(crate) mod auth;
 pub(crate) mod config;
 pub(crate) mod handlers;
 pub(crate) mod quota;
+pub(crate) mod telemetry;
 
 #[cfg(test)]
 mod tests;

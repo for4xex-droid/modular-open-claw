@@ -1,3 +1,23 @@
+## 🔍 OP-086 Wave B 完了（2026-07-18）
+
+- **変更内容**:
+  - B1: `apps/key-proxy/src/telemetry.rs` [NEW] + `handlers/llm.rs` / `wordpress.rs` / `auth.rs`（`emit_unauthorized_access`・秘密非出力・quota も sanitize）
+  - B3: unwrap ホットパス棚卸し（コード置換なし・enforce 0）
+  - compose: key-proxy `./data/key-proxy` volume + `ABYSS_VAULT_PATH` + recreate 警告 / `.gitignore` `data/key-proxy/`
+  - 台帳: OPEN OP-086/025/023/082 ✅ / plan v1.2 / CHANGELOG
+- **検証**: `cargo test -p key-proxy` 34 PASS / clippy `-D warnings` OK / `enforce_unwrap_deny.py` 0
+- **/reflexion**: async log キャプチャ flaky を同期 unit に分離。B1 本番イメージは `[Planned]`
+- **/reflexion (2)–(12)**: コード硬化一式 + 計画 §1 事実表を現行同期（D-004）。B1 本番イメージは `[Planned]`
+- **波及**: key-proxy イメージ再ビルド後に metrics が本番ログへ。Vault 暗号・commerce・JWT 検証ロジックは非変更
+- **後回し**: Wave C（OP-051/083-C/D）、Human OP-064、Prometheus 本格ダッシュボード
+
+## 🔍 OP-086 Wave A 実装（2026-07-18）
+
+- **変更内容**: `config.rs` AUTH filter + `a2a_grpc_auth_token` / oxilean_poller + FormalProofGate / production compose AUTH+curl healthcheck / `production.sqlite.yml` / `sync_production_sources.sh`
+- **検証**: `cargo test -p shared a2a_` 4 PASS / `compose … sqlite.yml config --services` に postgres なし
+- **残**: → Wave B でクローズ
+- **後回し**: Human OP-064、OP-083-C/D、OP-051
+
 ## 🔍 billing_closeout R4 完了（2026-07-18）
 
 - **変更内容**: 本番 api-server distroless rebuild（`shared::config` 空文字ガード同梱）/ compose `GENERATIVE_ENGINE=${GENERATIVE_ENGINE}`（デフォルトなし）/ 台帳 v1.5

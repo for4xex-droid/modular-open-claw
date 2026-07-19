@@ -6,16 +6,25 @@
  */
 
 use crate::config::AppState;
+use crate::telemetry::sanitize_caller_id;
 use axum::http::StatusCode;
 use chrono::{Datelike, Utc};
 use tracing::{error, info, warn};
 
-#[tracing::instrument(skip(state))]
+#[tracing::instrument(
+    skip(state, caller_id),
+    fields(caller_id = tracing::field::Empty)
+)]
 pub(crate) async fn check_and_increment_quota(
     state: &AppState,
     caller_id: &str,
 ) -> Result<(u64, u32), StatusCode> {
-    if !state.caller_quotas.contains_key(caller_id) {
+    // Defense in depth: handlers sanitize, but quota is the shared log/metrics choke point.
+    // Skip raw arg in instrument — record only after sanitize (log-injection guard).
+    let caller_id = sanitize_caller_id(caller_id);
+    tracing::Span::current().record("caller_id", tracing::field::display(&caller_id));
+
+    if !state.caller_quotas.contains_key(caller_id.as_str()) {
         warn!("🚫 [KeyProxy] Unknown caller: {}", caller_id);
         return Err(StatusCode::FORBIDDEN);
     }
@@ -33,12 +42,12 @@ pub(crate) async fn check_and_increment_quota(
     let total = q.total_calls;
 
     let caller_total = {
-        let count = q.per_caller_calls.entry(caller_id.to_string()).or_insert(0);
+        let count = q.per_caller_calls.entry(caller_id.clone()).or_insert(0);
         *count += 1;
         *count
     };
 
-    if let Some(&limit) = state.caller_quotas.get(caller_id) {
+    if let Some(&limit) = state.caller_quotas.get(caller_id.as_str()) {
         tracing::info!(
             target: "key_proxy::metrics",
             caller_id = %caller_id,

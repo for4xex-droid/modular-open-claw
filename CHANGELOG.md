@@ -1,5 +1,32 @@
 ## [Unreleased]
 
+### Added (OP-086 Wave B 2026-07-18)
+- **B1 OP-025**: `apps/key-proxy/src/telemetry.rs` — `caller_id` sanitize、cost/stream/embed metrics、span 記録。auth 401 を `emit_unauthorized_access` で構造化（Bearer・Vault 値は非出力）。クォータキーも sanitize 後を使用。
+- **B3 OP-023**: 本番ホットパス（grpc/security/llm/vault/key-proxy/api bootstrap・internal·shadow）を `enforce_unwrap_deny.py` で棚卸し → illegal unwrap **0**（置換不要・テスト内は対象外）。
+- **Vault 永続化**: `docker-compose.production.yml` に `./data/key-proxy:/app/data` + `ABYSS_VAULT_PATH` + recreate 警告。`scripts/restore_vault_from_env.py` で再投入手順を固定。`.gitignore` に `data/key-proxy/`。
+- **/reflexion**: flaky な async log キャプチャテストを同期 unit + HTTP 401 に分離。計画に B1 本番イメージ未再ビルドを `[Planned]` 明示。
+- **/reflexion (2)**: 真空 Negative（未使用の `presented` アサート）を実ヘッダ形状ガードへ修正。台帳の key-proxy テスト件数を 29 に同期。
+- **/reflexion (3)**: `quota` で sanitize 後に span 記録（instrument の raw `caller_id` 露出を遮断）。`restore_vault_from_env.py` はコンテナ内 `$VAULT_SECRET` で認証し docker argv へ秘密を載せない。
+- **/reflexion (4)**: quota CRLF Negative 単体を追加。restore は `curl -H @file` + コンテナ側 `VAULT_SECRET` 存在チェック（値は非出力）。
+- **/reflexion (5)**: LLM/auth span の raw `endpoint`/`path` 露出を遮断（`sanitize_for_log` + record）。restore は `mktemp`+EXIT trap。
+- **/reflexion (6)**: passthrough で `req` span 除外 + path sanitize。`redact_url_secrets` で upstream error の `key=`/Bearer 漏洩を防止。
+- **/reflexion (7)**: passthrough 根治 — upstream URL から `key=` を除去し `x-goog-api-key` ヘッダのみで認証（llm ハンドラと同一）。
+- **/reflexion (8)**: passthrough path の制御文字拒否。WP/secrets ログの sanitize・upstream 本文 truncate+redact。
+- **/reflexion (9)**: `vault_admin` の whitelist 違反ログでも鍵名を `sanitize_for_log`（secrets と統一）。
+- **/reflexion (10)**: vault_admin の 5xx 応答から内部 `e` を除去（詳細は `tracing::error` のみ）。ポリシー拒否ボディの非漏洩アサートを追加。
+- **/reflexion (11)**: サーバログの `{e}` も `redact_url_secrets`（`x-goog-api-key` 含む）。restore は PUT 応答ファイルを都度削除。
+- **/reflexion (12)**: 計画 §1 事実表（F1–F4 が「未注入/nc」のまま）を現行状態へ同期（D-004）。コード変更なし。
+
+### Fixed (OP-086 Wave A 2026-07-18)
+- **A1 OxiLean/A2A**: api-server compose に `A2A_AUTH_TOKEN` を注入。`AiomeConfig` で AUTH / 空 `AIOME_DB_PATH` を unset 扱い。`a2a_grpc_auth_token()`（AUTH→NODE フォールバック）を poller / FormalProofGate が使用。
+- **A2 key-proxy healthcheck**: `nc` → `curl -f http://127.0.0.1:9999/api/v1/health`（runtime に curl あり）。**本番で healthy 確認済**。
+- **A3/A4**: `scripts/sync_production_sources.sh` / `hotfix_prod_compose_sqlite_api.py` / sqlite overlay（nurture は `--profile nurture`）。`!reset` はホスト Compose で効かないため api-server の Postgres `AIOME_DB_PATH` はスクリプト除去。
+- **B2**: Pattern B Linux `extra_hosts`（`docker-compose.quickstart.native-ollama.yml`）。
+- **本番障害→復旧**: key-proxy recreate で Vault 空化 → Mock FATAL / UI 502。`.env` から Vault 再投入 + volume 永続化後、`/health` 200・UI 復旧。
+
+### Changed (OP-086 Agentic 本番硬化計画 2026-07-18)
+- **計画正本**: `docs/roadmaps/agentic_production_hardening_plan.md` v1.2。Wave A+B 完了。Federation/ADR は Wave C。
+
 ### Changed (billing_closeout R4 完了 2026-07-18)
 - **本番 api-server**: distroless rebuild で `A2A_NODE_TOKEN` 空文字→FATAL ガードを同梱。Verification Protocol PASS（Positive health 200 / Negative FATAL / Revert 200）。ラベル根拠は `security.distroless=true`。
 - **compose**: `GENERATIVE_ENGINE=${GENERATIVE_ENGINE}` を api-server にパススルー（ホスト `.env` 必須。デフォルト付与なし）。

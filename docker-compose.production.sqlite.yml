@@ -1,0 +1,29 @@
+# SQLite production overlay helpers.
+#
+# IMPORTANT: Docker Compose on some hosts ignores `environment: KEY: !reset`.
+# For api-server DB, prefer patching main compose (remove AIOME_DB_PATH postgres line)
+# via scripts/hotfix_prod_compose_sqlite_api.py, then:
+#   docker compose -f docker-compose.production.yml up -d --force-recreate --no-deps api-server
+#
+# Optional nurture (empty data/nurture → Restarting). Enable with --profile nurture:
+#   docker compose -f docker-compose.production.yml -f docker-compose.production.sqlite.yml \
+#     --profile nurture up -d nurture-api
+
+services:
+  postgres:
+    profiles: ["with-postgres"]
+
+  api-server:
+    depends_on: !override
+      key-proxy:
+        condition: service_healthy
+      shadow-worker:
+        condition: service_healthy
+
+  nurture-api:
+    profiles: ["nurture"]
+    environment:
+      DATABASE_URL: sqlite:///app/data/nurture.db
+    depends_on: !override
+      key-proxy:
+        condition: service_healthy

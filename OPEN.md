@@ -1,8 +1,9 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-18（billing_closeout R4 完了）**
+**最終更新: 2026-07-18（OP-086 Wave A+B 完了）**
 
 > **実装手順の正本**:
+> - **Agentic 本番硬化（Human 後回し）**: [`docs/roadmaps/agentic_production_hardening_plan.md`](docs/roadmaps/agentic_production_hardening_plan.md)（**v1.2**・Wave A+B ✅・Wave C ゲート待ち）
 > - **課金クローズアウト**: [`docs/roadmaps/billing_closeout_plan.md`](docs/roadmaps/billing_closeout_plan.md)（**v1.5**・2026-07-18・R1–R4 / H4 / L5-3 **完了**）
 > - **Human Wave 実行計画（残 NT の状態・順・DoD 一冊）**: [`docs/roadmaps/human_wave_execution_plan.md`](docs/roadmaps/human_wave_execution_plan.md)（**v1.2**・2026-07-14）
 > - **Human 実行ランブック（NT-1〜7・コピペ超詳細）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）  
@@ -37,13 +38,12 @@
 - [x] **OP-079**: compose entrypoint の `/app/.intent_tmp` 二重 mkdir 撤去 → **2026-07-13 完了**（`/data/.intent_tmp` のみ・再作成後 healthy。NT-2 §8 R-D）
 - [x] **OP-080**: Local LLM **Pattern B 実機検証**（`/reflexion` LL-A）→ **2026-07-13 完了**（Positive: `host.docker.internal` + `gemma4:26b` + health。Negative: `aiome-ollama` 併走で 11434 dual-bind リスク記録、stop 後 B 復帰。`pattern-a-up` で A 復帰 + `ollama:11434` / `gemma4:e4b`）
 - [x] **OP-081**: Local LLM A/B + ViewMode + disk hygiene **git 分割コミット**（`/reflexion` LL-B）— `.env` 除外（2026-07-13 本コミットで反映）
-- [ ] **OP-082**: Pattern B **Linux** 向け `extra_hosts`（`/reflexion` LL-D）— Linux 需要ゲート後のみ。macOS quickstart は Pattern A 既定のまま（2026-07-13 計画化・低優先）
-- [ ] **OP-083**: **Commerce レイヤー技術負債 v3.3**（`/perfect-plan` 三度検証済 2026-07-13）— **B→A 先行**、C/D=Federation後。正本: [`commerce_layer_tech_debt_plan_v3.md`](docs/roadmaps/commerce_layer_tech_debt_plan_v3.md)。**B**=spend_guard（**日次/月次 0 セマンティクス分離**・7箇所）→ **A**=supertrait+verify→Fiat（8 impl）→ **C**=x402+Vault → **D**=u64↔U256。**日次0=無制限化禁止**。**Safety-Critical — フェーズごとに「実装しろ」承認必須**
+- [ ] **OP-083**: **Commerce レイヤー技術負債 v3.3**（`/perfect-plan` 三度検証済 2026-07-13）— **B→A 先行**、C/D=Federation後。正本: [`commerce_layer_tech_debt_plan_v3.md`](docs/roadmaps/commerce_layer_tech_debt_plan_v3.md)。**B**=spend_guard（**日次/月次 0 セマンティクス分離**・7箇所）→ **A**=supertrait+verify→Fiat（8 impl）→ **C**=x402+Vault → **D**=u64↔U256。**日次0=無制限化禁止**。**Safety-Critical — フェーズごとに「実装しろ」承認必須**。**OP-086 Wave C（ゲート待ち）**
   - [x] **OP-083-B**: Phase 2 spend_guard — **2026-07-13 完了**（`nurture_core::spend_guard`、interceptor/commerce_impl/daily-stats 7箇所、日次 raw min / 月次 0=無制限。`CoinWallet::check_*` 非変更）
   - [x] **OP-083-A**: Phase 1 supertrait — **2026-07-13 完了**（`FiatPaymentRails` + `Web3PaymentRails` + `CommerceEngine`、8 impl、`get_subscription_status` デフォルト `None`）
   - [ ] **OP-083-C** / **OP-083-D**: 未着手（Federation 後）
 - [x] **OP-010**: Stripe Customer Portal 統合 — クレート追加、ポータル URL 生成エンドポイント新設（2026-05-28、HANDOVER.md P1-1）→ **2026-07-06 クローズ**（R2-5 照合: 実 Stripe Billing Portal API 実装済み。ADR-051）
-- [ ] **OP-011**: `execute_autonomous_purchase` の封印解除 — Nurture /internal/purchase へのプロキシ実装（2026-05-28、HANDOVER.md P1-4）→ **R3-3 リリース判定（2026-07-06）: Public Beta では封印維持。自律購買（実通貨 A2C 購入）はポストリリーススコープ。コード変更なし**
+- [ ] **OP-011**: `execute_autonomous_purchase` の封印解除 — Nurture /internal/purchase へのプロキシ実装（2026-05-28、HANDOVER.md P1-4）→ **R3-3 リリース判定（2026-07-06）: Public Beta では封印維持。自律購買（実通貨 A2C 購入）はポストリリーススコープ。コード変更なし**。**OP-086 後回し**
 - [x] **OP-012**: PostgreSQL 本番環境での統合デプロイ検証（BAN 統合含む）→ **2026-07-06 完了**（R3-1: `docker-compose.production-verify.yml` + `scripts/verify-production-postgres.sh` + `postgres_production_verify.rs` — 3 DB マイグレーション + BAN ラウンドトリップ）
 - [x] **OP-014**: CLI ツールを用いたローカル Keychain 移行動作検証 → **2026-07-06 完了**（R3-2: `scripts/verify-keychain-cli.sh` — abyss-vault set/get/delete + 非 whitelist 拒否 + macOS Keychain smoke）
 
@@ -52,9 +52,7 @@
 - [ ] **OP-020**: Phase 2b（Tauri シェル）、Phase 4（経済接続）、Phase 5（Federation）未着手（2026-06-10、ロードマップ参照）
 - [ ] **OP-021**: BAN 管理ダッシュボード UI の設計検討（2026-05-22）
 - [ ] **OP-022**: CausalVisualizer（Trajectory Graph の UI 可視化）未着手（MEMORY.md Blind Spots より）
-- [ ] **OP-023**: `infrastructure` コアに残存する一時的 `unwrap()` / ドキュメント警告のリファクタ（R-005 違反）（MEMORY.md Blind Spots より）
 - [x] **OP-024**: `tool_call_router.rs` 課金チェックの Fail-Closed 化（DB エラーを握り潰さず明示拒否）（MEMORY.md Phase 48 より）→ **2026-07-09 完了**（`get_setting_value` Err 時に MCP ツール拒否 + Negative テスト）
-- [ ] **OP-025**: `key-proxy` への Telemetry（`caller_id`）追加と Cross-Node Auth Reliability モニタリング（MEMORY.md Phase 4 より）
 - [ ] **OP-026**: X Signal Probe 設定画面 UI（SettingsPage.tsx, settings.rs）（2026-04-07）
 - [ ] **OP-027**: Stripe API 実装追加時の一元化モック拡充（2026-06-01）
 - [x] **OP-028**: フロントエンド `as any` 型キャスト4箇所の解消（WorkflowBuilder.tsx ×3, workflowConverter.ts ×1）→ **2026-07-05 完了**（release_master_plan R1-14）
@@ -74,7 +72,7 @@
 - [x] **OP-059-UI**: Settings への `pro_monthly_kc_allowance` 入力 UI 実装 → **2026-07-13 完了**（cockpit Commerce セクション、`SettingsPage.test` 16 PASS）
 - [ ] **OP-062**: Tauri `NurtureMode::InProcess` variant — sidecar 起動と in-process の排他（ADR-012 残タスク）（2026-07-04）
 - [ ] **OP-068**: deny.toml `[advisories].ignore` に登録した 21 件（wasmtime 41.x / rustls-webpki 旧版 / idna 0.4 / quick-xml 0.39 / rand 0.8）の解消。実体は OP-030〜OP-034 の Upstream 待ちと同根。上流更新後に ignore を削除すること（2026-07-04。旧 OP-061 重複採番を 2026-07-05 改番）
-- [ ] **OP-064**: ベータユーザー 5〜10 人の獲得と実名テスティモニアル収集。launch（本格トラフィック獲得）の前提条件。バイラル32原則 #14/#29 対応（ユーザー実施、2026-07-05）
+- [ ] **OP-064**: ベータユーザー 5〜10 人の獲得と実名テスティモニアル収集。launch（本格トラフィック獲得）の前提条件。バイラル32原則 #14/#29 対応（**Human**・OP-086 では後回し、2026-07-05）
 - [x] **OP-065**: Pro 価格改定 $9.99 → **$19.99/月**（2026-07-05 ユーザー決定）。MESSAGING.md / LP i18n / README / ProUpgradeModal 表示 / stripe-setup.md / .env.example を同期。Stripe Payment Link・Price ID の実体差し替えは OP-057 に統合。
 - [x] **OP-066**: UI 全体改善計画 — **2026-07-05 R1 完了**（U0–U5-B + U4 A2UI。Jest 392 PASS / hex 0 / deep-scan 0）。残: U2-4 の `variant` props 統合（任意・Context 化で履歴分断は解消済み）、U1-3 ギフト/ギルド（FE 未実装のため対象外）。OP-002 目視 ✅ 2026-07-13。
 - [x] **OP-073**: **W2 ワークフロー実行エンジン本実装** — W2-0〜W2-8 完了（2026-07-08）。E2E 3本 PASS、`cargo test --workspace` PASS。Human SSRF Walkthrough A/B/C PASSED（2026-07-09）。
@@ -98,6 +96,10 @@
 
 ## ✅ 解決（直近のみ保持）
 
+- [x] **OP-086**: **Agentic 本番硬化** → **2026-07-18 Wave A+B 完了**（正本 v1.2）。A1–A4 / B1 OP-025 telemetry / B2 OP-082 extra_hosts / B3 OP-023 unwrap 0 / key-proxy volume。本番 Vault 再投入+UI 復旧。**B1 本番イメージ再ビルドは [Planned]**。Wave C=ゲート待ち。CHANGELOG [Unreleased]
+- [x] **OP-025**: key-proxy `caller_id` metrics/span + 401 構造化（秘密非出力）→ **2026-07-18**（OP-086 B1、`cargo test -p key-proxy` 34 PASS）
+- [x] **OP-023**: ホットパス unwrap 棚卸し → **2026-07-18**（OP-086 B3、`enforce_unwrap_deny.py` 0）
+- [x] **OP-082**: Pattern B Linux `extra_hosts` → **2026-07-18**（OP-086 B2）
 - [x] **OP-084**: **実課金オープン（Stripe 方針 B / Live 切替）** → **2026-07-18 H4 PASS + L5-3 クローズ + R4 完了**（正本: [`live_billing_open_plan.md`](docs/roadmaps/live_billing_open_plan.md) v1.2 + [`billing_closeout_plan.md`](docs/roadmaps/billing_closeout_plan.md) **v1.5**）。L3-2 Vault `sk_live`/`whsec`・L3-3 `STRIPE_TEST_MODE=false`+live Price・L3-4 正本 Webhook 7 イベント＋legacy disabled・L4-1 Live Checkout→unlock・L4-2 偽署名 400・L4-3 `subscription.deleted`→suspend・L4-4 返金/クレジット+cancel→Free。closeout **R4 ✅**（空文字ガード本番同梱 + P/N/R）
 - [x] **OP-085**: **法務ドキュメント整備** → **2026-07-15 エージェント完了 + 2026-07-16 公開検証完了**（正本: [`COMPLIANCE_CHECKLIST.md`](docs/legal/COMPLIANCE_CHECKLIST.md) §7）。Deploy Landing Page success・公開 bundle に特商法住所/電話・トライアル非提供・解約可文言。Payment Link に「14 days free」なし（`pk_test` = Test）。**Live プロフィール/領収書は OP-084** に移管。
 - [x] **OP-063**: LP 用証拠ビジュアル（MESSAGING §8 / NT-5）→ **2026-07-14 撮影完了** + **R4-2 組込完了**（`docs/assets/evidence/2026-07-14/` 7/7、LP Showcase 実機画像、README/README_en 同期）

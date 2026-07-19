@@ -6,6 +6,7 @@
  */
 
 use crate::config::AppState;
+use crate::telemetry::{redact_display, sanitize_for_log};
 use axum::{
     Json,
     extract::{Path, State},
@@ -55,9 +56,14 @@ pub async fn handle_vault_status(
     State(state): State<AppState>,
 ) -> Result<Json<VaultStatusResponse>, (StatusCode, String)> {
     let existing_keys = state.vault_backend.list_secret_keys().await.map_err(|e| {
+        // Do not echo internal error details to clients (path/backend context).
+        tracing::error!(
+            "❌ [KeyProxy] Failed to list vault keys: {}",
+            redact_display(&e)
+        );
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to retrieve vault keys: {}", e),
+            "Failed to retrieve vault status".to_string(),
         )
     })?;
 
@@ -91,7 +97,7 @@ pub async fn handle_vault_store(
     if !shared::security::ALLOWED_VAULT_SECRETS.contains(&payload.key.as_str()) {
         tracing::warn!(
             "🛡️ [KeyProxy] Store secret violation: key '{}' is not in the allowed secrets whitelist",
-            payload.key
+            sanitize_for_log(&payload.key)
         );
         return Err((
             StatusCode::BAD_REQUEST,
@@ -104,9 +110,14 @@ pub async fn handle_vault_store(
         .store_secret(&payload.key, &payload.value)
         .await
         .map_err(|e| {
+            tracing::error!(
+                "❌ [KeyProxy] Failed to store secret key='{}': {}",
+                sanitize_for_log(&payload.key),
+                redact_display(&e)
+            );
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to store secret in vault: {}", e),
+                "Failed to store secret".to_string(),
             )
         })?;
 
@@ -120,7 +131,7 @@ pub async fn handle_vault_delete(
     if !shared::security::ALLOWED_VAULT_SECRETS.contains(&key.as_str()) {
         tracing::warn!(
             "🛡️ [KeyProxy] Delete secret violation: key '{}' is not in the allowed secrets whitelist",
-            key
+            sanitize_for_log(&key)
         );
         return Err((
             StatusCode::BAD_REQUEST,
@@ -129,9 +140,14 @@ pub async fn handle_vault_delete(
     }
 
     state.vault_backend.delete_secret(&key).await.map_err(|e| {
+        tracing::error!(
+            "❌ [KeyProxy] Failed to delete secret key='{}': {}",
+            sanitize_for_log(&key),
+            redact_display(&e)
+        );
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to delete secret in vault: {}", e),
+            "Failed to delete secret".to_string(),
         )
     })?;
 

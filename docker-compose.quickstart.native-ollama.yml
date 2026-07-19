@@ -16,6 +16,10 @@ services:
       OLLAMA_MODEL: "gemma4:26b"
       BG_LLM_MODEL: "gemma4:26b"
       LLM_MODEL: "gemma4:26b"
+    # Linux Docker needs explicit host-gateway (macOS Desktop injects this by default).
+    # OP-082 / OP-086 Wave B2
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # Merge with base compose would keep `depends_on: ollama`; reset so api-server
     # starts when the container Ollama is stopped (Pattern B).
     depends_on: !reset null

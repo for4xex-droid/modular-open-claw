@@ -4,7 +4,7 @@
 > **改訂**: v1.1 → **v1.2**（Human NT 拡充）→ **v1.3**（NT-2 実装ゲート分離）→ **v1.4**（2026-07-13: NT-2=done・§8 R-A〜R-D 閉じ / OPEN OP-078・077・079）→ **v1.5**（2026-07-13: Local LLM /reflexion 残リスク LL-A〜D → OP-080〜082）→ **v1.6**（2026-07-14: **NT-1 PASS** / OP-057-R・R2-1 クローズ）→ **v1.7**（2026-07-14: **NT-5 PASS** / OP-063 撮影完了・R4-2 待ち）  
 > **根拠**: `OPEN.md` + `near_term_public_beta_plan.md` v5.1 + 運用正本（stripe-production-setup / QUICK_START_VERIFICATION / MESSAGING §8 / OPERATIONS_MANUAL §8 / release-preflight）  
 > **タスク正本**: [`OPEN.md`](../../OPEN.md)（本計画は手順のみ。ID の二重管理をしない）  
-> **ステータス**: Wave A1/A2/A3 ✅。NT-1〜6 ✅。**R5-5 / v1.2.0 Public Beta 公開 ✅**（2026-07-14）。**方針 B（OP-084）✅ 2026-07-18** / **closeout R4 ✅**（正本 `billing_closeout_plan` v1.5）。残: NT-7（任意）/ LL follow（OP-082）/ ポストリリース。**OP-059-UI ✅ / OP-080 ✅ / OP-070 ✅**
+> **ステータス**: Wave A1/A2/A3 ✅。NT-1〜6 ✅。**R5-5 / v1.2.0 Public Beta 公開 ✅**（2026-07-14）。**方針 B（OP-084）✅ 2026-07-18** / **closeout R4 ✅**。**次の Agent 正本: OP-086** [`agentic_production_hardening_plan.md`](agentic_production_hardening_plan.md)（Human NT-7/OP-064 は後回し）。残 Human: NT-7（任意）。**OP-059-UI ✅ / OP-080 ✅ / OP-070 ✅**
 > **Human Wave 実行計画（状態・順・DoD 一冊）**: [`human_wave_execution_plan.md`](human_wave_execution_plan.md)（**v1.2**・2026-07-14）
 > **Human 実行の超詳細版（コピペ正本）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）— 進行は **`/nt-assist`** + `scripts/nt_gate.py`（1ステップ・秘密禁止）。§2 H-1 は要約。
 

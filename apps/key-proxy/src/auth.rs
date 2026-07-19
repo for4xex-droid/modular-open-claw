@@ -6,17 +6,30 @@
  */
 
 use crate::config::AppState;
+use crate::telemetry::{emit_unauthorized_access, sanitize_for_log};
 use axum::{extract::State, http::StatusCode, response::Response};
 use secrecy::ExposeSecret;
-use tracing::warn;
 
-#[tracing::instrument(skip(state))]
+#[tracing::instrument(
+    skip(state, req, next),
+    fields(
+        method = tracing::field::Empty,
+        path = tracing::field::Empty,
+        auth_result = tracing::field::Empty
+    )
+)]
 pub(crate) async fn auth_middleware(
     State(state): State<AppState>,
     req: axum::http::Request<axum::body::Body>,
     next: axum::middleware::Next,
 ) -> Result<Response, StatusCode> {
-    if req.uri().path() == "/api/v1/health" {
+    let method = sanitize_for_log(req.method().as_str());
+    let path = sanitize_for_log(req.uri().path());
+    tracing::Span::current().record("method", tracing::field::display(&method));
+    tracing::Span::current().record("path", tracing::field::display(&path));
+
+    if path == "/api/v1/health" {
+        tracing::Span::current().record("auth_result", "health_bypass");
         return Ok(next.run(req).await);
     }
 
@@ -28,11 +41,13 @@ pub(crate) async fn auth_middleware(
 
     // Strategy 1: JWT validation via AuthManager
     let mut authenticated = false;
+    let mut auth_via = "none";
     if auth_header.starts_with("Bearer ") {
         let token = auth_header.trim_start_matches("Bearer ");
         if let Ok(claims) = state.auth_manager.validate_token(token).await {
             if claims.agent_id != uuid::Uuid::nil() {
                 authenticated = true;
+                auth_via = "jwt";
             }
         }
     }
@@ -46,6 +61,7 @@ pub(crate) async fn auth_middleware(
                 expected.as_bytes(),
             )) {
                 authenticated = true;
+                auth_via = "vault_secret";
             }
         }
     }
@@ -64,14 +80,17 @@ pub(crate) async fn auth_middleware(
                 state.vault_secret.expose_secret().as_bytes(),
             )) {
                 authenticated = true;
+                auth_via = "x_goog_api_key";
             }
         }
     }
 
     if authenticated {
+        tracing::Span::current().record("auth_result", auth_via);
         Ok(next.run(req).await)
     } else {
-        warn!("⛔ [KeyProxy] Unauthorized access attempt.");
+        tracing::Span::current().record("auth_result", "unauthorized");
+        emit_unauthorized_access(&method, &path, !auth_header.is_empty());
         Err(StatusCode::UNAUTHORIZED)
     }
 }

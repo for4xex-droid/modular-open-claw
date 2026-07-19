@@ -209,13 +209,25 @@ impl Default for AiomeConfig {
 }
 
 impl AiomeConfig {
+    /// Outbound A2A gRPC auth (OxiLean poller / FormalProofGate).
+    /// Prefers `A2A_AUTH_TOKEN`, falls back to `A2A_NODE_TOKEN` (same host secret in prod compose).
+    pub fn a2a_grpc_auth_token(&self) -> Option<&SecretString> {
+        self.a2a_auth_token
+            .as_ref()
+            .or(self.a2a_node_token.as_ref())
+    }
+
     /// 環境変数から設定を読み込む
     pub fn load() -> Result<Self> {
         let resolver = crate::app_data::AppDataResolver::new()
             .map_err(|e| anyhow::anyhow!(e))
             .context("Failed to initialize AppDataResolver")?;
 
-        let db_path = env::var("AIOME_DB_PATH").unwrap_or_else(|_| resolver.db_url());
+        // Empty string must not win over resolver (compose may inject AIOME_DB_PATH=).
+        let db_path = env::var("AIOME_DB_PATH")
+            .ok()
+            .filter(|p| !p.is_empty())
+            .unwrap_or_else(|| resolver.db_url());
 
         let log_level = env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
 
@@ -279,10 +291,14 @@ impl AiomeConfig {
             SecretString::from(key)
         });
 
-        let a2a_auth_token = env::var("A2A_AUTH_TOKEN").ok().map(|key| {
-            crate::security::scrub_env("A2A_AUTH_TOKEN");
-            SecretString::from(key)
-        });
+        // Empty string must not count as "set" — compose injects VAR= when host unset.
+        let a2a_auth_token = env::var("A2A_AUTH_TOKEN")
+            .ok()
+            .filter(|key| !key.is_empty())
+            .map(|key| {
+                crate::security::scrub_env("A2A_AUTH_TOKEN");
+                SecretString::from(key)
+            });
 
         // Empty string must not count as "set" — compose often injects A2A_NODE_TOKEN=
         // when the host var is unset, which would otherwise bypass release FATAL.
@@ -513,6 +529,41 @@ mod tests {
         std::env::set_var("A2A_NODE_TOKEN", "prod-a2a-token");
         let config_set = AiomeConfig::load().expect("Failed to load config");
         assert!(config_set.a2a_node_token.is_some());
+        std::env::remove_var("A2A_NODE_TOKEN");
+    }
+
+    #[test]
+    #[serial]
+    fn test_a2a_auth_token_empty_string_is_unset() {
+        std::env::remove_var("A2A_NODE_TOKEN");
+        std::env::set_var("A2A_AUTH_TOKEN", "");
+        let config = AiomeConfig::load().expect("Failed to load config");
+        assert!(
+            config.a2a_auth_token.is_none(),
+            "empty A2A_AUTH_TOKEN must be treated as unset"
+        );
+        assert!(
+            config.a2a_grpc_auth_token().is_none(),
+            "empty AUTH with no NODE must yield no gRPC token"
+        );
+        std::env::remove_var("A2A_AUTH_TOKEN");
+    }
+
+    #[test]
+    #[serial]
+    fn test_a2a_grpc_auth_token_falls_back_to_node() {
+        use secrecy::ExposeSecret;
+        std::env::remove_var("A2A_AUTH_TOKEN");
+        std::env::set_var("A2A_NODE_TOKEN", "node-only-token");
+        let config = AiomeConfig::load().expect("Failed to load config");
+        assert!(config.a2a_auth_token.is_none());
+        assert_eq!(
+            config
+                .a2a_grpc_auth_token()
+                .expect("fallback")
+                .expose_secret(),
+            "node-only-token"
+        );
         std::env::remove_var("A2A_NODE_TOKEN");
     }
 }

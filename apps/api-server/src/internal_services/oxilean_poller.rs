@@ -21,8 +21,7 @@ pub async fn run(state: AppState) -> Result<(), anyhow::Error> {
     let auth_token = state
         .config
         .get_inner()
-        .a2a_auth_token
-        .clone()
+        .a2a_grpc_auth_token()
         .map(|s| {
             use secrecy::ExposeSecret;
             s.expose_secret().to_string()
@@ -42,12 +41,14 @@ pub async fn run(state: AppState) -> Result<(), anyhow::Error> {
         let mut request =
             tonic::Request::new(aiome_core_contracts::a2a::internal::GetOxiLeanStatusRequest {});
         if auth_token.is_empty() {
-            tracing::warn!("A2A_AUTH_TOKEN is empty. Skipping authorization header.");
+            tracing::warn!(
+                "A2A gRPC auth token empty (A2A_AUTH_TOKEN / A2A_NODE_TOKEN). Skipping authorization header."
+            );
         } else if let Ok(metadata_val) = tonic::metadata::MetadataValue::try_from(&auth_token) {
             request.metadata_mut().insert("authorization", metadata_val);
         } else {
             tracing::warn!(
-                "Failed to parse A2A_AUTH_TOKEN as metadata value. Auth will be missing."
+                "Failed to parse A2A gRPC auth token as metadata value. Auth will be missing."
             );
         }
 

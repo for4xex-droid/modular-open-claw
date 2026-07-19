@@ -7,19 +7,26 @@
 
 use crate::config::{AppState, WpProxyRequest, WpProxyResponse};
 use crate::quota::check_and_increment_quota;
+use crate::telemetry::{
+    record_caller_on_span, redact_display, redact_url_secrets, sanitize_caller_id, sanitize_for_log,
+};
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use secrecy::ExposeSecret;
 use tracing::info;
 
-#[tracing::instrument(skip(state))]
+#[tracing::instrument(
+    skip(state, payload),
+    fields(caller_id = tracing::field::Empty)
+)]
 pub(crate) async fn handle_wp_publish(
     State(state): State<AppState>,
     Json(payload): Json<WpProxyRequest>,
 ) -> impl IntoResponse {
-    let safe_caller_id = payload.caller_id.replace(['\n', '\r'], "_");
+    let safe_caller_id = sanitize_caller_id(&payload.caller_id);
+    record_caller_on_span(&safe_caller_id);
     info!("📩 [KeyProxy] WP Publish Request from: {}", safe_caller_id);
 
-    if let Err(status) = check_and_increment_quota(&state, &payload.caller_id).await {
+    if let Err(status) = check_and_increment_quota(&state, &safe_caller_id).await {
         return status.into_response();
     }
 
@@ -46,7 +53,7 @@ pub(crate) async fn handle_wp_publish(
     if !ALLOWED_WP_STATUSES.contains(&payload.status.as_str()) {
         tracing::warn!(
             "🚫 [KeyProxy] Rejected invalid WP status: {}",
-            payload.status
+            sanitize_for_log(&payload.status)
         );
         return (StatusCode::BAD_REQUEST, "Invalid WordPress post status").into_response();
     }
@@ -79,12 +86,13 @@ pub(crate) async fn handle_wp_publish(
             } else {
                 let status = resp.status();
                 let err_text = resp.text().await.unwrap_or_default();
+                let err_text: String = redact_url_secrets(&err_text).chars().take(200).collect();
                 tracing::error!("❌ [KeyProxy] WP Upstream error [{}]: {}", status, err_text);
             }
             (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error").into_response()
         }
         Err(e) => {
-            tracing::error!("❌ [KeyProxy] WP Request failed: {:?}", e);
+            tracing::error!("❌ [KeyProxy] WP Request failed: {}", redact_display(&e));
             (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error").into_response()
         }
     }

@@ -61,8 +61,7 @@ pub async fn init_core_services(
             .map_err(|e| anyhow::anyhow!("Invalid gRPC endpoint: {}", e))?;
         let channel = endpoint.connect_lazy();
         let token = config
-            .a2a_auth_token
-            .clone()
+            .a2a_grpc_auth_token()
             .map(|s| {
                 use secrecy::ExposeSecret;
                 s.expose_secret().to_string()

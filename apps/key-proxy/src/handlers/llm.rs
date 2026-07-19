@@ -7,19 +7,28 @@
 
 use crate::config::{AppState, EmbedResponse, ProxyRequest, ProxyResponse};
 use crate::quota::check_and_increment_quota;
+use crate::telemetry::{
+    emit_cost_metric, emit_embed_metric, emit_stream_start_metric, record_caller_on_span,
+    record_endpoint_on_span, redact_display, sanitize_caller_id,
+};
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use secrecy::ExposeSecret;
 use tracing::{error, info};
 
-#[tracing::instrument(skip(state))]
+#[tracing::instrument(
+    skip(state, payload),
+    fields(caller_id = tracing::field::Empty, endpoint = tracing::field::Empty)
+)]
 pub(crate) async fn handle_llm_complete(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
 ) -> impl IntoResponse {
-    let safe_caller_id = payload.caller_id.replace(['\n', '\r'], "_");
+    let safe_caller_id = sanitize_caller_id(&payload.caller_id);
+    record_caller_on_span(&safe_caller_id);
+    record_endpoint_on_span(&payload.endpoint);
     info!("📩 [KeyProxy] Request from caller: {}", safe_caller_id);
 
-    if let Err(status) = check_and_increment_quota(&state, &payload.caller_id).await {
+    if let Err(status) = check_and_increment_quota(&state, &safe_caller_id).await {
         return status.into_response();
     }
 
@@ -83,12 +92,11 @@ pub(crate) async fn handle_llm_complete(
 
                         if let Some(tokens) = total_tokens {
                             let cost_usd = tokens as f64 * 0.00000015;
-                            tracing::info!(
-                                target: "key_proxy::metrics",
-                                tokens = tokens,
-                                cost_usd = cost_usd,
-                                model = %state.gemini_model,
-                                "💰 [KeyProxy] Cost metric recorded"
+                            emit_cost_metric(
+                                &safe_caller_id,
+                                tokens,
+                                cost_usd,
+                                &state.gemini_model,
                             );
                         }
 
@@ -112,24 +120,29 @@ pub(crate) async fn handle_llm_complete(
             }
         }
         Err(e) => {
-            error!("❌ [KeyProxy] Request failed: {:?}", e);
+            error!("❌ [KeyProxy] Request failed: {}", redact_display(&e));
             (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error").into_response()
         }
     }
 }
 
-#[tracing::instrument(skip(state))]
+#[tracing::instrument(
+    skip(state, payload),
+    fields(caller_id = tracing::field::Empty, endpoint = tracing::field::Empty)
+)]
 pub(crate) async fn handle_llm_embed(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
 ) -> impl IntoResponse {
-    let safe_caller_id = payload.caller_id.replace(['\n', '\r'], "_");
+    let safe_caller_id = sanitize_caller_id(&payload.caller_id);
+    record_caller_on_span(&safe_caller_id);
+    record_endpoint_on_span(&payload.endpoint);
     info!(
         "🧬 [KeyProxy] Embedding request from caller: {}",
         safe_caller_id
     );
 
-    if let Err(status) = check_and_increment_quota(&state, &payload.caller_id).await {
+    if let Err(status) = check_and_increment_quota(&state, &safe_caller_id).await {
         return status.into_response();
     }
 
@@ -171,6 +184,7 @@ pub(crate) async fn handle_llm_embed(
                                 .filter_map(|v| v.as_f64().map(|f| f as f32))
                                 .collect();
                             let response_time_ms = start_time.elapsed().as_millis() as u64;
+                            emit_embed_metric(&safe_caller_id, response_time_ms, vec.len());
                             Json(EmbedResponse {
                                 embedding: vec,
                                 response_time_ms: Some(response_time_ms),
@@ -183,7 +197,10 @@ pub(crate) async fn handle_llm_embed(
                         }
                     }
                     Err(e) => {
-                        error!("❌ [KeyProxy] Failed to parse embed response: {:?}", e);
+                        error!(
+                            "❌ [KeyProxy] Failed to parse embed response: {}",
+                            redact_display(&e)
+                        );
                         (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error")
                             .into_response()
                     }
@@ -194,24 +211,29 @@ pub(crate) async fn handle_llm_embed(
             }
         }
         Err(e) => {
-            error!("❌ [KeyProxy] Request failed: {:?}", e);
+            error!("❌ [KeyProxy] Request failed: {}", redact_display(&e));
             (StatusCode::INTERNAL_SERVER_ERROR, "Upstream Provider Error").into_response()
         }
     }
 }
 
-#[tracing::instrument(skip(state))]
+#[tracing::instrument(
+    skip(state, payload),
+    fields(caller_id = tracing::field::Empty, endpoint = tracing::field::Empty)
+)]
 pub(crate) async fn handle_llm_stream(
     State(state): State<AppState>,
     Json(payload): Json<ProxyRequest>,
 ) -> impl IntoResponse {
-    let safe_caller_id = payload.caller_id.replace(['\n', '\r'], "_");
+    let safe_caller_id = sanitize_caller_id(&payload.caller_id);
+    record_caller_on_span(&safe_caller_id);
+    record_endpoint_on_span(&payload.endpoint);
     info!(
         "🌊 [KeyProxy] Streaming request from caller: {}",
         safe_caller_id
     );
 
-    if let Err(status) = check_and_increment_quota(&state, &payload.caller_id).await {
+    if let Err(status) = check_and_increment_quota(&state, &safe_caller_id).await {
         return status.into_response();
     }
 
@@ -255,11 +277,7 @@ pub(crate) async fn handle_llm_stream(
         Ok(resp) => {
             if resp.status().is_success() {
                 let response_time_ms = start_time.elapsed().as_millis() as u64;
-                tracing::info!(
-                    target: "key_proxy::metrics",
-                    response_time_ms = response_time_ms,
-                    "🌊 [KeyProxy] Streaming response started"
-                );
+                emit_stream_start_metric(&safe_caller_id, response_time_ms);
 
                 use futures::StreamExt;
                 let stream = resp.bytes_stream().map(|chunk_res| match chunk_res {
