@@ -142,9 +142,7 @@ pub async fn get_diagnoses(
     .fetch_all(pool)
     .await;
 
-    let diagnoses = rows.map_err(|e| aiome_core::error::AiomeError::Infrastructure {
-        reason: format!("DB Error: {}", e),
-    })?;
+    let diagnoses = rows.map_err(|e| AppError::internal(format!("DB Error: {}", e)))?;
 
     Ok(Json(diagnoses))
 }
@@ -180,18 +178,14 @@ pub async fn get_diagnostics_summary(
     let total_row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM agent_diagnoses")
         .fetch_one(pool)
         .await
-        .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
-            reason: format!("DB Error: {}", e),
-        })?;
+        .map_err(|e| AppError::internal(format!("DB Error: {}", e)))?;
 
     let categories: Vec<CategoryCount> = sqlx::query_as(
         "SELECT failure_category, COUNT(*) as count FROM agent_diagnoses GROUP BY failure_category",
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
-        reason: format!("DB Error: {}", e),
-    })?;
+    .map_err(|e| AppError::internal(format!("DB Error: {}", e)))?;
 
     Ok(Json(DiagnosisSummaryResponse {
         total_diagnoses: total_row.0,
@@ -224,11 +218,8 @@ pub async fn get_quarantined_assets(
         .into());
     }
 
-    let assets = state.quarantine_store.list_assets().await.map_err(|e| {
-        aiome_core::error::AiomeError::Infrastructure {
-            reason: format!("Quarantine Store Error: {}", e),
-        }
-    })?;
+    // OP-051 P4: QuarantineStore already returns AiomeError at the crate boundary.
+    let assets = state.quarantine_store.list_assets().await?;
 
     Ok(Json(assets))
 }
@@ -262,13 +253,8 @@ pub async fn release_quarantined_asset(
         .into());
     }
 
-    state
-        .quarantine_store
-        .release_asset(&id)
-        .await
-        .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
-            reason: format!("Quarantine Store Error: {}", e),
-        })?;
+    // OP-051 P4: QuarantineStore already returns AiomeError at the crate boundary.
+    state.quarantine_store.release_asset(&id).await?;
 
     Ok(StatusCode::OK)
 }
@@ -315,9 +301,7 @@ pub async fn get_logs(
     .fetch_all(pool)
     .await;
 
-    let logs = rows.map_err(|e| aiome_core::error::AiomeError::Infrastructure {
-        reason: format!("DB Error: {}", e),
-    })?;
+    let logs = rows.map_err(|e| AppError::internal(format!("DB Error: {}", e)))?;
 
     Ok(Json(logs))
 }

@@ -1,6 +1,6 @@
 # Agentic 本番硬化計画（v1.3・Wave D 本番クローズ 2026-07-19）
 
-- **ステータス**: Wave A+B+D ✅ / 本番 key-proxy 再ビルド・B1 telemetry 反映済 / A1 本番 Unauthenticated 0。**Wave C はゲート待ち**
+- **ステータス**: Wave A+B+D ✅ / 本番 key-proxy 再ビルド・B1 telemetry 反映済 / A1 本番 Unauthenticated 0。**Wave C**: **OP-051 ✅** / **OP-083 ✅** / OP-011 ゲート待ち
 - **目的**: Human 後回しで、エージェントがコードから本番稼働の確実性を上げる
 - **正本 ID**: OPEN **OP-086**
 - **継承**: `billing_closeout_plan` v1.5（R4 済）/ OPEN / R4 本番ログ
@@ -12,7 +12,7 @@
 |---|---|---|
 | **Agent** | コード・compose・テスト・台帳 | **実行対象** |
 | **Human** | OP-064 / NT-7 / Vault 鍵操作 / テスティモニアル | **後回し** |
-| **Blocked** | OP-083-C/D・OP-011・OP-020 Phase5（Federation 後）/ OP-051（ADR Accepted 後）/ OP-030〜034 Upstream | 記載のみ・着手禁止 |
+| **Blocked** | OP-011・OP-020 製品 P2P 残・OP-030〜034 Upstream | 記載のみ。OP-083-C/D は Q2+SC（ADR-053 非ブロッカー） |
 
 ## 1. コード根拠（事実）
 
@@ -26,7 +26,7 @@
 | F4 | ✅ key-proxy healthcheck は `curl -f …/api/v1/health` | compose key-proxy healthcheck |
 | F5 | main compose は Postgres 前提。本番ホストは SQLite（overlay / hotfix 手順） | `docker-compose.production.sqlite.yml` / sync スクリプト |
 | F6 | nurture-api Postgres 依存は sqlite overlay / profile で制御 | `production.sqlite.yml` |
-| F7 | OP-083-C/D = Federation 後。OP-051 = ADR-054 Proposed（Wave C） | commerce plan / ADR-054 |
+| F7 | OP-083-C/D = **Q2 + SC**（[`op083_cd_x402_plan.md`](op083_cd_x402_plan.md)）。ADR-053 transport 済みは非ブロッカー。OP-051 ✅ | op083_cd / ADR-054 |
 | F8 | ✅ key-proxy Vault は `./data/key-proxy` volume + `ABYSS_VAULT_PATH` | compose + `.gitignore` |
 | F9 | ✅ B1 telemetry 本番反映（key-proxy イメージ再ビルド + recreate） | OPEN OP-086 Wave D |
 
@@ -66,9 +66,9 @@
 
 | ID | ゲート | 着手条件 |
 |---|---|---|
-| C1 OP-051 | ADR-054 **Accepted** | 承認後に別計画 |
-| C2 OP-083-C/D | Federation（OP-020 Phase 5） | Safety-Critical 個別承認 |
-| C3 OP-011 / OP-020 2b/4/5 | 製品ロードマップ | 本計画外 |
+| C1 OP-051 | ✅ ADR-054 Accepted + **P1–P4 2026-07-20** | [`op051_error_hierarchy_plan.md`](op051_error_hierarchy_plan.md) |
+| C2 OP-083-C/D | ✅ Q2 + C/D **2026-07-20** | [`op083_cd_x402_plan.md`](op083_cd_x402_plan.md) |
+| C3 OP-011 / OP-020 製品 P2P 残 | 製品ロードマップ | 本計画外（2b/4 は CHANGELOG 上 ✅） |
 
 ## 3. 成功基準
 

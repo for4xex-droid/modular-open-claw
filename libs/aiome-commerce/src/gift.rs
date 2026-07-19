@@ -246,7 +246,7 @@ mod tests {
             _t: &str,
             _a: &str,
             _d: &serde_json::Value,
-        ) -> anyhow::Result<()> {
+        ) -> Result<(), aiome_core_contracts::error::AiomeError> {
             Ok(())
         }
         async fn log_violation(
@@ -254,7 +254,7 @@ mod tests {
             _t: &str,
             _d: &str,
             _c: &serde_json::Value,
-        ) -> anyhow::Result<()> {
+        ) -> Result<(), aiome_core_contracts::error::AiomeError> {
             Ok(())
         }
     }

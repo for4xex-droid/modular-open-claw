@@ -83,15 +83,19 @@ impl AppError {
         })
     }
 
-    /// Internal Server Error (500)
+    /// Internal Server Error (500).
+    ///
+    /// OP-051 P4 / CWE-209: client-facing reason is always opaque. The provided
+    /// detail is logged server-side only (same policy as `From<anyhow::Error>`).
     pub fn internal(reason: impl Into<String>) -> Self {
         let reason = reason.into();
+        if reason.is_empty() {
+            tracing::error!("Internal error (no detail provided)");
+        } else {
+            tracing::error!(error = %reason, "Internal error (sanitized for client)");
+        }
         Self(AiomeError::Infrastructure {
-            reason: if reason.is_empty() {
-                "Internal Server Error".to_string()
-            } else {
-                reason
-            },
+            reason: "An unexpected internal error occurred.".to_string(),
         })
     }
 
@@ -153,27 +157,15 @@ impl From<Box<dyn std::error::Error + Send + Sync>> for AppError {
 
 impl From<shared::bootstrap_detector::FactoryResetError> for AppError {
     fn from(err: shared::bootstrap_detector::FactoryResetError) -> Self {
-        Self(AiomeError::Infrastructure {
-            reason: format!("Factory reset failed: {}", err),
-        })
+        // OP-051 P2: map via AiomeError (shared From), not a parallel AppError-only path.
+        Self(err.into())
     }
 }
 
 impl From<soul::error::SoulError> for AppError {
     fn from(err: soul::error::SoulError) -> Self {
-        match err {
-            soul::error::SoulError::Internal(reason) => AppError::internal(reason),
-            soul::error::SoulError::InvalidTransition(reason) => AppError::bad_request(reason),
-            soul::error::SoulError::DistillationFailed(reason) => {
-                AppError::internal(format!("DistillationFailed: {}", reason))
-            }
-            soul::error::SoulError::RebirthFailed(reason) => {
-                AppError::internal(format!("RebirthFailed: {}", reason))
-            }
-            soul::error::SoulError::AdapterError(reason) => {
-                AppError::internal(format!("AdapterError: {}", reason))
-            }
-        }
+        // OP-051 P3: use crate-level From<SoulError> for AiomeError (no parallel AppError map).
+        Self(err.into())
     }
 }
 
@@ -258,6 +250,29 @@ mod tests {
             }
             other => panic!("Expected Infrastructure variant, got: {:?}", other),
         }
+    }
+
+    /// OP-051 P4 Negative: sqlx/host details passed to `internal()` must not reach the client reason.
+    #[test]
+    fn test_internal_opaque_does_not_leak_db_details() {
+        let leaky = "sqlx::Error: error returned from database: UNIQUE constraint failed: users.email host=db.internal.prod";
+        let app_err = AppError::internal(format!("Failed to fetch workflow: {}", leaky));
+        match &app_err.0 {
+            AiomeError::Infrastructure { reason } => {
+                assert_eq!(reason, "An unexpected internal error occurred.");
+                assert!(!reason.contains("sqlx"), "leaked sqlx: {}", reason);
+                assert!(!reason.contains("UNIQUE"), "leaked UNIQUE: {}", reason);
+                assert!(!reason.contains("db.internal"), "leaked host: {}", reason);
+            }
+            other => panic!("Expected Infrastructure variant, got: {:?}", other),
+        }
+
+        // Debug builds do not mask IntoResponse; construction-time opacity is the safety net.
+        let response = app_err.into_response();
+        assert_eq!(
+            response.status(),
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR
+        );
     }
 
     #[test]
@@ -388,7 +403,7 @@ mod tests {
     #[test]
     fn test_helper_methods_empty_reason_fallback() {
         if let AiomeError::Infrastructure { reason } = AppError::internal("").0 {
-            assert_eq!(reason, "Internal Server Error");
+            assert_eq!(reason, "An unexpected internal error occurred.");
         } else {
             panic!("Expected Infrastructure variant");
         }
@@ -546,11 +561,16 @@ mod tests {
         let x402_err = aiome_commerce::x402::X402Error::MissingHeaders;
         let app_err = AppError::from(x402_err);
 
+        // OP-083-C /reflexion: malformed 402 headers → Validation (400), not 500.
         match &app_err.0 {
-            AiomeError::Infrastructure { reason } => {
-                assert!(reason.contains("Missing") || reason.contains("headers"));
+            AiomeError::Validation { reason } => {
+                assert!(
+                    reason.contains("payment") || reason.contains("Invalid"),
+                    "got: {}",
+                    reason
+                );
             }
-            _ => panic!("Expected Infrastructure variant"),
+            other => panic!("Expected Validation variant, got {:?}", other),
         }
     }
 }

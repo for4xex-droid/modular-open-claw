@@ -100,11 +100,9 @@ pub async fn upload_avatar_handler(
     // compute_hash は同期処理でブロックする可能性があるためブロックで囲う
     let hash = {
         let hasher = ImageHasher::new();
-        hasher.compute_hash(&content_bytes).map_err(|e| {
-            AppError(aiome_core_contracts::error::AiomeError::Infrastructure {
-                reason: format!("Hash processing error: {}", e),
-            })
-        })?
+        hasher
+            .compute_hash(&content_bytes)
+            .map_err(|e| AppError::internal(format!("Hash processing error: {}", e)))?
     };
     let is_csam_hit = ImageHasher::check_blacklist(state.db_pool.get_inner(), &hash)
         .await

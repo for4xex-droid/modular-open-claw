@@ -201,7 +201,7 @@ impl AuditLogger for AsyncAuditLogger {
         event_type: &str,
         actor: &str,
         details: &serde_json::Value,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), aiome_core_contracts::error::AiomeError> {
         let entry = AuditEntry {
             table_name: actor.to_string(),
             operation: event_type.to_string(),
@@ -212,10 +212,11 @@ impl AuditLogger for AsyncAuditLogger {
                 .to_string(),
             new_data: details.clone(),
         };
-        self.sender
-            .send(entry)
-            .await
-            .map_err(|e| anyhow::anyhow!("Audit logger queue is full or closed: {}", e))
+        self.sender.send(entry).await.map_err(|e| {
+            aiome_core_contracts::error::AiomeError::LogWrite {
+                source: anyhow::anyhow!("Audit logger queue is full or closed: {}", e),
+            }
+        })
     }
 
     async fn log_violation(
@@ -223,17 +224,18 @@ impl AuditLogger for AsyncAuditLogger {
         violation_type: &str,
         description: &str,
         context: &serde_json::Value,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), aiome_core_contracts::error::AiomeError> {
         let entry = AuditEntry {
             table_name: "SECURITY_VIOLATION".to_string(),
             operation: violation_type.to_string(),
             record_id: description.to_string(),
             new_data: context.clone(),
         };
-        self.sender
-            .send(entry)
-            .await
-            .map_err(|e| anyhow::anyhow!("Audit logger queue is full or closed: {}", e))
+        self.sender.send(entry).await.map_err(|e| {
+            aiome_core_contracts::error::AiomeError::LogWrite {
+                source: anyhow::anyhow!("Audit logger queue is full or closed: {}", e),
+            }
+        })
     }
 }
 

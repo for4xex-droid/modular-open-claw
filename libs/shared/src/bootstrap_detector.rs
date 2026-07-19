@@ -218,6 +218,15 @@ impl std::fmt::Display for FactoryResetError {
 
 impl std::error::Error for FactoryResetError {}
 
+impl From<FactoryResetError> for aiome_core_contracts::error::AiomeError {
+    fn from(err: FactoryResetError) -> Self {
+        // Preserve prior api-server mapping (Infrastructure + stable prefix).
+        aiome_core_contracts::error::AiomeError::Infrastructure {
+            reason: format!("Factory reset failed: {}", err),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -437,6 +446,22 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(matches!(err, FactoryResetError::DirectoryNotFound(_)));
+    }
+
+    #[test]
+    fn test_factory_reset_error_into_aiome_error() {
+        let err = FactoryResetError::DirectoryNotFound("/dummy/path".to_string());
+        let aiome: aiome_core_contracts::error::AiomeError = err.into();
+        match aiome {
+            aiome_core_contracts::error::AiomeError::Infrastructure { reason } => {
+                assert!(
+                    reason.contains("Factory reset failed")
+                        && reason.contains("App data directory not found"),
+                    "unexpected reason: {reason}"
+                );
+            }
+            other => panic!("Expected Infrastructure, got: {other:?}"),
+        }
     }
 
     #[test]

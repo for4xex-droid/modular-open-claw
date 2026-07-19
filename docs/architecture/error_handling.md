@@ -28,7 +28,7 @@ Aiome は、エージェント自律運転システムとして以下の堅牢�
 | **FactoryResetError** | `libs/shared/src/bootstrap_detector.rs` | **ファクトリーリセット・クリーンアップのエラー**。ブートストラップ復旧処理が失敗した場合の致命的エラー。 |
 | **BudgetExhaustedError** | `libs/aiome-contracts/src/error.rs` | **予算上限超過（JobBudget）エラー**。自律エージェントの処理予算オーバー時にスロー。 |
 
-> **OP-051 / ADR-054（2026-07-10）**: 上記 10 種を「Domain / Subsystem / Internal」の 3 階層に整理する Decision は [`docs/decisions/054-error-hierarchy.md`](../decisions/054-error-hierarchy.md)（**Proposed**）。コード一括置換は ADR Accepted 後のみ。本節 §2 が現状の正本。
+> **OP-051 / ADR-054（2026-07-10）**: 上記 10 種を「Domain / Subsystem / Internal」の 3 階層に整理する Decision は [`docs/decisions/054-error-hierarchy.md`](../decisions/054-error-hierarchy.md)（**Accepted 2026-07-20**）。実装 **P1–P4 ✅**（[`op051_error_hierarchy_plan.md`](../roadmaps/op051_error_hierarchy_plan.md)）。コード一括置換は禁止。NurtureError core `From` は延期。本節 §2 が現状の正本。
 
 ---
 
@@ -46,4 +46,4 @@ Aiome は、エージェント自律運転システムとして以下の堅牢�
    - `thiserror::Error` および適切な `#[derive(Debug)]` を用いて、可読性の高い文字列表記を定義すること。
    - API 境界（`api-server` 等）へ波及するエラーである場合、`AiomeError` への `From` 変換トレイトを `libs/aiome-contracts/src/error.rs` に必ず実装し、安全なサニタイズパスへマッピングすること。
 
-*最終更新: 2026-07-10 — ADR-054（OP-051）リンク追加*
+*最終更新: 2026-07-20 — OP-051 P1–P4 完了*

@@ -71,6 +71,16 @@ impl From<LoaderError> for aiome_core_contracts::error::AiomeError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aiome_core_contracts::error::AiomeError;
+
+    #[test]
+    fn loader_error_into_aiome_maps_invalid_header_to_validation() {
+        let err: AiomeError = LoaderError::InvalidHeader.into();
+        assert!(matches!(
+            err,
+            AiomeError::Validation { reason } if reason.contains("Invalid INX header")
+        ));
+    }
 
     #[test]
     fn test_inochi2d_loader_magic_check() {

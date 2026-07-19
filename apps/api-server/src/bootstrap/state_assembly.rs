@@ -69,6 +69,7 @@ pub async fn assemble_app_state(
                 .clone()
                 .ok_or_else(|| anyhow::anyhow!("commerce engine must be initialized"))?,
         ),
+        x402_negotiator: Component::new(core.x402_negotiator.clone()),
         gig_engine: Component::new(core.gig_engine.clone()),
         circuit_breaker: Component::new(db.circuit_breaker.clone()),
         rate_limiter: Component::new(db.rate_limiter.clone()),

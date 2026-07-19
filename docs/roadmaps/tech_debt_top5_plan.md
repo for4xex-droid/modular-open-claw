@@ -216,7 +216,7 @@ if let Err(block_msg) = router.evaluate_security(prompt, state).await {
 
 ## 5. Wave C — OP-051（P3）
 
-`docs/decisions/054-error-hierarchy.md` 起草案のみ（Domain=`AiomeError` / Subsystem 既存 / Internal=`anyhow`）。一括置換禁止。
+ADR-054 **Accepted 2026-07-20**。実装正本: [`op051_error_hierarchy_plan.md`](op051_error_hierarchy_plan.md) v1.0（**P1–P4 ✅ / OP-051 完了**・一括置換禁止）。
 
 ---
 

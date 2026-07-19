@@ -8,6 +8,7 @@
  */
 #![forbid(unsafe_code)]
 
+pub mod currency;
 pub mod ekyc;
 pub mod factory;
 pub mod gift;
@@ -19,14 +20,18 @@ pub mod stripe;
 pub mod syndicate;
 pub mod wallet;
 pub mod x402;
+pub mod x402_factory;
 
 // Re-exports for convenience
+pub use crate::currency::OnChainAmount;
 pub use crate::ekyc::StripeEkycEngine;
 pub use crate::factory::CommerceEngineFactory;
 pub use crate::gig::UniversalGigEngine;
 pub use crate::polar::PolarCommerceEngine;
 pub use crate::stripe::StripeCommerceEngine;
 pub use crate::syndicate::UniversalSyndicateStore;
+pub use crate::wallet::AgentWallet;
+pub use crate::x402_factory::X402ClientFactory;
 
 #[cfg(test)]
 mod tests {

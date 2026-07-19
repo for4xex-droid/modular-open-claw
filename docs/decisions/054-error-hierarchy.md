@@ -1,14 +1,15 @@
 # ADR-054: Error Hierarchy (Three Layers)
 
-**Status**: Proposed  
+**Status**: Accepted  
 **Date**: 2026-07-10  
-**Related**: OP-051, [`error_handling.md`](../architecture/error_handling.md) §2, TECH_DEBT Top5 plan v1.3
+**Accepted**: 2026-07-20  
+**Related**: OP-051, [`error_handling.md`](../architecture/error_handling.md) §2, TECH_DEBT Top5 plan v1.3, [`op051_error_hierarchy_plan.md`](../roadmaps/op051_error_hierarchy_plan.md)
 
 ## Context
 
 Aiome currently mixes ~10 error types (`AiomeError`, `SoulError`, `X402Error`, `CsamError`, …) with widespread `anyhow` in infrastructure. OP-051 asked for a three-layer Decision before any bulk rewrite. Bulk replacement is explicitly forbidden until this ADR is approved.
 
-## Decision (proposed)
+## Decision
 
 | Layer | Role | Canonical types |
 |-------|------|-----------------|
@@ -25,7 +26,7 @@ Aiome currently mixes ~10 error types (`AiomeError`, `SoulError`, `X402Error`, `
 
 ## Consequences
 
-- **Accepted**: Enables a phased OP-051 implementation plan (crate-by-crate `From` maps, then reduce orphan types).
+- **Accepted (2026-07-20)**: Enables phased OP-051 per [`op051_error_hierarchy_plan.md`](../roadmaps/op051_error_hierarchy_plan.md). Each phase requires explicit「実装しろ」before code changes.
 - **Rejected / Deferred**: Status remains Proposed; code stays as documented in `error_handling.md` §2.
 
 ## Out of scope

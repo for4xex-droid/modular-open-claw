@@ -190,9 +190,7 @@ pub async fn list_wiki_articles_handler(
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
-        reason: e.to_string(),
-    })?;
+    .map_err(|e| crate::error::AppError::internal(format!("Wiki list query failed: {}", e)))?;
 
     let mut summaries = Vec::new();
     for row in rows {
@@ -246,9 +244,7 @@ pub async fn get_wiki_article_handler(
     .bind(id)
     .fetch_optional(pool)
     .await
-    .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
-        reason: e.to_string(),
-    })?;
+    .map_err(|e| crate::error::AppError::internal(format!("Wiki article query failed: {}", e)))?;
 
     if let Some(row) = row {
         use sqlx::Row;
@@ -586,8 +582,12 @@ pub async fn god_nodes_handler(
         sqlx::query("SELECT concept, article_ids FROM cortex_concept_index ORDER BY concept")
             .fetch_all(pool)
             .await
-            .map_err(|e| aiome_core::error::AiomeError::Infrastructure {
-                reason: e.to_string(),
+            .map_err(|e| {
+                // Handler returns AiomeError directly; keep client reason opaque (OP-051 P4).
+                tracing::error!(error = %e, "GodNode index query failed");
+                aiome_core::error::AiomeError::Infrastructure {
+                    reason: "An unexpected internal error occurred.".to_string(),
+                }
             })?;
 
     use sqlx::Row;

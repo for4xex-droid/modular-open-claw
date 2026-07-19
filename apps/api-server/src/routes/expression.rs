@@ -95,12 +95,10 @@ pub async fn generate_expression(
         // Enforce Free plan limits (e.g., max 5 expressions per hour).
         // For accurate limit, we fetch the 5 recent expressions and check their creation time
         let recent_exprs = state.job_queue.fetch_expressions(5).await.map_err(|e| {
-            aiome_core::error::AiomeError::Infrastructure {
-                reason: format!(
-                    "Failed to fetch recent expressions for rate limit check: {}",
-                    e
-                ),
-            }
+            AppError::internal(format!(
+                "Failed to fetch recent expressions for rate limit check: {}",
+                e
+            ))
         })?;
         if recent_exprs.len() >= 5 {
             if let Some(oldest) = recent_exprs.last() {
@@ -143,11 +141,7 @@ pub async fn generate_expression(
     .map_err(|_| aiome_core_contracts::error::AiomeError::ResourceBusy {
         reason: "GPU/VRAM contention (Generation).".to_string(),
     })?
-    .map_err(
-        |e| aiome_core_contracts::error::AiomeError::Infrastructure {
-            reason: format!("Semaphore acquire error: {}", e),
-        },
-    )?;
+    .map_err(|e| AppError::internal(format!("Semaphore acquire error: {}", e)))?;
 
     // 4. Generate Expression
     let mut expression =

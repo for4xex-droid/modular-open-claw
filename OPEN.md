@@ -1,9 +1,11 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-19（OP-086 Wave D 本番クローズ）**
+**最終更新: 2026-07-20（OP-083-C/D 完了）**
 
 > **実装手順の正本**:
-> - **Agentic 本番硬化（Human 後回し）**: [`docs/roadmaps/agentic_production_hardening_plan.md`](docs/roadmaps/agentic_production_hardening_plan.md)（**v1.3**・Wave A+B+D ✅・Wave C ゲート待ち）
+> - **Agentic 本番硬化（Human 後回し）**: [`docs/roadmaps/agentic_production_hardening_plan.md`](docs/roadmaps/agentic_production_hardening_plan.md)（**v1.3**・Wave A+B+D ✅・Wave C: **OP-051 ✅** / **OP-083 ✅**）
+> - **OP-083-C/D x402**: [`docs/roadmaps/op083_cd_x402_plan.md`](docs/roadmaps/op083_cd_x402_plan.md)（**v1.0**・**C/D ✅ 2026-07-20**）
+> - **OP-051 Error 3 階層**: [`docs/roadmaps/op051_error_hierarchy_plan.md`](docs/roadmaps/op051_error_hierarchy_plan.md)（**v1.0**・ADR-054 Accepted・**P1–P4 ✅ 2026-07-20**）
 > - **課金クローズアウト**: [`docs/roadmaps/billing_closeout_plan.md`](docs/roadmaps/billing_closeout_plan.md)（**v1.5**・2026-07-18・R1–R4 / H4 / L5-3 **完了**）
 > - **Human Wave 実行計画（残 NT の状態・順・DoD 一冊）**: [`docs/roadmaps/human_wave_execution_plan.md`](docs/roadmaps/human_wave_execution_plan.md)（**v1.2**・2026-07-14）
 > - **Human 実行ランブック（NT-1〜7・コピペ超詳細）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）  
@@ -38,10 +40,11 @@
 - [x] **OP-079**: compose entrypoint の `/app/.intent_tmp` 二重 mkdir 撤去 → **2026-07-13 完了**（`/data/.intent_tmp` のみ・再作成後 healthy。NT-2 §8 R-D）
 - [x] **OP-080**: Local LLM **Pattern B 実機検証**（`/reflexion` LL-A）→ **2026-07-13 完了**（Positive: `host.docker.internal` + `gemma4:26b` + health。Negative: `aiome-ollama` 併走で 11434 dual-bind リスク記録、stop 後 B 復帰。`pattern-a-up` で A 復帰 + `ollama:11434` / `gemma4:e4b`）
 - [x] **OP-081**: Local LLM A/B + ViewMode + disk hygiene **git 分割コミット**（`/reflexion` LL-B）— `.env` 除外（2026-07-13 本コミットで反映）
-- [ ] **OP-083**: **Commerce レイヤー技術負債 v3.3**（`/perfect-plan` 三度検証済 2026-07-13）— **B→A 先行**、C/D=Federation後。正本: [`commerce_layer_tech_debt_plan_v3.md`](docs/roadmaps/commerce_layer_tech_debt_plan_v3.md)。**B**=spend_guard（**日次/月次 0 セマンティクス分離**・7箇所）→ **A**=supertrait+verify→Fiat（8 impl）→ **C**=x402+Vault → **D**=u64↔U256。**日次0=無制限化禁止**。**Safety-Critical — フェーズごとに「実装しろ」承認必須**。**OP-086 Wave C（ゲート待ち）**
-  - [x] **OP-083-B**: Phase 2 spend_guard — **2026-07-13 完了**（`nurture_core::spend_guard`、interceptor/commerce_impl/daily-stats 7箇所、日次 raw min / 月次 0=無制限。`CoinWallet::check_*` 非変更）
-  - [x] **OP-083-A**: Phase 1 supertrait — **2026-07-13 完了**（`FiatPaymentRails` + `Web3PaymentRails` + `CommerceEngine`、8 impl、`get_subscription_status` デフォルト `None`）
-  - [ ] **OP-083-C** / **OP-083-D**: 未着手（Federation 後）
+- [x] **OP-083**: **Commerce レイヤー技術負債 v3.4** — **B→A→C→D ✅ 2026-07-20**。実行正本: [`op083_cd_x402_plan.md`](docs/roadmaps/op083_cd_x402_plan.md)。ゲート再定義（Q2+SC、ADR-053 非ブロッカー）。**日次0=無制限化禁止** 維持。broadcast / AiomeCoin 置換なし
+  - [x] **OP-083-B**: Phase 2 spend_guard — **2026-07-13 完了**
+  - [x] **OP-083-A**: Phase 1 supertrait — **2026-07-13 完了**
+  - [x] **OP-083-C**: AgentWallet + Vault `X402_SIGNER_KEY` + 実署名 + Factory + DI — **2026-07-20 完了**
+  - [x] **OP-083-D**: `OnChainAmount` / `currency.rs` — **2026-07-20 完了**
 - [x] **OP-010**: Stripe Customer Portal 統合 — クレート追加、ポータル URL 生成エンドポイント新設（2026-05-28、HANDOVER.md P1-1）→ **2026-07-06 クローズ**（R2-5 照合: 実 Stripe Billing Portal API 実装済み。ADR-051）
 - [ ] **OP-011**: `execute_autonomous_purchase` の封印解除 — Nurture /internal/purchase へのプロキシ実装（2026-05-28、HANDOVER.md P1-4）→ **R3-3 リリース判定（2026-07-06）: Public Beta では封印維持。自律購買（実通貨 A2C 購入）はポストリリーススコープ。コード変更なし**。**OP-086 後回し**
 - [x] **OP-012**: PostgreSQL 本番環境での統合デプロイ検証（BAN 統合含む）→ **2026-07-06 完了**（R3-1: `docker-compose.production-verify.yml` + `scripts/verify-production-postgres.sh` + `postgres_production_verify.rs` — 3 DB マイグレーション + BAN ラウンドトリップ）
@@ -49,7 +52,7 @@
 
 ## 🟡 P2 / 継続課題（技術的負債は REMAINING_TASKS.md 2026-07-02 版から吸収）
 
-- [ ] **OP-020**: Phase 2b（Tauri シェル）、Phase 4（経済接続）、Phase 5（Federation）未着手（2026-06-10、ロードマップ参照）
+- [ ] **OP-020**: Phase 2b（Tauri シェル）✅ / Phase 4（経済接続）✅（CHANGELOG 根拠）。**Phase 5 製品 P2P 残**は要再定義（Federation **transport**=ADR-053 ✅。implementation_plan Phase 5=Cognitive Observability と番号衝突注意）。OP-083-C のブロッカーではない
 - [ ] **OP-021**: BAN 管理ダッシュボード UI の設計検討（2026-05-22）
 - [ ] **OP-022**: CausalVisualizer（Trajectory Graph の UI 可視化）未着手（MEMORY.md Blind Spots より）
 - [x] **OP-024**: `tool_call_router.rs` 課金チェックの Fail-Closed 化（DB エラーを握り潰さず明示拒否）（MEMORY.md Phase 48 より）→ **2026-07-09 完了**（`get_setting_value` Err 時に MCP ツール拒否 + Negative テスト）
@@ -58,7 +61,7 @@
 - [x] **OP-028**: フロントエンド `as any` 型キャスト4箇所の解消（WorkflowBuilder.tsx ×3, workflowConverter.ts ×1）→ **2026-07-05 完了**（release_master_plan R1-14）
 - [x] **OP-029**: `biome-popup-entry.tsx` HEX → `var(--bg-base)` + ゲート `extra_files` 追加 + html transparent → **2026-07-10 完了**（`test_ui_hex_violations.py` GREEN）
 - [x] **OP-050**: `skills/mod.rs`（1,134行）God Module の責務分解 → 2026-07-03 完了（599行に縮小、code_mode.rs / host_fns.rs / types.rs へ分離。refactor/skills-god-module ブランチ）
-- [ ] **OP-051**: Error 3 階層 — **ADR-054 起草済み**（`docs/decisions/054-error-hierarchy.md` Proposed）。コード一括置換は承認後（2026-07-02）
+- [x] **OP-051**: Error 3 階層 — **ADR-054 Accepted + P1–P4 ✅ 2026-07-20**（[`054-error-hierarchy.md`](docs/decisions/054-error-hierarchy.md) / [`op051_error_hierarchy_plan.md`](docs/roadmaps/op051_error_hierarchy_plan.md)）。契約トレイト `AiomeError` 化 / FactoryReset+subsystem `From` / 境界 anyhow 選択 map（`AppError::internal` 不透明・`QuarantineStore`）。一括置換なし。NurtureError core `From` は延期
 - [x] **OP-052**: `deep-scan.sh` CRATES 設定修正（廃止済み `apps/watchtower` の除外）→ **2026-07-05 完了**（release_master_plan R1-15）
 - [x] **OP-053**: `skills/mod.rs` L163 `unwrap_or_else(|_| loop {})` の安全なエラー伝搬への修正（Dim 10 違反） → 2026-07-03 完了（DUMMY_REGEX 削除、`LazyLock<Option<Regex>>` 化）
 - [x] **OP-054**: JobQueue 補助 API 可視性（`with_llm` / `get_embedding_provider` → `pub(crate)`）→ **2026-07-10 完了**（計画 v1.3。契約ギャップ DI は除外）

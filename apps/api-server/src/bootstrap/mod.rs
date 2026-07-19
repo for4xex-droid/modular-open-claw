@@ -99,6 +99,8 @@ pub struct CoreServicesResult {
     pub wasm_skill_manager: Arc<infrastructure::skills::WasmSkillManager>,
     pub skill_forge: Arc<infrastructure::skills::forge::SkillForge>,
     pub commerce_engine: Option<Arc<dyn aiome_core_contracts::commerce::CommerceEngine>>,
+    /// OP-083-C: optional DI for x402 (None if env not configured — boot continues).
+    pub x402_negotiator: Option<Arc<dyn aiome_core_contracts::X402Negotiator>>,
     pub api_server_secret: Arc<secrecy::SecretString>,
     pub federation_secret: Option<Arc<secrecy::SecretString>>,
     pub gift_engine: Arc<dyn aiome_core_contracts::commerce::GiftEngine>,

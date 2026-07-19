@@ -6,6 +6,7 @@
  */
 
 use aiome_core_contracts::ekyc::{EkycEngine, EkycSession};
+use aiome_core_contracts::error::AiomeError;
 use async_trait::async_trait;
 use secrecy::{ExposeSecret, Secret};
 use tracing::{error, info};
@@ -32,7 +33,7 @@ impl StripeEkycEngine {
 
 #[async_trait]
 impl EkycEngine for StripeEkycEngine {
-    async fn create_verification_session(&self, user_id: &str) -> anyhow::Result<EkycSession> {
+    async fn create_verification_session(&self, user_id: &str) -> Result<EkycSession, AiomeError> {
         info!(
             "💳 [eKYC] Creating real Stripe Identity session for user: {}",
             user_id
@@ -53,24 +54,37 @@ impl EkycEngine for StripeEkycEngine {
                 .send(),
         )
         .await
-        .map_err(|_| anyhow::anyhow!("Stripe API timeout"))??;
+        .map_err(|_| AiomeError::RemoteServiceTimeout { timeout_secs: 10 })?
+        .map_err(|e| AiomeError::NetworkError {
+            reason: e.to_string(),
+        })?;
 
         if !resp.status().is_success() {
-            let error_text = resp.text().await?;
+            let error_text = resp.text().await.map_err(|e| AiomeError::NetworkError {
+                reason: e.to_string(),
+            })?;
             error!("💳 [eKYC] Stripe API error: {}", error_text);
-            return Err(anyhow::anyhow!("Stripe API error: {}", error_text));
+            return Err(AiomeError::RemoteServiceExecutionFailed {
+                reason: format!("Stripe API error: {error_text}"),
+            });
         }
 
-        let json: serde_json::Value = resp.json().await?;
-        let url = json
-            .get("url")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Stripe response missing 'url'"))?;
+        let json: serde_json::Value = resp.json().await.map_err(|e| AiomeError::NetworkError {
+            reason: e.to_string(),
+        })?;
+        let url =
+            json.get("url")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| AiomeError::Validation {
+                    reason: "Stripe response missing 'url'".to_string(),
+                })?;
 
-        let session_id = json
-            .get("id")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Stripe response missing 'id'"))?;
+        let session_id =
+            json.get("id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| AiomeError::Validation {
+                    reason: "Stripe response missing 'id'".to_string(),
+                })?;
 
         Ok(EkycSession {
             url: url.to_string(),
@@ -78,7 +92,7 @@ impl EkycEngine for StripeEkycEngine {
         })
     }
 
-    async fn check_status(&self, user_id: &str) -> anyhow::Result<bool> {
+    async fn check_status(&self, user_id: &str) -> Result<bool, AiomeError> {
         info!(
             "💳 [eKYC] Checking verification status for user: {}",
             user_id
@@ -94,13 +108,18 @@ impl EkycEngine for StripeEkycEngine {
                 .send(),
         )
         .await
-        .map_err(|_| anyhow::anyhow!("Stripe API timeout"))??;
+        .map_err(|_| AiomeError::RemoteServiceTimeout { timeout_secs: 10 })?
+        .map_err(|e| AiomeError::NetworkError {
+            reason: e.to_string(),
+        })?;
 
         if !resp.status().is_success() {
             return Ok(false);
         }
 
-        let json: serde_json::Value = resp.json().await?;
+        let json: serde_json::Value = resp.json().await.map_err(|e| AiomeError::NetworkError {
+            reason: e.to_string(),
+        })?;
         let is_verified = json
             .get("data")
             .and_then(|d| d.as_array())
@@ -120,14 +139,14 @@ pub struct MockEkycEngine;
 #[cfg(any(test, debug_assertions, feature = "dev-mock"))]
 #[async_trait]
 impl EkycEngine for MockEkycEngine {
-    async fn create_verification_session(&self, _user_id: &str) -> anyhow::Result<EkycSession> {
+    async fn create_verification_session(&self, _user_id: &str) -> Result<EkycSession, AiomeError> {
         Ok(EkycSession {
             url: "https://example.com/mock-verify-success".to_string(),
             session_id: "vs_mock_123".to_string(),
         })
     }
 
-    async fn check_status(&self, user_id: &str) -> anyhow::Result<bool> {
+    async fn check_status(&self, user_id: &str) -> Result<bool, AiomeError> {
         if user_id.contains("unverified") {
             Ok(false)
         } else {

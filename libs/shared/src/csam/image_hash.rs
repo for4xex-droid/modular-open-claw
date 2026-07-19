@@ -109,6 +109,17 @@ impl ImageHasher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aiome_core_contracts::error::AiomeError;
+
+    #[test]
+    fn csam_error_into_aiome_maps_hash_error() {
+        let err: AiomeError = CsamError::HashError.into();
+        assert!(matches!(
+            err,
+            AiomeError::Infrastructure { reason }
+                if reason.contains("CSAM") || reason.contains("Hash")
+        ));
+    }
 
     #[test]
     fn test_hash_consistency() {

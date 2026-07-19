@@ -192,6 +192,16 @@ impl From<ProportionError> for aiome_core_contracts::error::AiomeError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aiome_core_contracts::error::AiomeError;
+
+    #[test]
+    fn proportion_error_into_aiome_maps_too_young_to_security_violation() {
+        let err: AiomeError = ProportionError::TooYoung(4.0).into();
+        assert!(matches!(
+            err,
+            AiomeError::SecurityViolation { reason } if reason.to_lowercase().contains("young")
+        ));
+    }
 
     #[test]
     fn test_valid_adult_avatar() {

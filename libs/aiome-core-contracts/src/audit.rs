@@ -6,6 +6,8 @@
  */
 use async_trait::async_trait;
 
+use crate::error::AiomeError;
+
 /// 共通監査ロガーインターフェース
 #[async_trait]
 pub trait AuditLogger: Send + Sync {
@@ -15,7 +17,7 @@ pub trait AuditLogger: Send + Sync {
         event_type: &str,
         actor: &str,
         details: &serde_json::Value,
-    ) -> anyhow::Result<()>;
+    ) -> Result<(), AiomeError>;
 
     /// セキュリティ違反や不正アクセスの記録
     async fn log_violation(
@@ -23,5 +25,5 @@ pub trait AuditLogger: Send + Sync {
         violation_type: &str,
         description: &str,
         context: &serde_json::Value,
-    ) -> anyhow::Result<()>;
+    ) -> Result<(), AiomeError>;
 }

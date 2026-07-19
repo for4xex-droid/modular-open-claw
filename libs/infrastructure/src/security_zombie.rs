@@ -216,6 +216,20 @@ pub async fn run_with_timeout_vec(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aiome_core_contracts::error::AiomeError;
+
+    #[test]
+    fn process_error_into_aiome_maps_timeout() {
+        let err: AiomeError = ProcessError::TimedOut {
+            command: "test".into(),
+            timeout_secs: 5,
+        }
+        .into();
+        assert!(matches!(
+            err,
+            AiomeError::RemoteServiceTimeout { timeout_secs: 5 }
+        ));
+    }
 
     #[tokio::test]
     async fn test_successful_command() {

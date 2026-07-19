@@ -1157,8 +1157,9 @@ classDiagram
     note for CommerceEngine "FiatPaymentRails + Web3PaymentRails supertrait\n(OP-083-A)。Arc~dyn CommerceEngine~ 維持\n日次/月次合成は nurture_core::spend_guard"
     note for LlmProvider "Aiome OSS 側で定義・実装\nNURTUREは触れない"
     note for IdempotencyStore "Sprint D: Webhook 冪等性 (48h TTL)"
-```,StartLine:958,TargetContent:
 ```
+
+> **OP-083-C/D (2026-07-20)**: `X402ClientFactory` は `CommerceEngineFactory` と分離。api-server `AppState.x402_negotiator: Option<Arc<dyn X402Negotiator>>`。`AgentWallet`（署名のみ・broadcast 禁止）/ Vault `X402_SIGNER_KEY` / `OnChainAmount`（u64↔U256）。正本: [`op083_cd_x402_plan.md`](../roadmaps/op083_cd_x402_plan.md)。
 
 ---
 

@@ -99,6 +99,8 @@ pub struct AppState {
         Component<Arc<tokio::sync::RwLock<std::collections::HashMap<String, u32>>>>,
     pub security_policy: SecurityPolicy,
     pub commerce_engine: Component<Arc<dyn CommerceEngine>>,
+    /// Optional x402 negotiator (OP-083-C). `None` when `X402_RPC_URL` / signer unset.
+    pub x402_negotiator: Component<Option<Arc<dyn aiome_core_contracts::X402Negotiator>>>,
     pub circuit_breaker: Component<Arc<CircuitBreaker>>,
     pub rate_limiter: Component<AgentRateLimiter>,
     pub slo_engine: Component<Arc<SloEngine>>,

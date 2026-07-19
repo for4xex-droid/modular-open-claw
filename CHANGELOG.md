@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+### Added (OP-083-C/D 2026-07-20)
+- **OP-083-C/D 実行正本**: [`docs/roadmaps/op083_cd_x402_plan.md`](docs/roadmaps/op083_cd_x402_plan.md) v1.0 — 「Federation」混線を解消。着手ゲート=Q2（`base-sepolia` + `X402_RPC_URL`）+ SC。ADR-053 transport は非ブロッカー。C は実署名まで（broadcast 禁止）。
+- **commerce 計画 v3.4**: ゲート再定義。OPEN / hardening C2 / foolproof / value_10x F-5 / implementation_plan 同期。
+- **OP-083-C**: `AgentWallet`、Vault `X402_SIGNER_KEY`（`ALLOWED_VAULT_SECRETS`）、`X402Client` EIP-191 実署名（モック tx 廃止）、`X402ClientFactory`（CommerceEngineFactory 分離）、api-server `x402_negotiator` DI。
+- **OP-083-D**: `OnChainAmount` + `currency.rs`（u64↔U256、オーバーフロー Negative）。AiomeCoin 非置換。
+- **/reflexion (OP-083-C)**: env から読んだ `X402_SIGNER_KEY` を即 `scrub_env`。鍵解決を `AgentWallet::resolve_from_env_or_keychain` に一本化。`X402Error`→`AiomeError` を不透明化（予算額・不正ヘッダ詳細をクライアントに出さない）。
+- **/reflexion (OP-083-C/D Round 2)**: `X-Payment-Recipient` 必須+Address 検証、`X-Payment-Network` をクライアント設定値に pin、価格を `OnChainAmount` 経由、空 `rpc_url` fail-closed、`resolve_x402_network` DRY。env 変更テストを `serial_test` で競合排除。
+- **/reflexion (OP-083-C/D Round 3)**: Q2 ネットワークを `base-sepolia` に固定（mainnet 等拒否）。RPC を http(s) のみ許可。recipient `Address::ZERO` 拒否。missing network / 不正 RPC Negative 追加。
+
+### Added (OP-051 / ADR-054 2026-07-20)
+- **ADR-054 Accepted**: Error 3 階層 Decision を Accepted に。一括置換禁止・Safety-Critical エラー面は Out of scope。
+- **OP-051 実装計画 v1.0**: [`docs/roadmaps/op051_error_hierarchy_plan.md`](docs/roadmaps/op051_error_hierarchy_plan.md) — P1–P4 段階実装（フェーズごとに「実装しろ」必須）。
+- **OP-051 P1**: `EkycEngine` / `EkycSessionStore` / `AuditLogger` / `X402Negotiator` の公開戻りを `Result<_, AiomeError>` に。impl（commerce ekyc/x402、infrastructure audit）は境界で map。一括 anyhow 置換なし。
+- **OP-051 P2**: `FactoryResetError` → `AiomeError`（`shared::bootstrap_detector`）。api-server `AppError` は `From` 委譲に整理（HTTP セマンティクス維持）。
+- **OP-051 P3**: `SoulError` の AppError 並列 map を廃止し crate `From` に委譲（`InvalidTransition` → `Validation`）。Loader/Proportion/Process/Csam は境界セマンティクスの unit テストを追加。
+- **OP-051 P4（完了）**: `AppError::internal` をクライアント不透明化（詳細は tracing のみ）。`QuarantineStore` → `Result<_, AiomeError>`。audit/cortex/expression/skill/avatar の境界リークを選択修正。Negative: `test_internal_opaque_does_not_leak_db_details`。auth/webhook/Vault/BanStore は未変更。
+
 ### Added (OP-086 Wave D 2026-07-19)
 - **Wave D 本番クローズ**: key-proxy イメージ再ビルド + `--force-recreate --no-deps` 適用。Vault DB サイズ維持（12288 bytes）、configured=17/18、`stripe_set=True`。A1 本番 poller `Unauthenticated` 0。B1 401 スモーク PASS。
 - **compose key-proxy `CELL_ID`**: 再ビルド後 `AppDataResolver` 必須化に伴い `CELL_ID=${CELL_ID:-cell-0}` を key-proxy environment に追加（recreate クラッシュループ解消）。

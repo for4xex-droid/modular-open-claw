@@ -115,18 +115,16 @@ Deep Audit v2 で発見された **Federation 層のハリボテ化**、**scrub_
 ## 🙋 Open Questions
 
 > [!IMPORTANT]
-> ### Federation 実装のスコープ決定
+> ### Federation 実装のスコープ決定（歴史注記）
 >
-> Phase 4 (Biome Reputation) は Federation 基盤の上に乗る設計ですが、現在 Federation 層は**ハリボテ**です。
+> **2026-07-09 ADR-053 Accepted**: `FederationOps` export/import/peer sync は本番実装として追認済み（「ハリボテ」記述は陳腐化）。Open Question (A) の **transport 層**は充足。
 >
-> **(A) Phase 4 で Federation import/sync を本実装する**
-> - 工数: +1週。P2P Hub の完全な Karma 同期が可能になるが、v1.0.0 のスケジュールに影響する可能性。
+> 残る製品作業（Soul Sync / Reputation 上乗せ等）は transport と別スコープ。**OP-083-C/D（x402）のブロッカーではない** — 正本: [`op083_cd_x402_plan.md`](op083_cd_x402_plan.md)。
 >
-> **(B) v1.0.0 はローカルノードのみの Reputation として設計する**
-> - 工数: 変動なし。Federation は v1.1.0 以降にスコープ。ただし Samsara Hub の役割が限定的になる。
->
-> **(C) Federation export のみを維持し、import は手動承認（管理コンソール経由）で代替する**
-> - 工数: +2-3日。完全自動同期は後回しだが、管理者が手動でノード間の Karma を統合できる。
+> 旧選択肢（記録用）:
+> **(A)** Phase 4 で import/sync 本実装 → transport は ADR-053 で充足  
+> **(B)** ローカルのみ Reputation  
+> **(C)** export 維持 + import 手動承認
 
 ---
 

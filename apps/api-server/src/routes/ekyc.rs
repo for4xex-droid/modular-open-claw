@@ -48,8 +48,7 @@ pub async fn create_ekyc_session_handler(
     state
         .ekyc_session_store
         .save(&auth.agent_id.to_string(), &session.session_id)
-        .await
-        .map_err(|e| AppError::internal(format!("Failed to save EKYC session: {}", e)))?;
+        .await?;
 
     Ok(Json(EkycSessionResponse {
         session_url: session.url,

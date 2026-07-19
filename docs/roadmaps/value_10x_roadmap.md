@@ -123,7 +123,7 @@ Horizon 3: プラットフォーム化（v2.0〜）
   2. 中継ノード（samsara-hub）上でペイロードが常に暗号化されており、平文の Soul データが hub のログ・DB に存在しないことを検査するテストがある。
   3. 同一 Experience の二重適用が冪等に処理される（重複同期 Negative Test）。
   4. ペアリング解除後、相手端末からの同期要求が拒否される。
-- **依存**: **Federation スコープ決定（implementation_plan.md Open Question で (A) 本実装の採択）が必須**。未決なら本機能は着手しない。
+- **依存**: **ADR-053（Federation transport ✅）+ 本機能の製品 DoD**（差分同期・ペアリング UI 等）。OP-083-C/D（x402）とは無関係・非ブロッカー。implementation_plan 旧 Open Question「ハリボテ」は陳腐化（ADR-053 参照）。
 
 ### F-6 Proof of Agent Work — 検証可能な作業証明
 

@@ -15,7 +15,6 @@ use aiome_core::error::AiomeError;
 use aiome_core_contracts::contracts::QuarantinedAsset;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tracing::{error, info};
 
 /// 検疫理由
@@ -42,6 +41,13 @@ pub enum QuarantineStatus {
     Deleted,
 }
 
+fn quarantine_boundary_err(context: &str, err: impl std::fmt::Display) -> AiomeError {
+    error!("[Quarantine] {}: {}", context, err);
+    AiomeError::Infrastructure {
+        reason: "Quarantine store operation failed".to_string(),
+    }
+}
+
 /// アセット検疫の永続化インターフェース
 #[async_trait]
 pub trait QuarantineStore: Send + Sync {
@@ -51,13 +57,13 @@ pub trait QuarantineStore: Send + Sync {
         asset_name: &str,
         image_hash: &str,
         reason: AssetReason,
-    ) -> anyhow::Result<String>;
+    ) -> Result<String, AiomeError>;
     /// 検疫済みアセットのチェック
-    async fn is_quarantined(&self, image_hash: &str) -> anyhow::Result<bool>;
+    async fn is_quarantined(&self, image_hash: &str) -> Result<bool, AiomeError>;
     /// アセットの解放（検疫解除）
-    async fn release_asset(&self, id: &str) -> anyhow::Result<()>;
+    async fn release_asset(&self, id: &str) -> Result<(), AiomeError>;
     /// 検疫アセットの一覧取得
-    async fn list_assets(&self) -> anyhow::Result<Vec<QuarantinedAsset>>;
+    async fn list_assets(&self) -> Result<Vec<QuarantinedAsset>, AiomeError>;
 }
 
 /// Universal (SQLite/PostgreSQL) implementation for QuarantineStore
@@ -79,10 +85,12 @@ impl QuarantineStore for UniversalQuarantineStore {
         asset_name: &str,
         image_hash: &str,
         reason: AssetReason,
-    ) -> anyhow::Result<String> {
+    ) -> Result<String, AiomeError> {
         let id = uuid::Uuid::new_v4().to_string();
-        let reason_str = serde_json::to_string(&reason)?;
-        let status = serde_json::to_string(&QuarantineStatus::Quarantined)?;
+        let reason_str = serde_json::to_string(&reason)
+            .map_err(|e| quarantine_boundary_err("serialize reason", e))?;
+        let status = serde_json::to_string(&QuarantineStatus::Quarantined)
+            .map_err(|e| quarantine_boundary_err("serialize status", e))?;
 
         let q = format!(
             "INSERT INTO quarantined_assets (id, asset_name, image_hash, reason, status) VALUES ({0}, {1}, {2}, {3}, {4})",
@@ -90,7 +98,7 @@ impl QuarantineStore for UniversalQuarantineStore {
         );
 
         sql_exec!(&self.pool, &q, &id, asset_name, image_hash, reason_str, status)
-            .map_err(|e| anyhow::anyhow!(e))?;
+            .map_err(|e| quarantine_boundary_err("insert asset", e))?;
 
         info!(
             "🛡️ [Quarantine] Asset quarantined: {} (Hash: {})",
@@ -99,55 +107,59 @@ impl QuarantineStore for UniversalQuarantineStore {
         Ok(id)
     }
 
-    async fn is_quarantined(&self, image_hash: &str) -> anyhow::Result<bool> {
+    async fn is_quarantined(&self, image_hash: &str) -> Result<bool, AiomeError> {
         let q = format!(
             "SELECT id FROM quarantined_assets WHERE image_hash = {} AND status = {}",
             self.pool.ph(0),
             self.pool.ph(1)
         );
-        let status = serde_json::to_string(&QuarantineStatus::Quarantined)?;
+        let status = serde_json::to_string(&QuarantineStatus::Quarantined)
+            .map_err(|e| quarantine_boundary_err("serialize status", e))?;
 
         let res: Option<String> = match &self.pool {
-            DatabasePool::Sqlite(p) => {
-                sqlx::query_scalar(&q)
-                    .bind(image_hash)
-                    .bind(&status)
-                    .fetch_optional(p)
-                    .await?
-            }
-            DatabasePool::Postgres(p) => {
-                sqlx::query_scalar(&q)
-                    .bind(image_hash)
-                    .bind(&status)
-                    .fetch_optional(p)
-                    .await?
-            }
+            DatabasePool::Sqlite(p) => sqlx::query_scalar(&q)
+                .bind(image_hash)
+                .bind(&status)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| quarantine_boundary_err("is_quarantined query", e))?,
+            DatabasePool::Postgres(p) => sqlx::query_scalar(&q)
+                .bind(image_hash)
+                .bind(&status)
+                .fetch_optional(p)
+                .await
+                .map_err(|e| quarantine_boundary_err("is_quarantined query", e))?,
         };
 
         Ok(res.is_some())
     }
 
-    async fn release_asset(&self, id: &str) -> anyhow::Result<()> {
-        let status = serde_json::to_string(&QuarantineStatus::Released)?;
+    async fn release_asset(&self, id: &str) -> Result<(), AiomeError> {
+        let status = serde_json::to_string(&QuarantineStatus::Released)
+            .map_err(|e| quarantine_boundary_err("serialize status", e))?;
         let q = format!(
             "UPDATE quarantined_assets SET status = {} WHERE id = {}",
             self.pool.ph(0),
             self.pool.ph(1)
         );
 
-        sql_exec!(&self.pool, &q, status, id).map_err(|e| anyhow::anyhow!(e))?;
+        sql_exec!(&self.pool, &q, status, id)
+            .map_err(|e| quarantine_boundary_err("release asset", e))?;
 
         info!("🔓 [Quarantine] Asset released: {}", id);
         Ok(())
     }
 
-    async fn list_assets(&self) -> anyhow::Result<Vec<QuarantinedAsset>> {
+    async fn list_assets(&self) -> Result<Vec<QuarantinedAsset>, AiomeError> {
         use sqlx::Row;
         let q = "SELECT id, asset_name, image_hash, reason, status, uploaded_at FROM quarantined_assets ORDER BY uploaded_at DESC";
 
         match &self.pool {
             DatabasePool::Sqlite(p) => {
-                let rows = sqlx::query(q).fetch_all(p).await?;
+                let rows = sqlx::query(q)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| quarantine_boundary_err("list_assets query", e))?;
                 let assets = rows
                     .into_iter()
                     .map(|row| QuarantinedAsset {
@@ -162,7 +174,10 @@ impl QuarantineStore for UniversalQuarantineStore {
                 Ok(assets)
             }
             DatabasePool::Postgres(p) => {
-                let rows = sqlx::query(q).fetch_all(p).await?;
+                let rows = sqlx::query(q)
+                    .fetch_all(p)
+                    .await
+                    .map_err(|e| quarantine_boundary_err("list_assets query", e))?;
                 let assets = rows
                     .into_iter()
                     .map(|row| QuarantinedAsset {
@@ -192,19 +207,19 @@ impl QuarantineStore for MockQuarantineStore {
         _asset_name: &str,
         _image_hash: &str,
         _reason: AssetReason,
-    ) -> anyhow::Result<String> {
+    ) -> Result<String, AiomeError> {
         Ok("mock-quarantine-id".to_string())
     }
 
-    async fn is_quarantined(&self, _image_hash: &str) -> anyhow::Result<bool> {
+    async fn is_quarantined(&self, _image_hash: &str) -> Result<bool, AiomeError> {
         Ok(false)
     }
 
-    async fn release_asset(&self, _id: &str) -> anyhow::Result<()> {
+    async fn release_asset(&self, _id: &str) -> Result<(), AiomeError> {
         Ok(())
     }
 
-    async fn list_assets(&self) -> anyhow::Result<Vec<QuarantinedAsset>> {
+    async fn list_assets(&self) -> Result<Vec<QuarantinedAsset>, AiomeError> {
         Ok(vec![])
     }
 }
@@ -251,5 +266,22 @@ mod tests {
 
         // 5. No longer quarantined
         assert!(!store.is_quarantined(hash).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn quarantine_boundary_err_is_opaque() {
+        let err = quarantine_boundary_err(
+            "insert asset",
+            "sqlx::Error: UNIQUE constraint failed host=db.internal.prod",
+        );
+        match err {
+            AiomeError::Infrastructure { reason } => {
+                assert_eq!(reason, "Quarantine store operation failed");
+                assert!(!reason.contains("sqlx"));
+                assert!(!reason.contains("UNIQUE"));
+                assert!(!reason.contains("db.internal"));
+            }
+            other => panic!("Expected Infrastructure, got {:?}", other),
+        }
     }
 }

@@ -1,10 +1,10 @@
-# Commerce レイヤー技術負債解消計画 v3.3（/perfect-plan 三度目検証済）
+# Commerce レイヤー技術負債解消計画 v3.4（/perfect-plan 三度目検証済 + C/D ゲート再定義）
 
 > **作成**: 2026-07-13（ユーザー案 v3）  
-> **改訂**: v3.2 → **v3.3**（日次/月次の 0 セマンティクス分離・表示 API 7 箇所目・policy コメント）  
-> **ステータス**: **計画化のみ** — 実装は Safety-Critical 承認後・フェーズ単位  
-> **正本 ID**: OPEN **OP-083**（B→A 先行、C/D=Federation 後）  
-> **非目標**: OP-011 封印解除、compose への Stripe 秘密追加、Nurture `STRIPE_SECRET_KEY` リネーム、`keyring` 導入、AiomeCoin 置換、**月次上限の新機能再発明（ADR-050 / OP-059 済）**、**日次 0 を無制限に変えること**
+> **改訂**: v3.2 → **v3.3**（日次/月次 0 分離）→ **v3.4**（2026-07-20: C/D ゲートを Q2+SC に再定義。Federation transport=ADR-053 済みは非ブロッカー）  
+> **ステータス**: B/A ✅。C/D 実行正本: [`op083_cd_x402_plan.md`](op083_cd_x402_plan.md)  
+> **正本 ID**: OPEN **OP-083**（B→A 先行、C/D=Q2+SC）  
+> **非目標**: OP-011 封印解除、compose への Stripe 秘密追加、Nurture `STRIPE_SECRET_KEY` リネーム、`keyring` 導入、AiomeCoin 置換、**月次上限の新機能再発明（ADR-050 / OP-059 済）**、**日次 0 を無制限に変えること**、**オンチェーン実送金 broadcast（C スコープ外）**
 
 ---
 
@@ -12,7 +12,7 @@
 
 ### 0.1〜0.2（v3.1 / v3.2 要約）
 
-構造・GiftEngine 兄弟 trait・ADR-050 硬化・verify→Fiat・CoinWallet 非変更・Federation ゲートは v3.2 までで確定。
+構造・GiftEngine 兄弟 trait・ADR-050 硬化・verify→Fiat・CoinWallet 非変更は v3.2 までで確定。
 
 ### 0.3 v3.3（再々検証 MUST-FIX）
 
@@ -23,6 +23,13 @@
 | SF-5 | `daily_spend_limit` の 0 意味が policy 未注釈 | Phase 2 で `EconomyPolicy` に日次 0=全拒否をコメント追記 |
 
 **総合**: ✅ **PASS** — MF-1 反映後、実装可能。推奨着手 **OP-083-B**。
+
+### 0.4 v3.4（C/D ゲート再定義 2026-07-20）
+
+| # | 欠陥 | 修正 |
+|---|------|------|
+| **MF-F** | 「Federation 後」が ADR-053 transport・OP-020 P5・Q2 を混同 | C/D 着手条件 = **Q2（base-sepolia + `X402_RPC_URL`）+「OP-083-Cn を実装しろ」**。ADR-053 は前提済・非ブロッカー |
+| — | 実行手順の正本が commerce v3 に埋もれる | [`op083_cd_x402_plan.md`](op083_cd_x402_plan.md) を C/D 実行正本とする |
 
 ---
 
@@ -169,43 +176,47 @@ Phase 2 完了後。
 
 ---
 
-## 4. Phase 3 — x402（OP-083-C）⚠ Federation 後
+## 4. Phase 3 — x402（OP-083-C）⚠ Q2 + SC
+
+**実行正本**: [`op083_cd_x402_plan.md`](op083_cd_x402_plan.md)
 
 | 出典 | 方針 |
 |------|------|
-| CHANGELOG | EVM を Federation Phase に再分類済 |
-| foolproof Watch | X402 本番鍵は Federation 後 |
-| 本計画 | B/A と独立。Federation 前提まで着手しない |
+| ADR-053 | Federation **transport** は済み。C の技術前提ではない |
+| Q2 | Network=`base-sepolia`、RPC=`X402_RPC_URL`（未設定 fail-closed） |
+| 本計画 | B/A と独立。着手は Q2 確定 +「OP-083-C を実装しろ」 |
 
 ### 実装（ゲート解除後）
 
 1. `AgentWallet`（空 `wallet/mod.rs`）。Nurture `CoinWallet` とは別レイヤー。
-2. 秘密鍵（`JWT_PRIVATE_KEY_B64` と同型の Vault 先例あり）: **Vault `X402_SIGNER_KEY`（ALLOWED_VAULT_SECRETS 追加）** → 注入後 env → macOS `get_keychain_secret`。`x402.rs` L57 の Keychain TODO を本階層で解消。
-3. `negotiate` 実署名。alloy 依存は **既存**（新規 crate 不要）。
+2. 秘密鍵: **Vault `X402_SIGNER_KEY`（ALLOWED_VAULT_SECRETS 追加）** → 注入後 env → macOS `get_keychain_secret`。`keyring` crate 禁止。
+3. `negotiate` **実署名**（broadcast しない）。alloy 依存は既存。
 4. `X402ClientFactory`（CommerceEngineFactory と分離）。
-5. `.env.example` / ARCHITECTURE / SYNERGY。
-6. OP-011 と直交（fiat A2C プロキシではない）。OP-080〜082（LLM）とは **偽依存なし**。
+5. api-server に `Arc<dyn X402Negotiator>` DI 最低1箇所。
+6. `.env.example` / ARCHITECTURE / SYNERGY / RIPPLE。
+7. OP-011 と直交。OP-080〜082 とは偽依存なし。
 
-**Open**: Q2 チェーン/RPC。Q1 ADR-052 政策 OK・法務メモ推奨。
+**Q1**: ADR-052 政策 OK（オフランプなし）・法務メモ推奨。
 
 ---
 
 ## 5. Phase 4 — u64↔U256（OP-083-D）
 
-`OnChainAmount` / `currency.rs` 変換ヘルパのみ。`AiomeCoin` 置換禁止。Phase 3 直後・Federation 後。
+`OnChainAmount` / `currency.rs` 変換ヘルパのみ。`AiomeCoin` 置換禁止。Phase 3 直後。正本: [`op083_cd_x402_plan.md`](op083_cd_x402_plan.md)。
 
 ---
 
 ## 6. 実施順
 
 ```
-OP-083-B  spend_guard（日次/月次分離・7箇所）  ← Public Beta 並行可
+OP-083-B  spend_guard（日次/月次分離・7箇所）  ← ✅
     →
-OP-083-A  supertrait + 8 impl                  ← SC 承認
+OP-083-A  supertrait + 8 impl                  ← ✅
     →
-[Federation ゲート]
-OP-083-C  x402 + Vault + AgentWallet
+[Q2: base-sepolia + X402_RPC_URL] + 「OP-083-C を実装しろ」
+OP-083-C  x402 + Vault + AgentWallet（署名まで・broadcast 禁止）
     →
+「OP-083-D を実装しろ」
 OP-083-D  OnChainAmount
 ```
 
@@ -238,7 +249,7 @@ OP-083-D  OnChainAmount
 
 - `keyring` / `ProviderType::X402` 混在 / AiomeCoin 置換
 - OP-011 解除 / compose への API キー
-- Federation 前の x402 実送金
+- x402 オンチェーン実送金 broadcast（C は署名のみ）
 - **月次上限の新機能**（ADR-050 再実装）
 - **日次 0 を無制限に統一**（現行 raw min / CoinWallet と衝突）
 - **`CoinWallet::check_daily_limit` のセマンティクス変更**
@@ -264,14 +275,14 @@ OP-083-D  OnChainAmount
 | **OP-083** | 親 | 本計画 | — |
 | **OP-083-B** | Phase 2 | spend_guard（日次/月次分離・**7 箇所**）= ADR-050 硬化 | SC 承認 |
 | **OP-083-A** | Phase 1 | supertrait + verify→Fiat + 8 impl | Phase 2 |
-| **OP-083-C** | Phase 3 | x402 + Vault + wallet | **Federation** |
+| **OP-083-C** | Phase 3 | x402 + Vault + wallet | **Q2 + SC**（[`op083_cd_x402_plan.md`](op083_cd_x402_plan.md)） |
 | **OP-083-D** | Phase 4 | u64↔U256 | Phase 3 |
 
 ```
 [x] Phase 2: daily/monthly 分離 API + 7 箇所 + escrow Negative + daily 0 拒否 Negative + CoinWallet 差分ゼロ — **2026-07-13**
 [x] Phase 1: supertrait + verify_signature→Fiat + 8 impl + commerce/webhook テスト — **2026-07-13**
-[ ] Federation ゲート（Q2）
-[ ] Phase 3: ALLOWED_VAULT_SECRETS + 実署名 + X402ClientFactory
-[ ] Phase 4: OnChainAmount（AiomeCoin 非置換）
-[ ] ARCHITECTURE / SYNERGY / .env.example / RIPPLE 同期
+[x] Q2 既定確定（base-sepolia + X402_RPC_URL）— **2026-07-20**（op083_cd_x402_plan.md）
+[x] Phase 3: ALLOWED_VAULT_SECRETS + 実署名 + X402ClientFactory + DI — **2026-07-20**
+[x] Phase 4: OnChainAmount（AiomeCoin 非置換）— **2026-07-20**
+[x] ARCHITECTURE / SYNERGY / .env.example / RIPPLE 同期 — **2026-07-20**
 ```

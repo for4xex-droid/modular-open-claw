@@ -135,6 +135,31 @@ pub async fn init_core_services(
         )
     };
 
+    // OP-083-C: X402ClientFactory is separate from CommerceEngineFactory.
+    // Fail-closed on create; missing env → None (do not abort api-server boot).
+    let x402_negotiator: Option<Arc<dyn aiome_core_contracts::X402Negotiator>> = {
+        let budget = aiome_core_contracts::U256::from(
+            std::env::var("X402_BUDGET_CAP")
+                .ok()
+                .and_then(|s| s.parse::<u64>().ok())
+                .unwrap_or(0),
+        );
+        match aiome_commerce::X402ClientFactory::create_from_env(budget) {
+            Ok(client) => {
+                tracing::info!("✅ [api-server] X402Negotiator wired (OP-083-C)");
+                Some(client)
+            }
+            Err(e) => {
+                // Do not echo secret-bearing env diagnostics to clients; log only.
+                tracing::info!(
+                    error = %e,
+                    "ℹ️ [api-server] X402Negotiator not configured; continuing without x402"
+                );
+                None
+            }
+        }
+    };
+
     let api_server_secret_raw = match std::env::var("API_SERVER_SECRET") {
         Ok(s) => {
             #[cfg(not(debug_assertions))]
@@ -903,6 +928,7 @@ pub async fn init_core_services(
         wasm_skill_manager,
         skill_forge,
         commerce_engine,
+        x402_negotiator,
         api_server_secret,
         federation_secret,
         gift_engine,

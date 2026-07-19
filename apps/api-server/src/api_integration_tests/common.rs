@@ -654,6 +654,7 @@ pub async fn create_test_server_with_limit(
         ))),
         security_policy: shared::security::SecurityPolicy::default(),
         commerce_engine: Component::new(commerce_engine.clone()),
+        x402_negotiator: Component::new(None),
         circuit_breaker: Component::new(Arc::new(
             infrastructure::circuit_breaker::CircuitBreaker::new(
                 "integration-test",

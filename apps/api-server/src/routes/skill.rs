@@ -254,22 +254,21 @@ pub async fn import_skill(
                 imported_skills.push(skill_name);
             }
             Err(e) => {
+                // OP-051 P4 / CWE-209: log raw detail; client gets skill name only.
                 error!(
                     "❌ [Vampire Attack] Failed to import skill '{}': {}",
                     skill_name, e
                 );
-                errors.push(format!("{}: {}", skill_name, e));
+                errors.push(format!("{}: import failed", skill_name));
             }
         }
     }
 
     if imported_skills.is_empty() && !errors.is_empty() {
-        return Err(
-            aiome_core::error::AiomeError::RemoteServiceExecutionFailed {
-                reason: format!("All skill imports failed: {:?}", errors),
-            }
-            .into(),
-        );
+        return Err(AppError::internal(format!(
+            "All skill imports failed ({} skills)",
+            errors.len()
+        )));
     }
 
     Ok(Json(serde_json::json!({

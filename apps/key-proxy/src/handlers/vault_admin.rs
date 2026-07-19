@@ -48,6 +48,7 @@ fn get_category(key: &str) -> &'static str {
         | "FEDERATION_SECRET"
         | "TIMESFM_AUTH_TOKEN"
         | "JWT_PRIVATE_KEY_B64" => "infrastructure",
+        "X402_SIGNER_KEY" => "commerce",
         _ => "unknown",
     }
 }
