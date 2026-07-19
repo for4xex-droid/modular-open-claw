@@ -9,9 +9,11 @@ Detailed documentation for the `aiome-commerce` crate.
 - `src/lib.rs`
 - `src/polar.rs`
 - `src/x402.rs`
+- `src/currency.rs`
 - `src/gift.rs`
 - `src/mock.rs`
 - `src/gig.rs`
+- `src/x402_factory.rs`
 - `src/syndicate.rs`
 - `src/splitter.rs`
 - `src/factory.rs`
