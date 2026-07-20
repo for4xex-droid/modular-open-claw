@@ -4,49 +4,39 @@
  *
  * Licensed under the Business Source License 1.1.
  */
+use axum::Router;
 use infrastructure::db::DatabasePool;
 use tracing::{error, info, Instrument};
 use uuid::Uuid;
 
 /// Nurture `/internal/coin-charge` へ 1 回だけ POST する（DLQ 書込なし）。
 pub async fn attempt_coin_charge_once(
-    http_client: &reqwest::Client,
     nurture_url: &str,
     secret: &str,
     oxilean_power: u32,
     payload: &serde_json::Value,
+    nurture_s2s: Option<&Router>,
 ) -> Result<(), String> {
-    let req_url = format!("{}/internal/coin-charge", nurture_url.trim_end_matches('/'));
-    let mut req = http_client
-        .post(&req_url)
-        .header("Authorization", format!("Bearer {secret}"))
-        .timeout(std::time::Duration::from_secs(30))
-        .json(payload);
-    let Some(cert) = aiome_core_contracts::oxilean::OxiLeanProofCertificate::generate_header(
+    crate::nurture_s2s::post_internal(
+        nurture_s2s,
+        Some(nurture_url),
+        secret,
         "aiome-edge-node",
         oxilean_power,
-        secret,
-    ) else {
-        return Err(format!(
-            "oxp_header_generation_failed for {req_url}; request denied (fail-closed)"
-        ));
-    };
-    req = req.header("X-OxiLean-Proof-Certificate", cert);
-    let res = req.send().await.map_err(|e| format!("network: {e}"))?;
-    if res.status().is_success() {
-        Ok(())
-    } else {
-        Err(format!("http {}", res.status()))
-    }
+        "/coin-charge",
+        Some(payload),
+        std::time::Duration::from_secs(30),
+    )
+    .await
 }
 
 // auth-exempt: Helper function (Not an endpoint)
 #[allow(clippy::too_many_arguments)]
 pub async fn enqueue_coin_charge_to_nurture(
-    http_client: reqwest::Client,
     dlq_pool: std::sync::Arc<DatabasePool>,
     nurture_url: Option<String>,
     nurture_secret: Option<String>,
+    nurture_s2s: Option<Router>,
     agent_uuid: Uuid,
     amount: u64,
     ev_id: String,
@@ -70,11 +60,11 @@ pub async fn enqueue_coin_charge_to_nurture(
                 loop {
                     let oxp = oxilean_power.load(std::sync::atomic::Ordering::Relaxed);
                     match attempt_coin_charge_once(
-                        &http_client,
                         &url,
                         &secret,
                         oxp,
                         &payload,
+                        nurture_s2s.as_ref(),
                     )
                     .await
                     {
@@ -158,9 +148,8 @@ mod tests {
             "idempotency_key": "ev_test"
         });
 
-        let client = reqwest::Client::new();
         let result =
-            attempt_coin_charge_once(&client, &mock.uri(), "mock_secret", 950, &payload).await;
+            attempt_coin_charge_once(&mock.uri(), "mock_secret", 950, &payload, None).await;
 
         assert!(result.is_ok(), "expected success, got {:?}", result);
 
@@ -196,11 +185,12 @@ mod tests {
             .await;
 
         let payload = serde_json::json!({"actor_id": uuid::Uuid::new_v4()});
-        let client = reqwest::Client::new();
         let result =
-            attempt_coin_charge_once(&client, &mock.uri(), "mock_secret", 950, &payload).await;
+            attempt_coin_charge_once(&mock.uri(), "mock_secret", 950, &payload, None).await;
 
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("http"));
+        let Err(err) = result else {
+            panic!("expected http error");
+        };
+        assert!(err.contains("http"));
     }
 }

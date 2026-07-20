@@ -363,12 +363,11 @@ pub async fn stripe_webhook(
                             "🎁 [StripeWebhook] Granting monthly KC allowance of {} to Pro agent {} (OP-059)",
                             allowance, agent_uuid
                         );
-                        let http_client = state.http_client.get_inner().clone();
                         enqueue_coin_charge_to_nurture(
-                            http_client,
                             state.db_pool.get_inner().clone(),
                             state.nurture_url.clone(),
                             state.nurture_internal_secret.clone(),
+                            state.nurture_s2s.clone(),
                             agent_uuid,
                             allowance,
                             format!("{}-allowance", event_id),
@@ -472,12 +471,11 @@ pub async fn stripe_webhook(
 
     // 6c. Nurture へのコインチャージ転送 (結果整合性保証)
     if let Some((agent_uuid, amount, ev_id)) = pending_coin_charge {
-        let http_client = state.http_client.get_inner().clone();
         enqueue_coin_charge_to_nurture(
-            http_client,
             db_pool.clone(),
             state.nurture_url.clone(),
             state.nurture_internal_secret.clone(),
+            state.nurture_s2s.clone(),
             agent_uuid,
             amount,
             ev_id.clone(),

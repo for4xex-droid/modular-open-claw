@@ -853,6 +853,7 @@ pub async fn create_test_server_with_limit(
         a2ui_catalog: Default::default(),
         nurture_url: std::env::var("NURTURE_API_URL").ok(),
         nurture_internal_secret: std::env::var("NURTURE_INTERNAL_SECRET").ok(),
+        nurture_s2s: None,
         quality_gate_store: Component::default(),
         skill_arena: Component::new(Arc::new(
             infrastructure::skills::skill_arena::SkillArena::new(),

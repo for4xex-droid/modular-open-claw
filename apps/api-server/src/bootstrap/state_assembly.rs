@@ -358,6 +358,8 @@ pub async fn assemble_app_state(
         },
         nurture_url: std::env::var("NURTURE_API_URL").ok(),
         nurture_internal_secret: preflight.secrets.nurture_secret.clone(),
+        // OP-088 P5-a: spawn 前に clone（DLQ が HTTP 固定にならないよう）
+        nurture_s2s: preflight.plugin_registry.clone_s2s_router(),
         gig_updater: Component::new(std::sync::Arc::new(
             infrastructure::gig_metadata_updater::DbGigUpdater::new(
                 db.db_pool.get_sqlite_pool_or_err()?.clone(),

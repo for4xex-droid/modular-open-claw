@@ -650,40 +650,39 @@ async fn sync_monthly_spend_limit_to_nurture(state: &AppState, value: &str) -> R
         .ok_or_else(|| "NURTURE_INTERNAL_SECRET not configured".to_string())?
         .clone();
 
-    let cert = aiome_core_contracts::oxilean::OxiLeanProofCertificate::generate_header(
-        "aiome-edge-node",
-        state
-            .oxilean_power
-            .load(std::sync::atomic::Ordering::Relaxed),
-        &secret,
-    )
-    .ok_or_else(|| "Failed to generate OxiLean certificate".to_string())?;
-
-    let req_url = format!(
-        "{}/internal/economy-policy/monthly-limit",
-        nurture_url.trim_end_matches('/')
-    );
     let payload = serde_json::json!({ "monthly_spend_limit": limit });
+    let power = state
+        .oxilean_power
+        .load(std::sync::atomic::Ordering::Relaxed);
 
-    let client = aiome_core::http::get_http_client();
-    let resp = client
-        .post(&req_url)
-        .header("Authorization", format!("Bearer {}", secret))
-        .header("X-OxiLean-Proof-Certificate", cert)
-        .json(&payload)
-        .timeout(std::time::Duration::from_secs(10))
-        .send()
-        .await
-        .map_err(|e| format!("Nurture relay network error: {}", e))?;
-
-    if resp.status().is_success() {
-        tracing::info!(
-            "♻️ [Settings] Synced economy.monthly_spend_limit={} to Nurture",
-            limit
-        );
-        Ok(())
-    } else {
-        Err(format!("Nurture returned HTTP {}", resp.status()))
+    match crate::nurture_s2s::post_internal(
+        state.nurture_s2s.as_ref(),
+        Some(&nurture_url),
+        &secret,
+        "aiome-edge-node",
+        power,
+        "/economy-policy/monthly-limit",
+        Some(&payload),
+        std::time::Duration::from_secs(10),
+    )
+    .await
+    {
+        Ok(()) => {
+            tracing::info!(
+                "♻️ [Settings] Synced economy.monthly_spend_limit={} to Nurture",
+                limit
+            );
+            Ok(())
+        }
+        Err(e) => {
+            if let Some(status) = e.strip_prefix("http ") {
+                Err(format!("Nurture returned HTTP {status}"))
+            } else if let Some(net) = e.strip_prefix("network: ") {
+                Err(format!("Nurture relay network error: {net}"))
+            } else {
+                Err(e)
+            }
+        }
     }
 }
 

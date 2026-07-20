@@ -1,6 +1,6 @@
 # Aiome Operations Manual — 実用運用ガイド
-**Version:** 3.7  
-**Last Updated:** 2026-07-10
+**Version:** 3.8  
+**Last Updated:** 2026-07-21
 
 ---
 
@@ -94,12 +94,21 @@ TIMESFM_SIDECAR_URL=http://localhost:3020        # TimesFM サイドカーURL
 CONTAINER_RUNTIME=podman                         # DockerConductor/ Delegator で強制利用するコンテナランタイム (podman or docker). 指定がない場合は podman 優先の自動フォールバック。
 LOCAL_LLM_CONCURRENCY=2                          # Fast tier 用ローカルモデルへの同時実行セマフォ制限数 (デフォルト: 2)
 
-# --- Nurture Hybrid Mode (Desktop) ---
+# --- Nurture / Desktop Economy (OP-088) ---
+# Desktop 製品既定は InProcess（通常は設定不要）。公式同梱 sidecar = api-server + key-proxy のみ。
+# 正本: NURTURE_MODE=disabled|cloud|local|in_process
+# NURTURE_MODE=
+#   local      = nurture-api sidecar（開発。要 --with-nurture-sidecar。公式パッケージでは失敗しうる）
+#   cloud      = NURTURE_CLOUD_URL 必須
+#   disabled   = 経済オフ（OSS / Mock）
+#   in_process = 明示 InProcess（未設定時の既定と同じ）
+#
 NURTURE_INTERNAL_SECRET=your_secret              # S2S 認証 + OXP 署名鍵（coin-charge / forget / stripe proxy 共通。API_SERVER_SECRET とは別）
-NURTURE_API_URL=http://localhost:3020            # Nurture URL 正本（coin-charge / DLQ / forget / settings が参照。DB system_settings ではない）
+# InProcess（既定）: Tauri が NURTURE_API_URL=http://127.0.0.1:3015 を注入（自己 HTTP）
+# Local / Docker:   NURTURE_API_URL=http://127.0.0.1:3020（または http://nurture-api:3020）
+# NURTURE_API_URL=http://127.0.0.1:3020
 NURTURE_DRM_MASTER_KEY=your_drm_key              # release 必須。Desktop debug は {data_dir}/.nurture_drm_master_key を自動生成・永続化
-# NURTURE_CLOUD_URL=https://nurture.your-domain.com # リモートの Nurture インスタンスを使用する場合設定
-# NURTURE_DISABLED=true                           # 経済機能を無効化しOSSモードで動作させる場合設定
+# 互換（NURTURE_MODE 未設定時のみ）: NURTURE_CLOUD_URL / NURTURE_DISABLED / NURTURE_IN_PROCESS
 # NURTURE_A2C_DRY_RUN=1                           # A2C 恩返し: 未設定/1/true=ログのみ。0 のみで Tremendous 実送信（Human 確認後）
 
 # --- Security (Production) ---

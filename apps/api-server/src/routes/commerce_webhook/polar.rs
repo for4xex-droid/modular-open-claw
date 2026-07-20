@@ -245,12 +245,11 @@ pub async fn polar_webhook(
 
     // Result-consistent transfer of coin charges to Nurture
     if let Some((agent_uuid, amount, ev_id)) = pending_coin_charge {
-        let http_client = state.http_client.get_inner().clone();
         enqueue_coin_charge_to_nurture(
-            http_client,
             db_pool.clone(),
             state.nurture_url.clone(),
             state.nurture_internal_secret.clone(),
+            state.nurture_s2s.clone(),
             agent_uuid,
             amount,
             ev_id.clone(),

@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-20（OP-087 P1–P3 ✅）**
+**最終更新: 2026-07-21（OP-088 P5-a ✅）**
 
 > **実装手順の正本**:
 > - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・実装待ち。Path B 必須 / Human 許可→Agent 実行 / bind-mount 今期維持 / index スタブ→後日 untrack）
@@ -76,7 +76,7 @@
 - [x] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠 + ✅ W-1 OXP relay 修正 + ✅ **R2-3 月間支出上限**（ADR-050、DB マイグレーション、インターセプタ、Settings UI `economy.monthly_spend_limit`、2026-07-06） → **2026-07-10 docs クローズ**（コードは先行完了）
 - [x] **OP-059-UI**: Settings への `pro_monthly_kc_allowance` 入力 UI 実装 → **2026-07-13 完了**（cockpit Commerce セクション、`SettingsPage.test` 16 PASS）
 - [x] **OP-062**: Tauri `NurtureMode::InProcess` — **2026-07-21 完了**（Disabled>Cloud>InProcess>Local、sidecar 非 spawn + `NURTURE_IN_PROCESS` 注入、Desktop `api-server --features nurture`、unit 6 PASS）。ADR-012 / foolproof G2
-- [x] **OP-088**: Desktop **既定 InProcess** — 正本 [`desktop_inprocess_default_plan.md`](docs/roadmaps/desktop_inprocess_default_plan.md) **v1.3**。**Ship 本線 P0-pre…P3 ✅** + **ci.yml `desktop-sidecar` 配線済**。残: P4 文書任意 / P5
+- [x] **OP-088**: Desktop **既定 InProcess** — 正本 [`desktop_inprocess_default_plan.md`](docs/roadmaps/desktop_inprocess_default_plan.md) **v1.3**。**Ship 本線 P0-pre…P3 ✅** + **CI `desktop-sidecar` ✅** + **P4 文書同期 ✅** + **P5-a ✅**（`nurture_s2s` oneshot）。残任意: **P5-b/c/d** — 詳細 [`op088_p5_polish_plan.md`](docs/roadmaps/op088_p5_polish_plan.md) **v1.5**
 - [ ] **OP-068**: deny.toml `[advisories].ignore` に登録した 21 件（wasmtime 41.x / rustls-webpki 旧版 / idna 0.4 / quick-xml 0.39 / rand 0.8）の解消。実体は OP-030〜OP-034 の Upstream 待ちと同根。上流更新後に ignore を削除すること（2026-07-04。旧 OP-061 重複採番を 2026-07-05 改番）
 - [ ] **OP-064**: ベータユーザー 5〜10 人の獲得と実名テスティモニアル収集。launch（本格トラフィック獲得）の前提条件。バイラル32原則 #14/#29 対応（**Human**・OP-086 では後回し、2026-07-05）
 - [x] **OP-065**: Pro 価格改定 $9.99 → **$19.99/月**（2026-07-05 ユーザー決定）。MESSAGING.md / LP i18n / README / ProUpgradeModal 表示 / stripe-setup.md / .env.example を同期。Stripe Payment Link・Price ID の実体差し替えは OP-057 に統合。

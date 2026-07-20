@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+### Added (OP-088 P5-a 2026-07-21)
+- **`nurture_s2s`**: InProcess は nest 前 path の `Router::oneshot`、Local/Cloud は HTTP。`attach_s2s_headers(actor, power)` + `post_internal`。
+- **配線**: `PluginRegistry::clone_s2s_router` → assemble（spawn 前）→ `AppState.nurture_s2s`。forget / monthly-limit / coin-charge(+DLQ) を置換。create_router は従来 `take`+nest。
+- **検証**: nurture_s2s 5 unit（oneshot 優先・401 伝搬・坏 secret・HTTP JSON）+ relay coin-charge 2 PASS。Stripe/MCP 非変更。
+
+### Changed (OP-088 P5 計画 2026-07-21)
+- **計画正本**: [`docs/roadmaps/op088_p5_polish_plan.md`](docs/roadmaps/op088_p5_polish_plan.md) **v1.5** — C1 全面前倒しは不可（`create_plugin` が auth_manager/event_sender 依存）→ **C1'（commerce 直前）/ C2**。Bridge メソッドカバレッジを c0 に追加。/perfect-plan PASS。実装は各 ID の明示許可後。
+
+### Changed (docs-sync OP-088 P4 2026-07-21)
+- **SYNERGY**: §5.11 を Desktop 既定 InProcess 起動フローに更新。依存図・RTBF 注記・履歴行を同期。
+- **OPERATIONS_MANUAL v3.8**: `NURTURE_MODE` / InProcess self-URL / Local escape を env 節に反映。
+- **README / README_en**: Desktop InProcess 既定と公式 sidecar（api-server+key-proxy）を明記。
+- **OPEN / plan**: OP-088 P4 完了。残は P5 任意。
+
 ### Fixed
 - **nurture-api**: 未使用 `IntoResponse` import を除去（pre-push `clippy -D warnings`）。
 

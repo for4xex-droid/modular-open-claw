@@ -1,6 +1,6 @@
 # Desktop 既定 InProcess 化計画（v1.3）— 製品品質最大化版
 
-- **ステータス**: Human Q1–Q3 確定。**P0-pre…P3 ✅** + **CI sidecar 配線済**（2026-07-21）。次=P4 文書（任意）/ P5
+- **ステータス**: Human Q1–Q3 確定。**P0-pre…P3 ✅** + **CI sidecar ✅** + **P4 文書 ✅** + **P5-a ✅**（2026-07-21）。残任意=P5-b/c/d → 詳細正本 [`op088_p5_polish_plan.md`](op088_p5_polish_plan.md) **v1.5**
 - **OPEN**: **OP-088**（OP-062 完了。**再実装しない**）
 - **Safety-Critical**: `src-tauri/src/lib.rs` / `tauri.conf.json` / capabilities / `.github/workflows`（CI）/ auth 近傍はフェーズごとに明示許可
 
@@ -37,7 +37,7 @@ P4 文書は Ship 直後でも可。P5（磨き）は Ship 後。
 
 | ID | 内容 | なぜ後 |
 |----|------|--------|
-| P5-a | 自己 HTTP → tower/oneshot 内部呼び出し（G11 本解消） | A' で Ship 可能。負荷で問題が出てから |
+| P5-a | 自己 HTTP → tower/oneshot 内部呼び出し（G11 本解消） | ✅ 2026-07-21（`nurture_s2s`） |
 | P5-b | Settings UI で Mode 切替 | env 正本が先。UI は誤操作面が増える |
 | P5-c | CommerceEngine DI（Q1-B） | ADR 改訂・二重台帳。差分最大 |
 | P5-d | OSS / Economy 二系統パッケージ | 配布運用コスト |
@@ -162,20 +162,22 @@ P1-4  ✅ ADR-012 Amendment → Accepted（P2 ゲート通過済）
 
 ---
 
-### P4 — 文書同期（Ship 直後可）
+### P4 — 文書同期（Ship 直後可）✅ 2026-07-21
 
-ADR-012 / SYNERGY / foolproof / wave / OPEN / CHANGELOG / RIPPLE / 「CI で check」嘘の解消。
+ADR-012 Amendment Accepted / SYNERGY §5.11 InProcess 既定 / OPERATIONS 3.8 / README↔en / OPEN / CHANGELOG / RIPPLE / CI `desktop-sidecar` 正本化。
 
 ---
 
 ### P5 — Ship 後の品質積み上げ（任意）
 
+詳細正本: [`op088_p5_polish_plan.md`](op088_p5_polish_plan.md)（v1.5・C1' boot 実行可能性突合 /perfect-plan PASS）。
+
 | ID | 内容 | 着手条件 |
 |----|------|----------|
-| P5-a | 自己 HTTP → 内部呼び出し（デッドロック本解消） | P1-g11 で問題観測 or 余裕 |
-| P5-b | Settings の Mode UI | Human が「製品 UI で切り替えたい」 |
-| P5-c | CommerceEngine DI | 別 ADR + SC |
-| P5-d | OSS 別パッケージ | 別 OP |
+| P5-a | 自己 HTTP → 内部 dispatch（G11） | 観測 or Human「余裕でやれ」。**第1波=api-server S2S** |
+| P5-b | Settings の Mode UI | Human「製品 UI で切り替えたい」+ 永続/再起動契約 |
+| P5-c | CommerceEngine DI | **新 ADR Accept** + SC（P5-a 後推奨） |
+| P5-d | OSS 別パッケージ | **別 OP**（本 OP クローズ条件外） |
 
 ---
 

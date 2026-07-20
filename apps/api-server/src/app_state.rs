@@ -108,6 +108,8 @@ pub struct AppState {
     pub api_server_secret: Component<Arc<secrecy::SecretString>>,
     pub nurture_url: Option<String>,
     pub nurture_internal_secret: Option<String>,
+    /// OP-088 P5-a: InProcess 時の nest 前 S2S Router（`clone().oneshot`）。Local/Cloud は None。
+    pub nurture_s2s: Option<axum::Router>,
     pub federation_secret: Component<Arc<secrecy::SecretString>>,
     pub config: Component<Arc<AiomeConfig>>,
     pub gift_engine: Component<Arc<dyn GiftEngine>>,

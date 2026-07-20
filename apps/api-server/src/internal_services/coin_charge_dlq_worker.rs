@@ -54,7 +54,6 @@ pub(crate) async fn process_one_batch(state: &AppState) -> Result<u64, anyhow::E
         }
     };
 
-    let http_client = state.http_client.get_inner();
     let mut processed = 0u64;
 
     for (id, payload_str) in rows {
@@ -82,7 +81,15 @@ pub(crate) async fn process_one_batch(state: &AppState) -> Result<u64, anyhow::E
 
         // 行ごとに最新 OXP を読む（バッチ中の poller 更新を反映）
         let oxp = state.oxilean_power.load(Ordering::Relaxed);
-        match attempt_coin_charge_once(http_client, &nurture_url, &secret, oxp, &payload).await {
+        match attempt_coin_charge_once(
+            &nurture_url,
+            &secret,
+            oxp,
+            &payload,
+            state.nurture_s2s.as_ref(),
+        )
+        .await
+        {
             Ok(()) => {
                 infrastructure::sql_exec!(
                     &**pool,

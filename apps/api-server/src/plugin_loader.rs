@@ -42,6 +42,11 @@ impl PluginRegistry {
         self.s2s_router.take()
     }
 
+    /// OP-088 P5-a: nest 用に残しつつ AppState へ渡す clone（二重 `s2s_internal_service` 禁止）。
+    pub fn clone_s2s_router(&self) -> Option<Router> {
+        self.s2s_router.clone()
+    }
+
     /// `Router<()>` の Plugin ルート（`with_state` 後に JWT 付きで merge する）。
     pub fn plugin_unit_routers(&self) -> Vec<Router> {
         let mut out = Vec::new();

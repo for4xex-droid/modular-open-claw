@@ -5,7 +5,7 @@
  */
 export type NurtureStatus = { 
 /**
- * Nurture operation mode: "local" | "cloud" | "in_process" | "disabled"
+ * Nurture operation mode: "local" | "cloud" | "in_process" | "disabled" | "stopped" | "unknown"
  */
 mode: string, 
 /**

@@ -270,20 +270,20 @@ pub async fn delete_account_handler(
 ) -> Result<Json<serde_json::Value>, AppError> {
     tracing::warn!("🗑️ Account deletion requested for agent: {}", auth.agent_id);
 
-    // 1. Send Forget request to Nurture
-    // URL 正本は coin-charge / DLQ / settings と同じ `state.nurture_url`（NURTURE_API_URL）。
-    let client = aiome_core::http::get_http_client();
-    let nurture_url = match &state.nurture_url {
-        Some(url) if !url.is_empty() => url.clone(),
-        _ => {
-            tracing::warn!("NURTURE_API_URL is not configured; Nurture PII scrub will be skipped");
-            String::new()
-        }
-    };
+    // 1. Send Forget request to Nurture（P5-a: InProcess = oneshot、Local/Cloud = HTTP）
+    let has_s2s = state.nurture_s2s.is_some();
+    let nurture_url = state
+        .nurture_url
+        .as_ref()
+        .filter(|u| !u.is_empty())
+        .cloned();
+    if !has_s2s && nurture_url.is_none() {
+        tracing::warn!("NURTURE_API_URL is not configured; Nurture PII scrub will be skipped");
+    }
 
     let mut nurture_notified = false;
 
-    if !nurture_url.is_empty() {
+    if has_s2s || nurture_url.is_some() {
         // Nurture internal_auth + require_oxp_certificate は NURTURE_INTERNAL_SECRET で検証する
         let secret = match &state.nurture_internal_secret {
             Some(s) if !s.is_empty() => s.clone(),
@@ -297,37 +297,29 @@ pub async fn delete_account_handler(
             }
         };
 
-        let cert_b64 = aiome_core_contracts::oxilean::OxiLeanProofCertificate::generate_header(
+        let forget_path = format!("/forget/{}", auth.agent_id);
+        match crate::nurture_s2s::post_internal(
+            state.nurture_s2s.as_ref(),
+            nurture_url.as_deref(),
+            &secret,
             "aiome_system",
             1000,
-            &secret,
+            &forget_path,
+            None,
+            std::time::Duration::from_secs(30),
         )
-        .ok_or_else(|| AppError::internal("Certificate generation failed"))?;
-
-        let delete_url = format!(
-            "{}/internal/forget/{}",
-            nurture_url.trim_end_matches('/'),
-            auth.agent_id
-        );
-        match client
-            .post(&delete_url)
-            .header("Authorization", format!("Bearer {secret}"))
-            .header("X-OxiLean-Proof-Certificate", cert_b64)
-            .send()
-            .await
+        .await
         {
-            Ok(resp) if resp.status().is_success() => {
+            Ok(()) => {
                 nurture_notified = true;
             }
-            Ok(resp) => {
-                // Chesterton: Nurture 到達失敗でもローカル RTBF は継続（nurture_pii_scrubbed=false）
-                tracing::error!(
-                    "Nurture returned error on account deletion: {}",
-                    resp.status()
-                );
-            }
             Err(e) => {
-                tracing::error!("Failed to notify Nurture of account deletion: {}", e);
+                // Chesterton: Nurture 到達失敗でもローカル RTBF は継続（nurture_pii_scrubbed=false）
+                if let Some(status) = e.strip_prefix("http ") {
+                    tracing::error!("Nurture returned error on account deletion: {}", status);
+                } else {
+                    tracing::error!("Failed to notify Nurture of account deletion: {}", e);
+                }
             }
         }
     }

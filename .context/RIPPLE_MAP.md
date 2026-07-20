@@ -1,3 +1,16 @@
+## 🔍 OP-088 P5-a（2026-07-21）
+
+- **変更**: 新 `apps/api-server/src/nurture_s2s.rs`（`attach_s2s_headers` / `post_internal`）。`clone_s2s_router` → `AppState.nurture_s2s`（assemble・spawn 前）。auth forget / settings monthly-limit / relay coin-charge(+DLQ) / stripe・polar enqueue を置換
+- **影響**: InProcess の同期 G11（自己 HTTP deadlock）を 3 経路で緩和。Local/Cloud は従来 HTTP。create_router `take`+nest 維持
+- **検証**: nurture_s2s 5 unit + relay 2 PASS
+- **残**: P5-b/c/d（任意）
+
+## 🔍 OP-088 P4 /docs-sync（2026-07-21）
+
+- **変更**: `AIOME_NURTURE_SYNERGY.md` §5.11、OPERATIONS_MANUAL v3.8、README↔en、OPEN / plan P4 ✅
+- **影響**: 文書上の「Local 既定 + :3020 公式同梱」記述を解消
+- **残**: P5（self-HTTP deadlock 等）→ **P5-a で一部解消**
+
 ## 🔍 OP-088 P3 / Ship 本線（2026-07-21）
 
 - **変更**: `desktop_sidecar_manager.py`（公式2本 + `--with-nurture-sidecar`、check-all で nurture 混入禁止）。`tauri.conf.json` / capabilities / CSP :3020。`package.json` sidecar:*。T-002/T-006 / desktop-sidecar.md / OPERATIONS_MANUAL
@@ -5,7 +18,7 @@
 - **検証**: test_desktop_sidecar_manager 17 PASS
 - **CI**: `ci.yml` `desktop-sidecar`（build → check-core --forbid-nurture-sidecar）✅
 - **/reflexion**: `nurture_mcp_proxy` SSE をストリーム書換（バッファ全体 `bytes().await` 廃止）。Local/Cloud 子に `NURTURE_IN_PROCESS=false`
-- **残**: P4 文書任意 / P5（self-HTTP deadlock 等）
+- **残**: P5（self-HTTP deadlock 等）
 
 ## 🔍 OP-088 P2（2026-07-21）
 

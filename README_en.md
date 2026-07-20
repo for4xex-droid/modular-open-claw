@@ -147,6 +147,8 @@ Other products bolt the economy on as a plugin. In Aiome, the economy interface 
 
 When Stripe API keys are not configured in `.env`, the system automatically falls back to `MockCommerceEngine`. You can immediately experience all economic features (billing, skill trading, and gifts) using fake balances, completely free.
 
+**Desktop (OP-088)**: The Tauri product default is **InProcess** (`NurturePlugin` registered inside api-server; no env required for normal use). Official sidecars are `api-server` + `key-proxy` only; the `nurture-api` process is a dev escape (`NURTURE_MODE=local` + `--with-nurture-sidecar`). See [integration design §5.11](docs/architecture/AIOME_NURTURE_SYNERGY.md) and the [operations manual](docs/guides/OPERATIONS_MANUAL.md).
+
 For detailed technical specifications, transaction protocols, and sequence diagrams, please refer to [AIOME_NURTURE_SYNERGY.md](docs/architecture/AIOME_NURTURE_SYNERGY.md). For external-facing details, see also [commercial/README.md](commercial/README.md).
 
 ---
@@ -218,7 +220,7 @@ Handing a raw shell directly to an LLM offers "fragile freedom", pregnant with t
 10. **Aegis Sentinel**: Actively monitors WASM boundaries, autonomously generating LLM patches, verifying them with Kani, and executing real-time code HotSwaps to heal the system without downtime.
 11. **Adaptive Immune System**: An active defense system that detects input threat patterns and prevents learning rule drift before execution (forming a multi-layered immune structure with the post-incident **Aegis Sentinel**).
 12. **Multi-Context Sanitization**: Context-aware output sanitization (`SqlQuery` comment and double-quote removal, recursive `FilePath` traversal prevention, and `OnceLock`-driven panic-free `HttpHeader` CRLF stripping) to prevent injection and traversal bypasses.
-13. **Sidecar Physical Validation**: Restricts the release packaging of mock sidecars (like `api-server` shells) via build/CI-time verification (`desktop_sidecar_manager.py`) of magic bytes and minimum file sizes (100KB).
+13. **Sidecar Physical Validation**: Verifies official Tauri sidecars (`api-server` + `key-proxy`) at build/CI time (magic bytes, ≥100KB) and Fail-Closes on dummy placeholders or non-official `nurture-api` (`desktop_sidecar_manager.py` / CI `desktop-sidecar`).
 
 ---
 

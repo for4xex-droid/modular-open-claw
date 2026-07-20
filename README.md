@@ -148,6 +148,8 @@ graph LR
 
 外部のStripe APIキーを設定しない場合、システムは自動的に `MockCommerceEngine` にフォールバックします。課金やスキル売買、ギフト発送などすべての経済シミュレーションを、実際の資金を消費することなくフェイク残高で即座に体験できます。
 
+**Desktop（OP-088）**: Tauri 製品の既定は **InProcess**（`NurturePlugin` を api-server 内に登録。通常は環境変数不要）。公式同梱 sidecar は `api-server` + `key-proxy` のみで、`nurture-api` プロセスは開発用 escape（`NURTURE_MODE=local` + `--with-nurture-sidecar`）です。詳細は [統合設計 §5.11](docs/architecture/AIOME_NURTURE_SYNERGY.md) と [運用ガイド](docs/guides/OPERATIONS_MANUAL.md) を参照してください。
+
 より詳細な技術仕様や取引プロトコル、シーケンス図については、[AIOME_NURTURE_SYNERGY.md](docs/architecture/AIOME_NURTURE_SYNERGY.md) をご参照ください。詳しい対外説明は [commercial/README.md](commercial/README.md) にもまとめています。
 
 ---
@@ -219,7 +221,7 @@ libs/aiome-commerce  ← AI経済エンジン（Mock / Stripe）
 10. **Aegis Sentinel**: WASM実行時のインシデントを常時監視・記録し、LLMによるパッチ生成とKaniによる形式検証を経て、システム稼働中にコードを自己修復・入れ替え（HotSwap）する事後修復システム。
 11. **Adaptive Immune System**: 実行前に入力脅威パターンを検知し、学習ルールのドリフトを防止する事前防御システム（事後修復の **Aegis Sentinel** とともに多層免疫システムを形成）。
 12. **Multi-Context Sanitization**: 出力コンテキスト（SqlQuery, FilePath, HttpHeader等）に応じた厳格なサニタイズ処理。SQLインジェクション対策（ダブルクォートやコメント等の除去）、再帰トラバーサルバイパス防止、OnceLockによるパニックフリーなHttpHeader処理などを一元化。
-13. **Sidecar Physical Validation**: リリース・ビルド時にTauriサイドカーバイナリ（api-server等）の物理情報（マジックバイト・ファイルサイズ100KB以上）を自動検証し、開発用ダミープレースホルダーの混入を物理的に排除。
+13. **Sidecar Physical Validation**: リリース・ビルド時に公式 Tauri サイドカー（`api-server` + `key-proxy`）の物理情報（マジックバイト・ファイルサイズ100KB以上）を自動検証し、開発用ダミーや非公式 `nurture-api` 混入を Fail-Closed で排除（`desktop_sidecar_manager.py` / CI `desktop-sidecar`）。
 
 ---
 

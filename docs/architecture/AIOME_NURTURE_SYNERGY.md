@@ -3,7 +3,7 @@
 > 要件正本: [`docs/specs/NURTURE_REQUIREMENTS_V2.md`](../specs/NURTURE_REQUIREMENTS_V2.md)（2026-07-06）
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-07-11（OP-075-B: nurture-api MCP `tools/call` の `verify_intent` Err → JSON-RPC deny / Fail-Closed。Wave 2 OP-060/061 は継続）
+> **最終更新**: 2026-07-21（OP-088: Desktop 既定 InProcess + P5-a `nurture_s2s` oneshot。公式 sidecar は api-server+key-proxy のみ。`/internal` は JWT 外 nest。Wave 2 OP-060/061・OP-075-B は継続）
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -118,10 +118,10 @@ graph TB
         end
 
         subgraph "Nurture API"
-            NAPI["nurture-api (JSON-RPC)"]
+            PLUGIN["NurturePlugin (Desktop 既定=InProcess)"]
+            NAPI["nurture-api (Local escape / Cloud)"]
             MCP_AUTH["McpAuth (OAuth 2.1 PKCE)"]
             MCP_TOOLS["MCP Tools (search/buy/gift)"]
-            PLUGIN["NurturePlugin"]
         end
     end
 
@@ -458,12 +458,14 @@ sequenceDiagram
 
 ### 5.4.0 GDPR/RTBF — アカウント削除 → Nurture forget カスケード（OP-061）
 
+InProcess（Desktop 既定）では forget / monthly-limit / coin-charge(+DLQ) は `nurture_s2s` の nest 前 path `oneshot`（TCP 無し）。`NURTURE_API_URL` 自己 URL はフォールバック用。Local/Cloud は従来どおり HTTP（Local escape 時のみ外部 `:3020`）。
+
 ```mermaid
 sequenceDiagram
     participant User as Authenticated User
     participant Auth as api-server auth.rs
     participant DB as Aiome DB
-    participant NAPI as nurture-api
+    participant NAPI as /internal (InProcess self or nurture-api)
 
     User->>Auth: DELETE /api/v1/auth/delete
     Auth->>Auth: nurture_url = state.nurture_url (NURTURE_API_URL)
@@ -787,33 +789,42 @@ sequenceDiagram
     API-->>MC: JSON (共有ゲノムリスト)
 ```
 
-### 5.11 Nurture ハイブリッドモード（ローカル/クラウド）起動フロー
+### 5.11 Nurture Desktop 起動フロー（OP-088: 既定 InProcess）
+
+正本: `NURTURE_MODE`（`disabled|cloud|local|in_process`）。未設定時の製品既定は **InProcess**。公式同梱 sidecar は `api-server` + `key-proxy` のみ（`nurture-api` は開発 escape）。
 
 ```mermaid
 sequenceDiagram
     participant TS as Tauri Shell (lib.rs)
-    participant NA as nurture-api (:3020)
     participant AS as api-server (:3015)
     participant KP as key-proxy (:3017)
+    participant NA as nurture-api (:3020)
 
-    Note over TS: resolve_nurture_mode() を実行
-    alt ローカルモード (デフォルト)
-        TS->>TS: generate_session_secret() でランダム256-bitトークン生成
-        TS->>NA: spawn() with DATABASE_URL & NURTURE_INTERNAL_SECRET (secret)
+    Note over TS: resolve_nurture_mode()（MODE 正本 → 旧変数互換 → else InProcess）
+    alt InProcess（製品既定）
+        TS->>TS: session secret + resolve_drm_master_key()
+        Note over TS,AS: nurture-api は spawn しない
+        TS->>AS: spawn() NURTURE_IN_PROCESS=true<br/>NURTURE_API_URL=http://127.0.0.1:3015<br/>SECRET + DRM（JWT 外 /internal + P5-a oneshot）
+        AS-->>TS: spawn OK（NurturePlugin in-process）
+    else Local（NURTURE_MODE=local・開発）
+        Note over TS,NA: 公式パッケージは sidecar 非同梱。<br/>要 --with-nurture-sidecar + capabilities
+        TS->>NA: spawn() DATABASE_URL + SECRET
         NA-->>TS: spawn OK
-        TS->>AS: spawn() with KEY_PROXY_URL, NURTURE_API_URL=http://localhost:3020, NURTURE_INTERNAL_SECRET (secret)
+        TS->>AS: spawn() NURTURE_IN_PROCESS=false<br/>NURTURE_API_URL=http://127.0.0.1:3020 + SECRET
         AS-->>TS: spawn OK
-    else クラウドモード (NURTURE_CLOUD_URL設定時)
-        TS->>AS: spawn() with NURTURE_API_URL=NURTURE_CLOUD_URL
+    else Cloud（MODE=cloud / NURTURE_CLOUD_URL）
+        TS->>AS: spawn() NURTURE_IN_PROCESS=false<br/>NURTURE_API_URL=cloud URL + SECRET
         AS-->>TS: spawn OK
-    else 無効モード (NURTURE_DISABLED=true設定時)
-        TS->>AS: spawn() (NURTURE_API_URL未設定 -> OSSフォールバック)
+    else Disabled（MODE=disabled / NURTURE_DISABLED）
+        TS->>AS: spawn()（Nurture URL 未設定 → OSS / Mock 経済）
         AS-->>TS: spawn OK
     end
 
-    TS->>KP: spawn() with GEMINI_API_KEY
+    TS->>KP: spawn()
     KP-->>TS: spawn OK
 ```
+
+**MCP（InProcess）**: クライアント正本は `/api/v1/nurture-mcp/*`。プロキシは upstream `/mcp` + JWT 転送し、SSE 先頭 `event: endpoint` のみストリーム書換する。
 
 
 ---
@@ -1254,6 +1265,7 @@ gantt
 | **公式 X (Twitter) MCP 統合** | 公式 X MCP クライアントとの stdio 連携テンプレート、および `TrendSonar` の adapter 連動を整備。自律トレンド収集の精度と速度を大幅に向上。 |
 | **品質最大化 v4（2026-07-07）** | `nurture_wishlist` + `CommerceEngine::get_wishlist`（残高不足シグナル）、`POST /commerce/convert-points`（ADR-052）、P2P デフォルトブロック、`forget_actor` で wishlist パージ、Management Console の `CoinBalanceProvider` / `useCoinBalance` による KC 残高 fetch 集約、`NURTURE_A2C_DRY_RUN` による A2C 2段階有効化 |
 | **Wave 2 OP-060/061（2026-07-10）** | coin-charge DLQ 自動再送（`coin_charge_dlq_worker`、poison 隔離、再 INSERT 禁止）。OXP は `generate_header` 統一 + stripe `require_oxp_header` fail-closed。forget は `NURTURE_INTERNAL_SECRET` OXP+Bearer、URL 正本は `NURTURE_API_URL`（`state.nurture_url`） |
+| **OP-088 Desktop InProcess（2026-07-21）** | 製品既定を InProcess にフリップ。`/internal` は JWT 外 `nest_service`。公式 sidecar から nurture-api 除外（`--with-nurture-sidecar` で Local escape）。CI `desktop-sidecar` + `--forbid-nurture-sidecar`。ADR-012 Amendment Accepted。**P5-a**: `nurture_s2s` oneshot（forget / monthly-limit / coin-charge） |
 
 
 ---
@@ -1295,7 +1307,7 @@ gantt
 | `nurture-core` | 15 | `AiomeCoin`, `CreatorPoints`, `EconomyLedger`, `EconomyPolicy`, `SurpriseEngine` |
 | `nurture-infra` | 40+ | `NurtureCommerceBridge`, `EconomyInterceptor`, `DrmEngine`, `CsamPipeline`, `VramArbiter`, `CloneManager` |
 | `nurture-bridge` | 20+ | `LoraEngine` / `TtsProvider` (re-exports), `UniversalJobQueue`, `AdaptiveImmuneSystem` |
-| `nurture-api` | 15+ | `NurturePlugin`, `McpAuth`, `/internal/lora-train` (S2S), MCP ツール群 (`search`, `buy`, `gift`, `wallet`, `sandbox_exec`)。**OP-075-B**: `tools/call` 前 `verify_intent` Fail-Closed |
+| `nurture-api` | 15+ | `NurturePlugin`（Desktop 既定は api-server in-process 登録）、`McpAuth`, `s2s_internal_service`（JWT 外 `/internal`）、MCP ツール群。**OP-075-B**: `tools/call` 前 `verify_intent` Fail-Closed。Local escape 時のみ :3020 バイナリ |
 
 ---
 

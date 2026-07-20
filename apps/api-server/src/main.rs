@@ -42,6 +42,7 @@ pub mod internal_services;
 mod job_management_tests;
 mod logging;
 mod mcp;
+mod nurture_s2s;
 mod plugin_loader;
 mod router;
 mod routes;
