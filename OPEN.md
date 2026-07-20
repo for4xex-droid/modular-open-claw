@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-21（OP-087 P4 Path B ✅）**
+**最終更新: 2026-07-21（OP-021 BanDashboard i18n ✅）**
 
 > **実装手順の正本**:
 > - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・P1–P4 ✅。次回 Path B は都度 Human 許可 / bind-mount 今期維持 / 残 Q5–Q6）
@@ -55,7 +55,7 @@
 
 - [ ] **OP-087**: MC static 配布規律 — P1–P4 ✅（`sync_mc_static.sh` + TDD、`MC_STATIC_DEPLOY.md`、index スタブ、**P4 Path B → app.aiome.dev** 2026-07-21）。**残**: §8 Q5/Q6（bind-mount 撤去 ADR / index untrack）。正本: [`mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)
 - [ ] **OP-020**: Phase 2b / Phase 4 ✅。**残は OP-020-F5 Soul Sync**（Federation transport=ADR-053 ✅。implementation_plan Phase 5=Cognitive Observability と別物）。再定義正本: [`wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) §3。F-5 コード着手は別ゲート。OP-083 非ブロッカー
-- [ ] **OP-021**: BanDashboard **コア UI ✅**（`BanDashboard.tsx` + admin bans API）。残 polish: **i18n のみ**。`expires_at` は API/BanStore 未対応のため本 Wave 外。正本: [`wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) v1.3
+- [x] **OP-021**: BanDashboard — **2026-07-21 完了**（コア UI + **C3 i18n**: `ban.*` + `common.cancel`、Jest/parity PASS）。`expires_at` は本 Wave 外のまま。正本: [`wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) §4.1
 - [ ] **OP-022**: CausalVisualizer **コア UI ✅**（`CausalVisualizer.tsx` + trajectory API）。残 polish: Job ピッカー / Activity 連携（任意）。正本: 同上
 - [x] **OP-024**: `tool_call_router.rs` 課金チェックの Fail-Closed 化（DB エラーを握り潰さず明示拒否）（MEMORY.md Phase 48 より）→ **2026-07-09 完了**（`get_setting_value` Err 時に MCP ツール拒否 + Negative テスト）
 - [x] **OP-026**: TrendSonar Channel Bridges 運用 UI — **2026-07-21 完了**（`search_api_key` + VaultKeyStatus、再起動不要文言、`test_frontend_used_keys_are_allowed`、Jest）。A3 疎通 UI は既定スキップのまま

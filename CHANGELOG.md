@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Changed (OP-021 BanDashboard i18n 2026-07-21)
+- **C3**: `BanDashboard` を `useTranslation` + `ban.*` に配線。`common.cancel` 追加。API 既定 reason / severity value は英語定数のまま。Jest（key assert）+ i18n parity PASS。
+- **/reflexion**: エラー応答の非 JSON を `readErrorMessage` で安全処理（誤って `common.networkError` に落とさない）。空 reason → `Policy violation`・fetch 403 toast・非 JSON ban エラーの Negative テスト追加（10 PASS）。
+
 ### Changed (OP-087 P4 Path B 2026-07-21)
 - **本番 Path B**: Human 許可後に `sync_mc_static.sh` で `dist/` → ホスト `apps/api-server/static` を同期。`app.aiome.dev` で Vite SPA `index` + `main-*.js` / checkout / biome-popup が 200。ホスト側 `static.bak-op087-p4-*` 保持。
 - **スタブ回帰修正**: OP-088 混入の追跡 Vite shell を P3 スタブへ復元。`test_sync_mc_static.sh` はローカル Path B で WT が汚れていても HEAD スタブを契約として検査。

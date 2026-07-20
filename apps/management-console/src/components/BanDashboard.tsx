@@ -10,8 +10,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ShieldAlert, UserX, ShieldCheck, UserCheck, AlertTriangle, Search } from "lucide-react";
 import { API_BASE } from "../config";
 import { authenticatedFetch } from "../lib/auth";
+import { useTranslation } from "../i18n";
 import { useToast } from "./common/Toast";
 import ConfirmModal from "./common/ConfirmModal";
+
+/** API body default — must stay English regardless of UI locale (OP-021 §4.1). */
+const DEFAULT_BAN_REASON = "Policy violation";
+
+async function readErrorMessage(res: Response): Promise<string | undefined> {
+  try {
+    const data = await res.json();
+    return typeof data?.message === "string" ? data.message : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 interface BanRecord {
   actor_id: string;
@@ -24,6 +37,7 @@ interface BanRecord {
 }
 
 export default function BanDashboard() {
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const [bans, setBans] = useState<BanRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,10 +62,10 @@ export default function BanDashboard() {
           setBans(data);
         }
       } else {
-        showToast("error", "Failed to fetch ban list. Admin credentials required.");
+        showToast("error", t("ban.errorFetch"));
       }
     } catch (e) {
-      showToast("error", "Network error occurred while fetching bans.");
+      showToast("error", t("common.networkError"));
     } finally {
       setLoading(false);
     }
@@ -60,7 +74,7 @@ export default function BanDashboard() {
   const handleBan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetId.trim()) {
-      showToast("error", "Target Agent UUID is required.");
+      showToast("error", t("ban.errorTargetRequired"));
       return;
     }
 
@@ -73,22 +87,22 @@ export default function BanDashboard() {
         },
         body: JSON.stringify({
           agent_id: targetId.trim(),
-          reason: reason.trim() || "Policy violation",
+          reason: reason.trim() || DEFAULT_BAN_REASON,
           severity: severity,
         }),
       });
 
       if (res.ok) {
-        showToast("success", `Agent successfully suspended.`);
+        showToast("success", t("ban.successBan"));
         setTargetId("");
         setReason("");
         fetchBans();
       } else {
-        const data = await res.json();
-        showToast("error", data.message || "Failed to execute ban.");
+        const message = await readErrorMessage(res);
+        showToast("error", message || t("ban.errorBan"));
       }
     } catch (err) {
-      showToast("error", "Network error while executing ban.");
+      showToast("error", t("common.networkError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -107,14 +121,14 @@ export default function BanDashboard() {
       });
 
       if (res.ok) {
-        showToast("success", `Agent successfully reinstated.`);
+        showToast("success", t("ban.successUnban"));
         fetchBans();
       } else {
-        const data = await res.json();
-        showToast("error", data.message || "Failed to lift suspension.");
+        const message = await readErrorMessage(res);
+        showToast("error", message || t("ban.errorUnban"));
       }
     } catch (err) {
-      showToast("error", "Network error while lifting suspension.");
+      showToast("error", t("common.networkError"));
     } finally {
       setUnbanTargetId(null);
     }
@@ -131,10 +145,10 @@ export default function BanDashboard() {
       <ConfirmModal
         isOpen={!!unbanTargetId}
         type="warning"
-        title="Restore Agent Access"
-        message="Are you sure you want to restore and unban this agent?"
-        confirmText="Unban"
-        cancelText="Cancel"
+        title={t("ban.confirmTitle")}
+        message={t("ban.confirmMessage")}
+        confirmText={t("ban.unban")}
+        cancelText={t("common.cancel")}
         onConfirm={() => unbanTargetId && handleUnban(unbanTargetId)}
         onCancel={() => setUnbanTargetId(null)}
       />
@@ -143,10 +157,10 @@ export default function BanDashboard() {
         <div>
           <h3 style={{ margin: 0, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <ShieldAlert size={24} color="var(--accent-rose)" />
-            Governance & BAN Compliance Registry
+            {t("ban.title")}
           </h3>
           <p style={{ margin: "0.5rem 0 0", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-            Mathematically enforced account suspensions to protect economic stability and prevent malicious activities.
+            {t("ban.subtitle")}
           </p>
         </div>
       </div>
@@ -161,12 +175,12 @@ export default function BanDashboard() {
         >
           <h4 style={{ margin: "0 0 1.5rem", color: "var(--accent-rose)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <UserX size={20} />
-            Issue Policy Suspension
+            {t("ban.formTitle")}
           </h4>
           <form onSubmit={handleBan} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             <div>
               <label style={{ display: "block", fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "4px" }}>
-                Target Agent UUID
+                {t("ban.targetLabel")}
               </label>
               <input
                 type="text"
@@ -180,11 +194,11 @@ export default function BanDashboard() {
 
             <div>
               <label style={{ display: "block", fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "4px" }}>
-                Violation Reason
+                {t("ban.reasonLabel")}
               </label>
               <textarea
                 className="input-field"
-                placeholder="Describe policy violation (e.g., CSAM attempt, Spam exploit, etc.)"
+                placeholder={t("ban.reasonPlaceholder")}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 style={{ width: "100%", height: "80px", resize: "none" }}
@@ -193,7 +207,7 @@ export default function BanDashboard() {
 
             <div>
               <label style={{ display: "block", fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "4px" }}>
-                Severity Level
+                {t("ban.severityLabel")}
               </label>
               <select
                 className="input-field"
@@ -201,10 +215,10 @@ export default function BanDashboard() {
                 onChange={(e) => setSeverity(e.target.value)}
                 style={{ width: "100%" }}
               >
-                <option value="LOW">LOW — Notice / Cooldown</option>
-                <option value="MEDIUM">MEDIUM — Minor Restriction</option>
-                <option value="HIGH">HIGH — High Alert Penalty</option>
-                <option value="CRITICAL">CRITICAL — Hard Permanent BAN</option>
+                <option value="LOW">{t("ban.severityLow")}</option>
+                <option value="MEDIUM">{t("ban.severityMedium")}</option>
+                <option value="HIGH">{t("ban.severityHigh")}</option>
+                <option value="CRITICAL">{t("ban.severityCritical")}</option>
               </select>
             </div>
 
@@ -221,7 +235,7 @@ export default function BanDashboard() {
               }}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Executing Suspension..." : "Enforce Suspension"}
+              {isSubmitting ? t("ban.submitting") : t("ban.submit")}
             </button>
           </form>
         </motion.div>
@@ -244,7 +258,7 @@ export default function BanDashboard() {
               <input
                 type="text"
                 className="input-field"
-                placeholder="Search by UUID or reason..."
+                placeholder={t("ban.searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ width: "100%", paddingLeft: "2.2rem" }}
@@ -256,12 +270,12 @@ export default function BanDashboard() {
           <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
             {loading ? (
               <div style={{ display: "flex", justifyContent: "center", padding: "3rem", color: "var(--text-secondary)" }}>
-                Loading compliance registry...
+                {t("ban.loading")}
               </div>
             ) : filteredBans.length === 0 ? (
               <div style={{ textAlign: "center", padding: "4rem", color: "var(--text-muted)", fontSize: "0.9rem" }}>
                 <ShieldCheck size={48} color="var(--accent-emerald)" style={{ marginBottom: "1rem", opacity: 0.5 }} />
-                No active suspensions. Workspace is fully compliant.
+                {t("ban.empty")}
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -315,12 +329,12 @@ export default function BanDashboard() {
                                 {ban.severity}
                               </span>
                               <span>•</span>
-                              <span>Issued: {new Date(ban.banned_at).toLocaleString()}</span>
+                              <span>{t("ban.issued")} {new Date(ban.banned_at).toLocaleString()}</span>
                               {ban.unbanned_at && (
                                 <>
                                   <span>•</span>
                                   <span style={{ color: "var(--accent-emerald)" }}>
-                                    Lifted: {new Date(ban.unbanned_at).toLocaleString()}
+                                    {t("ban.lifted")} {new Date(ban.unbanned_at).toLocaleString()}
                                   </span>
                                 </>
                               )}
@@ -340,7 +354,7 @@ export default function BanDashboard() {
                               background: "transparent",
                             }}
                           >
-                            Unban
+                            {t("ban.unban")}
                           </button>
                         )}
                       </motion.div>

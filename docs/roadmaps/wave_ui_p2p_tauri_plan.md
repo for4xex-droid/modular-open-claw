@@ -1,6 +1,6 @@
-# Wave: UI バックログ整理 + OP-020 再定義 + OP-062（v1.3）
+# Wave: UI バックログ整理 + OP-020 再定義 + OP-062（v1.4）
 
-- **ステータス**: Phase A（OP-026）+ Phase D（OP-062）**実装完了**（2026-07-21）。残は任意 Phase C / 後日 F-5
+- **ステータス**: Phase A + D + **C3（OP-021 i18n）✅ 2026-07-21**。残は任意 C1–C2 / 後日 F-5
 - **目的**: OP-064（Human 進行中）と並行して、Agent が着手可能な次波を実コード根拠で一本化する
 - **対象**: OP-020（再定義済）/ OP-021 / OP-022 / OP-026 / OP-062
 - **非対象**: OP-087 P4・OP-011・OP-064・Upstream・**OP-020-F5 コード**（別ゲート）
@@ -11,12 +11,13 @@
   | OP-062 実装手順 | [`remaining_work_foolproof_plan.md`](remaining_work_foolproof_plan.md) §7 Wave G2 | 詳細ステップはそちらへ委譲 |
   | OP-020-F5 実装骨格 | [`h2_f0_f4_f7_implementation_plan.md`](h2_f0_f4_f7_implementation_plan.md) PART 4 | S-1〜S-4 は再記述しない |
   | Federation transport | ADR-053 | 再実装禁止 |
+  | FE i18n ランタイム | `apps/management-console/src/i18n/` | 新規 i18n 機構禁止。`causal` / `mcp` と同型 |
 
 ## 0. 実コード監査サマリ（2026-07-21 再検証）
 
 | ID | 実コード | 判定 |
 |----|----------|------|
-| **OP-021** | `BanDashboard.tsx` + admin bans API。ハードコード英語。`expires_at` は型のみ・**表示なし**。DB 列ありだが `ban()` INSERT が列未書き込み（常に NULL）。`BanRequest` に期限なし | **コア UI ✅**。残 polish=**i18n のみ**。expires=本 Wave 外 |
+| **OP-021** | `BanDashboard.tsx` + admin bans API。シェル（`nav`/`page`）+ **コンポーネント `ban.*` i18n ✅**。`expires_at` 型のみ・表示なし | **完了**。expires=本 Wave 外 |
 | **OP-022** | `CausalVisualizer.tsx` + `/api/v1/trajectory/:id`。手動 Job ID 入力。**URL query / Activity 深リンクなし** | **コア UI ✅**。発見性 polish |
 | **OP-026** | Probe=`x_signal_probe.rs` ✅。`build_active_trend_sonar` が毎リクエスト/Dream 周期で settings 読込 ✅。UI は `x_bearer_token` のみ。`search_api_key` は ALLOWED_KEYS+SECRETS 済・**別 adapter**（WebSearch/Serp） | **実ギャップ=Channel Bridges 運用 UI** |
 | **OP-020** | ADR-053 transport ✅。`HubMessage::SoulSyncRelay` / `paired_devices` **ゼロ** | 再定義済。コードは h2 PART 4 |
@@ -102,9 +103,98 @@ OPEN OP-021/022・MEMORY Blind Spot・CHANGELOG 同期済み（2026-07-20）。
 |----|------|------|
 | C1 | Causal: Activity / 履歴 → Job ID 受け渡し（`?id=` または props）。手動入力は残す | 新 API 不要 |
 | C2 | Causal: Jest で fetch 成功パス（モック） | 既存 `CausalVisualizer.test.tsx` 拡張 |
-| C3 | Ban: ハードコード英語 → i18n | `BanDashboard.tsx` のみ。**admin API 非変更** |
+| C3 | Ban: ハードコード英語 → i18n | ✅ 2026-07-21（§4.1）。**admin API 非変更** |
 | ~~C4~~ | ~~expires_at~~ | **本 Wave 外**。INSERT が `expires_at` 未書き込み + `BanRequest` 未対応 → BanStore/trait/Mock + admin（Safety-Critical 近傍）。別 OP |
 
+### 4.1 C3 / OP-021 i18n — 実装契約（2026-07-21 実コード検証）
+
+#### 事実（推測禁止）
+
+| 項目 | 根拠 |
+|------|------|
+| 未 i18n | `BanDashboard.tsx` 全文ハードコード英語（`useTranslation` なし） |
+| シェルは済 | `AppHeader` → `t('page.banDashboard')` / `navConfig` → `nav.banDashboard` / `nav.desc.ban-dashboard` / `page.desc.ban-dashboard` は **en+ja 既存** |
+| ランタイム | `useTranslation` + nested JSON（`src/i18n/{en,ja}.json`）。parity = `i18n.test.ts` |
+| 同型先例 | `CausalVisualizer`（`causal.*`）/ `McpDashboard`（`mcp.*` + 一部 `common.*`） |
+| Jest 先例 | `CausalVisualizer.test.tsx`: `t: (key) => key` でキー文字列を assert（**LanguageProvider 不要**） |
+| ConfirmModal | 既存再利用済み。Vault は `vault.modal.cancel`。**`common.cancel` は未定義**（`mcp.cancel` / `vault.modal.cancel` のみ） |
+| API | `POST /admin/ban` body の `severity` は `LOW\|MEDIUM\|HIGH\|CRITICAL`。空 reason 時デフォルト `"Policy violation"`（英語定数） |
+
+#### 再利用（再発明禁止）
+
+| やること | やらないこと |
+|----------|----------------|
+| `import { useTranslation } from '../i18n'` | 新規 i18n ライブラリ / Provider ラップ専用コンポーネント |
+| ルート名前空間 **`ban.*`**（`causal` / `mcp` と同型） | `nav.*` / `page.*` の二重定義や上書き |
+| 汎用ネットワーク toast → **`common.networkError`**（既存） | fetch/ban/unban 用に 3 つの類似 network キーを新設 |
+| 汎用 Cancel → **`common.cancel` を en/ja に 1 回追加**して ConfirmModal から利用 | `ban.cancel` 専用キー、または `vault.modal.cancel` のドメイン横断参照 |
+| Jest: `jest.mock('../i18n', () => ({ useTranslation: () => ({ t: (k) => k }) }))` | 実辞書を読む LanguageProvider 二重経路 |
+| ConfirmModal / Toast / authenticatedFetch 既存 | 新規モーダル・toast 機構 |
+
+#### キー棚卸し（en/ja 同時・parity 必須・1:1）
+
+現行 `BanDashboard.tsx` リテラル → キー（抜け漏れ防止の正本）。**`ban` 名前空間は現時点で en/ja に未存在**（再検証済）。
+
+| 現行英語 | キー |
+|----------|------|
+| Governance & BAN Compliance Registry | `ban.title`（※`page.banDashboard`≠流用） |
+| Mathematically enforced account suspensions… | `ban.subtitle` |
+| Issue Policy Suspension | `ban.formTitle` |
+| Target Agent UUID | `ban.targetLabel` |
+| Violation Reason | `ban.reasonLabel` |
+| Describe policy violation (e.g., CSAM…) | `ban.reasonPlaceholder` |
+| Severity Level | `ban.severityLabel` |
+| LOW — Notice / Cooldown | `ban.severityLow`（`value="LOW"` 維持） |
+| MEDIUM — Minor Restriction | `ban.severityMedium` |
+| HIGH — High Alert Penalty | `ban.severityHigh` |
+| CRITICAL — Hard Permanent BAN | `ban.severityCritical` |
+| Enforce Suspension / Executing Suspension... | `ban.submit` / `ban.submitting` |
+| Search by UUID or reason... | `ban.searchPlaceholder` |
+| Loading compliance registry... | `ban.loading` |
+| No active suspensions. Workspace is fully compliant. | `ban.empty` |
+| Issued: / Lifted: | `ban.issued` / `ban.lifted` |
+| Unban（ボタン + confirmText） | `ban.unban` |
+| Restore Agent Access | `ban.confirmTitle` |
+| Are you sure you want to restore and unban this agent? | `ban.confirmMessage` |
+| Cancel | `common.cancel`（**新設**・`mcp.cancel`/`vault.modal.cancel` は触らない） |
+| Failed to fetch ban list. Admin credentials required. | `ban.errorFetch` |
+| Target Agent UUID is required. | `ban.errorTargetRequired` |
+| Failed to execute ban. / Failed to lift suspension. | `ban.errorBan` / `ban.errorUnban` |
+| Agent successfully suspended. / reinstated. | `ban.successBan` / `ban.successUnban` |
+| Network error occurred while fetching bans. ほか 2 本 | **`common.networkError` に統合**（既存。文言は汎用に寄せる） |
+
+キー数目安: `ban.*` **26** + `common.cancel` **1**（en/ja 同数で `i18n.test.ts` parity）。
+
+**ハードコード維持（意図的・i18n しない）**
+
+| 項目 | 理由 |
+|------|------|
+| UUID placeholder `00000000-…` | ロケール非依存の形式見本 |
+| API `severity` value / デフォルト reason `"Policy violation"` | **リクエスト本文をロケールで変えない** |
+| `showToast` 第1引数 `"error"`/`"success"` | 型トークン（表示文言ではない） |
+| `data.message`（サーバ） | API 応答のまま。フォールバックのみ `ban.error*` |
+| レコードの `reason` / `actor_id` / バッジの severity 生値 | ユーザ/サーバ由来 |
+| `expires_at` UI | C4 本 Wave 外 |
+
+#### 変更ファイル（最大）
+
+1. `BanDashboard.tsx` — `t('ban.*')` / `t('common.*')` 配線のみ  
+2. `en.json` + `ja.json` — `ban` オブジェクト + `common.cancel`  
+3. `BanDashboard.test.tsx` — i18n mock（Causal 同型）+ assert をキー文字列へ。**ConfirmModal mock の Cancel リテラルを `cancelText` prop 表示に修正**（現状 mock が `Cancel` 固定で prop を無視）
+
+**触らない**: admin routes / BanStore / Immune / AppHeader / navConfig / OP-022 / `mcp.cancel`・`vault.modal.cancel` の一括置換
+
+#### DoD
+
+1. 上表の「現行英語」がコンポーネントから消え、対応キーのみ（維持表を除く）  
+2. `BanDashboard` Jest + `i18n.test.ts` parity PASS  
+3. Positive: mock で `ban.title` 表示 / 任意で LanguageProvider+ja 煙  
+4. Negative: 欠キー → 既存どおり en フォールバック or key 文字（新機構なし）  
+5. OPEN OP-021 クローズ + CHANGELOG 1 行（実装時）
+
+#### 着手フレーズ
+
+「OP-021 を実装しろ」または「C3 を実装しろ」
 ---
 
 ## 5. Phase D — OP-062 Tauri `NurtureMode::InProcess`
@@ -189,7 +279,8 @@ OPEN OP-021/022・MEMORY Blind Spot・CHANGELOG 同期済み（2026-07-20）。
 |----------|----------------|
 | A | 「OP-026 を実装しろ」 |
 | D | 「OP-062 を実装しろ」（+ Q2） |
-| C | 「OP-022 polish を実装しろ」等 |
+| C3 / OP-021 | 「OP-021 を実装しろ」／「C3 を実装しろ」（契約は §4.1） |
+| C1–C2 | 「OP-022 polish を実装しろ」等 |
 | F-5 コード | 「OP-020-F5 を実装しろ」 |
 
 ---
@@ -226,3 +317,24 @@ OPEN OP-021/022・MEMORY Blind Spot・CHANGELOG 同期済み（2026-07-20）。
 
 ### 判定
 - [x] ✅ **PASS** — v1.3 微修正のみ。抜け漏れ・重複・車輪の再開発は実務上クリア。フェーズ許可後に実行してよい
+
+### Round 4（2026-07-21）— OP-021 / C3 単体ブラッシュアップ
+
+| 検出 | 対応（§4.1） |
+|------|----------------|
+| シェル（nav/page）は既に i18n 済なのに C3 が「Ban 全体」と読める | 対象を **コンポーネント内リテラルのみ** に限定 |
+| `ban.cancel` 新設だと `mcp.cancel` / `vault.modal.cancel` と三重 | **`common.cancel` を共通新設**（既存ドメインキーは触らない） |
+| network toast 3 文言の複製 | **`common.networkError` 再利用** |
+| API default reason / severity value を `t()` すると ja で本文が変わる | **リクエスト本文は英語定数維持** |
+| LanguageProvider ラップを新規導入しがち | **Causal と同型の key-assert mock** |
+| `page.banDashboard` を h3 に流用するとヘッダと衝突・文言後退 | **`ban.title` を別キー**（Causal と同型） |
+
+判定: [x] ✅ **PASS** — C3 は §4.1 契約で実装可。コード変更は明示許可後。
+
+### Round 4b（2026-07-21）— C3 文字列 1:1 再監査
+
+- ✅ `BanDashboard.tsx` ユーザー向けリテラルを列挙し §4.1 表と突合（成功 toast / severity 4 option / Issued·Lifted 含む）
+- ✅ `ban` 名前空間・`common.cancel` は辞書未存在（新設のみ。既存 nav/page に触れない）
+- ✅ network 3 文言 → `common.networkError` 統合は意図的トレードオフ（再発明回避）
+- ✅ テスト側 ConfirmModal mock の `Cancel` 固定を契約に明記（実装時に `cancelText` へ）
+- 判定: [x] ✅ **PASS** — 追加の計画肥大化は不要。実装許可待ち

@@ -1,3 +1,10 @@
+## 🔍 OP-021 BanDashboard i18n（2026-07-21）
+
+- **変更**: `BanDashboard.tsx` → `ban.*` / `common.networkError` / `common.cancel`。en+ja。テスト mock を Causal 同型に。
+- **影響**: UI 文言のみ。admin API / BanStore / expires_at / nav·page シェルキー非変更。
+- **検証**: BanDashboard 4 + i18n parity PASS
+- **残**: expires_at（C4・別 OP）
+
 ## 🔍 OP-087 P4 Path B（2026-07-21）
 
 - **変更**: 本番ホスト `apps/api-server/static` へ MC `dist/` 同期（bak → rsync → smoke）。追跡 `static/index.html` を P3 スタブへ復元。stub 契約テストを HEAD 優先に。
