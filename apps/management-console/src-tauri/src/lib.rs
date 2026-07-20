@@ -348,7 +348,8 @@ pub fn run() {
             get_sidecar_status,
             restart_sidecar,
             get_system_info,
-            get_nurture_status
+            get_nurture_status,
+            set_nurture_mode
         ])
         .setup(|app| {
             use tauri::tray::TrayIconBuilder;
@@ -533,6 +534,53 @@ mod tests {
         std::env::remove_var("NURTURE_CLOUD_URL");
         std::env::remove_var("NURTURE_DISABLED");
         std::env::remove_var("NURTURE_IN_PROCESS");
+        // Avoid picking up a developer machine's persisted .nurture_mode
+        let dir = std::env::temp_dir().join("aiome-nurture-mode-test-empty");
+        let _ = std::fs::create_dir_all(&dir);
+        let _ = std::fs::remove_file(dir.join(".nurture_mode"));
+        std::env::set_var("AIOME_DATA_DIR", &dir);
+    }
+
+    #[test]
+    #[serial]
+    fn test_nurture_mode_file_when_env_unset() {
+        clear_nurture_mode_env();
+        let dir = std::env::temp_dir().join(format!(
+            "aiome-nurture-mode-file-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(".nurture_mode"), "local\n").unwrap();
+        assert!(matches!(
+            resolve_nurture_mode_from(dir.to_str().unwrap()),
+            NurtureMode::Local
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    #[serial]
+    fn test_nurture_mode_env_beats_file() {
+        clear_nurture_mode_env();
+        let dir = std::env::temp_dir().join(format!(
+            "aiome-nurture-mode-envbeat-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(".nurture_mode"), "local\n").unwrap();
+        std::env::set_var("NURTURE_MODE", "disabled");
+        assert!(matches!(
+            resolve_nurture_mode_from(dir.to_str().unwrap()),
+            NurtureMode::Disabled
+        ));
+        clear_nurture_mode_env();
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -734,39 +782,47 @@ fn env_flag_truthy(raw: &str) -> bool {
     matches!(raw.trim().to_ascii_lowercase().as_str(), "true" | "1")
 }
 
-/// OP-088 P2: `NURTURE_MODE` 正本。未設定時は旧変数互換 → 既定 InProcess。
+/// OP-088 P2/P5-b: `NURTURE_MODE` 正本。優先は env ≫ 旧変数 ≫ `{data_dir}/.nurture_mode` ≫ InProcess。
 ///
 /// ```text
 /// MODE=disabled / NURTURE_DISABLED     → Disabled
 /// MODE=cloud / NURTURE_CLOUD_URL       → Cloud
 /// MODE=local                           → Local（dev escape）
 /// MODE=in_process / NURTURE_IN_PROCESS → InProcess
+/// file .nurture_mode                   → 同上（env 未設定時）
 /// else                                 → InProcess（製品既定）
 /// ```
 fn resolve_nurture_mode() -> NurtureMode {
+    resolve_nurture_mode_from(&get_data_dir())
+}
+
+fn parse_nurture_mode_token(token: &str) -> Option<NurtureMode> {
+    match token.trim().to_ascii_lowercase().as_str() {
+        "" => None,
+        "disabled" => Some(NurtureMode::Disabled),
+        "cloud" => match std::env::var("NURTURE_CLOUD_URL") {
+            Ok(url) if !url.is_empty() => Some(NurtureMode::Cloud(url)),
+            _ => {
+                eprintln!("⚠️ [Nurture] cloud mode requires NURTURE_CLOUD_URL; using InProcess");
+                Some(NurtureMode::InProcess)
+            }
+        },
+        "local" => Some(NurtureMode::Local),
+        "in_process" | "in-process" | "inprocess" => Some(NurtureMode::InProcess),
+        other => {
+            eprintln!("⚠️ [Nurture] Unknown nurture mode={other}; using InProcess default");
+            Some(NurtureMode::InProcess)
+        }
+    }
+}
+
+fn resolve_nurture_mode_from(data_dir: &str) -> NurtureMode {
     let mode = std::env::var("NURTURE_MODE")
         .map(|v| v.trim().to_ascii_lowercase())
         .unwrap_or_default();
 
     if !mode.is_empty() {
-        return match mode.as_str() {
-            "disabled" => NurtureMode::Disabled,
-            "cloud" => match std::env::var("NURTURE_CLOUD_URL") {
-                Ok(url) if !url.is_empty() => NurtureMode::Cloud(url),
-                _ => {
-                    eprintln!(
-                        "⚠️ [Nurture] NURTURE_MODE=cloud requires NURTURE_CLOUD_URL; using InProcess"
-                    );
-                    NurtureMode::InProcess
-                }
-            },
-            "local" => NurtureMode::Local,
-            "in_process" | "in-process" | "inprocess" => NurtureMode::InProcess,
-            other => {
-                eprintln!("⚠️ [Nurture] Unknown NURTURE_MODE={other}; using InProcess default");
-                NurtureMode::InProcess
-            }
-        };
+        return parse_nurture_mode_token(&mode).unwrap_or(NurtureMode::InProcess);
     }
 
     // Legacy when NURTURE_MODE unset
@@ -787,6 +843,17 @@ fn resolve_nurture_mode() -> NurtureMode {
     {
         return NurtureMode::InProcess;
     }
+
+    // OP-088 P5-b: persisted desktop preference
+    if !data_dir.is_empty() {
+        let path = format!("{data_dir}/.nurture_mode");
+        if let Ok(raw) = std::fs::read_to_string(&path) {
+            if let Some(parsed) = parse_nurture_mode_token(raw.trim()) {
+                return parsed;
+            }
+        }
+    }
+
     // Product default (ADR-012 Amendment)
     NurtureMode::InProcess
 }
@@ -848,6 +915,36 @@ fn get_nurture_status() -> Result<NurtureStatus, String> {
             _ => String::new(),
         },
     })
+}
+
+/// OP-088 P5-b: `{data_dir}/.nurture_mode` に永続化し、既存 `restart_sidecar` で再適用する。
+#[tauri::command]
+fn set_nurture_mode(app: tauri::AppHandle, mode: String) -> Result<NurtureStatus, String> {
+    let normalized = mode.trim().to_ascii_lowercase();
+    let allowed = matches!(
+        normalized.as_str(),
+        "disabled" | "cloud" | "local" | "in_process" | "in-process" | "inprocess"
+    );
+    if !allowed {
+        return Err(format!(
+            "invalid nurture mode '{mode}'; use disabled|cloud|local|in_process"
+        ));
+    }
+    let canonical = match normalized.as_str() {
+        "in-process" | "inprocess" => "in_process",
+        other => other,
+    };
+    let data_dir = get_data_dir();
+    if data_dir.is_empty() {
+        return Err("data directory is unavailable".to_string());
+    }
+    std::fs::create_dir_all(&data_dir)
+        .map_err(|e| format!("Failed to create data dir {data_dir}: {e}"))?;
+    let path = format!("{data_dir}/.nurture_mode");
+    std::fs::write(&path, format!("{canonical}\n"))
+        .map_err(|e| format!("Failed to write {path}: {e}"))?;
+    restart_sidecar(app)?;
+    get_nurture_status()
 }
 
 #[cfg(test)]

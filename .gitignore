@@ -94,6 +94,7 @@ docs/landing/.venv/
 workspace_a/
 workspace_b/
 .nurture_drm_master_key
+.nurture_mode
 
 # Local daemon config (contains machine-specific paths)
 scripts/com.aiome.daemon.plist

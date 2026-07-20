@@ -3,7 +3,7 @@
 > 要件正本: [`docs/specs/NURTURE_REQUIREMENTS_V2.md`](../specs/NURTURE_REQUIREMENTS_V2.md)（2026-07-06）
 
 > **自動生成元**: `/docs-gen` ワークフロー  
-> **最終更新**: 2026-07-21（OP-088: Desktop 既定 InProcess + P5-a `nurture_s2s` oneshot。公式 sidecar は api-server+key-proxy のみ。`/internal` は JWT 外 nest。Wave 2 OP-060/061・OP-075-B は継続）
+> **最終更新**: 2026-07-21（OP-088: Desktop 既定 InProcess + P5-a oneshot + P5-b Mode UI + P5-c C1' Bridge 正本/ADR-013。公式 sidecar は api-server+key-proxy のみ。Wave 2 OP-060/061・OP-075-B は継続）
 > **対象リポジトリ**: `aiome/` (Monorepo統合構成: OSS + `commercial/` 直下への商用拡張統合)
 
 ---
@@ -1265,7 +1265,7 @@ gantt
 | **公式 X (Twitter) MCP 統合** | 公式 X MCP クライアントとの stdio 連携テンプレート、および `TrendSonar` の adapter 連動を整備。自律トレンド収集の精度と速度を大幅に向上。 |
 | **品質最大化 v4（2026-07-07）** | `nurture_wishlist` + `CommerceEngine::get_wishlist`（残高不足シグナル）、`POST /commerce/convert-points`（ADR-052）、P2P デフォルトブロック、`forget_actor` で wishlist パージ、Management Console の `CoinBalanceProvider` / `useCoinBalance` による KC 残高 fetch 集約、`NURTURE_A2C_DRY_RUN` による A2C 2段階有効化 |
 | **Wave 2 OP-060/061（2026-07-10）** | coin-charge DLQ 自動再送（`coin_charge_dlq_worker`、poison 隔離、再 INSERT 禁止）。OXP は `generate_header` 統一 + stripe `require_oxp_header` fail-closed。forget は `NURTURE_INTERNAL_SECRET` OXP+Bearer、URL 正本は `NURTURE_API_URL`（`state.nurture_url`） |
-| **OP-088 Desktop InProcess（2026-07-21）** | 製品既定を InProcess にフリップ。`/internal` は JWT 外 `nest_service`。公式 sidecar から nurture-api 除外（`--with-nurture-sidecar` で Local escape）。CI `desktop-sidecar` + `--forbid-nurture-sidecar`。ADR-012 Amendment Accepted。**P5-a**: `nurture_s2s` oneshot（forget / monthly-limit / coin-charge） |
+| **OP-088 Desktop InProcess（2026-07-21）** | 製品既定を InProcess にフリップ。`/internal` は JWT 外 `nest_service`。公式 sidecar から nurture-api 除外。CI `desktop-sidecar`。ADR-012 Amendment + **ADR-013**（C1' Bridge 唯一 CommerceEngine）。**P5-a** oneshot / **P5-b** Mode UI / **P5-d→OP-089** |
 
 
 ---

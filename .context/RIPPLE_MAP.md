@@ -1,3 +1,17 @@
+## 🔍 OP-089 Desktop channels（2026-07-21）
+
+- **変更**: `desktop_sidecar_manager.py --channel economy|oss`、`--verify-channel-link`、`channel-manifest.json`、CI `desktop-sidecar`、npm `sidecar:build:oss` / `check:channels`、`DESKTOP_CHANNELS.md`
+- **影響**: OSS ビルドは nurture 非リンク。Economy 既定は現行と同等
+- **検証**: manager unit（channel Positive/Negative）+ cargo-tree 両チャネル
+- **残**: 実 GitHub Release アセット名の自動化は規約のみ（列車新設なし）
+
+## 🔍 OP-088 P5-b/c + OP-089 stub（2026-07-21）
+
+- **P5-b**: Tauri `set_nurture_mode` / file resolve、Settings Mode UI、`.nurture_mode` gitignore
+- **P5-c**: ADR-013、`try_register_in_process_commerce`（C1'）、Factory スキップ、`PluginRegistry::commerce_engine`
+- **P5-d**: OP-089 へ委譲 → **実装済（上記）**
+- **影響**: InProcess 台帳が Bridge 単一 Arc。AppState Fiat は Bridge 封印のまま（Plugin 経路）
+
 ## 🔍 OP-088 P5-a（2026-07-21）
 
 - **変更**: 新 `apps/api-server/src/nurture_s2s.rs`（`attach_s2s_headers` / `post_internal`）。`clone_s2s_router` → `AppState.nurture_s2s`（assemble・spawn 前）。auth forget / settings monthly-limit / relay coin-charge(+DLQ) / stripe・polar enqueue を置換

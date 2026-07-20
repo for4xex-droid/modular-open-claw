@@ -1,9 +1,9 @@
 # OP-088 P5 — Ship 後品質積み上げ 詳細計画（v1.5）
 
 - **親計画**: [`desktop_inprocess_default_plan.md`](desktop_inprocess_default_plan.md) v1.3（Ship P0-pre…P3 + P4 ✅）
-- **OPEN**: OP-088 残任意 = **P5-b/c/d**（**P5-a ✅ 2026-07-21**）
+- **OPEN**: OP-088 **P5 完了**（a/b/c ✅）。P5-d → **OP-089**
 - **日付**: 2026-07-21
-- **ステータス**: P5-a Implemented。b/c/d は各サブIDの明示許可まで実装禁止
+- **ステータス**: P5-a/b/c Implemented。P5-d は別 OP スタブのみ
 - **/perfect-plan**: v1.4 → **v1.5 再突合 PASS**（§8・C1 実行可能性）
 - **Safety-Critical**: 都度「`P5-x` を実装しろ」必須
 
@@ -26,9 +26,9 @@ Ship 済み Desktop（env なし InProcess）を壊さず、観測された痛�
 | ID | 一言 | 着手条件 | 優先 |
 |----|------|----------|------|
 | **P5-a** | S2S プロセス内 dispatch（同期 G11） | ✅ 2026-07-21 | ★★★ |
-| **P5-b** | Settings Mode（b-read → b-write） | Human 明示 | ★★ |
-| **P5-c** | Plugin bridge を **生成時点から** 唯一の CommerceEngine に | 新 ADR + SC | ★ |
-| **P5-d** | OSS/Economy 二系統 | 別 OP | ★ |
+| **P5-b** | Settings Mode（b-read → b-write） | ✅ 2026-07-21 | ★★ |
+| **P5-c** | Plugin bridge を **生成時点から** 唯一の CommerceEngine に | ✅ ADR-013 + C1' 2026-07-21 | ★ |
+| **P5-d** | OSS/Economy 二系統 | ✅ **OP-089** 実装済 | ★ |
 
 ### 0.2 役割分担
 
@@ -179,7 +179,8 @@ InProcess で `AppState` / gig / conductors / marketplace が **同一** `Nurtur
 
 ## 6. P5-d — 別 OP
 
-親 Q5。本 OP クローズ条件外。
+親 Q5。本 OP クローズ条件外。  
+**2026-07-21**: [`op089_oss_economy_dual_channel_plan.md`](op089_oss_economy_dual_channel_plan.md) スタブへ委譲。OP-088 クローズ可。
 
 ---
 

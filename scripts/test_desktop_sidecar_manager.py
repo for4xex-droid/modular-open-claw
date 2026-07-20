@@ -301,6 +301,78 @@ class TestDesktopSidecarManager(unittest.TestCase):
         self.assertFalse(desktop_sidecar_manager.is_real_binary(nonexistent),
                          "Nonexistent file should return False")
 
+    def test_channel_features_economy_vs_oss(self):
+        """OP-089: Economy links nurture; OSS has no nurture feature."""
+        self._has_module()
+        self.assertEqual(
+            desktop_sidecar_manager.api_server_cargo_features("economy"), ["nurture"]
+        )
+        self.assertEqual(desktop_sidecar_manager.api_server_cargo_features("oss"), [])
+        self.assertEqual(
+            desktop_sidecar_manager.normalize_channel(None),
+            desktop_sidecar_manager.CHANNEL_ECONOMY,
+        )
+        with self.assertRaises(ValueError):
+            desktop_sidecar_manager.normalize_channel("cloud")
+
+    def test_write_channel_manifest(self):
+        self._has_module()
+        binaries_dir = Path(self.temp_dir) / "bins"
+        binaries_dir.mkdir()
+        path = desktop_sidecar_manager.write_channel_manifest(
+            binaries_dir, "oss", "aarch64-apple-darwin"
+        )
+        data = __import__("json").loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(data["channel"], "oss")
+        self.assertEqual(data["api_server_features"], [])
+        self.assertEqual(data["asset_name_prefix"], "AiomeOS-OSS")
+        self.assertFalse(data["nurture_sidecar_allowed"])
+
+    def test_oss_channel_rejects_nurture_sidecar(self):
+        self._has_module()
+        with self.assertRaises(ValueError) as ctx:
+            desktop_sidecar_manager.run_build(
+                Path(self.temp_dir),
+                "aarch64-apple-darwin",
+                with_nurture_sidecar=True,
+                channel="oss",
+            )
+        self.assertIn("OSS", str(ctx.exception))
+
+    def test_verify_channel_link_economy_positive(self):
+        """Positive: Economy tree must include nurture-api."""
+        self._has_module()
+        desktop_sidecar_manager.verify_api_server_channel_link("economy")
+
+    def test_verify_channel_link_oss_positive(self):
+        """Positive: OSS tree must not include nurture-api."""
+        self._has_module()
+        desktop_sidecar_manager.verify_api_server_channel_link("oss")
+
+    def test_verify_channel_link_economy_negative_when_tree_misses(self):
+        """Negative: Economy fails closed if cargo tree lacks nurture-api."""
+        self._has_module()
+        fake = MagicMock()
+        fake.returncode = 1
+        fake.stdout = ""
+        fake.stderr = "package ID specification `nurture-api` did not match"
+        with patch("desktop_sidecar_manager.subprocess.run", return_value=fake):
+            with self.assertRaises(ValueError) as ctx:
+                desktop_sidecar_manager.verify_api_server_channel_link("economy")
+        self.assertIn("Economy", str(ctx.exception))
+
+    def test_verify_channel_link_oss_negative_when_tree_has_nurture(self):
+        """Negative: OSS fails closed if nurture-api appears without feature."""
+        self._has_module()
+        fake = MagicMock()
+        fake.returncode = 0
+        fake.stdout = "nurture-api v0.1.0\n"
+        fake.stderr = ""
+        with patch("desktop_sidecar_manager.subprocess.run", return_value=fake):
+            with self.assertRaises(ValueError) as ctx:
+                desktop_sidecar_manager.verify_api_server_channel_link("oss")
+        self.assertIn("OSS", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

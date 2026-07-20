@@ -169,8 +169,13 @@ pub async fn boot_sequence() -> anyhow::Result<BootContext> {
         preflight.live_manager.clone(),
     )
     .await?;
-    let core_result =
-        init_core_services(&preflight, &db_result, &llm_result, oxilean_power.clone()).await?;
+    let core_result = init_core_services(
+        &mut preflight,
+        &db_result,
+        &llm_result,
+        oxilean_power.clone(),
+    )
+    .await?;
 
     register_in_process_plugins(
         &mut preflight.plugin_registry,

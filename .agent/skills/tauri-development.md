@@ -17,6 +17,8 @@ Tauri クレート（management-console）は「薄いシェル（ラッパー�
 ### T-002: Sidecar Lifecycle Contract [CRITICAL]
 公式 Desktop の同梱サイドカーは `api-server` + `key-proxy`（+ 任意 `obscura`）のみ。**`nurture-api` は公式パッケージに含めない**（OP-088 P3 / 既定 InProcess）。
 
+**OP-089 チャネル**: 既定ビルドは `--channel economy`（`--features nurture`）。OSS 配布は `--channel oss`（nurture 非リンク）。詳細は `docs/guides/DESKTOP_CHANNELS.md`。両チャネルで実 `nurture-api` sidecar 混入は Fail-Closed。
+
 起動・停止は `tauri-plugin-shell` の Command API 経由で行い、以下を明示注入すること：
 * `AIOME_DATA_DIR`: データディレクトリパス（Tauri の `app_data_dir` を解決したパス）
 * `CELL_ID`: セル識別子（デフォルト: `"desktop-0"`）

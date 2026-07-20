@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""Tauri Desktop sidecar build / placeholder / physical validation (OP-088 P3).
+"""Tauri Desktop sidecar build / placeholder / physical validation (OP-088 P3 + OP-089).
 
 Official package sidecars: api-server + key-proxy (+ obscura for --check-all).
-nurture-api is opt-in via --with-nurture-sidecar (Local escape / dev only).
+nurture-api is opt-in via --with-nurture-sidecar (Local escape / Economy only).
+
+OP-089 channels:
+  economy (default) — api-server --features nurture (Nurture InProcess)
+  oss               — api-server with no nurture feature (commercial/ not linked)
 """
 import argparse
+import json
 import os
 import platform
 import shutil
@@ -19,9 +24,90 @@ NURTURE_SIDECAR = "nurture-api"
 # リリース完全検証に含める任意バイナリ
 OPTIONAL_RELEASE_BINARIES = ["obscura"]
 
+# OP-089: 配布チャネル
+CHANNEL_ECONOMY = "economy"
+CHANNEL_OSS = "oss"
+VALID_CHANNELS = (CHANNEL_ECONOMY, CHANNEL_OSS)
+
 # 後方互換エイリアス（テスト・ドキュメント）
 CORE_BINARIES = OFFICIAL_BINARIES
 ALL_BINARIES = OFFICIAL_BINARIES + OPTIONAL_RELEASE_BINARIES
+
+
+def normalize_channel(channel: str | None) -> str:
+    raw = (channel or CHANNEL_ECONOMY).strip().lower()
+    if raw not in VALID_CHANNELS:
+        raise ValueError(
+            f"invalid channel '{channel}'; use {CHANNEL_ECONOMY}|{CHANNEL_OSS}"
+        )
+    return raw
+
+
+def api_server_cargo_features(channel: str) -> list[str]:
+    """チャネル別の api-server cargo --features 引数（空 = feature なし）。"""
+    ch = normalize_channel(channel)
+    if ch == CHANNEL_ECONOMY:
+        return ["nurture"]
+    return []
+
+
+def write_channel_manifest(binaries_dir: Path, channel: str, triple: str) -> Path:
+    """ビルド成果物横にチャネルメタを書く（検査・配布命名の根拠）。"""
+    ch = normalize_channel(channel)
+    features = api_server_cargo_features(ch)
+    payload = {
+        "channel": ch,
+        "triple": triple,
+        "api_server_features": features,
+        "official_binaries": list(OFFICIAL_BINARIES),
+        "nurture_sidecar_allowed": False,
+        "asset_name_prefix": (
+            "AiomeOS-Economy" if ch == CHANNEL_ECONOMY else "AiomeOS-OSS"
+        ),
+    }
+    path = Path(binaries_dir) / "channel-manifest.json"
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    print(f"Wrote {path.name} (channel={ch})")
+    return path
+
+
+def verify_api_server_channel_link(channel: str) -> None:
+    """Fail-Closed: Economy は nurture-api 依存必須 / OSS は禁止（cargo tree）。"""
+    ch = normalize_channel(channel)
+    features = api_server_cargo_features(ch)
+    cmd = [
+        "cargo",
+        "tree",
+        "-p",
+        "api-server",
+        "-i",
+        "nurture-api",
+        "--depth",
+        "0",
+        "--quiet",
+    ]
+    if features:
+        cmd.extend(["--features", ",".join(features)])
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    out = (result.stdout or "") + (result.stderr or "")
+    has_nurture = result.returncode == 0 and "nurture-api" in out
+
+    if ch == CHANNEL_ECONOMY:
+        if not has_nurture:
+            raise ValueError(
+                "Economy channel must link nurture-api "
+                f"(cargo tree failed or missing; rc={result.returncode})"
+            )
+        print("OK: Economy channel links nurture-api")
+        return
+
+    if has_nurture:
+        raise ValueError(
+            "OSS channel must NOT link nurture-api "
+            "(cargo tree found nurture-api without --features nurture)"
+        )
+    print("OK: OSS channel does not link nurture-api")
 
 # マジックバイトの定義
 ELF_MAGIC = b"\x7fELF"
@@ -214,21 +300,47 @@ def check_binaries(binaries_dir, triple, check_all=False, forbid_nurture_sidecar
     print(f"Validation passed for triple {triple} (check_all={check_all})")
 
 
-def run_build(binaries_dir, triple, with_nurture_sidecar: bool = False):
+def run_build(
+    binaries_dir,
+    triple,
+    with_nurture_sidecar: bool = False,
+    channel: str = CHANNEL_ECONOMY,
+):
     """Rustサイドカーバイナリのビルドとコピーを行う。"""
+    channel = normalize_channel(channel)
+    if with_nurture_sidecar and channel == CHANNEL_OSS:
+        raise ValueError(
+            "OSS channel cannot include nurture-api sidecar "
+            "(use --channel economy --with-nurture-sidecar for Local escape)"
+        )
+
     binaries_dir = Path(binaries_dir)
     binaries_dir.mkdir(parents=True, exist_ok=True)
     is_windows = sys.platform == "win32" or "windows-msvc" in triple
     ext = ".exe" if is_windows else ""
+    features = api_server_cargo_features(channel)
 
-    print("Building Rust sidecars (official: api-server + key-proxy)...")
-
-    # 1. api-server — OP-088: `--features nurture` = desktop（cloud-storage/AWS なし）
-    print("Building api-server (--features nurture; desktop, no cloud-storage)...")
-    subprocess.run(
-        ["cargo", "build", "--release", "-p", "api-server", "--features", "nurture"],
-        check=True,
+    print(
+        f"Building Rust sidecars (channel={channel}; official: api-server + key-proxy)..."
     )
+
+    # 1. api-server — Economy: --features nurture / OSS: no nurture feature
+    if features:
+        feat_label = ",".join(features)
+        print(f"Building api-server (--features {feat_label}; channel={channel})...")
+        cargo_api = [
+            "cargo",
+            "build",
+            "--release",
+            "-p",
+            "api-server",
+            "--features",
+            feat_label,
+        ]
+    else:
+        print(f"Building api-server (no nurture feature; channel={channel})...")
+        cargo_api = ["cargo", "build", "--release", "-p", "api-server"]
+    subprocess.run(cargo_api, check=True)
     src_api_server = Path("target/release") / f"api-server{ext}"
     dst_api_server = binaries_dir / get_sidecar_filename("api-server", triple, is_windows)
     shutil.copy2(src_api_server, dst_api_server)
@@ -242,7 +354,7 @@ def run_build(binaries_dir, triple, with_nurture_sidecar: bool = False):
     shutil.copy2(src_key_proxy, dst_key_proxy)
     print(f"Copied key-proxy -> {dst_key_proxy.name}")
 
-    # 3. nurture-api — 公式は除外。Local escape のみ
+    # 3. nurture-api — 公式は除外。Economy Local escape のみ
     if with_nurture_sidecar:
         print("Building nurture-api (desktop; --with-nurture-sidecar)...")
         subprocess.run(
@@ -289,9 +401,14 @@ def run_build(binaries_dir, triple, with_nurture_sidecar: bool = False):
             print("Creating fallback dummy placeholder for obscura...")
             generate_placeholders(binaries_dir, triple, target_binaries=["obscura"])
 
+    write_channel_manifest(binaries_dir, channel, triple)
+    verify_api_server_channel_link(channel)
+
 
 def main():
-    parser = argparse.ArgumentParser(description="Tauri Sidecar Manager & Guardian (OP-088 P3)")
+    parser = argparse.ArgumentParser(
+        description="Tauri Sidecar Manager & Guardian (OP-088 P3 / OP-089 channels)"
+    )
     parser.add_argument(
         "--setup-placeholders",
         action="store_true",
@@ -303,9 +420,21 @@ def main():
         help="Build production-ready sidecars and place them",
     )
     parser.add_argument(
+        "--channel",
+        type=str,
+        default=CHANNEL_ECONOMY,
+        choices=list(VALID_CHANNELS),
+        help="OP-089 distribution channel (default: economy)",
+    )
+    parser.add_argument(
+        "--verify-channel-link",
+        action="store_true",
+        help="Fail-Closed cargo-tree check for channel nurture-api linkage (no binary build)",
+    )
+    parser.add_argument(
         "--with-nurture-sidecar",
         action="store_true",
-        help="Also build/copy nurture-api (Local escape / dev only; not in official package)",
+        help="Also build/copy nurture-api (Local escape / Economy only; not in official package)",
     )
     parser.add_argument(
         "--check-core",
@@ -337,7 +466,9 @@ def main():
     binaries_dir = Path(args.binaries_dir)
 
     try:
-        if args.setup_placeholders:
+        if args.verify_channel_link:
+            verify_api_server_channel_link(args.channel)
+        elif args.setup_placeholders:
             generate_placeholders(
                 binaries_dir,
                 triple,
@@ -348,6 +479,7 @@ def main():
                 binaries_dir,
                 triple,
                 with_nurture_sidecar=args.with_nurture_sidecar,
+                channel=args.channel,
             )
         elif args.check_core:
             check_binaries(
@@ -361,7 +493,8 @@ def main():
         else:
             parser.print_help()
             sys.exit(1)
-    except ValueError:
+    except ValueError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
         print(f"Unexpected error: {e}", file=sys.stderr)

@@ -76,10 +76,39 @@ jest.mock('../hooks/useViewMode', () => ({
   })
 }));
 
+const mockInvoke = jest.fn();
+jest.mock('@tauri-apps/api/core', () => ({
+  invoke: (...args: unknown[]) => mockInvoke(...args),
+}));
+
 describe('SettingsPage Integrations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockViewMode = 'cockpit'; // Default to cockpit for existing tests
+    delete (window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
+    mockInvoke.mockReset();
+  });
+
+  it('shows Nurture Mode section on Desktop Tauri and applies mode', async () => {
+    (window as unknown as { __TAURI_INTERNALS__: object }).__TAURI_INTERNALS__ = {};
+    mockInvoke.mockImplementation(async (cmd: string) => {
+      if (cmd === 'get_nurture_status') {
+        return { mode: 'in_process', status: 'in_process', url: 'http://127.0.0.1:3015' };
+      }
+      if (cmd === 'set_nurture_mode') {
+        return { mode: 'local', status: 'running', url: 'http://localhost:3020' };
+      }
+      return {};
+    });
+
+    render(<SettingsPage />);
+    expect(await screen.findByTestId('nurture-mode-section')).toBeInTheDocument();
+    expect(await screen.findByTestId('nurture-mode-status')).toHaveTextContent('settings.nurtureModeCurrent');
+
+    fireEvent.click(screen.getByText('settings.nurtureMode_local'));
+    await waitFor(() => {
+      expect(mockInvoke).toHaveBeenCalledWith('set_nurture_mode', { mode: 'local' });
+    });
   });
 
   it('renders Channel Bridges section with X Bearer Token and Search API Key inputs', async () => {

@@ -147,7 +147,7 @@ Other products bolt the economy on as a plugin. In Aiome, the economy interface 
 
 When Stripe API keys are not configured in `.env`, the system automatically falls back to `MockCommerceEngine`. You can immediately experience all economic features (billing, skill trading, and gifts) using fake balances, completely free.
 
-**Desktop (OP-088)**: The Tauri product default is **InProcess** (`NurturePlugin` registered inside api-server; no env required for normal use). Official sidecars are `api-server` + `key-proxy` only; the `nurture-api` process is a dev escape (`NURTURE_MODE=local` + `--with-nurture-sidecar`). See [integration design §5.11](docs/architecture/AIOME_NURTURE_SYNERGY.md) and the [operations manual](docs/guides/OPERATIONS_MANUAL.md).
+**Desktop (OP-088 / OP-089)**: The Tauri product default is **InProcess / Economy channel** (`NurturePlugin` registered inside api-server; no env required for normal use). Official sidecars are `api-server` + `key-proxy` only; the `nurture-api` process is a dev escape (`NURTURE_MODE=local` + `--with-nurture-sidecar`). The **OSS channel** (no commercial link) is `npm run sidecar:build:oss`. See [Desktop channels](docs/guides/DESKTOP_CHANNELS.md), [integration design §5.11](docs/architecture/AIOME_NURTURE_SYNERGY.md), and the [operations manual](docs/guides/OPERATIONS_MANUAL.md).
 
 For detailed technical specifications, transaction protocols, and sequence diagrams, please refer to [AIOME_NURTURE_SYNERGY.md](docs/architecture/AIOME_NURTURE_SYNERGY.md). For external-facing details, see also [commercial/README.md](commercial/README.md).
 

@@ -148,7 +148,7 @@ graph LR
 
 外部のStripe APIキーを設定しない場合、システムは自動的に `MockCommerceEngine` にフォールバックします。課金やスキル売買、ギフト発送などすべての経済シミュレーションを、実際の資金を消費することなくフェイク残高で即座に体験できます。
 
-**Desktop（OP-088）**: Tauri 製品の既定は **InProcess**（`NurturePlugin` を api-server 内に登録。通常は環境変数不要）。公式同梱 sidecar は `api-server` + `key-proxy` のみで、`nurture-api` プロセスは開発用 escape（`NURTURE_MODE=local` + `--with-nurture-sidecar`）です。詳細は [統合設計 §5.11](docs/architecture/AIOME_NURTURE_SYNERGY.md) と [運用ガイド](docs/guides/OPERATIONS_MANUAL.md) を参照してください。
+**Desktop（OP-088 / OP-089）**: Tauri 製品の既定は **InProcess / Economy チャネル**（`NurturePlugin` を api-server 内に登録。通常は環境変数不要）。公式同梱 sidecar は `api-server` + `key-proxy` のみで、`nurture-api` プロセスは開発用 escape（`NURTURE_MODE=local` + `--with-nurture-sidecar`）です。**OSS チャネル**（commercial 非リンク）は `npm run sidecar:build:oss`。詳細は [Desktop チャネル](docs/guides/DESKTOP_CHANNELS.md)、[統合設計 §5.11](docs/architecture/AIOME_NURTURE_SYNERGY.md)、[運用ガイド](docs/guides/OPERATIONS_MANUAL.md) を参照してください。
 
 より詳細な技術仕様や取引プロトコル、シーケンス図については、[AIOME_NURTURE_SYNERGY.md](docs/architecture/AIOME_NURTURE_SYNERGY.md) をご参照ください。詳しい対外説明は [commercial/README.md](commercial/README.md) にもまとめています。
 

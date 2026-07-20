@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Added (OP-089 Desktop channels 2026-07-21)
+- **チャネル**: `economy`（既定・`--features nurture`）/ `oss`（commercial 非リンク）。`desktop_sidecar_manager.py --channel` + `channel-manifest.json`。
+- **Fail-Closed**: `--verify-channel-link`（cargo tree: Economy=has nurture-api / OSS=lacks）。OSS+`--with-nurture-sidecar` 拒否。
+- **CI / npm**: `desktop-sidecar` に両チャネル link 検査。`sidecar:build:economy|oss` / `sidecar:check:channels`。
+- **文書**: [`DESKTOP_CHANNELS.md`](docs/guides/DESKTOP_CHANNELS.md)、計画 v1.0、README↔en、OPERATIONS、T-002。
+
+### Added (OP-088 P5-b/c + OP-089 stub 2026-07-21)
+- **P5-b**: Settings に Desktop Nurture Mode UI。`resolve_nurture_mode` が `{data_dir}/.nurture_mode` を読む（env ≫ file ≫ InProcess）。`set_nurture_mode` + `.gitignore`。Jest + Tauri unit。
+- **P5-c**: ADR-013 Accepted。C1' で auth 後に Plugin Bridge を登録し InProcess は Factory スキップ。`PluginRegistry::commerce_engine`。二重 create 禁止。
+- **P5-d → OP-089**: OSS/Economy 二系統を別 OP へ委譲（本エントリで実装完了）。
+
 ### Added (OP-088 P5-a 2026-07-21)
 - **`nurture_s2s`**: InProcess は nest 前 path の `Router::oneshot`、Local/Cloud は HTTP。`attach_s2s_headers(actor, power)` + `post_internal`。
 - **配線**: `PluginRegistry::clone_s2s_router` → assemble（spawn 前）→ `AppState.nurture_s2s`。forget / monthly-limit / coin-charge(+DLQ) を置換。create_router は従来 `take`+nest。

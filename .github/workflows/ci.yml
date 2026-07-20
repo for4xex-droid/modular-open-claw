@@ -110,9 +110,9 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: cobertura.xml
 
-  # OP-088 P3-5: 公式 Desktop sidecar 物理検証（build 後 check-core + nurture-api 混入禁止）
+  # OP-088 P3-5 + OP-089: 公式 Desktop sidecar + Economy/OSS チャネル link Fail-Closed
   desktop-sidecar:
-    name: Desktop Sidecar Check (OP-088)
+    name: Desktop Sidecar Check (OP-088/OP-089)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -135,11 +135,17 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Unit tests (manager + tauri.conf Negative)
+      - name: Unit tests (manager + tauri.conf Negative + channels)
         run: python3 scripts/test_desktop_sidecar_manager.py
 
-      - name: Build official sidecars (api-server + key-proxy)
-        run: python3 scripts/desktop_sidecar_manager.py --build
+      - name: OP-089 verify Economy links nurture-api
+        run: python3 scripts/desktop_sidecar_manager.py --verify-channel-link --channel economy
+
+      - name: OP-089 verify OSS does not link nurture-api
+        run: python3 scripts/desktop_sidecar_manager.py --verify-channel-link --channel oss
+
+      - name: Build Economy sidecars (api-server + key-proxy)
+        run: python3 scripts/desktop_sidecar_manager.py --build --channel economy
 
       - name: Physical check-core + forbid nurture-api
         run: python3 scripts/desktop_sidecar_manager.py --check-core --forbid-nurture-sidecar

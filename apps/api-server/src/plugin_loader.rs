@@ -101,6 +101,18 @@ impl PluginRegistry {
         self.plugins.iter().flat_map(|p| p.agent_hooks()).collect()
     }
 
+    /// OP-088 P5-c: 登録済み Plugin の CommerceEngine（InProcess Bridge 正本）。
+    pub fn commerce_engine(
+        &self,
+    ) -> Option<Arc<dyn aiome_core_contracts::commerce::CommerceEngine>> {
+        self.plugins.iter().find_map(|p| p.commerce_engine())
+    }
+
+    /// C1' 後の二重 `create_plugin` 防止。
+    pub fn has_s2s_router(&self) -> bool {
+        self.s2s_router.is_some()
+    }
+
     pub fn check_env_vars(&self) -> bool {
         let mut missing = false;
         for plugin in &self.plugins {

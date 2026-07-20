@@ -6,15 +6,18 @@ description: Tauri サイドカーバイナリのライフサイクル管理と�
 
 Tauri デスクトップアプリケーションに必要なサイドカーバイナリのライフサイクル管理、および製品ビルド時におけるダミー（プレースホルダー）混入を防ぐ安全検証を実施します。
 
-## 概要（OP-088 P3）
+## 概要（OP-088 P3 + OP-089）
 
-**公式 Desktop は設定不要（既定 InProcess）**。同梱サイドカーは `api-server` + `key-proxy`（+ 任意で `obscura`）のみ。  
+**公式 Desktop は設定不要（既定 InProcess / Economy チャネル）**。同梱サイドカーは `api-server` + `key-proxy`（+ 任意で `obscura`）のみ。  
 `nurture-api` は公式パッケージに含めない。Local escape は開発用 `--with-nurture-sidecar` + `NURTURE_MODE=local`。
+
+**OP-089 チャネル**: `economy`（`--features nurture`・既定） / `oss`（nurture 非リンク）。詳細 [`docs/guides/DESKTOP_CHANNELS.md`](../../docs/guides/DESKTOP_CHANNELS.md)。
 
 本ワークフローは `scripts/desktop_sidecar_manager.py` を運用します：
 1. **プレースホルダー自動生成**: 公式セット（+ obscura）。`--with-nurture-sidecar` で nurture-api も生成可。
 2. **本物のバイナリ物理検証**: マジックバイト + 最小サイズ（100KB）。
 3. **2段階検証**: `--check-core`（公式2本）/ `--check-all`（+ obscura、かつ実 nurture-api 混入禁止）。
+4. **チャネル link 検査**: `--verify-channel-link --channel economy|oss`。
 
 ---
 
@@ -22,10 +25,13 @@ Tauri デスクトップアプリケーションに必要なサイドカーバ�
 
 ```bash
 npm run sidecar:placeholders   # 公式プレースホルダー
-npm run sidecar:build          # 公式ビルド
-npm run sidecar:build:local    # + nurture-api（dev）
+npm run sidecar:build          # Economy（既定）
+npm run sidecar:build:economy  # Economy
+npm run sidecar:build:oss      # OSS（commercial 非リンク）
+npm run sidecar:build:local    # Economy + nurture-api（dev）
 npm run sidecar:check          # --check-core --forbid-nurture-sidecar（CI 同等）
 npm run sidecar:check:release  # --check-all
+npm run sidecar:check:channels # Economy/OSS cargo-tree Fail-Closed
 ```
 
 ---
@@ -41,10 +47,14 @@ python3 scripts/desktop_sidecar_manager.py --setup-placeholders --with-nurture-s
 
 ### 2. 公式サイドカービルド
 ```bash
-python3 scripts/desktop_sidecar_manager.py --build
+python3 scripts/desktop_sidecar_manager.py --build --channel economy
+# OSS 軽量チャネル:
+python3 scripts/desktop_sidecar_manager.py --build --channel oss
 ```
-* `api-server` は `--features nurture`（desktop / no AWS）。
+* Economy: `api-server` は `--features nurture`（desktop / no AWS）。
+* OSS: `api-server` は nurture feature なし（commercial 非リンク）。
 * `nurture-api` はビルドしない。旧成果物があれば削除する。
+* ビルド後 `channel-manifest.json` と `--verify-channel-link` を実行する。
 
 ### 3. Local escape 用 nurture-api ビルド
 ```bash
@@ -77,6 +87,7 @@ python3 scripts/desktop_sidecar_manager.py --check-all
 2. **Git ロックダウン**: `apps/management-console/src-tauri/binaries/` は `.gitignore` で遮断を維持。
 3. **CI 配線（済）**: `.github/workflows/ci.yml` ジョブ `desktop-sidecar`
    * `python3 scripts/test_desktop_sidecar_manager.py`
-   * `python3 scripts/desktop_sidecar_manager.py --build`
+   * `--verify-channel-link --channel economy` / `--channel oss`（OP-089）
+   * `python3 scripts/desktop_sidecar_manager.py --build --channel economy`
    * `python3 scripts/desktop_sidecar_manager.py --check-core --forbid-nurture-sidecar`
    * `--check-all`（obscura 必須）はリリース手元/専用パイプライン向け。常用 CI では obscura 無しでもゲート可能。

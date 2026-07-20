@@ -11,7 +11,7 @@ use infrastructure::compliance::ban_store::BanStore;
 use std::sync::Arc;
 
 pub async fn init_core_services(
-    preflight: &PreflightResult,
+    preflight: &mut PreflightResult,
     db: &DatabaseResult,
     llm: &ProviderResult,
     oxilean_power: std::sync::Arc<std::sync::atomic::AtomicU32>,
@@ -19,7 +19,6 @@ pub async fn init_core_services(
     let resolver = &preflight.resolver;
     let config = &preflight.config;
     let cancel_token = &preflight.cancel_token;
-    let _plugin_registry = &preflight.plugin_registry;
     let _tts_openai_key = &preflight.secrets.tts_openai_key;
     let stripe_key_raw = &preflight.secrets.stripe_key;
     let nurture_secret_raw = &preflight.secrets.nurture_secret;
@@ -86,54 +85,7 @@ pub async fn init_core_services(
         resolver.resolve("wasm_storage"),
     ));
 
-    let commerce_engine = {
-        let stripe_key = stripe_key_raw.clone();
-        let polar_key = std::env::var("POLAR_API_KEY").ok();
-        shared::security::scrub_env("POLAR_API_KEY");
-        let stripe_webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
-        let polar_webhook_secret = std::env::var("POLAR_WEBHOOK_SECRET").unwrap_or_default();
-        shared::security::scrub_env("STRIPE_WEBHOOK_SECRET");
-        shared::security::scrub_env("POLAR_WEBHOOK_SECRET");
-
-        let sqlite_pool = db_pool.get_sqlite_pool_or_err()?.clone();
-
-        let nurture_url = std::env::var("NURTURE_API_URL").ok();
-        let nurture_secret = nurture_secret_raw.clone();
-
-        let config_commerce = if let Some(key) = stripe_key {
-            aiome_commerce::factory::CommerceConfig {
-                provider: aiome_commerce::factory::ProviderType::Stripe,
-                api_key: Some(secrecy::SecretString::from(key)),
-                webhook_secret: secrecy::SecretString::from(stripe_webhook_secret),
-                base_url: None,
-            }
-        } else if let Some(key) = polar_key {
-            aiome_commerce::factory::CommerceConfig {
-                provider: aiome_commerce::factory::ProviderType::Polar,
-                api_key: Some(secrecy::SecretString::from(key)),
-                webhook_secret: secrecy::SecretString::from(polar_webhook_secret),
-                base_url: std::env::var("POLAR_BASE_URL").ok(),
-            }
-        } else {
-            aiome_commerce::factory::CommerceConfig {
-                provider: aiome_commerce::factory::ProviderType::Mock,
-                api_key: None,
-                webhook_secret: secrecy::SecretString::from("".to_string()),
-                base_url: None,
-            }
-        };
-
-        Some(
-            aiome_commerce::CommerceEngineFactory::create(
-                config_commerce,
-                sqlite_pool,
-                nurture_url,
-                nurture_secret,
-                Some(oxilean_power.clone()),
-            )
-            .await?,
-        )
-    };
+    // OP-088 P5-c: CommerceEngine は auth_manager 後（C1'）で解決する。
 
     // OP-083-C: X402ClientFactory is separate from CommerceEngineFactory.
     // Fail-closed on create; missing env → None (do not abort api-server boot).
@@ -524,6 +476,68 @@ pub async fn init_core_services(
                 tracing::error!("🚨 [FATAL] JWT_PRIVATE_KEY_B64 must be set in production!");
                 std::process::exit(1);
             }
+        }
+    };
+
+    // OP-088 P5-c C1' (ADR-013): InProcess → Plugin Bridge 唯一正本 / それ以外 → Factory
+    let commerce_engine = {
+        if let Some(bridge) = super::plugins::try_register_in_process_commerce(
+            &mut preflight.plugin_registry,
+            cancel_token.clone(),
+            nurture_secret_raw,
+            db,
+            event_sender.clone(),
+            auth_manager.clone(),
+        )
+        .await?
+        {
+            Some(bridge)
+        } else {
+            let stripe_key = stripe_key_raw.clone();
+            let polar_key = std::env::var("POLAR_API_KEY").ok();
+            shared::security::scrub_env("POLAR_API_KEY");
+            let stripe_webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").unwrap_or_default();
+            let polar_webhook_secret = std::env::var("POLAR_WEBHOOK_SECRET").unwrap_or_default();
+            shared::security::scrub_env("STRIPE_WEBHOOK_SECRET");
+            shared::security::scrub_env("POLAR_WEBHOOK_SECRET");
+
+            let sqlite_pool = db_pool.get_sqlite_pool_or_err()?.clone();
+            let nurture_url = std::env::var("NURTURE_API_URL").ok();
+            let nurture_secret = nurture_secret_raw.clone();
+
+            let config_commerce = if let Some(key) = stripe_key {
+                aiome_commerce::factory::CommerceConfig {
+                    provider: aiome_commerce::factory::ProviderType::Stripe,
+                    api_key: Some(secrecy::SecretString::from(key)),
+                    webhook_secret: secrecy::SecretString::from(stripe_webhook_secret),
+                    base_url: None,
+                }
+            } else if let Some(key) = polar_key {
+                aiome_commerce::factory::CommerceConfig {
+                    provider: aiome_commerce::factory::ProviderType::Polar,
+                    api_key: Some(secrecy::SecretString::from(key)),
+                    webhook_secret: secrecy::SecretString::from(polar_webhook_secret),
+                    base_url: std::env::var("POLAR_BASE_URL").ok(),
+                }
+            } else {
+                aiome_commerce::factory::CommerceConfig {
+                    provider: aiome_commerce::factory::ProviderType::Mock,
+                    api_key: None,
+                    webhook_secret: secrecy::SecretString::from("".to_string()),
+                    base_url: None,
+                }
+            };
+
+            Some(
+                aiome_commerce::CommerceEngineFactory::create(
+                    config_commerce,
+                    sqlite_pool,
+                    nurture_url,
+                    nurture_secret,
+                    Some(oxilean_power.clone()),
+                )
+                .await?,
+            )
         }
     };
 

@@ -94,13 +94,14 @@ TIMESFM_SIDECAR_URL=http://localhost:3020        # TimesFM サイドカーURL
 CONTAINER_RUNTIME=podman                         # DockerConductor/ Delegator で強制利用するコンテナランタイム (podman or docker). 指定がない場合は podman 優先の自動フォールバック。
 LOCAL_LLM_CONCURRENCY=2                          # Fast tier 用ローカルモデルへの同時実行セマフォ制限数 (デフォルト: 2)
 
-# --- Nurture / Desktop Economy (OP-088) ---
-# Desktop 製品既定は InProcess（通常は設定不要）。公式同梱 sidecar = api-server + key-proxy のみ。
+# --- Nurture / Desktop Economy (OP-088 / OP-089) ---
+# Desktop 製品既定は InProcess / Economy チャネル（通常は設定不要）。公式同梱 sidecar = api-server + key-proxy のみ。
+# 配布チャネル: economy（--features nurture）/ oss（commercial 非リンク）→ docs/guides/DESKTOP_CHANNELS.md
 # 正本: NURTURE_MODE=disabled|cloud|local|in_process
 # NURTURE_MODE=
 #   local      = nurture-api sidecar（開発。要 --with-nurture-sidecar。公式パッケージでは失敗しうる）
 #   cloud      = NURTURE_CLOUD_URL 必須
-#   disabled   = 経済オフ（OSS / Mock）
+#   disabled   = 経済オフ（Mock）
 #   in_process = 明示 InProcess（未設定時の既定と同じ）
 #
 NURTURE_INTERNAL_SECRET=your_secret              # S2S 認証 + OXP 署名鍵（coin-charge / forget / stripe proxy 共通。API_SERVER_SECRET とは別）

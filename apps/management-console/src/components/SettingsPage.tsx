@@ -5,6 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 import React, { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useAvatarCharacter } from '../hooks/AvatarContext';
 import { useTranslation, useLanguage } from '../i18n';
 import { useDisplayMode } from '../hooks/useDisplayMode';
@@ -27,6 +28,16 @@ import { useToast } from './common/Toast';
 import { LoadingState } from './ui/LoadingState';
 import { SectionHeader } from './ui/SectionHeader';
 
+type NurtureModeUi = 'in_process' | 'local' | 'cloud' | 'disabled';
+
+type NurtureStatusUi = {
+    mode: string;
+    status: string;
+    url: string;
+};
+
+const isTauriDesktop = () =>
+    typeof window !== 'undefined' && !!(window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
 
 const SettingsPage: React.FC = () => {
     const { character, setCharacter, proportion, setProportion } = useAvatarCharacter();
@@ -42,6 +53,36 @@ const SettingsPage: React.FC = () => {
     const [testResults, setTestResults] = useState<Record<string, { success: boolean, message: string, loading: boolean }>>({});
     const [globalError, setGlobalError] = useState<string | null>(null);
     const [vaultSecrets, setVaultSecrets] = useState<{key: string, is_set: boolean}[]>([]);
+    const [nurtureStatus, setNurtureStatus] = useState<NurtureStatusUi | null>(null);
+    const [nurtureModeSaving, setNurtureModeSaving] = useState(false);
+
+    useEffect(() => {
+        if (!isTauriDesktop()) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const status = await invoke<NurtureStatusUi>('get_nurture_status');
+                if (!cancelled) setNurtureStatus(status);
+            } catch {
+                if (!cancelled) setNurtureStatus(null);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    const applyNurtureMode = async (next: NurtureModeUi) => {
+        if (!isTauriDesktop()) return;
+        setNurtureModeSaving(true);
+        try {
+            const status = await invoke<NurtureStatusUi>('set_nurture_mode', { mode: next });
+            setNurtureStatus(status);
+            showToast('success', t('settings.nurtureModeSaved', { defaultValue: 'Nurture mode saved. Sidecars restarted.' }));
+        } catch (e) {
+            showToast('error', e instanceof Error ? e.message : String(e));
+        } finally {
+            setNurtureModeSaving(false);
+        }
+    };
 
     const fetchVaultStatus = async () => {
         try {
@@ -268,6 +309,50 @@ const SettingsPage: React.FC = () => {
                                 ))}
                             </div>
                         </div>
+
+                        {isTauriDesktop() && (
+                            <div data-testid="nurture-mode-section">
+                                <label className="ui-field-label">{t('settings.nurtureMode', { defaultValue: 'Nurture Mode' })}</label>
+                                <div className="ui-help-text">
+                                    {t('settings.nurtureModeHelp', {
+                                        defaultValue: 'Desktop economy mode. Env NURTURE_MODE wins over this file. Change restarts sidecars.',
+                                    })}
+                                </div>
+                                {nurtureStatus && (
+                                    <div className="ui-help-text" data-testid="nurture-mode-status">
+                                        {t('settings.nurtureModeCurrent', {
+                                            defaultValue: 'Current: {{mode}} ({{status}})',
+                                            mode: nurtureStatus.mode,
+                                            status: nurtureStatus.status,
+                                        })}
+                                        {nurtureStatus.url ? ` — ${nurtureStatus.url}` : ''}
+                                    </div>
+                                )}
+                                <div className="ui-segment-group">
+                                    {([
+                                        { value: 'in_process' as NurtureModeUi, labelKey: 'settings.nurtureMode_inProcess' },
+                                        { value: 'local' as NurtureModeUi, labelKey: 'settings.nurtureMode_local' },
+                                        { value: 'cloud' as NurtureModeUi, labelKey: 'settings.nurtureMode_cloud' },
+                                        { value: 'disabled' as NurtureModeUi, labelKey: 'settings.nurtureMode_disabled' },
+                                    ]).map(({ value, labelKey }) => (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            disabled={nurtureModeSaving}
+                                            onClick={() => applyNurtureMode(value)}
+                                            className={`ui-segment-btn${nurtureStatus?.mode === value ? ' ui-segment-btn--active' : ''}`}
+                                        >
+                                            {t(labelKey, { defaultValue: value })}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="ui-help-text">
+                                    {t('settings.nurtureModeLocalWarn', {
+                                        defaultValue: 'Local requires a nurture-api binary (dev escape). Cloud needs NURTURE_CLOUD_URL.',
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         {/* U6-7: デモはサイドバー常設から降格し、設定から再生できるようにする */}
                         <div>
