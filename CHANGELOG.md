@@ -4,6 +4,7 @@
 - **`nurture_s2s`**: InProcess は nest 前 path の `Router::oneshot`、Local/Cloud は HTTP。`attach_s2s_headers(actor, power)` + `post_internal`。
 - **配線**: `PluginRegistry::clone_s2s_router` → assemble（spawn 前）→ `AppState.nurture_s2s`。forget / monthly-limit / coin-charge(+DLQ) を置換。create_router は従来 `take`+nest。
 - **検証**: nurture_s2s 5 unit（oneshot 優先・401 伝搬・坏 secret・HTTP JSON）+ relay coin-charge 2 PASS。Stripe/MCP 非変更。
+- **clippy**: `post_internal` に `too_many_arguments` allow（actor/power を呼び出し側明示のまま維持）。
 
 ### Changed (OP-088 P5 計画 2026-07-21)
 - **計画正本**: [`docs/roadmaps/op088_p5_polish_plan.md`](docs/roadmaps/op088_p5_polish_plan.md) **v1.5** — C1 全面前倒しは不可（`create_plugin` が auth_manager/event_sender 依存）→ **C1'（commerce 直前）/ C2**。Bridge メソッドカバレッジを c0 に追加。/perfect-plan PASS。実装は各 ID の明示許可後。
