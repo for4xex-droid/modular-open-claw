@@ -1,7 +1,7 @@
 # 実装計画書 H2: F-0 Secure Remote Access / F-4 MCP Provider / F-5 Soul Sync / F-6 Proof of Agent Work / F-7 リモート承認
 
 **作成日**: 2026-07-03（偵察による実在確認済み。行番号は当日時点 — 着手時はアンカー文字列で再特定）
-**実行順**: F-0 → F-4 → F-6 → F-7 → F-5（F-5 は Federation スコープ決定が未決なら**着手しない**）
+**実行順**: F-0 → F-4 → F-6 → F-7 → F-5（F-5 は ADR-053 transport ✅。製品着手は [`wave_ui_p2p_tauri_plan.md`](wave_ui_p2p_tauri_plan.md) §3 / 明示「OP-020-F5 を実装しろ」）
 **Safety-Critical 注意**: F-4 は `auth.rs` 系（Safety-Critical Zone）に触れる。**各項目は人間レビュー必須**。本計画書は変更内容を極小・明示的に規定する。
 
 ---
@@ -231,7 +231,7 @@ PII 禁止則: `action` はツール名・ステップ種別のみ（既存 DAG 
 # PART 4: F-5 Soul Sync（**着手ゲートあり**)
 
 > [!WARNING]
-> **着手条件**: `implementation_plan.md` の Open Question「Federation スコープ」で (A) 本実装が採択されていること。未決のまま着手することを禁止する。以下は採択後の計画。
+> **着手条件（2026-07-20 更新）**: ADR-053 Federation **transport** は Accepted。旧 Open Question「(A) 採択待ち」は陳腐化。製品 Soul Sync（OP-020-F5）のコード着手は [`wave_ui_p2p_tauri_plan.md`](wave_ui_p2p_tauri_plan.md) §3 の DoD に従い、明示「OP-020-F5 を実装しろ」があるまで禁止。以下はゲート解除後の作業骨格。
 
 ## 現状理解
 
@@ -253,7 +253,7 @@ PII 禁止則: `action` はツール名・ステップ種別のみ（既存 DAG 
 
 ```
 docs/roadmaps/h2_f0_f4_f7_implementation_plan.md を実行してください。
-1. 実行順は F-0（Z-1→Z-2）→ F-4（T-1→T-5）→ F-6（W-1→W-4）→ F-7（R-1→R-5）。F-5 は着手ゲート未解除なら着手しない。
+1. 実行順は F-0（Z-1→Z-2）→ F-4（T-1→T-5）→ F-6（W-1→W-4）→ F-7（R-1→R-5）。F-5（OP-020-F5）は「OP-020-F5 を実装しろ」があるまで着手しない。
 2. 1項目=1コミット。完了条件を満たしてからコミット。満たせなければ中断・報告。
 3. T-2 と T-5 は Safety-Critical Zone（auth.rs 系）のため、コミット後に人間レビューを明示的に要求し、承認まで次項目へ進まない。
 4. R-1 の npm 依存追加と R-3 の cargo 依存追加は、実行前に候補と監査結果を報告してユーザー承認を得る。

@@ -250,8 +250,10 @@ RUST_LOG=info cargo run -p api-server
 - [ ] Polar Webhook 連携: `POLAR_API_KEY` および `POLAR_WEBHOOK_SECRET` が設定されているか確認 (P-1)
 - [ ] 運用アラート: `AlertManager` による重複排除キャッシュやサーキットブレーカーとの連動確認 (A-3)
 - [ ] 運用アラート: Discord Webhook アラート送信のために `.env` に `DISCORD_WEBHOOK_URL` を設定 (Phase C-4)
-- [ ] Tauri デスクトップビルド: `scripts/desktop_sidecar_manager.py` によるサイドカーバイナリの物理検証（`--check-core` または `--check-all`）を実行し、合格していることを確認 (Reflexion)
-- [ ] Tauri 環境変数: Nurture をローカル稼働させる場合は `.env` で `NURTURE_INTERNAL_SECRET` が安全に定義されているか確認。リモート利用時は `NURTURE_CLOUD_URL` が正しく設定されているか確認 (Reflexion)
+- [ ] Tauri デスクトップ: **通常は設定不要**（既定 InProcess）。公式同梱は `api-server` + `key-proxy` のみ（`nurture-api` 非同梱）
+- [ ] Tauri ビルド検証: `python3 scripts/desktop_sidecar_manager.py --check-core`（常用）/ `--check-all`（リリース・実 nurture-api 混入禁止）
+- [ ] Tauri Local escape: `--with-nurture-sidecar` + `NURTURE_MODE=local`（公式パッケージでは sidecar 無しで失敗しうる）
+- [ ] Tauri Cloud: `NURTURE_MODE=cloud` + `NURTURE_CLOUD_URL`
 - [ ] **Nurture S2S (OP-061)**: `NURTURE_API_URL` と `NURTURE_INTERNAL_SECRET` をセットで設定。forget / coin-charge / stripe proxy は同鍵で OXP+Bearer。URL のみ・secret なしは forget が 500（fail-closed）
 - [ ] **Coin-charge DLQ (OP-060)**: 起動ログに `Coin Charge DLQ worker` が出ること。`outbox_dead_letters` の `coin_charge_failed` が滞留し続ける場合は URL/secret/Nurture 到達性を確認（不正 JSON は `coin_charge_failed_poison` に隔離）
 - [ ] Tauri デスクトップ (release): `NURTURE_DRM_MASTER_KEY` が環境変数または `{data_dir}/.nurture_drm_master_key` で解決できるか確認

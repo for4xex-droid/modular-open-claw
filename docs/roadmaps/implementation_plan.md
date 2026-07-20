@@ -11,7 +11,7 @@ Deep Audit v2 で発見された **Federation 層のハリボテ化**、**scrub_
 |:---:|:---|:---|:---:|:---|
 | **P0** | **Phase 3.5: Infra Remediation** | 致命的バグ修正 + 構造整理 | **1-2日** | なし（即時着手可能） |
 | P1 | Phase 4: Biome Reputation | 信頼性基盤の実装 | 1-2週 | P0完了 + Open Question 決定 |
-| P2 | Phase 5: Cognitive Observability | 思考プロセス可視化 | 1週 | P1完了 |
+| P2 | Phase 5: Cognitive Observability | 思考プロセス可視化（≠ OP-020-F5 Soul Sync） | 1週 | P1完了 |
 | P3 | UI/UX 強化 | 管理コンソール統合 | 1-2週 | P1,P2完了 |
 | P4 | Release Preflight & Audit | 最終セキュリティ監査 | 2-3日 | P3完了 |
 
@@ -70,6 +70,8 @@ Deep Audit v2 で発見された **Federation 層のハリボテ化**、**scrub_
 ---
 
 ## [P2] Phase 5: Cognitive Observability の高度化
+
+> **命名注意**: 本 Phase 5 は思考可視化（Causal / Observability）。OPEN の **OP-020-F5 Soul Sync**（製品 P2P）とは別物。後者の正本は [`wave_ui_p2p_tauri_plan.md`](wave_ui_p2p_tauri_plan.md) §3。
 
 ### 実装内容
 

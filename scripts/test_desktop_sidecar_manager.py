@@ -69,13 +69,12 @@ class TestDesktopSidecarManager(unittest.TestCase):
         expected_files = [
             "api-server-aarch64-apple-darwin",
             "key-proxy-aarch64-apple-darwin",
-            "nurture-api-aarch64-apple-darwin",
-            "obscura-aarch64-apple-darwin"
+            "obscura-aarch64-apple-darwin",
         ]
         for name in expected_files:
             file_path = binaries_dir / name
             self.assertTrue(file_path.exists(), f"Placeholder {name} should exist")
-            
+
             # シェルスクリプト形式であることの検証
             with open(file_path, "r") as f:
                 content = f.read()
@@ -85,6 +84,22 @@ class TestDesktopSidecarManager(unittest.TestCase):
             # 実行権限の検証
             if sys.platform != "win32":
                 self.assertTrue(os.access(file_path, os.X_OK), f"{name} should be executable")
+
+        # OP-088 P3: 公式プレースホルダーに nurture-api は含めない
+        self.assertFalse(
+            (binaries_dir / "nurture-api-aarch64-apple-darwin").exists(),
+            "Official placeholders must not include nurture-api",
+        )
+
+    def test_generate_placeholders_with_nurture_sidecar(self):
+        self._has_module()
+        binaries_dir = Path(self.temp_dir) / "binaries"
+        binaries_dir.mkdir()
+        with patch("sys.platform", "darwin"):
+            desktop_sidecar_manager.generate_placeholders(
+                binaries_dir, "aarch64-apple-darwin", with_nurture_sidecar=True
+            )
+        self.assertTrue((binaries_dir / "nurture-api-aarch64-apple-darwin").exists())
 
     def test_generate_placeholders_windows(self):
         self._has_module()
@@ -97,8 +112,7 @@ class TestDesktopSidecarManager(unittest.TestCase):
         expected_files = [
             "api-server-x86_64-pc-windows-msvc.exe",
             "key-proxy-x86_64-pc-windows-msvc.exe",
-            "nurture-api-x86_64-pc-windows-msvc.exe",
-            "obscura-x86_64-pc-windows-msvc.exe"
+            "obscura-x86_64-pc-windows-msvc.exe",
         ]
         for name in expected_files:
             file_path = binaries_dir / name
@@ -167,9 +181,8 @@ class TestDesktopSidecarManager(unittest.TestCase):
         with self.assertRaises(ValueError):
             desktop_sidecar_manager.check_binaries(binaries_dir, triple, check_all=True)
 
-        # 2. Rust側3つが実バイナリ、obscuraがダミーの場合
-        # Mach-Oダミーを書き込む
-        for name in ["api-server", "key-proxy", "nurture-api"]:
+        # 2. 公式2つが実バイナリ、obscuraがダミーの場合
+        for name in ["api-server", "key-proxy"]:
             with open(binaries_dir / f"{name}-{triple}", "wb") as f:
                 f.write(b"\xfe\xed\xfa\xcf" + b"\x00" * 200000)
 
@@ -181,17 +194,64 @@ class TestDesktopSidecarManager(unittest.TestCase):
 
         # check_all (check_all=True) は obscura がダミーなので失敗するはず
         with self.assertRaises(ValueError):
-            desktop_sidecar_manager.check_binaries(binaries_dir, triple, check_all=True)
+            desktop_sidecar_manager.check_binaries(
+                binaries_dir, triple, check_all=True, forbid_nurture_sidecar=True
+            )
 
-        # 3. すべて実バイナリの場合
+        # 3. 公式 + obscura が実バイナリ（nurture-api 無し）→ check-all PASS
         with open(binaries_dir / f"obscura-{triple}", "wb") as f:
             f.write(b"\xfe\xed\xfa\xcf" + b"\x00" * 200000)
 
-        # check_all もパスするはず
         try:
-            desktop_sidecar_manager.check_binaries(binaries_dir, triple, check_all=True)
+            desktop_sidecar_manager.check_binaries(
+                binaries_dir, triple, check_all=True, forbid_nurture_sidecar=True
+            )
         except ValueError as e:
             self.fail(f"check_binaries(check_all=True) failed unexpectedly: {e}")
+
+        # 4. 実 nurture-api が混入 → 公式 check-all は Fail-Closed
+        with open(binaries_dir / f"nurture-api-{triple}", "wb") as f:
+            f.write(b"\xfe\xed\xfa\xcf" + b"\x00" * 200000)
+        with self.assertRaises(ValueError):
+            desktop_sidecar_manager.check_binaries(
+                binaries_dir, triple, check_all=True, forbid_nurture_sidecar=True
+            )
+
+    def test_official_binaries_exclude_nurture_api(self):
+        self._has_module()
+        self.assertNotIn("nurture-api", desktop_sidecar_manager.OFFICIAL_BINARIES)
+        self.assertNotIn("nurture-api", desktop_sidecar_manager.CORE_BINARIES)
+        self.assertNotIn("nurture-api", desktop_sidecar_manager.ALL_BINARIES)
+
+    def test_check_core_forbid_nurture_sidecar(self):
+        """CI 同等: check-core + forbid で実 nurture-api を拒否する。"""
+        self._has_module()
+        binaries_dir = Path(self.temp_dir) / "binaries_ci"
+        binaries_dir.mkdir()
+        triple = "aarch64-apple-darwin"
+        for name in ["api-server", "key-proxy"]:
+            with open(binaries_dir / f"{name}-{triple}", "wb") as f:
+                f.write(b"\xfe\xed\xfa\xcf" + b"\x00" * 200000)
+        desktop_sidecar_manager.check_binaries(
+            binaries_dir, triple, check_all=False, forbid_nurture_sidecar=True
+        )
+        with open(binaries_dir / f"nurture-api-{triple}", "wb") as f:
+            f.write(b"\xfe\xed\xfa\xcf" + b"\x00" * 200000)
+        with self.assertRaises(ValueError):
+            desktop_sidecar_manager.check_binaries(
+                binaries_dir, triple, check_all=False, forbid_nurture_sidecar=True
+            )
+
+    def test_tauri_conf_excludes_nurture_api_and_port_3020(self):
+        """P3-3 / T-003: externalBin・CSP から nurture-api / :3020 を除去済みであること。"""
+        root = Path(__file__).resolve().parents[1]
+        conf_path = root / "apps/management-console/src-tauri/tauri.conf.json"
+        caps_path = root / "apps/management-console/src-tauri/capabilities/default.json"
+        conf = conf_path.read_text(encoding="utf-8")
+        caps = caps_path.read_text(encoding="utf-8")
+        self.assertNotIn("nurture-api", conf)
+        self.assertNotIn(":3020", conf)
+        self.assertNotIn("nurture-api", caps)
 
 
     def test_is_real_binary_zero_byte_file(self):

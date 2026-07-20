@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""Tauri Desktop sidecar build / placeholder / physical validation (OP-088 P3).
+
+Official package sidecars: api-server + key-proxy (+ obscura for --check-all).
+nurture-api is opt-in via --with-nurture-sidecar (Local escape / dev only).
+"""
 import argparse
 import os
 import platform
@@ -7,9 +12,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-# サイドカーバイナリのリスト
-CORE_BINARIES = ["api-server", "key-proxy", "nurture-api"]
-ALL_BINARIES = CORE_BINARIES + ["obscura"]
+# 公式 Desktop 同梱（InProcess 既定。nurture-api は含まない）
+OFFICIAL_BINARIES = ["api-server", "key-proxy"]
+# 開発用 Local escape（--with-nurture-sidecar）
+NURTURE_SIDECAR = "nurture-api"
+# リリース完全検証に含める任意バイナリ
+OPTIONAL_RELEASE_BINARIES = ["obscura"]
+
+# 後方互換エイリアス（テスト・ドキュメント）
+CORE_BINARIES = OFFICIAL_BINARIES
+ALL_BINARIES = OFFICIAL_BINARIES + OPTIONAL_RELEASE_BINARIES
 
 # マジックバイトの定義
 ELF_MAGIC = b"\x7fELF"
@@ -68,16 +80,33 @@ def get_sidecar_filename(binary_name: str, triple: str, is_windows: bool | None 
     return f"{binary_name}-{triple}{ext}"
 
 
-def generate_placeholders(binaries_dir: str | Path, triple: str, target_binaries: list[str] | None = None) -> None:
+def official_placeholder_binaries(with_nurture_sidecar: bool = False) -> list[str]:
+    """プレースホルダー生成対象（公式 + obscura。Local 用は opt-in）。"""
+    names = list(ALL_BINARIES)
+    if with_nurture_sidecar:
+        names = OFFICIAL_BINARIES + [NURTURE_SIDECAR] + OPTIONAL_RELEASE_BINARIES
+    return names
+
+
+def generate_placeholders(
+    binaries_dir: str | Path,
+    triple: str,
+    target_binaries: list[str] | None = None,
+    with_nurture_sidecar: bool = False,
+) -> None:
     """ダミープレースホルダーを生成する。
 
     target_binaries が指定された場合、そのバイナリのみを生成する。
-    未指定の場合は ALL_BINARIES 全体を生成する。
+    未指定の場合は公式セット（+ obscura）。`--with-nurture-sidecar` で nurture-api も生成。
     """
     binaries_dir = Path(binaries_dir)
     binaries_dir.mkdir(parents=True, exist_ok=True)
     is_windows = sys.platform == "win32" or "windows-msvc" in triple
-    binaries = target_binaries if target_binaries is not None else ALL_BINARIES
+    binaries = (
+        target_binaries
+        if target_binaries is not None
+        else official_placeholder_binaries(with_nurture_sidecar)
+    )
 
     for name in binaries:
         filename = get_sidecar_filename(name, triple, is_windows)
@@ -138,10 +167,26 @@ def is_real_binary(file_path):
     return False
 
 
-def check_binaries(binaries_dir, triple, check_all=False):
+def assert_nurture_sidecar_not_shipped(binaries_dir, triple):
+    """公式リリース検証: 実バイナリの nurture-api が binaries/ に混入していないこと。"""
+    binaries_dir = Path(binaries_dir)
+    is_windows = sys.platform == "win32" or "windows-msvc" in triple
+    filename = get_sidecar_filename(NURTURE_SIDECAR, triple, is_windows)
+    file_path = binaries_dir / filename
+    if file_path.exists() and is_real_binary(file_path):
+        error_msg = (
+            f"Official package must not ship real {NURTURE_SIDECAR} sidecar "
+            f"(found {filename}). Rebuild without --with-nurture-sidecar."
+        )
+        print(f"ERROR: {error_msg}", file=sys.stderr)
+        raise ValueError(error_msg)
+
+
+def check_binaries(binaries_dir, triple, check_all=False, forbid_nurture_sidecar=False):
     """バイナリの妥当性を検証する。
 
     ダミーや欠損を検出した場合は ValueError を発生させる。
+    forbid_nurture_sidecar=True（--check-all 既定）のとき実 nurture-api 混入を拒否。
     """
     binaries_dir = Path(binaries_dir)
     target_binaries = ALL_BINARIES if check_all else CORE_BINARIES
@@ -163,21 +208,27 @@ def check_binaries(binaries_dir, triple, check_all=False):
         print(f"ERROR: {error_msg}", file=sys.stderr)
         raise ValueError(error_msg)
 
+    if forbid_nurture_sidecar:
+        assert_nurture_sidecar_not_shipped(binaries_dir, triple)
+
     print(f"Validation passed for triple {triple} (check_all={check_all})")
 
 
-def run_build(binaries_dir, triple):
+def run_build(binaries_dir, triple, with_nurture_sidecar: bool = False):
     """Rustサイドカーバイナリのビルドとコピーを行う。"""
     binaries_dir = Path(binaries_dir)
     binaries_dir.mkdir(parents=True, exist_ok=True)
     is_windows = sys.platform == "win32" or "windows-msvc" in triple
     ext = ".exe" if is_windows else ""
 
-    print("Building Rust sidecars...")
+    print("Building Rust sidecars (official: api-server + key-proxy)...")
 
-    # 1. api-server
-    print("Building api-server...")
-    subprocess.run(["cargo", "build", "--release", "-p", "api-server"], check=True)
+    # 1. api-server — OP-088: `--features nurture` = desktop（cloud-storage/AWS なし）
+    print("Building api-server (--features nurture; desktop, no cloud-storage)...")
+    subprocess.run(
+        ["cargo", "build", "--release", "-p", "api-server", "--features", "nurture"],
+        check=True,
+    )
     src_api_server = Path("target/release") / f"api-server{ext}"
     dst_api_server = binaries_dir / get_sidecar_filename("api-server", triple, is_windows)
     shutil.copy2(src_api_server, dst_api_server)
@@ -191,16 +242,36 @@ def run_build(binaries_dir, triple):
     shutil.copy2(src_key_proxy, dst_key_proxy)
     print(f"Copied key-proxy -> {dst_key_proxy.name}")
 
-    # 3. nurture-api (desktop featureのみでAWS SDKを除外)
-    print("Building nurture-api (desktop configurations)...")
-    subprocess.run(
-        ["cargo", "build", "--release", "-p", "nurture-api", "--no-default-features", "--features", "desktop"],
-        check=True
-    )
-    src_nurture_api = Path("target/release") / f"nurture-api{ext}"
-    dst_nurture_api = binaries_dir / get_sidecar_filename("nurture-api", triple, is_windows)
-    shutil.copy2(src_nurture_api, dst_nurture_api)
-    print(f"Copied nurture-api -> {dst_nurture_api.name}")
+    # 3. nurture-api — 公式は除外。Local escape のみ
+    if with_nurture_sidecar:
+        print("Building nurture-api (desktop; --with-nurture-sidecar)...")
+        subprocess.run(
+            [
+                "cargo",
+                "build",
+                "--release",
+                "-p",
+                "nurture-api",
+                "--no-default-features",
+                "--features",
+                "desktop",
+            ],
+            check=True,
+        )
+        src_nurture_api = Path("target/release") / f"nurture-api{ext}"
+        dst_nurture_api = binaries_dir / get_sidecar_filename("nurture-api", triple, is_windows)
+        shutil.copy2(src_nurture_api, dst_nurture_api)
+        print(f"Copied nurture-api -> {dst_nurture_api.name}")
+        print(
+            "NOTE: Official tauri.conf.json does not list nurture-api in externalBin. "
+            "Use a dev override or NURTURE_MODE=local only with a package that includes it."
+        )
+    else:
+        # 旧ビルド成果物が残って公式同梱されないよう削除
+        stale = binaries_dir / get_sidecar_filename(NURTURE_SIDECAR, triple, is_windows)
+        if stale.exists():
+            stale.unlink()
+            print(f"Removed stale {stale.name} (official build excludes nurture-api)")
 
     # 4. obscura (システムPATHにあればコピー、なければ警告してプレースホルダーを維持)
     obscura_filename = get_sidecar_filename("obscura", triple, is_windows)
@@ -220,32 +291,42 @@ def run_build(binaries_dir, triple):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Tauri Sidecar Manager & Guardian")
+    parser = argparse.ArgumentParser(description="Tauri Sidecar Manager & Guardian (OP-088 P3)")
     parser.add_argument(
         "--setup-placeholders",
         action="store_true",
-        help="Generate dummy placeholder shell scripts or batch files"
+        help="Generate dummy placeholder shell scripts or batch files",
     )
     parser.add_argument(
         "--build",
         action="store_true",
-        help="Build production-ready sidecars and place them"
+        help="Build production-ready sidecars and place them",
+    )
+    parser.add_argument(
+        "--with-nurture-sidecar",
+        action="store_true",
+        help="Also build/copy nurture-api (Local escape / dev only; not in official package)",
     )
     parser.add_argument(
         "--check-core",
         action="store_true",
-        help="Perform stage 1 check: verifying the three Rust core binaries"
+        help="Stage 1: verify official Rust sidecars (api-server, key-proxy)",
     )
     parser.add_argument(
         "--check-all",
         action="store_true",
-        help="Perform stage 2 check: verifying all 4 binaries including obscura (for release CI)"
+        help="Stage 2: official + obscura, and forbid real nurture-api (release)",
+    )
+    parser.add_argument(
+        "--forbid-nurture-sidecar",
+        action="store_true",
+        help="With --check-core: also Fail-Closed if a real nurture-api binary is present",
     )
     parser.add_argument(
         "--binaries-dir",
         type=str,
         default="apps/management-console/src-tauri/binaries",
-        help="Path to Tauri sidecar binaries directory"
+        help="Path to Tauri sidecar binaries directory",
     )
 
     args = parser.parse_args()
@@ -257,17 +338,30 @@ def main():
 
     try:
         if args.setup_placeholders:
-            generate_placeholders(binaries_dir, triple)
+            generate_placeholders(
+                binaries_dir,
+                triple,
+                with_nurture_sidecar=args.with_nurture_sidecar,
+            )
         elif args.build:
-            run_build(binaries_dir, triple)
+            run_build(
+                binaries_dir,
+                triple,
+                with_nurture_sidecar=args.with_nurture_sidecar,
+            )
         elif args.check_core:
-            check_binaries(binaries_dir, triple, check_all=False)
+            check_binaries(
+                binaries_dir,
+                triple,
+                check_all=False,
+                forbid_nurture_sidecar=args.forbid_nurture_sidecar,
+            )
         elif args.check_all:
-            check_binaries(binaries_dir, triple, check_all=True)
+            check_binaries(binaries_dir, triple, check_all=True, forbid_nurture_sidecar=True)
         else:
             parser.print_help()
             sys.exit(1)
-    except ValueError as e:
+    except ValueError:
         sys.exit(1)
     except Exception as e:
         print(f"Unexpected error: {e}", file=sys.stderr)

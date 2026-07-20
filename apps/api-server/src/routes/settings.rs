@@ -861,6 +861,8 @@ mod tests {
             "llm_provider",
             "ollama_model",
             "commerce_provider",
+            "x_bearer_token",
+            "search_api_key",
         ];
         for key in frontend_keys {
             assert!(

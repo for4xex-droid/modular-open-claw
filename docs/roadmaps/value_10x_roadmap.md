@@ -40,7 +40,7 @@ Horizon 3: プラットフォーム化（v2.0〜）
   F-10 Voice Interface（音声対話 → Voice Commerce 助走）
 ```
 
-依存関係: F-3 → F-9、F-2 → F-6、F-4 → F-9、F-5 は Federation スコープ決定（implementation_plan.md Open Question）の (A) 採択が前提。F-10 は独立。
+依存関係: F-3 → F-9、F-2 → F-6、F-4 → F-9、F-5 は ADR-053 transport ✅ + 製品 DoD（正本: [`wave_ui_p2p_tauri_plan.md`](wave_ui_p2p_tauri_plan.md) §3 / OP-020-F5）。F-10 は独立。
 
 > [!IMPORTANT]
 > **共通前提（/perfect-plan Gate 4 で摘出）**: api-server は現在 localhost ファースト設計である。**F-4（外部 MCP クライアント）と F-7（外出先からの承認）は「セルフホストサーバーへのセキュアなリモート到達」を暗黙の前提としており、これ自体が未実装**。H2 着手前に TLS 終端＋トンネル/リバースプロキシの公式手順（推奨構成のドキュメント化と E2E テスト）を先行タスク **F-0: Secure Remote Access** として切り出すこと。これを飛ばすと F-4/F-7 は「LAN 内でしか使えない機能」になり価値が半減する。
@@ -123,7 +123,7 @@ Horizon 3: プラットフォーム化（v2.0〜）
   2. 中継ノード（samsara-hub）上でペイロードが常に暗号化されており、平文の Soul データが hub のログ・DB に存在しないことを検査するテストがある。
   3. 同一 Experience の二重適用が冪等に処理される（重複同期 Negative Test）。
   4. ペアリング解除後、相手端末からの同期要求が拒否される。
-- **依存**: **ADR-053（Federation transport ✅）+ 本機能の製品 DoD**（差分同期・ペアリング UI 等）。OP-083-C/D（x402）とは無関係・非ブロッカー。implementation_plan 旧 Open Question「ハリボテ」は陳腐化（ADR-053 参照）。
+- **依存**: **ADR-053（Federation transport ✅）+ OP-020-F5 製品 DoD**（正本: [`wave_ui_p2p_tauri_plan.md`](wave_ui_p2p_tauri_plan.md) §3）。コード着手は明示「OP-020-F5 を実装しろ」。OP-083 非ブロッカー。
 
 ### F-6 Proof of Agent Work — 検証可能な作業証明
 
@@ -210,7 +210,7 @@ Horizon 3: プラットフォーム化（v2.0〜）
 | F-7 リモート承認 | 中〜高（自律性上限の解除） | 中（PWA 基盤新設） | 低 | 6 |
 | F-6 Proof of Work | 中（B2B 差別化） | 低 | 高 | 7 |
 | F-10 Voice | 中（体験・獲得） | 低〜中（STT エンジン実装済み） | 高 | 8（前倒し可） |
-| F-5 Soul Sync | 高（moat） | 高（未決の設計判断） | 中 | 9（スコープ決定待ち） |
+| F-5 Soul Sync | 高（moat） | 高（プロトコル未実装） | 中 | 9（transport ✅・製品 DoD は wave_ui_p2p_tauri_plan） |
 | F-8 Multi-Tenant | 高（単価構造） | 高 | 中 | 10 |
 | F-9 開放経済圏 | 最高（長期） | 最高（ただし GigEngine 状態機械は実装済み） | 中 | 11 |
 

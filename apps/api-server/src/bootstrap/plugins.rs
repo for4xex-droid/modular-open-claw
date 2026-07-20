@@ -40,18 +40,10 @@ pub async fn register_in_process_plugins(
     let stripe_webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").ok();
     let polar_webhook_secret = std::env::var("POLAR_WEBHOOK_SECRET").ok();
 
-    let drm_master_key = std::env::var("NURTURE_DRM_MASTER_KEY").unwrap_or_else(|_| {
-        if cfg!(debug_assertions) {
-            "dev_drm_master_key_1234567890".to_string()
-        } else {
-            tracing::error!(
-                "🚨 [Plugin] NURTURE_DRM_MASTER_KEY must be set for in-process mode in release builds"
-            );
-            std::process::exit(1);
-        }
-    });
+    // OP-088 P0: Desktop/Tauri が注入する。debug 固定鍵は廃止（偽成功・弱い DRM 防止）
+    let drm_master_key = require_drm_master_key()?;
 
-    let plugin = nurture_api::plugin::create_plugin(
+    let created = nurture_api::plugin::create_plugin(
         db.db_pool.clone(),
         db.system_agent_id,
         core.event_sender.clone(),
@@ -65,9 +57,68 @@ pub async fn register_in_process_plugins(
     )
     .await?;
 
-    plugin_registry.register(plugin);
-    info!("🔌 [Plugin] Nurture registered in-process (NURTURE_IN_PROCESS=true)");
+    // JWT 外 S2S（G9）。Plugin merge_routes / nurture_routes には載せない。
+    plugin_registry.set_s2s_router(created.s2s_router);
+    plugin_registry.register(created.plugin);
+    tracing::info!(
+        "🔌 [Plugin] Nurture registered in-process (NURTURE_IN_PROCESS=true, S2S /internal ready)"
+    );
     Ok(())
+}
+
+/// Fail-Closed: empty/missing DRM key must not fall back to a hardcoded debug key.
+#[cfg(feature = "nurture")]
+fn require_drm_master_key() -> anyhow::Result<String> {
+    std::env::var("NURTURE_DRM_MASTER_KEY")
+        .ok()
+        .filter(|k| !k.is_empty())
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "NURTURE_DRM_MASTER_KEY is required for in-process mode (inject via Tauri or env)"
+            )
+        })
+}
+
+#[cfg(all(test, feature = "nurture"))]
+mod drm_tests {
+    use super::require_drm_master_key;
+    use serial_test::serial;
+
+    #[test]
+    #[serial]
+    fn test_require_drm_master_key_ok() {
+        std::env::set_var("NURTURE_DRM_MASTER_KEY", "injected-drm");
+        let Ok(key) = require_drm_master_key() else {
+            panic!("expected Ok when NURTURE_DRM_MASTER_KEY is set");
+        };
+        assert_eq!(key, "injected-drm");
+        std::env::remove_var("NURTURE_DRM_MASTER_KEY");
+    }
+
+    #[test]
+    #[serial]
+    fn test_require_drm_master_key_missing_fails() {
+        std::env::remove_var("NURTURE_DRM_MASTER_KEY");
+        let Err(err) = require_drm_master_key() else {
+            panic!("expected Err when NURTURE_DRM_MASTER_KEY is missing");
+        };
+        let err = err.to_string();
+        assert!(
+            err.contains("NURTURE_DRM_MASTER_KEY"),
+            "expected Fail-Closed error, got: {err}"
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_require_drm_master_key_empty_fails() {
+        std::env::set_var("NURTURE_DRM_MASTER_KEY", "");
+        let Err(err) = require_drm_master_key() else {
+            panic!("expected Err when NURTURE_DRM_MASTER_KEY is empty");
+        };
+        assert!(err.to_string().contains("NURTURE_DRM_MASTER_KEY"));
+        std::env::remove_var("NURTURE_DRM_MASTER_KEY");
+    }
 }
 
 #[cfg(not(feature = "nurture"))]

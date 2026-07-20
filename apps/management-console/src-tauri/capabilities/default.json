@@ -13,8 +13,7 @@
       "allow": [
         { "name": "obscura" },
         { "name": "api-server" },
-        { "name": "key-proxy" },
-        { "name": "nurture-api" }
+        { "name": "key-proxy" }
       ]
     }
   ]

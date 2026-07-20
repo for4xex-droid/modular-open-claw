@@ -110,6 +110,40 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: cobertura.xml
 
+  # OP-088 P3-5: 公式 Desktop sidecar 物理検証（build 後 check-core + nurture-api 混入禁止）
+  desktop-sidecar:
+    name: Desktop Sidecar Check (OP-088)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: desktop-sidecar
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler libglib2.0-dev pkg-config
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Unit tests (manager + tauri.conf Negative)
+        run: python3 scripts/test_desktop_sidecar_manager.py
+
+      - name: Build official sidecars (api-server + key-proxy)
+        run: python3 scripts/desktop_sidecar_manager.py --build
+
+      - name: Physical check-core + forbid nurture-api
+        run: python3 scripts/desktop_sidecar_manager.py --check-core --forbid-nurture-sidecar
+
   frontend:
     name: Frontend Lint & Build
     runs-on: ubuntu-latest
@@ -472,7 +506,7 @@ jobs:
 
   trigger-nurture:
     name: Trigger Nurture CI
-    needs: [test, frontend, e2e, audit, license-header, forbid-unsafe, docs-sync, pattern-check, zero-panic, deep-scan, semver-check, unused-deps, sbom, docker-build]
+    needs: [test, desktop-sidecar, frontend, e2e, audit, license-header, forbid-unsafe, docs-sync, pattern-check, zero-panic, deep-scan, semver-check, unused-deps, sbom, docker-build]
     if: github.ref == 'refs/heads/main' && success()
     runs-on: ubuntu-latest
     steps:

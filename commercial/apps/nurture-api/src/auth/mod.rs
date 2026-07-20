@@ -9,5 +9,8 @@
  * Usage of this software is subject to the BSL 1.1 terms.
  * Commercial use requires a separate license agreement.
  */
+pub mod internal_auth;
 pub mod mcp_auth;
+
+pub use internal_auth::internal_auth_middleware;
 pub use mcp_auth::*;

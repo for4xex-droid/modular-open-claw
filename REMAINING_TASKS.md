@@ -57,8 +57,8 @@
   * **タスク**: `UniversalJobQueue` にのみ定義されている多数の補助メソッドについて、トレイト側 (`traits.rs`) に引き上げるか、`crate` プライベート化します。
 * **`immune_system.rs` 内の巨大 MockJQ の共有化**
   * **タスク**: テスト用 MockJQ (約700行) を `libs/test-utils` などへ切り出し、テスト間で再利用可能にします。
-* **`CausalVisualizer` (軌跡グラフ) のフロントエンド実装**
-  * **タスク**: `management-console` 側に AI の思考プロセス（軌跡データ）を視覚化する Trajectory Graph コンポーネントを構築します。
+* **`CausalVisualizer` 発見性 polish（コア UI は実装済）**
+  * **タスク**: Job ID 深リンク / Activity 連携等。新規構築禁止。正本: `docs/roadmaps/wave_ui_p2p_tauri_plan.md` Phase C（OP-022）。
 
 ---
 

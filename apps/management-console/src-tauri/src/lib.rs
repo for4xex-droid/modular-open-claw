@@ -140,6 +140,20 @@ fn check_docker_available() -> bool {
 
 use tauri_plugin_shell::ShellExt;
 
+/// api-server 子プロセスへ渡す InProcess 用 env（自己 HTTP: Q1=A'）。
+fn in_process_api_env(secret: &str, drm_key: &str) -> [(&'static str, String); 4] {
+    [
+        ("NURTURE_IN_PROCESS", "true".to_string()),
+        ("NURTURE_INTERNAL_SECRET", secret.to_string()),
+        ("NURTURE_DRM_MASTER_KEY", drm_key.to_string()),
+        // 沈黙 skip 禁止（P1-2）。/internal は同一プロセスの JWT 外 nest。
+        (
+            "NURTURE_API_URL",
+            format!("http://127.0.0.1:{}", API_SERVER_PORT),
+        ),
+    ]
+}
+
 fn resolve_drm_master_key(data_dir: &str) -> Result<String, String> {
     if let Ok(key) = std::env::var("NURTURE_DRM_MASTER_KEY") {
         if !key.is_empty() {
@@ -188,9 +202,10 @@ fn start_sidecars(app: &tauri::AppHandle) -> Result<(), String> {
     let nurture_secret =
         std::env::var("NURTURE_INTERNAL_SECRET").unwrap_or_else(|_| generate_session_secret());
 
-    // ── nurture-api ────────────────────────
+    // ── nurture-api（Local のみ spawn。InProcess は ADR-012 により非起動）──
     let nurture_url = match &nurture_mode {
         NurtureMode::Local => {
+            // 公式パッケージは nurture-api 非同梱（OP-088 P3）。dev は --with-nurture-sidecar
             let nurture_db = format!("sqlite:{}/nurture.db", &data_dir);
 
             let drm_master_key = resolve_drm_master_key(&data_dir)?;
@@ -198,7 +213,14 @@ fn start_sidecars(app: &tauri::AppHandle) -> Result<(), String> {
             let nurture_sidecar = app
                 .shell()
                 .sidecar("nurture-api")
-                .map_err(|e| e.to_string())?
+                .map_err(|e| {
+                    format!(
+                        "nurture-api sidecar unavailable (official package excludes it). \
+                         Dev escape: --with-nurture-sidecar + NURTURE_MODE=local + temporarily add \
+                         binaries/nurture-api to tauri.conf externalBin and capabilities. \
+                         Detail: {e}"
+                    )
+                })?
                 .env("DATABASE_URL", &nurture_db)
                 .env("NURTURE_INTERNAL_SECRET", &nurture_secret)
                 .env("NURTURE_BIND_ADDR", "127.0.0.1")
@@ -215,10 +237,24 @@ fn start_sidecars(app: &tauri::AppHandle) -> Result<(), String> {
             state.nurture_status = "cloud".to_string();
             url.clone()
         }
+        NurtureMode::InProcess => {
+            // nurture-api 非 spawn。api-server 側 plugins.rs が Hook/MCP を担当
+            state.nurture_child = None;
+            state.nurture_status = "in_process".to_string();
+            warn_if_nurture_sidecar_port_alive();
+            String::new()
+        }
         NurtureMode::Disabled => {
             state.nurture_status = "disabled".to_string();
             String::new()
         }
+    };
+
+    // InProcess: Local と同じ DRM persist を api-server に渡す（OP-088 P0）
+    let in_process_drm = if matches!(nurture_mode, NurtureMode::InProcess) {
+        Some(resolve_drm_master_key(&data_dir)?)
+    } else {
+        None
     };
 
     // api-server
@@ -234,10 +270,19 @@ fn start_sidecars(app: &tauri::AppHandle) -> Result<(), String> {
         )
         .env("PORT", API_SERVER_PORT.to_string());
 
-    if !nurture_url.is_empty() {
-        api_sidecar = api_sidecar
-            .env("NURTURE_API_URL", &nurture_url)
-            .env("NURTURE_INTERNAL_SECRET", &nurture_secret);
+    if let Some(drm_key) = in_process_drm.as_deref() {
+        // self-URL + secret/DRM（G1/G12）。sidecar Local URL とは排他（InProcess は非 spawn）
+        for (key, value) in in_process_api_env(&nurture_secret, drm_key) {
+            api_sidecar = api_sidecar.env(key, value);
+        }
+    } else {
+        // 親シェルに NURTURE_IN_PROCESS=true が残っていても Local/Cloud を汚染しない
+        api_sidecar = api_sidecar.env("NURTURE_IN_PROCESS", "false");
+        if !nurture_url.is_empty() {
+            api_sidecar = api_sidecar
+                .env("NURTURE_API_URL", &nurture_url)
+                .env("NURTURE_INTERNAL_SECRET", &nurture_secret);
+        }
     }
 
     let (_, api_child) = api_sidecar.spawn().map_err(|e| e.to_string())?;
@@ -392,13 +437,21 @@ pub fn build_tray_menu<R: tauri::Runtime>(
             "✗"
         },
         match state.nurture_status.as_str() {
-            "running" => "✓ Local",
+            "running" => "✓ Local (dev)",
             "cloud" => "☁ Cloud",
+            "in_process" => "⚡ InProcess (default)",
             "disabled" => "— Off",
             _ => "✗",
         }
     );
     let status = tauri::menu::MenuItem::with_id(app, "status", &status_text, false, None::<&str>)?;
+    let hint = tauri::menu::MenuItem::with_id(
+        app,
+        "economy_hint",
+        "Economy: no config needed (NURTURE_MODE=local for sidecar)",
+        false,
+        None::<&str>,
+    )?;
 
     let restart =
         tauri::menu::MenuItem::with_id(app, "restart", "Restart Engine", true, None::<&str>)?;
@@ -413,6 +466,7 @@ pub fn build_tray_menu<R: tauri::Runtime>(
             &toggle,
             &separator1,
             &status,
+            &hint,
             &restart,
             &separator2,
             &open_data,
@@ -474,17 +528,43 @@ mod tests {
         assert!(!info.os.is_empty());
     }
 
-    #[test]
-    #[serial]
-    fn test_nurture_mode_default_is_local() {
+    fn clear_nurture_mode_env() {
+        std::env::remove_var("NURTURE_MODE");
         std::env::remove_var("NURTURE_CLOUD_URL");
         std::env::remove_var("NURTURE_DISABLED");
+        std::env::remove_var("NURTURE_IN_PROCESS");
+    }
+
+    #[test]
+    #[serial]
+    fn test_nurture_mode_default_is_in_process() {
+        clear_nurture_mode_env();
+        assert!(matches!(resolve_nurture_mode(), NurtureMode::InProcess));
+    }
+
+    #[test]
+    #[serial]
+    fn test_nurture_mode_local_via_mode() {
+        clear_nurture_mode_env();
+        std::env::set_var("NURTURE_MODE", "local");
         assert!(matches!(resolve_nurture_mode(), NurtureMode::Local));
+        std::env::remove_var("NURTURE_MODE");
+    }
+
+    #[test]
+    #[serial]
+    fn test_nurture_mode_local_beats_cloud_url() {
+        clear_nurture_mode_env();
+        std::env::set_var("NURTURE_MODE", "local");
+        std::env::set_var("NURTURE_CLOUD_URL", "https://nurture.example.com");
+        assert!(matches!(resolve_nurture_mode(), NurtureMode::Local));
+        clear_nurture_mode_env();
     }
 
     #[test]
     #[serial]
     fn test_nurture_mode_cloud() {
+        clear_nurture_mode_env();
         std::env::set_var("NURTURE_CLOUD_URL", "https://nurture.example.com");
         assert!(matches!(resolve_nurture_mode(), NurtureMode::Cloud(_)));
         std::env::remove_var("NURTURE_CLOUD_URL");
@@ -492,10 +572,126 @@ mod tests {
 
     #[test]
     #[serial]
+    fn test_nurture_mode_cloud_via_mode() {
+        clear_nurture_mode_env();
+        std::env::set_var("NURTURE_MODE", "cloud");
+        std::env::set_var("NURTURE_CLOUD_URL", "https://nurture.example.com");
+        assert!(matches!(resolve_nurture_mode(), NurtureMode::Cloud(_)));
+        clear_nurture_mode_env();
+    }
+
+    #[test]
+    #[serial]
     fn test_nurture_mode_disabled() {
+        clear_nurture_mode_env();
         std::env::set_var("NURTURE_DISABLED", "true");
         assert!(matches!(resolve_nurture_mode(), NurtureMode::Disabled));
         std::env::remove_var("NURTURE_DISABLED");
+    }
+
+    #[test]
+    #[serial]
+    fn test_nurture_mode_disabled_via_mode() {
+        clear_nurture_mode_env();
+        std::env::set_var("NURTURE_MODE", "disabled");
+        assert!(matches!(resolve_nurture_mode(), NurtureMode::Disabled));
+        std::env::remove_var("NURTURE_MODE");
+    }
+
+    #[test]
+    #[serial]
+    fn test_nurture_mode_in_process_explicit() {
+        clear_nurture_mode_env();
+        std::env::set_var("NURTURE_IN_PROCESS", "true");
+        assert!(matches!(resolve_nurture_mode(), NurtureMode::InProcess));
+        std::env::remove_var("NURTURE_IN_PROCESS");
+    }
+
+    #[test]
+    #[serial]
+    fn test_nurture_mode_in_process_via_mode() {
+        clear_nurture_mode_env();
+        std::env::set_var("NURTURE_MODE", "in_process");
+        assert!(matches!(resolve_nurture_mode(), NurtureMode::InProcess));
+        std::env::remove_var("NURTURE_MODE");
+    }
+
+    #[test]
+    #[serial]
+    fn test_nurture_mode_disabled_beats_cloud() {
+        clear_nurture_mode_env();
+        std::env::set_var("NURTURE_CLOUD_URL", "https://nurture.example.com");
+        std::env::set_var("NURTURE_DISABLED", "1");
+        assert!(matches!(resolve_nurture_mode(), NurtureMode::Disabled));
+        clear_nurture_mode_env();
+    }
+
+    #[test]
+    #[serial]
+    fn test_nurture_mode_cloud_beats_in_process_legacy() {
+        clear_nurture_mode_env();
+        std::env::set_var("NURTURE_CLOUD_URL", "https://nurture.example.com");
+        std::env::set_var("NURTURE_IN_PROCESS", "true");
+        assert!(matches!(resolve_nurture_mode(), NurtureMode::Cloud(_)));
+        clear_nurture_mode_env();
+    }
+
+    #[test]
+    fn test_env_flag_truthy() {
+        assert!(env_flag_truthy("true"));
+        assert!(env_flag_truthy("1"));
+        assert!(!env_flag_truthy("false"));
+        assert!(!env_flag_truthy("0"));
+        assert!(!env_flag_truthy(""));
+    }
+
+    #[test]
+    fn test_in_process_api_env_injects_secret_drm_and_self_url() {
+        let env = in_process_api_env("sess-secret", "drm-key-hex");
+        assert_eq!(env[0], ("NURTURE_IN_PROCESS", "true".to_string()));
+        assert_eq!(
+            env[1],
+            ("NURTURE_INTERNAL_SECRET", "sess-secret".to_string())
+        );
+        assert_eq!(
+            env[2],
+            ("NURTURE_DRM_MASTER_KEY", "drm-key-hex".to_string())
+        );
+        assert_eq!(
+            env[3],
+            (
+                "NURTURE_API_URL",
+                format!("http://127.0.0.1:{}", API_SERVER_PORT)
+            )
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_resolve_drm_master_key_reads_env() {
+        std::env::set_var("NURTURE_DRM_MASTER_KEY", "from-env-drm");
+        let key = resolve_drm_master_key("/tmp/aiome-drm-unused").unwrap();
+        assert_eq!(key, "from-env-drm");
+        std::env::remove_var("NURTURE_DRM_MASTER_KEY");
+    }
+
+    #[test]
+    #[serial]
+    fn test_resolve_drm_master_key_persists_when_missing() {
+        std::env::remove_var("NURTURE_DRM_MASTER_KEY");
+        let dir = std::env::temp_dir().join(format!(
+            "aiome-drm-p0-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let key1 = resolve_drm_master_key(dir.to_str().unwrap()).unwrap();
+        assert!(!key1.is_empty());
+        let key2 = resolve_drm_master_key(dir.to_str().unwrap()).unwrap();
+        assert_eq!(key1, key2, "persisted DRM key must be stable across calls");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -520,7 +716,8 @@ mod tests {
     #[test]
     fn test_get_nurture_status_default() {
         let status = get_nurture_status().unwrap();
-        assert_eq!(status.status, "stopped"); // デフォルトは stopped を期待
+        assert_eq!(status.status, "stopped");
+        assert_eq!(status.mode, "stopped"); // 起動前を local と誤表示しない
     }
 }
 
@@ -529,22 +726,84 @@ mod tests {
 enum NurtureMode {
     Local,
     Cloud(String),
+    InProcess,
     Disabled,
 }
 
+fn env_flag_truthy(raw: &str) -> bool {
+    matches!(raw.trim().to_ascii_lowercase().as_str(), "true" | "1")
+}
+
+/// OP-088 P2: `NURTURE_MODE` 正本。未設定時は旧変数互換 → 既定 InProcess。
+///
+/// ```text
+/// MODE=disabled / NURTURE_DISABLED     → Disabled
+/// MODE=cloud / NURTURE_CLOUD_URL       → Cloud
+/// MODE=local                           → Local（dev escape）
+/// MODE=in_process / NURTURE_IN_PROCESS → InProcess
+/// else                                 → InProcess（製品既定）
+/// ```
 fn resolve_nurture_mode() -> NurtureMode {
+    let mode = std::env::var("NURTURE_MODE")
+        .map(|v| v.trim().to_ascii_lowercase())
+        .unwrap_or_default();
+
+    if !mode.is_empty() {
+        return match mode.as_str() {
+            "disabled" => NurtureMode::Disabled,
+            "cloud" => match std::env::var("NURTURE_CLOUD_URL") {
+                Ok(url) if !url.is_empty() => NurtureMode::Cloud(url),
+                _ => {
+                    eprintln!(
+                        "⚠️ [Nurture] NURTURE_MODE=cloud requires NURTURE_CLOUD_URL; using InProcess"
+                    );
+                    NurtureMode::InProcess
+                }
+            },
+            "local" => NurtureMode::Local,
+            "in_process" | "in-process" | "inprocess" => NurtureMode::InProcess,
+            other => {
+                eprintln!("⚠️ [Nurture] Unknown NURTURE_MODE={other}; using InProcess default");
+                NurtureMode::InProcess
+            }
+        };
+    }
+
+    // Legacy when NURTURE_MODE unset
+    if std::env::var("NURTURE_DISABLED")
+        .map(|v| env_flag_truthy(&v))
+        .unwrap_or(false)
+    {
+        return NurtureMode::Disabled;
+    }
     if let Ok(url) = std::env::var("NURTURE_CLOUD_URL") {
         if !url.is_empty() {
             return NurtureMode::Cloud(url);
         }
     }
-    if std::env::var("NURTURE_DISABLED")
-        .map(|v| v == "true" || v == "1")
+    if std::env::var("NURTURE_IN_PROCESS")
+        .map(|v| env_flag_truthy(&v))
         .unwrap_or(false)
     {
-        return NurtureMode::Disabled;
+        return NurtureMode::InProcess;
     }
-    NurtureMode::Local
+    // Product default (ADR-012 Amendment)
+    NurtureMode::InProcess
+}
+
+/// P2-4: InProcess 中に :3020 が生きていれば二重 Hook の恐れを警告する。
+fn warn_if_nurture_sidecar_port_alive() {
+    use std::net::{SocketAddr, TcpStream};
+    use std::time::Duration;
+
+    let addr = SocketAddr::from(([127, 0, 0, 1], NURTURE_API_PORT));
+    if TcpStream::connect_timeout(&addr, Duration::from_millis(200)).is_ok() {
+        eprintln!(
+            "⚠️ [Nurture] Port {NURTURE_API_PORT} responds while InProcess — \
+             nurture-api sidecar may cause double Hook (ADR-012). Stop the sidecar \
+             or set NURTURE_MODE=local only when intentionally using it."
+        );
+    }
 }
 
 fn generate_session_secret() -> String {
@@ -559,7 +818,7 @@ fn generate_session_secret() -> String {
 #[serde(rename_all = "camelCase")]
 #[ts(export, rename_all = "camelCase")]
 pub struct NurtureStatus {
-    /// Nurture operation mode: "local" | "cloud" | "disabled"
+    /// Nurture operation mode: "local" | "cloud" | "in_process" | "disabled" | "stopped" | "unknown"
     pub mode: String,
     /// Current sidecar status
     pub status: String,
@@ -575,15 +834,18 @@ fn get_nurture_status() -> Result<NurtureStatus, String> {
     let mode = match state.nurture_status.as_str() {
         "cloud" => "cloud",
         "disabled" => "disabled",
-        _ => "local",
+        "in_process" => "in_process",
+        "running" => "local",
+        "stopped" => "stopped",
+        _ => "unknown",
     };
     Ok(NurtureStatus {
         mode: mode.to_string(),
         status: state.nurture_status.clone(),
-        url: if state.nurture_status == "running" {
-            format!("http://localhost:{}", NURTURE_API_PORT)
-        } else {
-            String::new()
+        url: match state.nurture_status.as_str() {
+            "running" => format!("http://localhost:{}", NURTURE_API_PORT),
+            "in_process" => format!("http://127.0.0.1:{}", API_SERVER_PORT),
+            _ => String::new(),
         },
     })
 }

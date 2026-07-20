@@ -1,28 +1,27 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Aiome — static stub (not product UI)</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; line-height: 1.5; }
-    code { background: #f4f4f4; padding: 0.1em 0.35em; }
-  </style>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' http://localhost:3015 ws://localhost:3015; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; object-src 'none'; frame-ancestors 'none';">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono&display=swap"
+    rel="stylesheet">
+  <title>Aiome Console</title>
+  <script type="module" crossorigin src="/assets/main-DrW5KfL_.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/ui-DYZPBbJt.js">
+  <link rel="modulepreload" crossorigin href="/assets/vendor-CW3gHsKk.js">
+  <link rel="modulepreload" crossorigin href="/assets/Toast-D30ZEXA-.js">
+  <link rel="stylesheet" crossorigin href="/assets/Toast-CPIOGd8E.css">
 </head>
+
 <body>
-  <h1>Not the product UI</h1>
-  <p>
-    This tracked <code>apps/api-server/static/index.html</code> is a stub.
-    The Management Console source of truth is <code>apps/management-console</code>.
-  </p>
-  <p>
-    To serve the real UI locally or on a host (Path B / bind-mount), run:
-  </p>
-  <p><code>./scripts/sync_mc_static.sh</code></p>
-  <p>
-    See <code>docs/guides/MC_STATIC_DEPLOY.md</code> and
-    <code>docs/roadmaps/mc_static_deploy_plan.md</code> (OP-087).
-    Distroless image COPY alone does not update UI while production bind-mounts this directory.
-  </p>
+  <div id="root"></div>
 </body>
+
 </html>

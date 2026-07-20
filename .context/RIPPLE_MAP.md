@@ -1,3 +1,107 @@
+## 🔍 OP-088 P3 / Ship 本線（2026-07-21）
+
+- **変更**: `desktop_sidecar_manager.py`（公式2本 + `--with-nurture-sidecar`、check-all で nurture 混入禁止）。`tauri.conf.json` / capabilities / CSP :3020。`package.json` sidecar:*。T-002/T-006 / desktop-sidecar.md / OPERATIONS_MANUAL
+- **影響**: 公式パッケージに nurture-api 無し。`NURTURE_MODE=local` は開発ビルド向け
+- **検証**: test_desktop_sidecar_manager 17 PASS
+- **CI**: `ci.yml` `desktop-sidecar`（build → check-core --forbid-nurture-sidecar）✅
+- **/reflexion**: `nurture_mcp_proxy` SSE をストリーム書換（バッファ全体 `bytes().await` 廃止）。Local/Cloud 子に `NURTURE_IN_PROCESS=false`
+- **残**: P4 文書任意 / P5（self-HTTP deadlock 等）
+
+## 🔍 OP-088 P2（2026-07-21）
+
+- **変更**: `src-tauri/src/lib.rs` — 既定 InProcess、`NURTURE_MODE` 正本、:3020 警告、tray hint。`.env.example`。ADR-012 Amendment Accepted
+- **影響**: Desktop 無設定起動が InProcess（sidecar 非 spawn）。Local は明示 `NURTURE_MODE=local`
+- **検証**: nurture_mode 11 unit + tray PASS
+- **次**: P3（公式 sidecar 除外）
+
+## 🔍 OP-088 P1（2026-07-21）
+
+- **変更**:
+  - `nurture-api`: `internal_auth_middleware` 公開、`s2s_internal_service`、`CreatedNurturePlugin`
+  - `api-server` `router.rs` / `plugin_loader`: JWT 外 `nest_service("/internal")`、Plugin unit-router を `with_state` 後 JWT merge
+  - Tauri: InProcess に `NURTURE_API_URL=http://127.0.0.1:3015`
+  - MCP discovery/proxy: InProcess → `/mcp`
+  - ADR-012 Amendment Proposed（Desktop 既定・D3 維持）
+- **影響**: 明示 InProcess 時の経済/RTBF/MCP 自己 HTTP。既定 Local のまま（P2）
+- **検証**: S2S 401 / self-URL / MCP path·discovery unit PASS
+- **次**: P2（ADR Accept 後の既定フリップ）
+
+## 🔍 OP-088 P0（2026-07-21）
+
+- **変更**: `src-tauri/src/lib.rs` — InProcess で secret/DRM を api-server へ注入。`plugins.rs` — 固定 DRM 廃止・`require_drm_master_key` Fail-Closed
+- **影響**: 明示 InProcess 起動時のみ。既定 Local のまま
+- **検証**: Tauri unit（注入・DRM）+ api-server `require_drm` missing/empty Negative PASS
+- **次**: P1 ✅
+
+## 🔍 OP-088 P0-pre（2026-07-21）
+
+- **変更**: `apps/api-server/Cargo.toml` — `nurture` = desktop（no AWS）、`nurture-cloud` 追加。`desktop_sidecar_manager.py` コメント。`plugins.rs` `tracing::info!`
+- **検証**: `cargo tree -p api-server --features nurture -i aws-sdk-s3` 不一致（非リンク）。`nurture,nurture-cloud` ではリンク。`cargo check -p api-server --features nurture`
+- **次**: P0 ✅
+
+## 🔍 OP-026 / OP-062 実装（2026-07-21）
+
+- **変更**:
+  - OP-026: `SettingsPage.tsx` Channel Bridges + `search_api_key` / i18n notice / `settings.rs` frontend_keys / Jest
+  - OP-062: `src-tauri/src/lib.rs` `NurtureMode::InProcess` + resolve 優先順変更 + start_sidecars 非 spawn
+  - `desktop_sidecar_manager.py` api-server `--features nurture` / `.env.example` 注記
+- **影響**: TrendSonar 読込経路は非変更（settings 都度読込）。Hook 二重発火は InProcess で sidecar 排除により防止
+- **検証**: Jest Channel Bridges PASS / nurture_mode 6 PASS / `test_frontend_used_keys_are_allowed` PASS
+
+## 🔍 OP-083-C/D 実装（2026-07-20）
+
+- **変更**:
+  - 実行正本: `docs/roadmaps/op083_cd_x402_plan.md`（ゲート=Q2+SC、ADR-053 非ブロッカー）
+  - `AgentWallet` / `X402Client` 実署名 / `X402ClientFactory` / `OnChainAmount`
+  - `ALLOWED_VAULT_SECRETS` + key-proxy category: `X402_SIGNER_KEY`  # gitleaks:allow
+  - api-server `x402_negotiator` DI（未設定時 None・起動継続）
+- **検証**: `cargo test -p aiome-commerce`（x402/wallet/currency/factory）+ `cargo check -p api-server`
+- **禁止維持**: broadcast / AiomeCoin 置換 / Stripe webhook・auth 非変更
+
+## 🔍 OP-051 P4 実装 / OP-051 完了（2026-07-20）
+
+- **変更**:
+  - `apps/api-server/src/error.rs`: `AppError::internal` 不透明化 + Negative テスト
+  - `libs/infrastructure/src/compliance/quarantine.rs`: `QuarantineStore` → `AiomeError`（BanStore は触らない）
+  - 境界選択修正: audit / cortex / expression / skill vampire import / avatar hash
+- **検証**: quarantine 2 PASS / `test_internal_opaque_does_not_leak_db_details` PASS / `cargo check -p api-server` OK
+- **次**: Wave C 残は OP-083-C/D・OP-011（Federation / ポストリリース・ゲート待ち）
+
+## 🔍 OP-051 P3 実装（2026-07-20）
+
+- **変更**:
+  - `apps/api-server/src/error.rs`: `From<SoulError>` → `Self(err.into())`（並列 match 廃止）
+  - `libs/soul/src/error.rs`: `InvalidTransition` → `AiomeError::Validation`（境界 400 維持）
+  - 境界テスト: soul / avatar-engine loader+proportions / shared csam / infrastructure security_zombie
+- **検証**: soul/avatar/shared/infra unit PASS / `test_from_{soul,loader,proportion,process,csam}_error` PASS / `cargo check -p api-server` OK
+- **次ゲート**: 「OP-051 P4 を実装しろ」（infrastructure / api-server 境界 anyhow の選択的 map）
+
+## 🔍 OP-051 P2 実装（2026-07-20）
+
+- **変更**:
+  - `libs/shared/src/bootstrap_detector.rs`: `From<FactoryResetError> for AiomeError`
+  - `apps/api-server/src/error.rs`: AppError は `Self(err.into())` に委譲
+- **検証**: shared bootstrap_detector 12 PASS / `error::tests::test_from_factory_reset_error` PASS / `cargo check -p api-server` OK
+- **次ゲート**: 「OP-051 P3 を実装しろ」（soul / avatar / CSAM / security_zombie 境界寄せ）
+
+## 🔍 OP-051 P1 実装（2026-07-20）
+
+- **変更**:
+  - トレイト: `ekyc.rs` / `audit.rs` / `x402.rs` → `Result<_, AiomeError>`
+  - impl: `aiome-commerce` ekyc/store/x402、`infrastructure` audit_logger、gift MockAuditLogger
+  - api-server `ekyc` save 経路は `From<AiomeError>` で伝搬
+- **検証**: `cargo test -p aiome-contracts -p aiome-core-contracts` PASS / `aiome-commerce` 70 PASS / audit_logger 2 PASS / `cargo check -p api-server` OK
+- **次ゲート**: 「OP-051 P2 を実装しろ」（FactoryResetError → AiomeError）
+
+## 🔍 OP-051 / ADR-054 Accepted（2026-07-20）
+
+- **変更**:
+  - `docs/decisions/054-error-hierarchy.md` Status → **Accepted**
+  - 新規: `docs/roadmaps/op051_error_hierarchy_plan.md` v1.0（P1–P4 段階・一括置換禁止）
+  - 台帳: OPEN OP-051 / CHANGELOG / error_handling / hardening Wave C1 / tech_debt Wave C / foolproof Gate G1
+- **検証**: 計画フェーズ完了後 P1 実装へ移行
+- **次ゲート**: P2（FactoryResetError）
+
 ## 🔍 OP-086 Wave D 本番クローズ（2026-07-19）
 
 - **変更**:

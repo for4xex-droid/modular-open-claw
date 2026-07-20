@@ -312,7 +312,7 @@
     "tts": "テキスト読み上げ (TTS)",
     "voiceNameId": "ボイス名 / ID",
     "xBearerToken": "X API ベアラートークン",
-    "xBearerTokenNotice": "⚠️ このトークンを変更した場合、DreamService に反映させるにはアプリケーションの再起動が必要です。",
+    "xBearerTokenNotice": "DreamService および /api/v1/trends に動的反映されます。アプリケーションの再起動は不要です。",
     "searchApiKey": "Google Search API キー",
     "searchApiKeyNotice": "SerpAnalysisAdapter および WebSearchAdapter で必要です。",
     "securitySystem": "セキュリティ & システム",

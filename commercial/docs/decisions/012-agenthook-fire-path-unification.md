@@ -28,3 +28,11 @@ Nurture の AgentHook（`on_transaction_completed` → KarmaForge 合成）は�
 ### Negative
 - Tauri 側の `InProcess` variant 追加は別タスク（OPEN.md 起票）
 - 開発者は `NURTURE_IN_PROCESS` と sidecar 起動の排他を理解する必要がある
+
+---
+
+## Amendment（Accepted 2026-07-21）
+
+Desktop 製品既定を InProcess 化:  
+[`012-desktop-inprocess-default-amendment.md`](012-desktop-inprocess-default-amendment.md)（**D3 維持**・JWT 外 `/internal`・自己 HTTP）。  
+Parent Decision 2「Sidecar がデフォルト」は **Desktop 製品既定について本 Amendment で上書き**。

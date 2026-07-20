@@ -51,7 +51,7 @@ pub fn build_app(
     state: AppState,
     cors_layer: CorsLayer,
     static_path: String,
-    plugin_registry: crate::plugin_loader::PluginRegistry,
+    mut plugin_registry: crate::plugin_loader::PluginRegistry,
     metrics_handle: metrics_exporter_prometheus::PrometheusHandle,
 ) -> Router {
     let internal_router = Router::new()
@@ -724,15 +724,22 @@ pub fn build_app(
     let state_copy = state.clone();
     let state_for_auth = state.clone();
 
-    // 1. Create the base authenticated router (WITHOUT global limit yet)
-    let authed_router = internal_router.merge(streaming_router);
+    // OP-088 P1: Plugin は Router<()> — with_state 後に JWT 付き merge。
+    // S2S /internal は JWT 外（nest_service）。merge_routes(AppState) には載せない。
+    let s2s_router = plugin_registry.take_s2s_router();
+    let plugin_unit_routers = plugin_registry.plugin_unit_routers();
 
-    let authed_router = plugin_registry.merge_routes(authed_router).route_layer(
-        axum::middleware::from_fn_with_state(state_for_auth, auth::auth_middleware),
-    );
+    // 1. Create the base authenticated router (WITHOUT global limit yet)
+    let authed_router =
+        internal_router
+            .merge(streaming_router)
+            .route_layer(axum::middleware::from_fn_with_state(
+                state_for_auth,
+                auth::auth_middleware,
+            ));
 
     // 2. Create the base public router
-    let public_router = Router::new()
+    let mut public_router = Router::new()
         .route("/api/health", get(routes::general::get_health_status))
         .route("/health", get(routes::general::get_health_status))
         .route(
@@ -782,6 +789,12 @@ pub fn build_app(
             "/api/v1/commerce/webhook/polar",
             axum::routing::post(routes::commerce_webhook::polar_webhook),
         );
+
+    // OP-088 P1-1: JWT 外で /internal（Bearer secret + OXP）。Plugin nurture_routes 配下禁止。
+    if let Some(s2s) = s2s_router {
+        tracing::info!("🔐 [Router] Nesting S2S /internal outside JWT (InProcess)");
+        public_router = public_router.nest_service("/internal", s2s);
+    }
 
     #[cfg(debug_assertions)]
     let public_router = public_router.merge(
@@ -862,6 +875,14 @@ pub fn build_app(
     // 5. Merge them - limited_base will handle its routes with 2MB, high_limit_router will handle its with 500MB/50MB
     let final_router = limited_base.merge(high_limit_router);
 
+    // Plugin は Router<()> — with_state 後に JWT 付き merge（型不一致で silent-drop しない）
+    let mut final_router = final_router.with_state(state_copy.clone());
+    for plugin_router in plugin_unit_routers {
+        final_router = final_router.merge(plugin_router.route_layer(
+            axum::middleware::from_fn_with_state(state_copy.clone(), auth::auth_middleware),
+        ));
+    }
+
     // Assembly with Global Config Layers (CORS, Headers, etc.)
     final_router
         .layer(axum::middleware::from_fn(metrics_middleware))
@@ -891,7 +912,6 @@ pub fn build_app(
                 .rate_limit(50, std::time::Duration::from_secs(1))
                 .into_inner()
         )
-        .with_state(state_copy)
 }
 
 pub async fn handle_rate_limit(_err: tower::BoxError) -> (StatusCode, &'static str) {

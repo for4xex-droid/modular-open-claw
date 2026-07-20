@@ -54,11 +54,11 @@
 ## 🟡 P2 / 継続課題（技術的負債は REMAINING_TASKS.md 2026-07-02 版から吸収）
 
 - [ ] **OP-087**: MC static 配布規律 — P1–P3 ✅（`sync_mc_static.sh` + `test_sync_mc_static.sh` P/N/R、`MC_STATIC_DEPLOY.md`、index スタブ）。**残**: P4 本番 Path B（都度 Human 許可）、§8 Q5/Q6。正本: [`mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)
-- [ ] **OP-020**: Phase 2b（Tauri シェル）✅ / Phase 4（経済接続）✅（CHANGELOG 根拠）。**Phase 5 製品 P2P 残**は要再定義（Federation **transport**=ADR-053 ✅。implementation_plan Phase 5=Cognitive Observability と番号衝突注意）。OP-083-C のブロッカーではない
-- [ ] **OP-021**: BAN 管理ダッシュボード UI の設計検討（2026-05-22）
-- [ ] **OP-022**: CausalVisualizer（Trajectory Graph の UI 可視化）未着手（MEMORY.md Blind Spots より）
+- [ ] **OP-020**: Phase 2b / Phase 4 ✅。**残は OP-020-F5 Soul Sync**（Federation transport=ADR-053 ✅。implementation_plan Phase 5=Cognitive Observability と別物）。再定義正本: [`wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) §3。F-5 コード着手は別ゲート。OP-083 非ブロッカー
+- [ ] **OP-021**: BanDashboard **コア UI ✅**（`BanDashboard.tsx` + admin bans API）。残 polish: **i18n のみ**。`expires_at` は API/BanStore 未対応のため本 Wave 外。正本: [`wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) v1.3
+- [ ] **OP-022**: CausalVisualizer **コア UI ✅**（`CausalVisualizer.tsx` + trajectory API）。残 polish: Job ピッカー / Activity 連携（任意）。正本: 同上
 - [x] **OP-024**: `tool_call_router.rs` 課金チェックの Fail-Closed 化（DB エラーを握り潰さず明示拒否）（MEMORY.md Phase 48 より）→ **2026-07-09 完了**（`get_setting_value` Err 時に MCP ツール拒否 + Negative テスト）
-- [ ] **OP-026**: X Signal Probe 設定画面 UI（SettingsPage.tsx, settings.rs）（2026-04-07）
+- [x] **OP-026**: TrendSonar Channel Bridges 運用 UI — **2026-07-21 完了**（`search_api_key` + VaultKeyStatus、再起動不要文言、`test_frontend_used_keys_are_allowed`、Jest）。A3 疎通 UI は既定スキップのまま
 - [ ] **OP-027**: Stripe API 実装追加時の一元化モック拡充（2026-06-01）
 - [x] **OP-028**: フロントエンド `as any` 型キャスト4箇所の解消（WorkflowBuilder.tsx ×3, workflowConverter.ts ×1）→ **2026-07-05 完了**（release_master_plan R1-14）
 - [x] **OP-029**: `biome-popup-entry.tsx` HEX → `var(--bg-base)` + ゲート `extra_files` 追加 + html transparent → **2026-07-10 完了**（`test_ui_hex_violations.py` GREEN）
@@ -75,7 +75,8 @@
 - [x] **OP-058**: `ProUpgradeModal`（402→アップグレード導線）→ 2026-07-04 解消（`App.tsx` ルートマウント + `STRIPE_PRICE_ID`）
 - [x] **OP-059**: ハイブリッド価格のバックエンド実装（2026-07-03 部分完了）。✅ 月次 KC 含み枠 + ✅ W-1 OXP relay 修正 + ✅ **R2-3 月間支出上限**（ADR-050、DB マイグレーション、インターセプタ、Settings UI `economy.monthly_spend_limit`、2026-07-06） → **2026-07-10 docs クローズ**（コードは先行完了）
 - [x] **OP-059-UI**: Settings への `pro_monthly_kc_allowance` 入力 UI 実装 → **2026-07-13 完了**（cockpit Commerce セクション、`SettingsPage.test` 16 PASS）
-- [ ] **OP-062**: Tauri `NurtureMode::InProcess` variant — sidecar 起動と in-process の排他（ADR-012 残タスク）（2026-07-04）
+- [x] **OP-062**: Tauri `NurtureMode::InProcess` — **2026-07-21 完了**（Disabled>Cloud>InProcess>Local、sidecar 非 spawn + `NURTURE_IN_PROCESS` 注入、Desktop `api-server --features nurture`、unit 6 PASS）。ADR-012 / foolproof G2
+- [x] **OP-088**: Desktop **既定 InProcess** — 正本 [`desktop_inprocess_default_plan.md`](docs/roadmaps/desktop_inprocess_default_plan.md) **v1.3**。**Ship 本線 P0-pre…P3 ✅** + **ci.yml `desktop-sidecar` 配線済**。残: P4 文書任意 / P5
 - [ ] **OP-068**: deny.toml `[advisories].ignore` に登録した 21 件（wasmtime 41.x / rustls-webpki 旧版 / idna 0.4 / quick-xml 0.39 / rand 0.8）の解消。実体は OP-030〜OP-034 の Upstream 待ちと同根。上流更新後に ignore を削除すること（2026-07-04。旧 OP-061 重複採番を 2026-07-05 改番）
 - [ ] **OP-064**: ベータユーザー 5〜10 人の獲得と実名テスティモニアル収集。launch（本格トラフィック獲得）の前提条件。バイラル32原則 #14/#29 対応（**Human**・OP-086 では後回し、2026-07-05）
 - [x] **OP-065**: Pro 価格改定 $9.99 → **$19.99/月**（2026-07-05 ユーザー決定）。MESSAGING.md / LP i18n / README / ProUpgradeModal 表示 / stripe-setup.md / .env.example を同期。Stripe Payment Link・Price ID の実体差し替えは OP-057 に統合。

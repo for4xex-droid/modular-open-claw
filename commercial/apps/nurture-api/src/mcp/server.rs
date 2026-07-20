@@ -47,7 +47,15 @@ pub async fn sse_handler(
         session_id
     );
 
-    let endpoint_url = format!("/api/v1/mcp/message?sessionId={}", session_id);
+    // Sidecar は /api/v1/mcp、InProcess plugin は /mcp（OP-088 P1-3 / reflexion）
+    let in_process = std::env::var("NURTURE_IN_PROCESS")
+        .map(|v| v == "true" || v == "1")
+        .unwrap_or(false);
+    let endpoint_url = if in_process {
+        format!("/mcp/message?sessionId={}", session_id)
+    } else {
+        format!("/api/v1/mcp/message?sessionId={}", session_id)
+    };
     let initial_event = Event::default().event("endpoint").data(endpoint_url);
 
     let stream = async_stream::stream! {

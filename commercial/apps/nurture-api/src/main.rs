@@ -8,25 +8,18 @@
  */
 
 use anyhow::Context;
-use axum::{
-    extract::Request,
-    http::{header::AUTHORIZATION, StatusCode},
-    middleware::{self, Next},
-    response::{IntoResponse, Response},
-    routing::get,
-    Json, Router,
-};
+use axum::{http::StatusCode, middleware, response::IntoResponse, routing::get, Json, Router};
 use nurture_bridge::db::DatabasePool;
 use std::net::SocketAddr;
-use subtle::ConstantTimeEq;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
 
 use commerce_protocol::identity::ActorId;
+use nurture_api::auth::internal_auth_middleware;
 use nurture_api::routes::nurture_routes;
 use nurture_api::state::AppState;
 use nurture_core::policy::EconomyPolicy;
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::SecretString;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -416,46 +409,6 @@ async fn main() -> anyhow::Result<()> {
         .context("サーバー停止")?;
 
     Ok(())
-}
-
-/// 🔒 Zero-Trust Internal Authentication Middleware
-///
-/// api-server (OpenClaw) → nurture-api の Server-to-Server 通信において、
-/// NURTURE_INTERNAL_SECRET を用いた認証を必須とする。
-/// SSRF経由の不正アクセスを防止するためのゼロトラスト・ゲート。
-async fn internal_auth_middleware(
-    axum::Extension(state): axum::Extension<nurture_api::state::SharedState>,
-    req: Request,
-    next: Next,
-) -> Response {
-    let auth_header = req
-        .headers()
-        .get(AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .unwrap_or_default();
-
-    let expected_secret = state.internal_secret.expose_secret();
-    let expected_bearer = format!("Bearer {}", expected_secret);
-
-    let is_valid = if auth_header.len() == expected_bearer.len() {
-        bool::from(auth_header.as_bytes().ct_eq(expected_bearer.as_bytes()))
-    } else {
-        false
-    };
-
-    if is_valid {
-        next.run(req).await
-    } else {
-        tracing::warn!(
-            "🚨 [Nurture-Auth] Unauthorized access attempt. Header present: {}",
-            !auth_header.is_empty()
-        );
-        (
-            StatusCode::UNAUTHORIZED,
-            "Unauthorized: Invalid internal credentials",
-        )
-            .into_response()
-    }
 }
 
 async fn health_check() -> Json<serde_json::Value> {

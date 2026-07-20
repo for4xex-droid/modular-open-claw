@@ -6,53 +6,77 @@ description: Tauri サイドカーバイナリのライフサイクル管理と�
 
 Tauri デスクトップアプリケーションに必要なサイドカーバイナリのライフサイクル管理、および製品ビルド時におけるダミー（プレースホルダー）混入を防ぐ安全検証を実施します。
 
-## 概要
+## 概要（OP-088 P3）
 
-本ワークフローは、以下の3つの安全規約に基づき自動検証スクリプト `scripts/desktop_sidecar_manager.py` を運用します：
-1. **プレースホルダー自動生成**: ローカル開発初期や環境構築時にダミーファイルを即座に生成し、ビルドエラーを回避する。
-2. **本物のバイナリ物理検証**: ファイルヘッダのマジックバイトおよび最小ファイルサイズ（100KB以上）による物理判定で、ダミー混入をシャットアウトする。
-3. **2段階検証ポリシー**: ローカル開発およびCIでは最低限必要なRustコアサイドカーのみをチェックし、本番リリースビルド前にはフォールバック含む全サイドカーの完全性を強制検証する。
+**公式 Desktop は設定不要（既定 InProcess）**。同梱サイドカーは `api-server` + `key-proxy`（+ 任意で `obscura`）のみ。  
+`nurture-api` は公式パッケージに含めない。Local escape は開発用 `--with-nurture-sidecar` + `NURTURE_MODE=local`。
+
+本ワークフローは `scripts/desktop_sidecar_manager.py` を運用します：
+1. **プレースホルダー自動生成**: 公式セット（+ obscura）。`--with-nurture-sidecar` で nurture-api も生成可。
+2. **本物のバイナリ物理検証**: マジックバイト + 最小サイズ（100KB）。
+3. **2段階検証**: `--check-core`（公式2本）/ `--check-all`（+ obscura、かつ実 nurture-api 混入禁止）。
+
+---
+
+## npm ラップ（management-console）
+
+```bash
+npm run sidecar:placeholders   # 公式プレースホルダー
+npm run sidecar:build          # 公式ビルド
+npm run sidecar:build:local    # + nurture-api（dev）
+npm run sidecar:check          # --check-core --forbid-nurture-sidecar（CI 同等）
+npm run sidecar:check:release  # --check-all
+```
 
 ---
 
 ## 実行コマンド一覧
 
 ### 1. 開発環境のセットアップ（プレースホルダー生成）
-Tauri のビルドエラーを避けるためにダミーファイル（Windowsはバッチ、その他はシェルスクリプト）を作成します。
 ```bash
 python3 scripts/desktop_sidecar_manager.py --setup-placeholders
+# Local 用に nurture-api プレースホルダーも必要なら:
+python3 scripts/desktop_sidecar_manager.py --setup-placeholders --with-nurture-sidecar
 ```
 
-### 2. ローカルサイドカーバイナリのビルド
-Rust ワークスペースから実バイナリをビルドし、自動的に `apps/management-console/src-tauri/binaries/` へ配置します。
-* `nurture-api` は AWS SDK 排除フラグ（`--no-default-features --features desktop`）でビルドされます。
-* `obscura` は PATH 上に実バイナリが存在すれば配置され、なければプレースホルダーのまま維持されます。
+### 2. 公式サイドカービルド
 ```bash
 python3 scripts/desktop_sidecar_manager.py --build
 ```
+* `api-server` は `--features nurture`（desktop / no AWS）。
+* `nurture-api` はビルドしない。旧成果物があれば削除する。
 
-### 3. ステージ1検証：コアバイナリ検証（ローカル開発・常時CI）
-Rust製コアサイドカー3つ（`api-server`, `key-proxy`, `nurture-api`）が実バイナリであることを検証します。
+### 3. Local escape 用 nurture-api ビルド
+```bash
+python3 scripts/desktop_sidecar_manager.py --build --with-nurture-sidecar
+export NURTURE_MODE=local
+```
+* **公式 `tauri.conf.json` には nurture-api が無い**（意図的）。Local で Tauri から spawn するには、開発中のみ次を一時追加する:
+  * `bundle.externalBin` ← `"binaries/nurture-api"`
+  * `capabilities/default.json` の `shell:allow-execute.allow` ← `{ "name": "nurture-api" }`
+* 公式パッケージへこの変更をコミットしないこと（P3 / Q3）。
+
+### 4. ステージ1検証（ローカル開発・常時CI）
 ```bash
 python3 scripts/desktop_sidecar_manager.py --check-core
 ```
-* **動作**: 3つのうちいずれかがダミーもしくは見つからない場合、終了ステータス `1` で異常終了します（Fail-Closed）。
+* 対象: `api-server`, `key-proxy` のみ。
 
-### 4. ステージ2検証：全バイナリ検証（リリースビルドCI）
-コア3つに加えて `obscura` を含む全4つのサイドカーが実バイナリであることを完全検証します。
+### 5. ステージ2検証（リリースビルド）
 ```bash
 python3 scripts/desktop_sidecar_manager.py --check-all
 ```
-* **動作**: `obscura` を含め、いずれか1つでもダミーもしくは欠損がある場合、終了ステータス `1` で異常終了します。
+* 対象: 公式2本 + `obscura`。
+* **実バイナリの `nurture-api` が binaries/ にあれば Fail-Closed**（公式同梱回帰防止）。
 
 ---
 
 ## 安全ガードレール運用規約
 
-1. **本番パッケージのビルド前検証の義務化**
-   * 製品リリースビルドを実行する CI パイプライン、あるいは手動ビルドの直前には、必ず `python3 scripts/desktop_sidecar_manager.py --check-all` を実行しなければならない。
-   * これが失敗した場合は、絶対にビルドパッケージを出力してはならない。
-
-2. **Git 履歴汚染の防止（ロックダウン）**
-   * 実バイナリおよび自動生成されたプレースホルダーは、絶対に Git リポジトリにコミットしてはならない。
-   * `.gitignore` に `/apps/management-console/src-tauri/binaries/` ルールが正しく設定されていることを常時維持すること。
+1. **本番パッケージのビルド前**に `--check-all` を実行し、失敗時はパッケージを出さない。
+2. **Git ロックダウン**: `apps/management-console/src-tauri/binaries/` は `.gitignore` で遮断を維持。
+3. **CI 配線（済）**: `.github/workflows/ci.yml` ジョブ `desktop-sidecar`
+   * `python3 scripts/test_desktop_sidecar_manager.py`
+   * `python3 scripts/desktop_sidecar_manager.py --build`
+   * `python3 scripts/desktop_sidecar_manager.py --check-core --forbid-nurture-sidecar`
+   * `--check-all`（obscura 必須）はリリース手元/専用パイプライン向け。常用 CI では obscura 無しでもゲート可能。

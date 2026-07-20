@@ -222,7 +222,7 @@ pub async fn create_plugin(
     polar_webhook_secret: Option<String>,
     auth_manager: Arc<dyn nurture_bridge::auth::AuthManager>,
     drm_master_key: String,
-) -> Result<Arc<dyn AiomePlugin>, AiomeError> {
+) -> Result<CreatedNurturePlugin, AiomeError> {
     let policy = crate::state::EconomyPolicy::default();
     let state = crate::state::AppState::init(
         pool.clone(),
@@ -264,12 +264,23 @@ pub async fn create_plugin(
     .await?;
 
     let bridge = state.commerce_engine.clone();
+    let s2s_router = crate::routes::s2s_internal_service(state.clone());
 
-    Ok(Arc::new(NurturePlugin {
-        state,
-        bridge,
-        _cancel_token: cancel_token,
-    }))
+    Ok(CreatedNurturePlugin {
+        plugin: Arc::new(NurturePlugin {
+            state,
+            bridge,
+            _cancel_token: cancel_token,
+        }),
+        s2s_router,
+    })
+}
+
+/// InProcess 登録用: JWT 配下 Plugin + JWT 外 S2S ルータ（OP-088 P1）。
+pub struct CreatedNurturePlugin {
+    pub plugin: Arc<dyn AiomePlugin>,
+    /// `nest_service("/internal", …)` 用（パス prefix なし）
+    pub s2s_router: axum::Router,
 }
 
 #[cfg(test)]

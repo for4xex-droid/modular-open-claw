@@ -12,12 +12,15 @@ use tracing::{info, warn};
 
 pub struct PluginRegistry {
     plugins: Vec<Arc<dyn AiomePlugin>>,
+    /// JWT 外 S2S（InProcess）。`nest_service("/internal", …)` 用。
+    s2s_router: Option<Router>,
 }
 
 impl PluginRegistry {
     pub fn new() -> Self {
         Self {
             plugins: Vec::new(),
+            s2s_router: None,
         }
     }
 
@@ -28,6 +31,37 @@ impl PluginRegistry {
             plugin.version()
         );
         self.plugins.push(plugin);
+    }
+
+    /// OP-088 P1: JWT 外に載せる S2S ルータを保持する。
+    pub fn set_s2s_router(&mut self, router: Router) {
+        self.s2s_router = Some(router);
+    }
+
+    pub fn take_s2s_router(&mut self) -> Option<Router> {
+        self.s2s_router.take()
+    }
+
+    /// `Router<()>` の Plugin ルート（`with_state` 後に JWT 付きで merge する）。
+    pub fn plugin_unit_routers(&self) -> Vec<Router> {
+        let mut out = Vec::new();
+        for plugin in &self.plugins {
+            if let Some(opaque_router) = plugin.routes() {
+                if let Some(plugin_router) = opaque_router.downcast_ref::<Router>() {
+                    info!(
+                        "🛣️  Collecting unit-state routes from plugin: {}",
+                        plugin.name()
+                    );
+                    out.push(plugin_router.clone());
+                } else {
+                    warn!(
+                        "⚠️  Plugin {} returned a router that is not an axum::Router<()>",
+                        plugin.name()
+                    );
+                }
+            }
+        }
+        out
     }
 
     pub fn merge_routes<S>(&self, mut router: Router<S>) -> Router<S>
@@ -41,7 +75,7 @@ impl PluginRegistry {
                     router = router.merge(plugin_router.clone());
                 } else {
                     warn!(
-                        "⚠️  Plugin {} returned a router that is not an axum::Router<{}>",
+                        "⚠️  Plugin {} returned a router that is not an axum::Router<{}> (use plugin_unit_routers after with_state)",
                         plugin.name(),
                         std::any::type_name::<S>()
                     );

@@ -1,5 +1,54 @@
 ## [Unreleased]
 
+### Changed (OP-088 P3 2026-07-21)
+- **公式 Desktop sidecar**: `api-server` + `key-proxy` のみ。`nurture-api` は `--with-nurture-sidecar` でのみビルド。
+- **tauri.conf / capabilities**: `externalBin` と shell allow から nurture-api 削除。CSP から `:3020` 除去（T-003）。
+- **`--check-all`**: 実 nurture-api 混入を Fail-Closed。`package.json` に `sidecar:*` ラップ（`sidecar:check` は CI 同等 forbid）。
+- **CI**: `ci.yml` ジョブ `desktop-sidecar` — unit → `--build` → `--check-core --forbid-nurture-sidecar`。
+- **文書**: T-002/T-006、`desktop-sidecar.md`、OPERATIONS_MANUAL（通常は設定不要）。
+- **検証**: `test_desktop_sidecar_manager.py` 18 PASS（tauri.conf / forbid-nurture Negative 含む）。
+- **/reflexion**: 未追跡正本 stage・discovery `serial`・MCP endpoint を InProcess=`/mcp/message` に修正・discovery は nurture-mcp プロキシ正本・proxy SSE をストリーム書換（先頭 `endpoint` のみ・`content-length` 除去・CRLF 対応）・Local/Cloud 子で `NURTURE_IN_PROCESS=false` 明示・Local escape 手順明記・`get_nurture_status` stopped≠local。
+
+### Changed (OP-088 P2 2026-07-21)
+- **Desktop 既定 InProcess**: `resolve_nurture_mode` の else → InProcess。正本 `NURTURE_MODE` + 旧変数互換。
+- **tray / `.env.example`**: 通常は設定不要と明示。Local は `NURTURE_MODE=local`（dev）。
+- **二重 Hook 警告**: InProcess 中に :3020 が応答すると警告。
+- **ADR-012 Amendment**: Accepted（Desktop 既定 InProcess・D3 維持）。
+- **検証**: nurture_mode 11 unit + tray PASS。
+
+### Changed (OP-088 P1 2026-07-21)
+- **JWT 外 `/internal`**: `s2s_internal_service` + 公開 `internal_auth_middleware` を `nest_service`（Plugin `merge_routes` 禁止）。Plugin `Router<()>` は `with_state` 後に JWT 付き merge。
+- **Tauri InProcess**: `NURTURE_API_URL=http://127.0.0.1:3015` を注入（沈黙 skip 閉鎖）。
+- **MCP**: InProcess 時 discovery → `/mcp/sse`。nurture-mcp プロキシは `/mcp` + クライアント JWT 転送。
+- **ADR-012 Amendment（Proposed）**: Desktop 既定 InProcess・D3 維持 — Human Accept 待ち。
+- **検証**: S2S 401 Negative / self-URL unit / MCP path·discovery unit PASS。
+
+### Changed (OP-088 P0 2026-07-21)
+- **Tauri InProcess**: api-server 子に `NURTURE_IN_PROCESS` + `NURTURE_INTERNAL_SECRET` + `NURTURE_DRM_MASTER_KEY`（`resolve_drm_master_key`）を注入。`NURTURE_API_URL` は注入しない。
+- **plugins.rs**: debug 固定 DRM を廃止。`NURTURE_DRM_MASTER_KEY` 欠落/空は Fail-Closed。
+- **検証**: Tauri `in_process`/`resolve_drm` unit + api-server `require_drm` Positive/Negative PASS。
+
+### Changed (OP-088 P0-pre 2026-07-21)
+- **api-server `nurture` feature**: `nurture-api` / `nurture-infra` を `default-features=false` + desktop/stripe（**cloud-storage/AWS なし**）。サーバ用は `--features nurture,nurture-cloud`。
+- **desktop_sidecar_manager**: api-server ビルドコメントを P0-pre に同期。
+- **plugins.rs**: `tracing::info!` を明示（`--features nurture` ビルド修正）。
+
+### Changed (OP-088 Desktop 既定 InProcess 計画 2026-07-21)
+- **計画正本**: [`docs/roadmaps/desktop_inprocess_default_plan.md`](docs/roadmaps/desktop_inprocess_default_plan.md) — 既定フリップ前に secret/DRM 注入・経済/RTBF 一本化が必須。ビルド摩擦 16 件とセキュリティ原則を明記。実装は P0→P1→P2 ゲート。
+- **/perfect-plan v1.1**: P0≠課金成功を固定、P1 順序（`/internal`→self-URL:3015）、MCP 二重パス、URL 欠落 call sites、`nurture-infra` default-features、P3 は既存 `desktop_sidecar_manager` 拡張のみ、CI/workflows SC 分離。判定 PATCH。
+- **/perfect-plan v1.2（Round 2）**: G9 `/internal` を JWT 外に固定、G10 で P0-pre（desktop features）前倒し、G11 自己 HTTP デッドロック、G12 preflight scrub。判定 **PASS**。
+- **v1.3 製品品質最大化**: Q1–Q3 確定（A'/`NURTURE_MODE`/sidecar 除外）。Ship=P0-pre…P3。P5 に oneshot・UI・DI を分離。「Plugin 側」誤解を JWT 外制約として明文化。
+
+### Added (OP-026 / OP-062 2026-07-21)
+- **OP-026**: Settings Channel Bridges に `search_api_key`（Bearer 同型・`VaultKeyStatus(SEARCH_API_KEY)`・既存 i18n）。`xBearerTokenNotice` を動的反映（再起動不要）に修正。`test_frontend_used_keys_are_allowed` に Channel Bridges キー追加。Jest Channel Bridges 拡張。
+- **OP-062**: Tauri `NurtureMode::InProcess`（優先: Disabled → Cloud → InProcess → Local）。InProcess 時 nurture-api 非 spawn・api-server に `NURTURE_IN_PROCESS=true`。tray / `NurtureStatus` 対応。`desktop_sidecar_manager.py` が api-server を `--features nurture` でビルド。unit 6 PASS。
+
+### Changed (Wave UI / P2P / Tauri 計画 2026-07-20)
+- **次波正本**: [`docs/roadmaps/wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) — OP-020-F5 Soul Sync 再定義、OP-021/022 コア済+polish、OP-026 運用 UI、OP-062 InProcess。OPEN / MEMORY Blind Spot を実コードに同期。実装はフェーズごとの明示許可後。
+- **/perfect-plan v1.1（2026-07-21）**: A3 の誤エンドポイント（`settings/test`）削除、`search_api_key`≠X Probe を明記、OP-062 詳細を foolproof G2 へ委譲、Ban `expires_at` を本 Wave 外へ降格、Disabled>Cloud 意図的変更を注記。判定 PATCH。
+- **/perfect-plan v1.2（2026-07-21 Round 2）**: 既存 i18n `searchApiKey*` 再利用・`test_frontend_used_keys_are_allowed` 拡張を A5 に追加。OPEN/REMAINING_TASKS の Causal・expires・ADR-012 陳腐化を訂正。foolproof G2 に Q2/Desktop feature 検証を追記。
+- **/perfect-plan v1.3（2026-07-21 Round 3）**: A1 を Bearer 同型（`VaultKeyStatus(SEARCH_API_KEY)`）に固定、A3 既定スキップ、検証から外部 API 実応答を外す。判定 **PASS**。
+
 ### Added (OP-087 MC static deploy plan 2026-07-20)
 - **MC 配布計画 FINAL**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md) — ソース=`management-console`、UI 更新=ホスト static（bind-mount）Path B 必須。Human 許可→Agent 実行 / 今期 bind-mount 維持 / index スタブ→後日 untrack。
 - **OP-087 P1–P3**: `scripts/sync_mc_static.sh` + TDD `scripts/test_sync_mc_static.sh`（Positive/Negative/Revert/Stub）、[`docs/guides/MC_STATIC_DEPLOY.md`](docs/guides/MC_STATIC_DEPLOY.md)、追跡 `static/index.html` を製品 UI ではないスタブに置換。`sync_production_sources.sh` は非変更。

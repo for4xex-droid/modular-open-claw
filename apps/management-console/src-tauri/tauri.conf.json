@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:3015 ws://localhost:3015 http://127.0.0.1:3015 ws://127.0.0.1:3015 http://localhost:3017 http://127.0.0.1:3017 http://localhost:3020 http://127.0.0.1:3020; object-src 'none'; base-uri 'self';"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:3015 ws://localhost:3015 http://127.0.0.1:3015 ws://127.0.0.1:3015 http://localhost:3017 http://127.0.0.1:3017; object-src 'none'; base-uri 'self';"
     }
   },
   "bundle": {
@@ -37,8 +37,7 @@
     "externalBin": [
       "binaries/obscura",
       "binaries/api-server",
-      "binaries/key-proxy",
-      "binaries/nurture-api"
+      "binaries/key-proxy"
     ]
   }
 }

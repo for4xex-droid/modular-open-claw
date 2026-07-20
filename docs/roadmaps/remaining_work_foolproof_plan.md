@@ -827,41 +827,47 @@ evaluate_security（OP-075）・BeggingSupervisor・commerce webhook には触�
 
 ### 前提（1 つでも No → 中止）
 
-- [ ] ADR-012 Accepted（二重 Hook / KarmaForge 論点）
-- [ ] 「OP-062 を実装しろ」
-- [ ] api-server `NURTURE_IN_PROCESS` 経路は既存（`bootstrap/plugins.rs:20–34`）— **再発明しない**
+- [x] ADR-012 Accepted（二重 Hook / KarmaForge 論点）— commercial `012-agenthook-fire-path-unification.md`
+- [x] 「OP-062 を実装しろ」— **2026-07-21 完了**
+- [x] api-server `NURTURE_IN_PROCESS` 経路は既存（`bootstrap/plugins.rs`）— **再発明しない**
+- [x] **Q2**: Desktop `api-server` に `--features nurture` を入れる — **採用済**（`desktop_sidecar_manager.py`）
+
+Wave ゲート / 価値順の正本: [`wave_ui_p2p_tauri_plan.md`](wave_ui_p2p_tauri_plan.md) §5。
 
 ### 現状
 
 | 層 | アンカー |
 |----|----------|
-| Tauri enum | `lib.rs:529–533` `{ Local, Cloud(String), Disabled }` |
-| resolve | `lib.rs:535–548` Cloud → Disabled → Local |
-| sidecar | `lib.rs:192–222` Local のみ spawn |
-| api-server | `plugins.rs:29–34` env で in-process |
+| Tauri enum | `lib.rs` `{ Local, Cloud(String), Disabled }` — InProcess なし |
+| resolve | Cloud → Disabled → Local（`NURTURE_IN_PROCESS` 未読） |
+| sidecar | Local のみ nurture-api spawn |
+| api-server | `plugins.rs` env で in-process（`--features nurture` 時） |
+| Desktop build | `desktop_sidecar_manager.py` は `cargo build -p api-server`（**feature なし**） |
 
 ### 確定優先順位
 
 ```text
-1. NURTURE_DISABLED=true|1     → Disabled
+1. NURTURE_DISABLED=true|1     → Disabled   ← 現行は Cloud が先。意図的に kill switch 優先へ変更
 2. NURTURE_CLOUD_URL 非空      → Cloud(url)
-3. NURTURE_IN_PROCESS=true|1   → InProcess   ← 新規（Local より優先）
+3. NURTURE_IN_PROCESS=true|1   → InProcess
 4. else                        → Local
 ```
 
 ### `start_sidecars` InProcess 腕
 
 - nurture-api sidecar **spawn しない**
-- `state.nurture_status = "in_process"`（または `"disabled"` と区別する文字列を 1 つに固定し `get_nurture_status` も更新）
+- `state.nurture_status = "in_process"`（`get_nurture_status` / tray / `NurtureStatus.mode` も更新）
 - api-server sidecar の env に `NURTURE_IN_PROCESS=true` を渡す（既存 plugins と整合）
+- Local 時の `NURTURE_API_URL` は **非注入**
 
 ### 検証
 
 | 段階 | 内容 |
 |------|------|
 | Positive | InProcess で nurture 子プロセスなし + api-server に env |
-| Negative | InProcess+Local 相当の曖昧指定でも sidecar 二重起動しない |
+| Negative | InProcess 時 sidecar 二重起動なし / Cloud+Disabled 同時 → Disabled |
 | feature | `cargo check -p management-console`（Tauri） |
+| Q2 | `desktop_sidecar_manager.py` が `--features nurture` 付き（入れる場合） |
 
 ---
 

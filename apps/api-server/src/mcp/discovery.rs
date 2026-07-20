@@ -24,6 +24,19 @@ pub use super::oauth::{
     OauthCallbackQuery, ALLOWED_OAUTH_PROVIDERS,
 };
 
+fn nurture_in_process() -> bool {
+    std::env::var("NURTURE_IN_PROCESS")
+        .map(|v| v == "true" || v == "1")
+        .unwrap_or(false)
+}
+
+/// Nurture MCP の discovery 正本は常に nurture-mcp プロキシ（JWT 下）。
+/// InProcess でも `/mcp` 直結にしない — 空 headers で 401 になるため（OP-088 reflexion）。
+/// プロキシが InProcess 時に upstream `/mcp` へクライアント JWT を転送する。
+pub fn default_nurture_mcp_sse_url(api_host: &str, api_server_port: u16) -> String {
+    format!("http://{api_host}:{api_server_port}/api/v1/nurture-mcp/sse")
+}
+
 /// [A-3] MCP Discovery Layer
 /// Scans local configuration to automatically connect to external MCP tools.
 pub async fn discover_and_connect(
@@ -193,10 +206,7 @@ pub async fn discover_and_connect(
             }
         });
         let api_host = std::env::var("AIOME_API_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-        let nurture_url = format!(
-            "http://{api_host}:{}/api/v1/nurture-mcp/sse",
-            aiome_config.api_server_port
-        );
+        let nurture_url = default_nurture_mcp_sse_url(&api_host, aiome_config.api_server_port);
         if let Some(servers) = default_config
             .get_mut("mcp_servers")
             .and_then(|s| s.as_object_mut())
@@ -313,6 +323,20 @@ pub async fn discover_and_connect(
                         );
                         continue;
                     }
+                };
+                // OP-088: 旧設定が /mcp 直書きでも nurture-mcp プロキシへ正規化（JWT 経路）
+                let url = if id == "nurture" {
+                    let api_host =
+                        std::env::var("AIOME_API_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+                    let canonical =
+                        default_nurture_mcp_sse_url(&api_host, aiome_config.api_server_port);
+                    if url.contains("/mcp/sse") && !url.contains("nurture-mcp") {
+                        canonical
+                    } else {
+                        url
+                    }
+                } else {
+                    url
                 };
                 let safe_url = shared::guardrails::strip_invisible_unicode(&url).into_owned();
 
@@ -557,6 +581,23 @@ mod tests {
             .args
             .contains(&"@modelcontextprotocol/server-github".to_string()));
         assert!(github.env.contains_key("GITHUB_PERSONAL_ACCESS_TOKEN"));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_default_nurture_mcp_sse_url_always_proxy() {
+        std::env::remove_var("NURTURE_IN_PROCESS");
+        assert_eq!(
+            default_nurture_mcp_sse_url("127.0.0.1", 3015),
+            "http://127.0.0.1:3015/api/v1/nurture-mcp/sse"
+        );
+        std::env::set_var("NURTURE_IN_PROCESS", "1");
+        // InProcess も proxy 正本（直 /mcp は JWT 無しで 401）
+        assert_eq!(
+            default_nurture_mcp_sse_url("127.0.0.1", 3015),
+            "http://127.0.0.1:3015/api/v1/nurture-mcp/sse"
+        );
+        std::env::remove_var("NURTURE_IN_PROCESS");
     }
 
     #[test]

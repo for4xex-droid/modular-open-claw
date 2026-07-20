@@ -312,7 +312,7 @@
     "tts": "Text-to-Speech (TTS)",
     "voiceNameId": "Voice Name / ID",
     "xBearerToken": "X API Bearer Token",
-    "xBearerTokenNotice": "⚠️ Changing this token requires an application restart to apply to the DreamService.",
+    "xBearerTokenNotice": "Applied dynamically to DreamService and /api/v1/trends — no application restart required.",
     "searchApiKey": "Google Search API Key",
     "searchApiKeyNotice": "Required for SerpAnalysisAdapter and WebSearchAdapter trend pipelines.",
     "securitySystem": "Security & System",

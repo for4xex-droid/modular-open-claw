@@ -471,6 +471,20 @@ const SettingsPage: React.FC = () => {
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                             {t('settings.xBearerTokenNotice')}
                         </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+                            <SettingInput
+                                label={t('settings.searchApiKey')}
+                                value={getSetting('search_api_key')}
+                                placeholder={t('settings.enterApiKey')}
+                                onBlur={(v) => updateSetting('search_api_key', v, 'integrations')}
+                                saving={saving === 'search_api_key'}
+                                isPassword
+                            />
+                            <VaultKeyStatus isSet={isVaultSet('SEARCH_API_KEY')} />
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            {t('settings.searchApiKeyNotice')}
+                        </div>
                     </div>
                 </section>
                 )}

@@ -82,7 +82,7 @@ describe('SettingsPage Integrations', () => {
     mockViewMode = 'cockpit'; // Default to cockpit for existing tests
   });
 
-  it('renders Channel Bridges section with X Bearer Token input', async () => {
+  it('renders Channel Bridges section with X Bearer Token and Search API Key inputs', async () => {
     render(<SettingsPage />);
     
     // Wait for the page to load
@@ -95,6 +95,11 @@ describe('SettingsPage Integrations', () => {
     // Assert the X Bearer Token input is rendered
     const xBearerTokenLabel = screen.getByText('settings.xBearerToken');
     expect(xBearerTokenLabel).toBeInTheDocument();
+    expect(screen.getByText('settings.xBearerTokenNotice')).toBeInTheDocument();
+
+    // OP-026: search_api_key (WebSearch/Serp) — existing i18n keys
+    expect(screen.getByText('settings.searchApiKey')).toBeInTheDocument();
+    expect(screen.getByText('settings.searchApiKeyNotice')).toBeInTheDocument();
   });
 
   it('handles boundary conditions for X Bearer Token', async () => {
