@@ -1,9 +1,9 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-21（OP-089 Desktop チャネル ✅）**
+**最終更新: 2026-07-21（OP-087 P4 Path B ✅）**
 
 > **実装手順の正本**:
-> - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・実装待ち。Path B 必須 / Human 許可→Agent 実行 / bind-mount 今期維持 / index スタブ→後日 untrack）
+> - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・P1–P4 ✅。次回 Path B は都度 Human 許可 / bind-mount 今期維持 / 残 Q5–Q6）
 > - **Agentic 本番硬化（Human 後回し）**: [`docs/roadmaps/agentic_production_hardening_plan.md`](docs/roadmaps/agentic_production_hardening_plan.md)（**v1.3**・Wave A+B+D ✅・Wave C: **OP-051 ✅** / **OP-083 ✅**）
 > - **OP-083-C/D x402**: [`docs/roadmaps/op083_cd_x402_plan.md`](docs/roadmaps/op083_cd_x402_plan.md)（**v1.0**・**C/D ✅ 2026-07-20**）
 > - **OP-051 Error 3 階層**: [`docs/roadmaps/op051_error_hierarchy_plan.md`](docs/roadmaps/op051_error_hierarchy_plan.md)（**v1.0**・ADR-054 Accepted・**P1–P4 ✅ 2026-07-20**）
@@ -53,7 +53,7 @@
 
 ## 🟡 P2 / 継続課題（技術的負債は REMAINING_TASKS.md 2026-07-02 版から吸収）
 
-- [ ] **OP-087**: MC static 配布規律 — P1–P3 ✅（`sync_mc_static.sh` + `test_sync_mc_static.sh` P/N/R、`MC_STATIC_DEPLOY.md`、index スタブ）。**残**: P4 本番 Path B（都度 Human 許可）、§8 Q5/Q6。正本: [`mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)
+- [ ] **OP-087**: MC static 配布規律 — P1–P4 ✅（`sync_mc_static.sh` + TDD、`MC_STATIC_DEPLOY.md`、index スタブ、**P4 Path B → app.aiome.dev** 2026-07-21）。**残**: §8 Q5/Q6（bind-mount 撤去 ADR / index untrack）。正本: [`mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)
 - [ ] **OP-020**: Phase 2b / Phase 4 ✅。**残は OP-020-F5 Soul Sync**（Federation transport=ADR-053 ✅。implementation_plan Phase 5=Cognitive Observability と別物）。再定義正本: [`wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) §3。F-5 コード着手は別ゲート。OP-083 非ブロッカー
 - [ ] **OP-021**: BanDashboard **コア UI ✅**（`BanDashboard.tsx` + admin bans API）。残 polish: **i18n のみ**。`expires_at` は API/BanStore 未対応のため本 Wave 外。正本: [`wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) v1.3
 - [ ] **OP-022**: CausalVisualizer **コア UI ✅**（`CausalVisualizer.tsx` + trajectory API）。残 polish: Job ピッカー / Activity 連携（任意）。正本: 同上

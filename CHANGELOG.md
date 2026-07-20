@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Changed (OP-087 P4 Path B 2026-07-21)
+- **本番 Path B**: Human 許可後に `sync_mc_static.sh` で `dist/` → ホスト `apps/api-server/static` を同期。`app.aiome.dev` で Vite SPA `index` + `main-*.js` / checkout / biome-popup が 200。ホスト側 `static.bak-op087-p4-*` 保持。
+- **スタブ回帰修正**: OP-088 混入の追跡 Vite shell を P3 スタブへ復元。`test_sync_mc_static.sh` はローカル Path B で WT が汚れていても HEAD スタブを契約として検査。
+
 ### Added (OP-089 Desktop channels 2026-07-21)
 - **チャネル**: `economy`（既定・`--features nurture`）/ `oss`（commercial 非リンク）。`desktop_sidecar_manager.py --channel` + `channel-manifest.json`。
 - **Fail-Closed**: `--verify-channel-link`（cargo tree: Economy=has nurture-api / OSS=lacks）。OSS+`--with-nurture-sidecar` 拒否。

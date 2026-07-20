@@ -1,3 +1,10 @@
+## 🔍 OP-087 P4 Path B（2026-07-21）
+
+- **変更**: 本番ホスト `apps/api-server/static` へ MC `dist/` 同期（bak → rsync → smoke）。追跡 `static/index.html` を P3 スタブへ復元。stub 契約テストを HEAD 優先に。
+- **影響**: bind-mount 配信面の UI が最新 Vite SPA。git には製品 shell / assets を載せない規律を再確立。
+- **検証**: ホスト smoke + `https://app.aiome.dev/` 200 + harness P/N/R/Stub
+- **残**: Q5 bind-mount 撤去 ADR / Q6 index untrack（別ゲート）
+
 ## 🔍 OP-089 Desktop channels（2026-07-21）
 
 - **変更**: `desktop_sidecar_manager.py --channel economy|oss`、`--verify-channel-link`、`channel-manifest.json`、CI `desktop-sidecar`、npm `sidecar:build:oss` / `check:channels`、`DESKTOP_CHANNELS.md`

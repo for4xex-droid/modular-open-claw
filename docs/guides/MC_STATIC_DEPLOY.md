@@ -38,11 +38,14 @@ DEST=user@host:/app/aiome ./scripts/sync_production_sources.sh
 
 ## 本番（Human 許可 → Agent 実行可）
 
-1. Human: 「MC static を同期してよい」と明示  
-2. Agent/Human: Path B（上記スクリプト）  
-3. Human: ブラウザで白画面なし・Checkout 等を確認  
+1. Human: 「MC static を同期してよい」／「OP-087 P4 を許可」と明示  
+2. Agent/Human: Path B（上記スクリプト。リモート例 `DEST=user@host:/app/aiome/apps/api-server/static`）  
+3. 同期前にホストで `static.bak-*` を取る（スクリプトはリモート bak を自動作成しない）  
+4. Human: ブラウザで白画面なし・Checkout 等を確認  
 
 `docker compose build api-server`（Path A）はバイナリ更新用。**FE 完了の定義に使わない。**
+
+**注意**: ローカル Path B 後、作業ツリーの `static/index.html` は Vite shell になり得る。コミット前にスタブへ戻す（`git show` の P3 スタブ / `git restore`）。assets は git に載せない。
 
 ## 関連
 

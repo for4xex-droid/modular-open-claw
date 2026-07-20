@@ -1,6 +1,6 @@
 # Management Console 配布・ソース正本計画（v1.0 FINAL）
 
-- **ステータス**: **P1–P3 ✅ 2026-07-20**（P4 本番同期は都度 Human 許可）
+- **ステータス**: **P1–P4 ✅ 2026-07-21**（P4 Path B 本番同期済。次回 FE 反映も都度 Human 許可。残ゲート: §8 Q5/Q6）
 - **目的**: MC の価値を git 静的ゴミではなく配信面に載せる。誤 Path A・`rm -rf`・ゾンビ `index.html` を構造的に排除する
 - **継承**: billing closeout の「static コミット除外 / 本番 rsync」、`HUMAN_PUBLIC_BETA_RUNBOOK` NT-1 distroless、`scripts/sync_production_sources.sh`
 - **/perfect-plan**: 2026-07-20 検証 → Open Question を推奨案でロック → 本ファイルが実行正本
@@ -61,7 +61,7 @@ apps/management-console  ──npm run build──►  dist/
 | **P1** | **新規** `scripts/sync_mc_static.sh` | `sync_production_sources.sh` は触らない（ソース同期のまま）。本スクリプトは **`dist/` → static 宛先** のみ |
 | **P2** | **新規** `docs/guides/MC_STATIC_DEPLOY.md`（薄い運用ガイド） | ランブック/stripe-setup/billing closeout へ **リンクのみ**（手順コピペ禁止） |
 | **P3** | 追跡 `apps/api-server/static/index.html` を **スタブ**に置換 | 製品 UI・CDN Dashboard を置かない。Vite 本物 shell もコミットしない（assets 無しで壊れる） |
-| **P4** | （FE 変更時）Human 許可後、Agent が P1 スクリプトで反映 | 本番ホスト操作は承認付き |
+| **P4** | （FE 変更時）Human 許可後、Agent が P1 スクリプトで反映 | ✅ 2026-07-21 Path B（次回も都度許可） |
 | **P5** | 後続: untrack index + gitignore 全無視 / bind-mount 撤去 ADR | 本 FINAL のスコープ外ゲート |
 
 ### 3.2 やらないこと
