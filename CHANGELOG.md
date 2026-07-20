@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- **nurture-api**: 未使用 `IntoResponse` import を除去（pre-push `clippy -D warnings`）。
+
 ### Changed (OP-088 P3 2026-07-21)
 - **公式 Desktop sidecar**: `api-server` + `key-proxy` のみ。`nurture-api` は `--with-nurture-sidecar` でのみビルド。
 - **tauri.conf / capabilities**: `externalBin` と shell allow から nurture-api 削除。CSP から `:3020` 除去（T-003）。
