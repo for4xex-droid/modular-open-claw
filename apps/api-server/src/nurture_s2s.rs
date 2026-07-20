@@ -37,6 +37,7 @@ pub fn attach_s2s_headers(
 }
 
 /// Nurture S2S POST。`s2s` があれば TCP 無し oneshot、なければ HTTP。
+#[allow(clippy::too_many_arguments)] // S2S 経路の引数は呼び出し側で明示（actor/power 定数化禁止）
 pub async fn post_internal(
     s2s: Option<&Router>,
     nurture_url: Option<&str>,
