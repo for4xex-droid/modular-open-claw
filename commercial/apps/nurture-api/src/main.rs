@@ -8,7 +8,7 @@
  */
 
 use anyhow::Context;
-use axum::{http::StatusCode, middleware, response::IntoResponse, routing::get, Json, Router};
+use axum::{http::StatusCode, middleware, routing::get, Json, Router};
 use nurture_bridge::db::DatabasePool;
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
