@@ -12,6 +12,7 @@ Detailed documentation for the `api-server` crate.
 - `src/commerce_e2e_tests.rs`
 - `src/plugin_loader.rs`
 - `src/tool_call_router.rs`
+- `src/nurture_s2s.rs`
 - `src/logging.rs`
 - `src/self_diagnosis.rs`
 - `src/stream.rs`
