@@ -1,9 +1,9 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-22（OP-020-F5 Soul Sync S-1〜S-4 ✅）**
+**最終更新: 2026-07-22（OP-087 Q5/Q6 ✅）**
 
 > **実装手順の正本**:
-> - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・P1–P4 ✅。次回 Path B は都度 Human 許可 / bind-mount 今期維持 / 残 Q5–Q6）
+> - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・P1–P4 ✅ / **Q5 ADR-055 ✅** / **Q6 untrack ✅**。Path B は都度 Human。bind-mount **物理撤去**は ADR-055 実行ゲート）
 > - **Agentic 本番硬化（Human 後回し）**: [`docs/roadmaps/agentic_production_hardening_plan.md`](docs/roadmaps/agentic_production_hardening_plan.md)（**v1.3**・Wave A+B+D ✅・Wave C: **OP-051 ✅** / **OP-083 ✅**）
 > - **OP-083-C/D x402**: [`docs/roadmaps/op083_cd_x402_plan.md`](docs/roadmaps/op083_cd_x402_plan.md)（**v1.0**・**C/D ✅ 2026-07-20**）
 > - **OP-051 Error 3 階層**: [`docs/roadmaps/op051_error_hierarchy_plan.md`](docs/roadmaps/op051_error_hierarchy_plan.md)（**v1.0**・ADR-054 Accepted・**P1–P4 ✅ 2026-07-20**）
@@ -53,7 +53,7 @@
 
 ## 🟡 P2 / 継続課題（技術的負債は REMAINING_TASKS.md 2026-07-02 版から吸収）
 
-- [ ] **OP-087**: MC static 配布規律 — P1–P4 ✅（`sync_mc_static.sh` + TDD、`MC_STATIC_DEPLOY.md`、index スタブ、**P4 Path B → app.aiome.dev** 2026-07-21）。**残**: §8 Q5/Q6（bind-mount 撤去 ADR / index untrack）。正本: [`mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)
+- [x] **OP-087**: MC static 配布規律 — P1–P4 ✅ + **Q5/Q6 ✅ 2026-07-22**（[`055-mc-static-image-ssot.md`](docs/decisions/055-mc-static-image-ssot.md)、`static/` 全無視、スタブは `static.stub/index.html`）。bind-mount の compose 削除は ADR-055 **実行**ゲート待ち。正本: [`mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)
 - [x] **OP-020**: Phase 2b / Phase 4 ✅。**OP-020-F5 Soul Sync S-1〜S-4 ✅ 2026-07-22**（opaque relay + pair/unpair + Automerge Experience CRDT + 2ノード 60s E2E + 冪等/解除後403）。正本: [`h2_f0_f4_f7_implementation_plan.md`](docs/roadmaps/h2_f0_f4_f7_implementation_plan.md) PART 4。MC ペアリング UI は任意 polish（本 OP 外）
 - [x] **OP-021**: BanDashboard — **2026-07-21 完了**（コア UI + **C3 i18n**: `ban.*` + `common.cancel`、Jest/parity PASS）。`expires_at` は本 Wave 外のまま。正本: [`wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) §4.1
 - [x] **OP-022**: CausalVisualizer — **2026-07-22 完了**（コア UI + C1–C2: Timeline → `dispatchA2uiNavigate({tab:'causal', jobId})` + sessionStorage 二重マウント耐性、Jest fetch P/N）。Router / jobs 一覧 API なし。正本: [`wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) §4.2
@@ -103,6 +103,7 @@
 
 ## ✅ 解決（直近のみ保持）
 
+- [x] **OP-087**: MC static Q5/Q6 → **2026-07-22 完了**（ADR-055 + index untrack / `static.stub`。CHANGELOG [Unreleased]）
 - [x] **OP-020 / OP-020-F5**: Soul Sync S-1〜S-4 → **2026-07-22 完了**（hub opaque relay + pairing + Automerge Experience + 2ノード 60s E2E。CHANGELOG [Unreleased]）
 - [x] **OP-086**: **Agentic 本番硬化** → **2026-07-19 Wave D 本番クローズ**（正本 v1.3）。A1–A4 / B1–B3 コード ✅ + **Wave D**: key-proxy 本番再ビルド・B1 telemetry 反映・A1 Unauthenticated 0・Vault 整合。compose key-proxy に `CELL_ID` 追加。Wave C=ゲート待ち。CHANGELOG [Unreleased]
 - [x] **OP-025**: key-proxy `caller_id` metrics/span + 401 構造化（秘密非出力）→ **2026-07-18**（OP-086 B1、`cargo test -p key-proxy` 34 PASS）

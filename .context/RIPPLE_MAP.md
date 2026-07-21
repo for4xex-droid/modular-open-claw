@@ -1,3 +1,10 @@
+## 🔍 OP-087 Q5/Q6 MC static（2026-07-22）
+
+- **変更**: ADR-055（Image SSOT・実行ゲート）。`static/` 全無視 + `static.stub/index.html`。ガイド・TDD 更新。compose bind-mount は未削除。
+- **影響**: 新規 clone は Path B まで ServeDir に製品 UI なし。本番 Path B 運用は従来どおり。
+- **検証**: `./scripts/test_sync_mc_static.sh` PASS
+- **残**: ADR-055 実行（Human 明示後に compose 行削除）
+
 ## 🔍 OP-020-F5 Soul Sync S-1〜S-4（2026-07-22）
 
 - **変更**: hub relay/pair、Experience Automerge CRDT、`soul_sync_transport` seal/open、2ノード統合テスト。

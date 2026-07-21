@@ -1,13 +1,14 @@
 # Management Console static 配信ガイド
 
-**正本（決定・DoD・非スコープ）**: [`docs/roadmaps/mc_static_deploy_plan.md`](../roadmaps/mc_static_deploy_plan.md)（OP-087）
+**正本（決定・DoD・非スコープ）**: [`docs/roadmaps/mc_static_deploy_plan.md`](../roadmaps/mc_static_deploy_plan.md)（OP-087）  
+**Image SSOT（bind-mount 撤去）**: [`docs/decisions/055-mc-static-image-ssot.md`](../decisions/055-mc-static-image-ssot.md)（ADR-055・実行は Human ゲート）
 
 ## 事実（短く）
 
 - ソース SSOT: `apps/management-console`
-- ユーザーに届く UI: **ホスト** `apps/api-server/static`（本番 compose が bind-mount）
+- ユーザーに届く UI（暫定）: **ホスト** `apps/api-server/static`（本番 compose が bind-mount。ADR-055 実行まで）
 - distroless イメージ内の `dist` COPY だけでは、bind-mount がある限り **UI は更新されない**
-- git に `static/assets` を載せない。追跡 `index.html` はスタブ（製品 UI ではない）
+- git は `apps/api-server/static/` を **全無視**（OP-087 Q6）。追跡スタブは `apps/api-server/static.stub/index.html` のみ
 
 ## ローカル / ホスト同期（Path B）
 
@@ -43,9 +44,17 @@ DEST=user@host:/app/aiome ./scripts/sync_production_sources.sh
 3. 同期前にホストで `static.bak-*` を取る（スクリプトはリモート bak を自動作成しない）  
 4. Human: ブラウザで白画面なし・Checkout 等を確認  
 
-`docker compose build api-server`（Path A）はバイナリ更新用。**FE 完了の定義に使わない。**
+`docker compose build api-server`（Path A）はバイナリ更新用。**FE 完了の定義に使わない**（ADR-055 実行前）。
 
-**注意**: ローカル Path B 後、作業ツリーの `static/index.html` は Vite shell になり得る。コミット前にスタブへ戻す（`git show` の P3 スタブ / `git restore`）。assets は git に載せない。
+**注意**: Path B 後の `apps/api-server/static/` は gitignored。コミット対象にしない。スタブ文言の正本は `static.stub/index.html`。
+
+## ADR-055 実行後（Image SSOT）
+
+Human が ADR-055 実行を許可したあと:
+
+- compose の static bind-mount を外す  
+- FE リリース完了 = Path A（イメージに `dist` 同梱）  
+- Path B の位置づけはガイド／計画の更新コミットで再定義する  
 
 ## 関連
 

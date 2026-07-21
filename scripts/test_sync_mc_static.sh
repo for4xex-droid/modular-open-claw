@@ -81,28 +81,20 @@ rsync -a "$BAK2/" "$DEST2/"
 [[ -f "$DEST2/keep-me.txt" ]] || fail "revert from bak lost pre-sync file"
 pass "Revert from bak"
 
-echo "==> P3 stub: tracked index.html must not be product Dashboard / Vite shell"
-# Local Path B may overwrite the working tree with a Vite shell; contract is the
-# committed blob, with WT fallback when HEAD still has a regression.
-STUB_PATH="${ROOT}/apps/api-server/static/index.html"
-STUB_TMP="$(mktemp "${TMPDIR:-/tmp}/aiome-stub-XXXXXX.html")"
-STUB=""
-if git -C "$ROOT" rev-parse --verify HEAD:apps/api-server/static/index.html >/dev/null 2>&1; then
-  git -C "$ROOT" show HEAD:apps/api-server/static/index.html >"$STUB_TMP"
-  if grep -qi 'not the product ui\|not product ui' "$STUB_TMP"; then
-    STUB="$STUB_TMP"
-  fi
+echo "==> Q6 stub: tracked static.stub must not be product Dashboard / Vite shell"
+# OP-087 Q6: apps/api-server/static/ is fully gitignored. Contract lives in static.stub/.
+STUB_PATH="${ROOT}/apps/api-server/static.stub/index.html"
+[[ -f "$STUB_PATH" ]] || fail "Q6 stub missing: $STUB_PATH"
+grep -qi 'not the product ui\|not product ui' "$STUB_PATH" || fail "stub must declare Not the product UI"
+grep -q 'sync_mc_static' "$STUB_PATH" || fail "stub must point at sync_mc_static.sh"
+grep -qvi 'cdn.jsdelivr.net\|unpkg.com' "$STUB_PATH" || fail "stub must not load CDN dashboard scripts"
+if grep -qE 'src="/assets/main-' "$STUB_PATH"; then
+  fail "stub must not be a Vite hashed shell"
 fi
-if [[ -z "$STUB" && -f "$STUB_PATH" ]] && grep -qi 'not the product ui\|not product ui' "$STUB_PATH"; then
-  STUB="$STUB_PATH"
+# Negative: static/index.html must not be a tracked git path
+if git -C "$ROOT" ls-files --error-unmatch apps/api-server/static/index.html >/dev/null 2>&1; then
+  fail "apps/api-server/static/index.html must be untracked (Q6)"
 fi
-[[ -n "$STUB" ]] || fail "P3 stub missing in HEAD and working tree: $STUB_PATH"
-grep -q 'sync_mc_static' "$STUB" || fail "stub must point at sync_mc_static.sh"
-grep -qvi 'cdn.jsdelivr.net\|unpkg.com' "$STUB" || fail "stub must not load CDN dashboard scripts"
-if grep -qE 'src="/assets/main-' "$STUB"; then
-  fail "stub must not be a Vite hashed shell (assets are gitignored)"
-fi
-rm -f "$STUB_TMP"
-pass "P3 stub contract"
+pass "Q6 stub + untrack contract"
 
 echo "✅ test_sync_mc_static.sh: Positive / Negative / Revert / Stub PASS"

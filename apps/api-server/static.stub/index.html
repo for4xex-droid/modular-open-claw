@@ -12,7 +12,8 @@
 <body>
   <h1>Not the product UI</h1>
   <p>
-    This tracked <code>apps/api-server/static/index.html</code> is a stub.
+    This tracked file is a stub at <code>apps/api-server/static.stub/index.html</code>.
+    The directory <code>apps/api-server/static/</code> is gitignored entirely (OP-087 Q6).
     The Management Console source of truth is <code>apps/management-console</code>.
   </p>
   <p>
@@ -22,7 +23,8 @@
   <p>
     See <code>docs/guides/MC_STATIC_DEPLOY.md</code> and
     <code>docs/roadmaps/mc_static_deploy_plan.md</code> (OP-087).
-    Distroless image COPY alone does not update UI while production bind-mounts this directory.
+    Distroless image COPY alone does not update UI while production bind-mounts
+    <code>apps/api-server/static</code> (until ADR-055 is executed).
   </p>
 </body>
 </html>

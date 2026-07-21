@@ -173,8 +173,7 @@ test_logic
 # Local IDE / Cursor config (machine-specific absolute paths)
 .cursor/
 
-# api-server ServeDir 用のローカルビルド成果物（Docker は distroless.Dockerfile が COPY）
-# 追跡対象は index.html のみ。assets/avatar/vrm 等を誤コミットするとサイズゲートを直撃する
-/apps/api-server/static/*
-!/apps/api-server/static/index.html
+# api-server ServeDir 用のローカル/ホストビルド成果物（OP-087 Q6: 全無視）
+# スタブ正本は apps/api-server/static.stub/index.html（追跡）。製品 UI は sync_mc_static.sh
+/apps/api-server/static/
 

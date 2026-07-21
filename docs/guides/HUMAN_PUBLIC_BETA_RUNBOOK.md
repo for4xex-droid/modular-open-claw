@@ -245,7 +245,7 @@ rg -n "dockerfile:.*distroless" docker-compose.production.yml
 **目的**: 稼働中の api-server が **MC 付き distroless** であること。これ無しでは Step A の GUI が開けない／白い画面になる。  
 **場所**: 本番ホスト SSH。秘密は出さない。
 
-> **FE / static 更新**: 本番 compose は `apps/api-server/static` を bind-mount する。イメージ rebuild（Path A）だけでは UI は変わらない。ホスト static 同期（Path B）は [`MC_STATIC_DEPLOY.md`](MC_STATIC_DEPLOY.md) / [`mc_static_deploy_plan.md`](../roadmaps/mc_static_deploy_plan.md)（OP-087）。Human 許可後に `./scripts/sync_mc_static.sh`。
+> **FE / static 更新**: 本番 compose は `apps/api-server/static` を bind-mount する（ADR-055 実行前）。イメージ rebuild（Path A）だけでは UI は変わらない。ホスト static 同期（Path B）は [`MC_STATIC_DEPLOY.md`](MC_STATIC_DEPLOY.md) / [`mc_static_deploy_plan.md`](../roadmaps/mc_static_deploy_plan.md)（OP-087）。`static/` は gitignore 全無視。Human 許可後に `./scripts/sync_mc_static.sh`。
 
 #### Step 0.1 git pull + compose の distroless 確認
 

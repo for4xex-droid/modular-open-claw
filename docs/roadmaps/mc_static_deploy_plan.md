@@ -1,6 +1,6 @@
 # Management Console 配布・ソース正本計画（v1.0 FINAL）
 
-- **ステータス**: **P1–P4 ✅ 2026-07-21**（P4 Path B 本番同期済。次回 FE 反映も都度 Human 許可。残ゲート: §8 Q5/Q6）
+- **ステータス**: **P1–P4 ✅** / **Q5 ADR-055 ✅** / **Q6 untrack ✅ 2026-07-22**（P4 Path B 本番同期済。bind-mount **実行撤去**は ADR-055 Human ゲート待ち）
 - **目的**: MC の価値を git 静的ゴミではなく配信面に載せる。誤 Path A・`rm -rf`・ゾンビ `index.html` を構造的に排除する
 - **継承**: billing closeout の「static コミット除外 / 本番 rsync」、`HUMAN_PUBLIC_BETA_RUNBOOK` NT-1 distroless、`scripts/sync_production_sources.sh`
 - **/perfect-plan**: 2026-07-20 検証 → Open Question を推奨案でロック → 本ファイルが実行正本
@@ -11,7 +11,7 @@
 |---|------|------|
 | Q-A | 本番 rsync 実行者 | **Human が許可 → Agent が手順実行可**（開始トリガーと結果確認は Human） |
 | Q-B | bind-mount 撤去 | **今四半期は維持**（ホットパッチ利便）。撤去は FE 頻度低下後の **別 ADR** |
-| Q-C | 追跡 `static/index.html` | **短期: スタブ差し替え** → スクリプト/ガイド定着後に **untrack**（gitignore 全無視へ） |
+| Q-C | 追跡 `static/index.html` | **短期: スタブ差し替え** → **Q6 ✅**: untrack + gitignore `static/`。スタブ正本は `static.stub/index.html` |
 
 ## 1. コードベース事実（推測禁止）
 
@@ -21,7 +21,7 @@
 | 配信 | `ServeDir` + `frontend_static_path` 既定 `apps/api-server/static`（`libs/shared/src/config.rs` / `FRONTEND_STATIC_PATH`） |
 | イメージ同梱 | `docker/distroless.Dockerfile` L81: `dist` → `/app/apps/api-server/static` |
 | **本番でイメージ内 static が負ける** | `docker-compose.production.yml` L148: bind-mount `./apps/api-server/static:...:ro` |
-| git | `.gitignore`: `/apps/api-server/static/*` + `!index.html` 例外 |
+| git | `.gitignore`: `/apps/api-server/static/` 全無視。スタブは `apps/api-server/static.stub/index.html` |
 | HEAD の index | 旧「Aiome \| Dashboard」CDN モノリス（製品 UI ではない） |
 | ソース→ホスト同期（既存） | `scripts/sync_production_sources.sh`（allowlist。`apps/management-console` / `apps/api-server` 含む。compose 既定スキップ） |
 | MC static 専用スクリプト | **未存在** → 新規はこれだけ（車輪の再発明禁止） |
@@ -62,7 +62,7 @@ apps/management-console  ──npm run build──►  dist/
 | **P2** | **新規** `docs/guides/MC_STATIC_DEPLOY.md`（薄い運用ガイド） | ランブック/stripe-setup/billing closeout へ **リンクのみ**（手順コピペ禁止） |
 | **P3** | 追跡 `apps/api-server/static/index.html` を **スタブ**に置換 | 製品 UI・CDN Dashboard を置かない。Vite 本物 shell もコミットしない（assets 無しで壊れる） |
 | **P4** | （FE 変更時）Human 許可後、Agent が P1 スクリプトで反映 | ✅ 2026-07-21 Path B（次回も都度許可） |
-| **P5** | 後続: untrack index + gitignore 全無視 / bind-mount 撤去 ADR | 本 FINAL のスコープ外ゲート |
+| **P5** | ✅ Q5/Q6: ADR-055（Image SSOT・実行ゲート）+ index untrack / `static.stub` | compose からの bind-mount 物理削除は ADR-055 実行ゲート後 |
 
 ### 3.2 やらないこと
 
@@ -152,8 +152,8 @@ Verification Protocol（実装時）:
 |----|------|------|
 | Q2 | hashed assets 長期キャッシュ / `index.html` no-cache（Caddy or ServeDir） | 設計 |
 | Q3 | CSP（HTML meta vs `router.rs` ヘッダ）一本化 | Safety 明示承認 |
-| Q5 | bind-mount 撤去 ADR → イメージ SSOT | Human + 今四半期は見送り（§0） |
-| Q6 | index untrack + gitignore `static/**` | P1–P3 定着後 |
+| Q5 | bind-mount 撤去 ADR → イメージ SSOT | ✅ [`055-mc-static-image-ssot.md`](../decisions/055-mc-static-image-ssot.md)。**実行**は別途 Human |
+| Q6 | index untrack + gitignore `static/` | ✅ 2026-07-22（`static.stub` へスタブ移設） |
 | Q7 | CI `dist` artifact → 本番 rsync | CI ゲート |
 
 ## 9. 実行順
@@ -164,7 +164,8 @@ P0 台帳参照（OPEN/CHANGELOG）
  → P2 MC_STATIC_DEPLOY.md + 既存 docs へリンク
  → P3 index.html スタブ（製品 UI を git に載せない）
  →（FE 変更時）P4 Human 許可 → Agent Path B
- → 後日ゲート: Q6 untrack / Q5 ADR
+ → Q5 ADR-055 + Q6 untrack ✅
+ →（後日）ADR-055 実行: compose bind-mount 撤去
 ```
 
 ## 10. 実装着手条件

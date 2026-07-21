@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Added (OP-087 Q5/Q6 MC static 2026-07-22)
+- **Q5**: [`docs/decisions/055-mc-static-image-ssot.md`](docs/decisions/055-mc-static-image-ssot.md) — Image SSOT（bind-mount 撤去方針）。実行は Human ゲート（今四半期は compose 維持）
+- **Q6**: `apps/api-server/static/` を gitignore 全無視。追跡スタブを `static.stub/index.html` へ移設。`test_sync_mc_static.sh` 契約更新
+
 ### Added (OP-020-F5 Soul Sync S-1〜S-4 2026-07-22)
 - S-1/S-2: opaque `SoulSyncRelay` + hub pair/unpair/relay + `paired_devices`（解除後 403）
 - S-3: Automerge Experience CRDT + `apply_experience_sync_diff` + sqlite `soul_versions`
