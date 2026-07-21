@@ -18,7 +18,16 @@ use uuid::Uuid;
 use dashmap::DashMap;
 use std::sync::Arc;
 
-/// OSS 版向けのモック経済エンジン
+/// API integration tests expect these stable mock IDs (OP-027 centralization).
+const MOCK_CHECKOUT_SESSION: &str = "cs_test_mock";
+const MOCK_CHECKOUT_OVERWRITE: &str = "cs_test_overwritten";
+const MOCK_SUBSCRIPTION_ID: &str = "sub_mock_123";
+const MOCK_SUBSCRIPTION_OVERWRITE: &str = "sub_mock_overwritten";
+const MOCK_PRICE_OVERWRITE: &str = "price_test_overwrite_99999";
+/// Seeded escrow id for IDOR / release Positive paths in api-server commerce tests.
+const MOCK_INTEGRATION_ESCROW_ID: &str = "valid_escrow_123";
+
+/// OSS 版向けのモック経済エンジン（**一元定義** — テスト側で再定義しないこと）
 #[cfg(any(test, debug_assertions, feature = "dev-mock"))]
 #[derive(Clone)]
 pub struct MockCommerceEngine {
@@ -70,18 +79,28 @@ impl MockCommerceEngine {
 #[cfg(any(test, debug_assertions, feature = "dev-mock"))]
 #[async_trait]
 impl FiatPaymentRails for MockCommerceEngine {
-    fn verify_signature(&self, _payload: &str, _sig_header: &str) -> Result<(), AiomeError> {
-        Ok(()) // モックなので常に成功
+    fn verify_signature(&self, _payload: &str, sig_header: &str) -> Result<(), AiomeError> {
+        // Negative markers only. Do not use substring "bad" — HMAC hex can contain it.
+        let marker = sig_header.trim();
+        if marker.contains("invalid") || marker == "bad" || marker.starts_with("bad_") {
+            return Err(AiomeError::Unauthorized {
+                reason: "Invalid signature".into(),
+            });
+        }
+        Ok(())
     }
 
     async fn create_checkout_session(
         &self,
         _agent_id: Uuid,
-        _price_id: &str,
+        price_id: &str,
         _success_url: &str,
         _cancel_url: &str,
     ) -> Result<String, AiomeError> {
-        Ok("https://example.com/checkout-session-mock".into())
+        if price_id == MOCK_PRICE_OVERWRITE {
+            return Ok(MOCK_CHECKOUT_OVERWRITE.into());
+        }
+        Ok(MOCK_CHECKOUT_SESSION.into())
     }
 
     async fn create_portal_session(
@@ -95,9 +114,12 @@ impl FiatPaymentRails for MockCommerceEngine {
     async fn create_subscription(
         &self,
         _agent_id: Uuid,
-        _plan_id: &str,
+        plan_id: &str,
     ) -> Result<String, AiomeError> {
-        Ok(format!("sub_{}", Uuid::new_v4()))
+        if plan_id == MOCK_PRICE_OVERWRITE {
+            return Ok(MOCK_SUBSCRIPTION_OVERWRITE.into());
+        }
+        Ok(MOCK_SUBSCRIPTION_ID.into())
     }
 
     async fn cancel_subscription(
@@ -201,10 +223,19 @@ impl CommerceEngine for MockCommerceEngine {
 
     async fn list_escrows(&self, agent_id: Uuid) -> Result<Vec<EscrowRecord>, AiomeError> {
         let mut records = Vec::new();
+        // Stable seed for api-server IDOR Positive (ownership check via list).
+        records.push(EscrowRecord {
+            id: MOCK_INTEGRATION_ESCROW_ID.to_string(),
+            payer_id: agent_id.to_string(),
+            order_id: "order_123".to_string(),
+            amount: 1000,
+            status: "Pending".to_string(),
+            created_at: "2026-04-23T00:00:00Z".to_string(),
+        });
         for entry in self.escrows.iter() {
             let escrow_id = entry.key();
             let (sender_id, amount) = entry.value();
-            if sender_id == &agent_id {
+            if sender_id == &agent_id && escrow_id.as_str() != MOCK_INTEGRATION_ESCROW_ID {
                 records.push(EscrowRecord {
                     id: escrow_id.clone(),
                     payer_id: sender_id.to_string(),
@@ -219,6 +250,10 @@ impl CommerceEngine for MockCommerceEngine {
     }
 
     async fn escrow_release(&self, escrow_id: &str, recipient_id: Uuid) -> Result<(), AiomeError> {
+        if escrow_id == MOCK_INTEGRATION_ESCROW_ID {
+            // Seeded escrow: release without prior escrow_create (integration harness).
+            return Ok(());
+        }
         if let Some((_, (_, amount))) = self.escrows.remove(escrow_id) {
             let mut balance = self.balances.entry(recipient_id).or_insert(1000);
             *balance += amount;
@@ -378,6 +413,7 @@ impl CommerceEngine for MockCommerceEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use aiome_core::commerce::FiatPaymentRails;
 
     #[tokio::test]
     async fn test_mock_escrow_lifecycle() {
@@ -410,12 +446,38 @@ mod tests {
         let plan_id = "premium_monthly";
 
         let sub_id = engine.create_subscription(agent_id, plan_id).await.unwrap();
-        assert!(!sub_id.is_empty());
+        assert_eq!(sub_id, MOCK_SUBSCRIPTION_ID);
 
         let status = engine.get_subscription_status(agent_id).await.unwrap();
         assert_eq!(status, aiome_core::commerce::SubscriptionStatus::Active);
 
         engine.cancel_subscription(agent_id, &sub_id).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_mock_verify_signature_rejects_invalid_marker() {
+        let engine = MockCommerceEngine::new();
+        assert!(engine.verify_signature("{}", "v1,ok").is_ok());
+        let err = engine
+            .verify_signature("{}", "v1,invalid_sig")
+            .expect_err("invalid marker must fail");
+        assert!(matches!(err, AiomeError::Unauthorized { .. }));
+    }
+
+    #[tokio::test]
+    async fn test_mock_price_overwrite_ids() {
+        let engine = MockCommerceEngine::new();
+        let agent = Uuid::new_v4();
+        let checkout = engine
+            .create_checkout_session(agent, MOCK_PRICE_OVERWRITE, "https://ok", "https://cancel")
+            .await
+            .unwrap();
+        assert_eq!(checkout, MOCK_CHECKOUT_OVERWRITE);
+        let sub = engine
+            .create_subscription(agent, MOCK_PRICE_OVERWRITE)
+            .await
+            .unwrap();
+        assert_eq!(sub, MOCK_SUBSCRIPTION_OVERWRITE);
     }
 
     #[tokio::test]
@@ -499,13 +561,9 @@ mod tests {
             .await
             .unwrap();
 
-        let parsed = url::Url::parse(&checkout_url);
-        assert!(
-            parsed.is_ok(),
-            "Checkout session url should be a valid URL. Found: {}",
-            checkout_url
+        assert_eq!(
+            checkout_url, MOCK_CHECKOUT_SESSION,
+            "stable mock id for api-server commerce tests"
         );
-        let u = parsed.unwrap();
-        assert_eq!(u.scheme(), "https");
     }
 }

@@ -1,3 +1,10 @@
+## 🔍 OP-027 Stripe mock centralization（2026-07-22）
+
+- **変更**: `aiome-commerce::mock::MockCommerceEngine` に Stripe 結合契約（安定 session/sub ID・署名 Negative・escrow シード）を集約。`api_integration_tests/common.rs` ローカル再定義排除。red-team 専用は `RedTeamMockCommerceEngine`。
+- **影響**: 結合テストの Commerce 振る舞い変更は `mock.rs` のみ。本番 `StripeCommerceEngine` / `routes/commerce.rs` 非変更。`lora_marketplace` の `MockCommerceEngineForMarketplace` は用途別のまま。
+- **検証**: `cargo test -p aiome-commerce` / `cargo test -p api-server commerce` / release check / production-block Negative
+- **残**: なし（OP-027 クローズ）
+
 ## 🔍 OP-087 Q5/Q6 MC static（2026-07-22）
 
 - **変更**: ADR-055（Image SSOT・実行ゲート）。`static/` 全無視 + `static.stub/index.html`。ガイド・TDD 更新。compose bind-mount は未削除。

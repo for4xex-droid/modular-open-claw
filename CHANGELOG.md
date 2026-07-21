@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Changed (OP-027 Stripe mock centralization 2026-07-22)
+- **一元定義**: `MockCommerceEngine` を `libs/aiome-commerce/src/mock.rs` に拡充（`cs_test_mock` / overwrite price→`cs_test_overwritten`・`sub_mock_*`、署名 `invalid`/`bad_*` 拒否、`valid_escrow_123` シード）。
+- **結合テスト**: `api_integration_tests/common.rs` のローカル `MockCommerceEngine` 再定義を削除しライブラリ参照へ。
+- **命名**: `browser_red_team_tdd` の専用スタブを `RedTeamMockCommerceEngine` に改名（ドリフト防止）。
+- **検証**: `aiome-commerce` 92 PASS、`api-server commerce` 44 PASS、`is_mock=false` Infrastructure Negative、`cargo check --workspace --release` GREEN。
+
 ### Added (OP-087 Q5/Q6 MC static 2026-07-22)
 - **Q5**: [`docs/decisions/055-mc-static-image-ssot.md`](docs/decisions/055-mc-static-image-ssot.md) — Image SSOT（bind-mount 撤去方針）。実行は Human ゲート（今四半期は compose 維持）
 - **Q6**: `apps/api-server/static/` を gitignore 全無視。追跡スタブを `static.stub/index.html` へ移設。`test_sync_mc_static.sh` 契約更新

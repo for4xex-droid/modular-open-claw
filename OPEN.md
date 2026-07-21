@@ -59,7 +59,7 @@
 - [x] **OP-022**: CausalVisualizer — **2026-07-22 完了**（コア UI + C1–C2: Timeline → `dispatchA2uiNavigate({tab:'causal', jobId})` + sessionStorage 二重マウント耐性、Jest fetch P/N）。Router / jobs 一覧 API なし。正本: [`wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) §4.2
 - [x] **OP-024**: `tool_call_router.rs` 課金チェックの Fail-Closed 化（DB エラーを握り潰さず明示拒否）（MEMORY.md Phase 48 より）→ **2026-07-09 完了**（`get_setting_value` Err 時に MCP ツール拒否 + Negative テスト）
 - [x] **OP-026**: TrendSonar Channel Bridges 運用 UI — **2026-07-21 完了**（`search_api_key` + VaultKeyStatus、再起動不要文言、`test_frontend_used_keys_are_allowed`、Jest）。A3 疎通 UI は既定スキップのまま
-- [ ] **OP-027**: Stripe API 実装追加時の一元化モック拡充（2026-06-01）
+- [x] **OP-027**: Stripe API 実装追加時の一元化モック拡充 — **2026-07-22 完了**（`libs/aiome-commerce/src/mock.rs` に checkout/サブスク安定 ID・署名 Negative・IDOR escrow シードを集約。`api_integration_tests/common.rs` のローカル再定義を排除。`browser_red_team_tdd` は `RedTeamMockCommerceEngine` に改名）。正本: `.agent/skills/stripe-mock-centralization.md`
 - [x] **OP-028**: フロントエンド `as any` 型キャスト4箇所の解消（WorkflowBuilder.tsx ×3, workflowConverter.ts ×1）→ **2026-07-05 完了**（release_master_plan R1-14）
 - [x] **OP-029**: `biome-popup-entry.tsx` HEX → `var(--bg-base)` + ゲート `extra_files` 追加 + html transparent → **2026-07-10 完了**（`test_ui_hex_violations.py` GREEN）
 - [x] **OP-050**: `skills/mod.rs`（1,134行）God Module の責務分解 → 2026-07-03 完了（599行に縮小、code_mode.rs / host_fns.rs / types.rs へ分離。refactor/skills-god-module ブランチ）

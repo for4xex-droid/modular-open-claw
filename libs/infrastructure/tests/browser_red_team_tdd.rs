@@ -20,12 +20,12 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
-struct MockCommerceEngine {
+struct RedTeamMockCommerceEngine {
     pub escrow_called_with_amount: Arc<AtomicU64>,
     pub fail_escrow: bool,
 }
 
-impl MockCommerceEngine {
+impl RedTeamMockCommerceEngine {
     fn new() -> Self {
         Self {
             escrow_called_with_amount: Arc::new(AtomicU64::new(0)),
@@ -42,7 +42,7 @@ impl MockCommerceEngine {
 }
 
 #[async_trait]
-impl FiatPaymentRails for MockCommerceEngine {
+impl FiatPaymentRails for RedTeamMockCommerceEngine {
     fn verify_signature(&self, _payload: &str, _sig_header: &str) -> Result<(), AiomeError> {
         Ok(())
     }
@@ -83,7 +83,7 @@ impl FiatPaymentRails for MockCommerceEngine {
 }
 
 #[async_trait]
-impl Web3PaymentRails for MockCommerceEngine {
+impl Web3PaymentRails for RedTeamMockCommerceEngine {
     async fn stake(&self, _agent_id: Uuid, _amount: u64) -> Result<(), AiomeError> {
         Ok(())
     }
@@ -94,7 +94,7 @@ impl Web3PaymentRails for MockCommerceEngine {
 }
 
 #[async_trait]
-impl CommerceEngine for MockCommerceEngine {
+impl CommerceEngine for RedTeamMockCommerceEngine {
     async fn get_balance(&self, _agent_id: Uuid) -> Result<u64, AiomeError> {
         Ok(1000)
     }
@@ -224,7 +224,7 @@ impl CommerceEngine for MockCommerceEngine {
 
 #[tokio::test]
 async fn test_browser_conductor_charges_100_coins_for_gemini() {
-    let engine = Arc::new(MockCommerceEngine::new());
+    let engine = Arc::new(RedTeamMockCommerceEngine::new());
     let engine_ref = engine.clone();
 
     let conductor = BrowserConductor::new(Some(engine), Some("gemini-key".into()), None);
@@ -251,7 +251,7 @@ async fn test_browser_conductor_charges_100_coins_for_gemini() {
 
 #[tokio::test]
 async fn test_browser_conductor_charges_0_coins_for_ollama() {
-    let engine = Arc::new(MockCommerceEngine::new());
+    let engine = Arc::new(RedTeamMockCommerceEngine::new());
     let engine_ref = engine.clone();
 
     let conductor = BrowserConductor::new(Some(engine), Some("http://key-proxy:9999".into()), None);
@@ -304,7 +304,7 @@ async fn test_browser_conductor_overrides_max_steps() {
 
 #[tokio::test]
 async fn test_browser_conductor_escrow_release_error_does_not_panic() {
-    let engine = Arc::new(MockCommerceEngine::new_failing());
+    let engine = Arc::new(RedTeamMockCommerceEngine::new_failing());
     let conductor = BrowserConductor::new(Some(engine), Some("gemini-key".into()), None);
 
     let job = Job {
