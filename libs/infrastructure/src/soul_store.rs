@@ -243,6 +243,50 @@ impl UniversalSoulStore {
         Ok(())
     }
 
+    /// OP-020-F5 S-3: merge remote experience Automerge blob into local Soul and persist.
+    ///
+    /// Uses `record_version(hash, parent_hash)` where hashes are SHA-256 of the **canonical
+    /// Experience set** (sorted by id) — not raw Automerge bytes (rebuilds are non-stable).
+    /// Re-applying the same remote blob is idempotent (no duplicate experiences; no extra version).
+    pub async fn apply_experience_sync_diff(
+        &self,
+        soul_id: &str,
+        remote_blob: &[u8],
+    ) -> Result<(AgentSoul, Vec<u8>), AiomeError> {
+        use crate::soul_experience_crdt::{
+            experience_set_hash, experiences_to_automerge, merge_experiences_idempotent,
+        };
+
+        let mut soul = self
+            .load_soul(soul_id)
+            .await?
+            .ok_or_else(|| AiomeError::NotFound {
+                reason: format!("soul not found: {soul_id}"),
+            })?;
+
+        let parent_hash = experience_set_hash(&soul.experience_buffer)?;
+        let merged = merge_experiences_idempotent(&soul.experience_buffer, remote_blob)?;
+        let version_hash = experience_set_hash(&merged)?;
+        let merged_blob = experiences_to_automerge(&merged)?;
+
+        soul.experience_buffer = merged;
+        soul.compute_hash();
+        self.save_soul(&soul).await?;
+
+        // No-op sync (identical set) or already-recorded hash → skip version insert.
+        if parent_hash != version_hash && !self.version_exists(&version_hash).await? {
+            self.record_version(
+                soul_id,
+                &version_hash,
+                Some(&parent_hash),
+                &serde_json::json!({ "kind": "soul_sync_experience" }),
+            )
+            .await?;
+        }
+
+        Ok((soul, merged_blob))
+    }
+
     /// 指定されたSoul IDのバージョン履歴を取得する
     pub async fn list_versions(
         &self,

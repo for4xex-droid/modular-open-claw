@@ -1,3 +1,10 @@
+## 🔍 OP-020-F5 Soul Sync S-1〜S-4（2026-07-22）
+
+- **変更**: hub relay/pair、Experience Automerge CRDT、`soul_sync_transport` seal/open、2ノード統合テスト。
+- **影響**: hub 平文なし。ノード間は E2E 暗号 + CRDT。MC ペアリング UI は任意。
+- **検証**: hub soul-sync + CRDT/store 冪等 + `soul_sync_two_node`（60s / 誤鍵 / 冪等）PASS
+- **残**: なし（OP-020-F5 クローズ）。MC polish は別レーン
+
 ## 🔍 OP-022 Causal C1–C2（2026-07-22）
 
 - **変更**: `a2uiTabs` に navigate detail/`dispatchA2uiNavigate`/sessionStorage。`CausalVisualizer` 深リンク受領。`Timeline` Trace ボタン。`causal.fetchFailed` 等。

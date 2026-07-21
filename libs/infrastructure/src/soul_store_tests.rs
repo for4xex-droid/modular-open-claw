@@ -201,4 +201,80 @@ mod tests {
 
         Ok(())
     }
+
+    /// OP-020-F5 S-3: remote Experience merge + double-apply idempotency + version parent_hash.
+    #[tokio::test]
+    async fn test_apply_experience_sync_diff_idempotent() -> Result<(), AiomeError> {
+        use crate::soul_experience_crdt::experiences_to_automerge;
+        use soul::Experience;
+
+        let pool = setup_db().await;
+        let store = UniversalSoulStore::new(pool);
+
+        let mut soul = AgentSoul::new("soul-sync-s3".to_string());
+        soul.experience_buffer.push(Experience {
+            id: "local-exp".into(),
+            domain: "test".into(),
+            content: "on device A".into(),
+            outcome_valence: 0.1,
+            timestamp: "2026-07-22T01:00:00Z".into(),
+            original_prediction: 0.0,
+            is_core_memory: false,
+            embedding: None,
+        });
+        store.save_soul(&soul).await?;
+
+        let remote = vec![Experience {
+            id: "remote-exp".into(),
+            domain: "test".into(),
+            content: "from device B".into(),
+            outcome_valence: 0.9,
+            timestamp: "2026-07-22T02:00:00Z".into(),
+            original_prediction: 0.0,
+            is_core_memory: false,
+            embedding: None,
+        }];
+        let remote_blob = experiences_to_automerge(&remote)?;
+
+        let (after1, _blob1) = store
+            .apply_experience_sync_diff("soul-sync-s3", &remote_blob)
+            .await?;
+        assert_eq!(after1.experience_buffer.len(), 2);
+        assert!(after1
+            .experience_buffer
+            .iter()
+            .any(|e| e.id == "remote-exp"));
+
+        let versions1 = store.list_versions("soul-sync-s3", 10).await?;
+        assert_eq!(versions1.len(), 1);
+        assert_eq!(versions1[0].somatic_markers["kind"], "soul_sync_experience");
+        assert!(versions1[0].parent_hash.is_some());
+
+        // Acceptance #3: second apply of the same remote blob must stay idempotent.
+        let (after2, _) = store
+            .apply_experience_sync_diff("soul-sync-s3", &remote_blob)
+            .await?;
+        assert_eq!(
+            after2.experience_buffer.len(),
+            2,
+            "duplicate Experience must not appear"
+        );
+        assert_eq!(
+            after2
+                .experience_buffer
+                .iter()
+                .filter(|e| e.id == "remote-exp")
+                .count(),
+            1
+        );
+
+        let versions2 = store.list_versions("soul-sync-s3", 10).await?;
+        assert_eq!(
+            versions2.len(),
+            1,
+            "identical sync blob must not create a second version row"
+        );
+
+        Ok(())
+    }
 }

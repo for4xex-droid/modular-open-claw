@@ -123,7 +123,7 @@ Horizon 3: プラットフォーム化（v2.0〜）
   2. 中継ノード（samsara-hub）上でペイロードが常に暗号化されており、平文の Soul データが hub のログ・DB に存在しないことを検査するテストがある。
   3. 同一 Experience の二重適用が冪等に処理される（重複同期 Negative Test）。
   4. ペアリング解除後、相手端末からの同期要求が拒否される。
-- **依存**: **ADR-053（Federation transport ✅）+ OP-020-F5 製品 DoD**（正本: [`wave_ui_p2p_tauri_plan.md`](wave_ui_p2p_tauri_plan.md) §3）。コード着手は明示「OP-020-F5 を実装しろ」。OP-083 非ブロッカー。
+- **依存**: **ADR-053（Federation transport ✅）+ OP-020-F5 製品 DoD ✅ 2026-07-22**（S-1〜S-4。正本: [`h2_f0_f4_f7_implementation_plan.md`](h2_f0_f4_f7_implementation_plan.md) PART 4 / [`wave_ui_p2p_tauri_plan.md`](wave_ui_p2p_tauri_plan.md) §3）。OP-083 非ブロッカー。
 
 ### F-6 Proof of Agent Work — 検証可能な作業証明
 
@@ -210,7 +210,7 @@ Horizon 3: プラットフォーム化（v2.0〜）
 | F-7 リモート承認 | 中〜高（自律性上限の解除） | 中（PWA 基盤新設） | 低 | 6 |
 | F-6 Proof of Work | 中（B2B 差別化） | 低 | 高 | 7 |
 | F-10 Voice | 中（体験・獲得） | 低〜中（STT エンジン実装済み） | 高 | 8（前倒し可） |
-| F-5 Soul Sync | 高（moat） | 高（プロトコル未実装） | 中 | 9（transport ✅・製品 DoD は wave_ui_p2p_tauri_plan） |
+| F-5 Soul Sync | 高（moat） | 低（S-1〜S-4 ✅ 2026-07-22） | 中 | 9（製品 DoD 完了・MC UI 任意） |
 | F-8 Multi-Tenant | 高（単価構造） | 高 | 中 | 10 |
 | F-9 開放経済圏 | 最高（長期） | 最高（ただし GigEngine 状態機械は実装済み） | 中 | 11 |
 

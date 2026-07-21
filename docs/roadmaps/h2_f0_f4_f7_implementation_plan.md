@@ -236,15 +236,15 @@ PII 禁止則: `action` はツール名・ステップ種別のみ（既存 DAG 
 ## 現状理解
 
 - 同期チャネル: samsara-hub に Automerge CRDT の実績あり（`handlers/timeline.rs` の `AutoCommit` merge、`hub_timeline.automerge_blob`）。E2E 暗号は `libs/shared/src/crypto.rs`（`ed25519_pubkey_to_x25519` / `encrypt_message` / `decrypt_message`）。
-- Soul 側: `UniversalSoulStore::save_soul()`（`experience_buffer_json`）、`record_version()` + `parent_hash` によるバージョン履歴あり。**Soul 専用 diff API は未実装**。
-- **ペアリングフローは存在しない**（federation は `FEDERATION_SECRET` 共有 or JWT）。
+- Soul 側: `apply_experience_sync_diff` + Automerge Experience CRDT ✅（S-3）。`record_version` parent 系譜あり。
+- **ペアリング**: hub `paired_devices` + pair/unpair API ✅（S-2）。MC QR UI は任意 polish。
 
 ## 作業項目（要約粒度 — 着手決定後に本計画書と同粒度へ詳細化すること）
 
-- **S-1**: `HubMessage` に `SoulSyncRelay(EncryptedEnvelope)` バリアント追加（`contracts.rs` アンカー: `ZeroMetadataCommuneRelay` の直後。hub は**中身を復号できない**封筒のみ中継 — 受け入れ基準2をアーキテクチャで担保）＋ hub 側 broadcast（`federation.rs` の `state.tx.send` パターン）。ログ・DB に平文が入らないことのテスト付き。
-- **S-2**: ペアリング: 端末 A が `crypto.rs` の X25519 公開鍵を含む QR/コードを表示 → 端末 B が入力 → 相互に `paired_devices` テーブル（新規 migration）へ登録。解除 API で削除（解除後の同期拒否テスト必須）。
-- **S-3**: Soul スナップショットの差分同期: `record_version` の `parent_hash` を lamport 的に利用し、`experience_buffer_json` を Automerge ドキュメント化（timeline.rs のパターン流用）。同一 Experience の二重適用が冪等であるテスト（受け入れ基準3）。
-- **S-4**: 2ノード統合テスト（`libs/infrastructure/tests/` の federation テスト慣例に従う）: 端末 A の Experience が 60 秒以内に B へ反映。
+- **S-1**: ✅ 2026-07-22 — `HubMessage::SoulSyncRelay(EncryptedEnvelope)` + `POST /api/v1/soul-sync/relay` broadcast。ログは `session_id`/`ciphertext_len` のみ。DB 平文 canary テスト付き。
+- **S-2**: ✅ 2026-07-22 — `paired_devices` migration + `POST/DELETE .../soul-sync/pair`。`SoulSyncPairingCode`（クライアント QR/コード用）。relay は paired のみ。解除後 403 Negative テスト付き。
+- **S-3**: ✅ 2026-07-22 — `soul_experience_crdt`（ROOT `e:{id}` Automerge）+ `apply_experience_sync_diff`（canonical `experience_set_hash` → `record_version` parent）。二重適用冪等 + sqlite `soul_versions` 補完。
+- **S-4**: ✅ 2026-07-22 — `soul_sync_transport` + `tests/soul_sync_two_node.rs`（A→opaque hub bus→B、60秒 deadline、誤鍵 Negative、冪等）。
 - **やらないこと**: Soul 全体の実時間同期（バッチ同期のみ）/ hub への平文保存 / ペアリングなしの自動発見同期。
 
 ---

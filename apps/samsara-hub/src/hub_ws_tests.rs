@@ -223,3 +223,174 @@ async fn test_metadata_free_unicast_relay() {
         "Client B should not have received any text message"
     );
 }
+
+/// OP-020-F5 S-1/S-2: opaque relay + pairing gate + no Soul canary in DB.
+#[tokio::test]
+async fn test_soul_sync_relay_broadcast_and_no_plaintext_in_db() {
+    let (addr, state) = spawn_test_hub().await;
+
+    use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+    let ws_url = format!("ws://{}/api/v1/federation/ws", addr);
+    let mut request = ws_url.into_client_request().unwrap();
+    request.headers_mut().insert(
+        axum::http::header::AUTHORIZATION,
+        axum::http::HeaderValue::from_static("Bearer test_secret"),
+    );
+    let (mut ws_stream, _) = connect_async(request).await.expect("WS connect");
+
+    // Give the hub a moment to subscribe the WS to broadcast.
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+    const CANARY: &str = "SOUL_PLAINTEXT_CANARY_NEVER_ON_HUB";
+    use aiome_core::soul_sync::{EncryptedEnvelope, SoulSyncPairRequest};
+    let session_id = "sess-s1-test".to_string();
+    let envelope = EncryptedEnvelope {
+        session_id: session_id.clone(),
+        // Deliberately put a Soul-like canary in the ciphertext field: hub must still
+        // treat it as opaque and must not persist it.
+        ciphertext: CANARY.to_string(),
+    };
+
+    let http_client = reqwest::Client::new();
+    let pair_url = format!("http://{}/api/v1/soul-sync/pair", addr);
+    let relay_url = format!("http://{}/api/v1/soul-sync/relay", addr);
+
+    // Negative (S-2): unpaired session cannot relay.
+    let res_unpaired = http_client
+        .post(&relay_url)
+        .header("Authorization", "Bearer test_secret")
+        .json(&envelope)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res_unpaired.status(), reqwest::StatusCode::FORBIDDEN);
+
+    let pair = SoulSyncPairRequest {
+        session_id: session_id.clone(),
+        device_a_pubkey: "pubkey-a-base64".into(),
+        device_b_pubkey: "pubkey-b-base64".into(),
+    };
+    let res_pair = http_client
+        .post(&pair_url)
+        .header("Authorization", "Bearer test_secret")
+        .json(&pair)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res_pair.status(), reqwest::StatusCode::CREATED);
+
+    let res = http_client
+        .post(&relay_url)
+        .header("Authorization", "Bearer test_secret")
+        .json(&envelope)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), reqwest::StatusCode::ACCEPTED);
+
+    use aiome_core::contracts::HubMessage;
+    let msg = loop {
+        let msg = tokio::time::timeout(std::time::Duration::from_secs(2), ws_stream.next())
+            .await
+            .expect("Timeout waiting for SoulSyncRelay")
+            .expect("WS closed")
+            .unwrap();
+        if msg.is_text() {
+            break msg;
+        }
+    };
+    let text = msg.to_text().unwrap();
+    let hub_msg: HubMessage = serde_json::from_str(text).unwrap();
+    match hub_msg {
+        HubMessage::SoulSyncRelay(env) => {
+            assert_eq!(env.session_id, session_id);
+            assert_eq!(env.ciphertext, CANARY);
+        }
+        other => panic!("Expected SoulSyncRelay, got {:?}", other),
+    }
+
+    // Negative: canary must not appear in Soul-bearing tables — paired_devices holds pubkeys only.
+    assert_canary_absent_from_sqlite(&state.pool, CANARY).await;
+
+    // Negative: unauthorized relay rejected.
+    let res_unauth = http_client
+        .post(&relay_url)
+        .json(&envelope)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res_unauth.status(), reqwest::StatusCode::UNAUTHORIZED);
+
+    // Negative: empty ciphertext rejected.
+    let res_bad = http_client
+        .post(&relay_url)
+        .header("Authorization", "Bearer test_secret")
+        .json(&EncryptedEnvelope {
+            session_id: session_id.clone(),
+            ciphertext: String::new(),
+        })
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res_bad.status(), reqwest::StatusCode::BAD_REQUEST);
+
+    // S-2 Negative: after unpair, relay is forbidden again.
+    let unpair_url = format!("http://{}/api/v1/soul-sync/pair/{}", addr, session_id);
+    let res_unpair = http_client
+        .delete(&unpair_url)
+        .header("Authorization", "Bearer test_secret")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res_unpair.status(), reqwest::StatusCode::OK);
+
+    let res_after = http_client
+        .post(&relay_url)
+        .header("Authorization", "Bearer test_secret")
+        .json(&envelope)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res_after.status(), reqwest::StatusCode::FORBIDDEN);
+}
+
+async fn assert_canary_absent_from_sqlite(pool: &shared::db::DatabasePool, canary: &str) {
+    use sqlx::Column;
+    use sqlx::Row;
+    let shared::db::DatabasePool::Sqlite(p) = pool else {
+        panic!("test hub uses sqlite");
+    };
+    let tables: Vec<(String,)> = sqlx::query_as(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+    )
+    .fetch_all(p)
+    .await
+    .expect("list tables");
+    for (table,) in tables {
+        let safe = table.replace('"', "");
+        let sql = format!("SELECT * FROM \"{}\"", safe);
+        let rows = sqlx::query(&sql).fetch_all(p).await.expect("scan table");
+        for row in rows {
+            for col in row.columns() {
+                let name = col.name();
+                if let Ok(v) = row.try_get::<String, _>(name) {
+                    assert!(
+                        !v.contains(canary),
+                        "Soul canary leaked into hub DB {}.{}",
+                        safe,
+                        name
+                    );
+                } else if let Ok(v) = row.try_get::<Option<String>, _>(name) {
+                    if let Some(v) = v {
+                        assert!(
+                            !v.contains(canary),
+                            "Soul canary leaked into hub DB {}.{}",
+                            safe,
+                            name
+                        );
+                    }
+                }
+            }
+        }
+    }
+}

@@ -7,6 +7,7 @@
 pub mod commune;
 pub mod federation;
 pub mod middleware;
+pub mod soul_sync;
 pub mod system;
 pub mod timeline;
 pub mod ws;

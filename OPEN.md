@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-22（OP-022 Causal C1–C2 ✅）**
+**最終更新: 2026-07-22（OP-020-F5 Soul Sync S-1〜S-4 ✅）**
 
 > **実装手順の正本**:
 > - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・P1–P4 ✅。次回 Path B は都度 Human 許可 / bind-mount 今期維持 / 残 Q5–Q6）
@@ -54,7 +54,7 @@
 ## 🟡 P2 / 継続課題（技術的負債は REMAINING_TASKS.md 2026-07-02 版から吸収）
 
 - [ ] **OP-087**: MC static 配布規律 — P1–P4 ✅（`sync_mc_static.sh` + TDD、`MC_STATIC_DEPLOY.md`、index スタブ、**P4 Path B → app.aiome.dev** 2026-07-21）。**残**: §8 Q5/Q6（bind-mount 撤去 ADR / index untrack）。正本: [`mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)
-- [ ] **OP-020**: Phase 2b / Phase 4 ✅。**残は OP-020-F5 Soul Sync**（Federation transport=ADR-053 ✅。implementation_plan Phase 5=Cognitive Observability と別物）。再定義正本: [`wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) §3。F-5 コード着手は別ゲート。OP-083 非ブロッカー
+- [x] **OP-020**: Phase 2b / Phase 4 ✅。**OP-020-F5 Soul Sync S-1〜S-4 ✅ 2026-07-22**（opaque relay + pair/unpair + Automerge Experience CRDT + 2ノード 60s E2E + 冪等/解除後403）。正本: [`h2_f0_f4_f7_implementation_plan.md`](docs/roadmaps/h2_f0_f4_f7_implementation_plan.md) PART 4。MC ペアリング UI は任意 polish（本 OP 外）
 - [x] **OP-021**: BanDashboard — **2026-07-21 完了**（コア UI + **C3 i18n**: `ban.*` + `common.cancel`、Jest/parity PASS）。`expires_at` は本 Wave 外のまま。正本: [`wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) §4.1
 - [x] **OP-022**: CausalVisualizer — **2026-07-22 完了**（コア UI + C1–C2: Timeline → `dispatchA2uiNavigate({tab:'causal', jobId})` + sessionStorage 二重マウント耐性、Jest fetch P/N）。Router / jobs 一覧 API なし。正本: [`wave_ui_p2p_tauri_plan.md`](docs/roadmaps/wave_ui_p2p_tauri_plan.md) §4.2
 - [x] **OP-024**: `tool_call_router.rs` 課金チェックの Fail-Closed 化（DB エラーを握り潰さず明示拒否）（MEMORY.md Phase 48 より）→ **2026-07-09 完了**（`get_setting_value` Err 時に MCP ツール拒否 + Negative テスト）
@@ -103,6 +103,7 @@
 
 ## ✅ 解決（直近のみ保持）
 
+- [x] **OP-020 / OP-020-F5**: Soul Sync S-1〜S-4 → **2026-07-22 完了**（hub opaque relay + pairing + Automerge Experience + 2ノード 60s E2E。CHANGELOG [Unreleased]）
 - [x] **OP-086**: **Agentic 本番硬化** → **2026-07-19 Wave D 本番クローズ**（正本 v1.3）。A1–A4 / B1–B3 コード ✅ + **Wave D**: key-proxy 本番再ビルド・B1 telemetry 反映・A1 Unauthenticated 0・Vault 整合。compose key-proxy に `CELL_ID` 追加。Wave C=ゲート待ち。CHANGELOG [Unreleased]
 - [x] **OP-025**: key-proxy `caller_id` metrics/span + 401 構造化（秘密非出力）→ **2026-07-18**（OP-086 B1、`cargo test -p key-proxy` 34 PASS）
 - [x] **OP-023**: ホットパス unwrap 棚卸し → **2026-07-18**（OP-086 B3、`enforce_unwrap_deny.py` 0）

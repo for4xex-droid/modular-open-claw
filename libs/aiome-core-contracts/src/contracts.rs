@@ -581,6 +581,8 @@ pub enum HubMessage {
     CommuneRelay(crate::commune::CommuneMessage),
     /// Zero-Metadata Commune プロトコルメッセージの転送
     ZeroMetadataCommuneRelay(crate::commune::ZeroMetadataCommuneEnvelope),
+    /// Soul Sync (OP-020-F5): opaque E2E ciphertext relay — hub must not decrypt
+    SoulSyncRelay(crate::soul_sync::EncryptedEnvelope),
 }
 
 /// System Setting entry for Management Console
@@ -698,6 +700,33 @@ mod tests {
                 assert_eq!(client_time, "2026-03-12T05:00:00Z");
             }
             _ => panic!("Expected Ping message"),
+        }
+    }
+
+    #[test]
+    fn test_hub_message_soul_sync_relay_serialization() {
+        use base64::Engine;
+        let canary = "SOUL_PLAINTEXT_CANARY_NEVER_ON_HUB";
+        let msg = HubMessage::SoulSyncRelay(crate::soul_sync::EncryptedEnvelope {
+            session_id: "sess-1".into(),
+            // Wire form is opaque ciphertext; canary appears only after client decrypt.
+            ciphertext: base64::engine::general_purpose::STANDARD.encode(canary.as_bytes()),
+        });
+        let json = serde_json::to_string(&msg).expect("serialize SoulSyncRelay");
+        assert!(json.contains("\"type\":\"SoulSyncRelay\""));
+        assert!(json.contains("session_id"));
+        assert!(json.contains("ciphertext"));
+        assert!(
+            !json.contains(canary),
+            "wire JSON must not embed Soul plaintext as a bare field"
+        );
+        let back: HubMessage = serde_json::from_str(&json).expect("deserialize");
+        match back {
+            HubMessage::SoulSyncRelay(env) => {
+                assert_eq!(env.session_id, "sess-1");
+                assert!(!env.ciphertext.is_empty());
+            }
+            other => panic!("Expected SoulSyncRelay, got {:?}", other),
         }
     }
 

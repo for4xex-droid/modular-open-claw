@@ -171,10 +171,12 @@ pub mod slo_engine;
 pub mod society_of_thought;
 /// イベント→Experience変換アダプタ
 pub mod soul_adapter;
+/// AgentSoulのSQLite永続化
+pub mod soul_experience_crdt;
 /// 経験に基づくSOUL.md動的書換え
 pub mod soul_mutator;
-/// AgentSoulのSQLite永続化
 pub mod soul_store;
+pub mod soul_sync_transport;
 pub mod spec_provider;
 pub mod sql_helpers;
 /// Let It Crash / Supervision Tree (Phase 1.5)

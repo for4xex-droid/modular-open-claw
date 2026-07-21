@@ -22,6 +22,10 @@ pub mod commerce;
 pub mod commune;
 /// コアシステム全体で共有するデータ形式の定義
 pub mod contracts;
+/// Soul Sync (OP-020-F5) opaque wire types
+pub mod soul_sync {
+    pub use aiome_core_contracts::soul_sync::*;
+}
 pub mod error;
 /// 表情・感情表現などに関するモジュール
 pub mod expression;

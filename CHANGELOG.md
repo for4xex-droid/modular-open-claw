@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Added (OP-020-F5 Soul Sync S-1〜S-4 2026-07-22)
+- S-1/S-2: opaque `SoulSyncRelay` + hub pair/unpair/relay + `paired_devices`（解除後 403）
+- S-3: Automerge Experience CRDT + `apply_experience_sync_diff` + sqlite `soul_versions`
+- S-4: `soul_sync_transport`（E2E seal/open）+ `tests/soul_sync_two_node.rs`（A→hub bus→B 60秒以内・誤鍵拒否・冪等）。正本: h2 PART 4
+
 ### Added (OP-022 Causal deep-link 2026-07-22)
 - **C1**: `a2ui-navigate` に任意 `jobId`（`dispatchA2uiNavigate` / `aiome.causalJobId`）。Timeline の karma 行から Causal へ。手動 Job ID 入力は維持。
 - **C2**: CausalVisualizer Jest（fetch 成功・不正 ID・!ok・イベント/ストレージ深リンク）+ Timeline Trace 導線テスト。Router / 一覧 API なし。

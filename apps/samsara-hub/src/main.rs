@@ -395,6 +395,9 @@ pub fn build_app(state: Arc<HubState>) -> Router {
         create_topic_handler, list_topics_handler,
     };
     use crate::handlers::middleware::auth_middleware;
+    use crate::handlers::soul_sync::{
+        soul_sync_pair_handler, soul_sync_relay_handler, soul_sync_unpair_handler,
+    };
     use crate::handlers::system::{health_handler, list_agents_handler};
     use crate::handlers::timeline::timeline_sync_handler;
 
@@ -411,6 +414,12 @@ pub fn build_app(state: Arc<HubState>) -> Router {
             "/api/v1/commune/relay/metadata-free",
             post(commune_relay_metadata_free_handler),
         )
+        .route("/api/v1/soul-sync/pair", post(soul_sync_pair_handler))
+        .route(
+            "/api/v1/soul-sync/pair/:session_id",
+            axum::routing::delete(soul_sync_unpair_handler),
+        )
+        .route("/api/v1/soul-sync/relay", post(soul_sync_relay_handler))
         .route("/api/v1/commune/ws", get(commune_ws_handler))
         .route("/api/v1/relay/timeline/sync", post(timeline_sync_handler))
         .layer(axum::middleware::from_fn_with_state(
