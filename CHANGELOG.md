@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+### Changed (OP-011 autonomous purchase S2S 2026-07-22)
+- **本番経路**: `StripeCommerceEngine::execute_autonomous_purchase`（`!is_mock`）が Nurture `POST /internal/purchase` へ委譲。`metadata.idempotency_key` を trim 後転送（空/空白は `auto_{agent}_{item}`。他メタデータは非転送）。
+- **Fail-Closed**: URL/secret/client 欠落を区別。空/過大（>128）`transaction_id` 拒否。idempotency ≤128（超過は `auto_*`）。
+- **漏洩防止**: Nurture 非成功ボディはクライアント reason にもサーバログ内容にも載せない（`body_len` のみ）。Debug 詳細もクライアント非露出。
+- **検証**: wiremock Positive（client key / default / oversized idemp fallback / Bearer）+ Negative（500 本文非漏洩 / 不正 JSON / 空・過大 tx_id / 設定欠落）。dev mock `tx_mock` 短絡は維持。
+- **法務**: `KC_LEGAL_POSITION` / `COMPLIANCE_CHECKLIST` — 無償 KC マーケット購入のみ解禁、有償チャージ・Fiat は凍結のまま。
+- **非対象**: Polar stub、`create_checkout_session`、coin-charge、webhook 有償 KC 加算。
+
 ### Changed (OP-027 Stripe mock centralization 2026-07-22)
 - **一元定義**: `MockCommerceEngine` を `libs/aiome-commerce/src/mock.rs` に拡充（`cs_test_mock` / overwrite price→`cs_test_overwritten`・`sub_mock_*`、署名 `invalid`/`bad_*` 拒否、`valid_escrow_123` シード）。
 - **結合テスト**: `api_integration_tests/common.rs` のローカル `MockCommerceEngine` 再定義を削除しライブラリ参照へ。

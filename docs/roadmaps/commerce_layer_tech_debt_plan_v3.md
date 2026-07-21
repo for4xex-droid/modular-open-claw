@@ -4,7 +4,7 @@
 > **改訂**: v3.2 → **v3.3**（日次/月次 0 分離）→ **v3.4**（2026-07-20: C/D ゲートを Q2+SC に再定義。Federation transport=ADR-053 済みは非ブロッカー）  
 > **ステータス**: B/A ✅。C/D 実行正本: [`op083_cd_x402_plan.md`](op083_cd_x402_plan.md)  
 > **正本 ID**: OPEN **OP-083**（B→A 先行、C/D=Q2+SC）  
-> **非目標**: OP-011 封印解除、compose への Stripe 秘密追加、Nurture `STRIPE_SECRET_KEY` リネーム、`keyring` 導入、AiomeCoin 置換、**月次上限の新機能再発明（ADR-050 / OP-059 済）**、**日次 0 を無制限に変えること**、**オンチェーン実送金 broadcast（C スコープ外）**
+> **非目標（当時）**: compose への Stripe 秘密追加、Nurture `STRIPE_SECRET_KEY` リネーム、`keyring` 導入、AiomeCoin 置換、**月次上限の新機能再発明（ADR-050 / OP-059 済）**、**日次 0 を無制限に変えること**、**オンチェーン実送金 broadcast（C スコープ外）**。※ OP-011（無償 KC マーケット S2S）は **✅ 2026-07-22**（有償チャージは非対象のまま）
 
 ---
 
@@ -240,7 +240,7 @@ OP-083-D  OnChainAmount
 | §4 秘密 | Phase 3 = Vault |
 | §5 ADR-052 | x402 はオフランプなし |
 | §6 VRM | 非対象 |
-| §7 A2C | OP-011 封印維持 |
+| §7 A2C | OP-011 ✅ 2026-07-22（無償 KC のみ。有償は凍結） |
 | §8 P2P | `allow_p2p_transfer` 非変更 |
 
 ---
@@ -248,7 +248,7 @@ OP-083-D  OnChainAmount
 ## 9. やらないこと
 
 - `keyring` / `ProviderType::X402` 混在 / AiomeCoin 置換
-- OP-011 解除 / compose への API キー
+- compose への API キー（OP-011 有償化は別ゲート）
 - x402 オンチェーン実送金 broadcast（C は署名のみ）
 - **月次上限の新機能**（ADR-050 再実装）
 - **日次 0 を無制限に統一**（現行 raw min / CoinWallet と衝突）

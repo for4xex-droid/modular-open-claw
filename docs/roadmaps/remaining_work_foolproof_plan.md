@@ -4,7 +4,7 @@
 > **改訂**: v1.1 → **v1.2**（Human NT 拡充）→ **v1.3**（NT-2 実装ゲート分離）→ **v1.4**（2026-07-13: NT-2=done・§8 R-A〜R-D 閉じ / OPEN OP-078・077・079）→ **v1.5**（2026-07-13: Local LLM /reflexion 残リスク LL-A〜D → OP-080〜082）→ **v1.6**（2026-07-14: **NT-1 PASS** / OP-057-R・R2-1 クローズ）→ **v1.7**（2026-07-14: **NT-5 PASS** / OP-063 撮影完了・R4-2 待ち）  
 > **根拠**: `OPEN.md` + `near_term_public_beta_plan.md` v5.1 + 運用正本（stripe-production-setup / QUICK_START_VERIFICATION / MESSAGING §8 / OPERATIONS_MANUAL §8 / release-preflight）  
 > **タスク正本**: [`OPEN.md`](../../OPEN.md)（本計画は手順のみ。ID の二重管理をしない）  
-> **ステータス**: Wave A1/A2/A3 ✅。NT-1〜6 ✅。**R5-5 / v1.2.0 Public Beta 公開 ✅**（2026-07-14）。**方針 B（OP-084）✅ 2026-07-18** / **closeout R4 ✅** / **OP-086 Wave D ✅ 2026-07-19**。**OP-051 ✅** / **OP-083 ✅ C/D 2026-07-20**。残 Wave C: OP-011 ポストリリース。残 Human: **NT-7**（任意・OP-064）。**OP-059-UI ✅ / OP-080 ✅ / OP-081 ✅ / OP-070 ✅**
+> **ステータス**: Wave A1/A2/A3 ✅。NT-1〜6 ✅。**R5-5 / v1.2.0 Public Beta 公開 ✅**（2026-07-14）。**方針 B（OP-084）✅ 2026-07-18** / **closeout R4 ✅** / **OP-086 Wave D ✅ 2026-07-19**。**OP-051 ✅** / **OP-083 ✅ C/D 2026-07-20** / **OP-011 ✅ 2026-07-22**。残 Human: **NT-7**（任意・OP-064）。**OP-059-UI ✅ / OP-080 ✅ / OP-081 ✅ / OP-070 ✅**
 > **Human Wave 実行計画（状態・順・DoD 一冊）**: [`human_wave_execution_plan.md`](human_wave_execution_plan.md)（**v1.2**・2026-07-14）
 > **Human 実行の超詳細版（コピペ正本）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）— 進行は **`/nt-assist`** + `scripts/nt_gate.py`（1ステップ・秘密禁止）。§2 H-1 は要約。
 
@@ -54,7 +54,7 @@ B5 実行前ゲート / `String` 戻り、B3=`Failed`、対象 5 箇所、napi �
 | 禁止 | 理由 |
 |------|------|
 | compose に `STRIPE_API_KEY` | Zero-Trust（near_term v5 撤回） |
-| OP-011 封印解除 | Public Beta 外 |
+| OP-011 KC マーケット S2S | ✅ 2026-07-22（有償 KC は非対象） |
 | Nurture `STRIPE_SECRET_KEY` リネーム | 別系統 |
 | OP-051 一括置換 | ADR-054 **Accepted** — 段階計画のみ（[`op051_error_hierarchy_plan.md`](op051_error_hierarchy_plan.md)） |
 | OP-054-B / JobQueue ISP | ADR-031 |

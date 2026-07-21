@@ -610,6 +610,284 @@ async fn test_stripe_commerce_mock_behavior() {
         .is_ok());
 }
 
+/// OP-011: production path (`!is_mock`) + Nurture S2S Positive / Negative.
+async fn live_engine_with_nurture(nurture_uri: &str, secret: &str) -> StripeCommerceEngine {
+    let pool = SqlitePoolOptions::new()
+        .connect("sqlite::memory:")
+        .await
+        .unwrap();
+    StripeCommerceEngine::new(
+        SecretString::from("sk_live_123456789".to_string()), // gitleaks:allow
+        SecretString::from("whsec_live_987654".to_string()), // gitleaks:allow
+        pool,
+        Some(nurture_uri.to_string()),
+        Some(secret.to_string()),
+    )
+}
+
+#[tokio::test]
+async fn test_http_proxy_purchase_green() {
+    use wiremock::matchers::{body_partial_json, header, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+    let engine = live_engine_with_nurture(&mock_server.uri(), "test_secret").await;
+    assert!(!engine.is_mock);
+
+    let agent_id = Uuid::new_v4();
+    let item_id = Uuid::new_v4();
+    let idemp = "client-idemp-op011";
+
+    // OXP cert value is time-bound HMAC — assert Bearer auth + body; OXP generation covered elsewhere.
+    Mock::given(method("POST"))
+        .and(path("/internal/purchase"))
+        .and(header("Authorization", "Bearer test_secret"))
+        .and(body_partial_json(serde_json::json!({
+            "buyer": agent_id,
+            "item_id": item_id,
+            "idempotency_key": idemp,
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "transaction_id": "tx_purchase_http_123"
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let purchase = engine
+        .execute_autonomous_purchase(
+            agent_id,
+            item_id,
+            serde_json::json!({ "idempotency_key": idemp }),
+        )
+        .await
+        .expect("purchase should succeed via Nurture S2S");
+    assert_eq!(purchase, "tx_purchase_http_123");
+}
+
+#[tokio::test]
+async fn test_http_proxy_purchase_default_idempotency_key() {
+    use wiremock::matchers::{body_partial_json, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+    let engine = live_engine_with_nurture(&mock_server.uri(), "test_secret").await;
+    let agent_id = Uuid::new_v4();
+    let item_id = Uuid::new_v4();
+    let expected = format!("auto_{}_{}", agent_id, item_id);
+
+    Mock::given(method("POST"))
+        .and(path("/internal/purchase"))
+        .and(body_partial_json(serde_json::json!({
+            "idempotency_key": expected,
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "transaction_id": "tx_auto_key"
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // Empty / whitespace-only keys must fall back to auto_{agent}_{item}.
+    let tx = engine
+        .execute_autonomous_purchase(
+            agent_id,
+            item_id,
+            serde_json::json!({ "idempotency_key": "   " }),
+        )
+        .await
+        .expect("fallback key purchase");
+    assert_eq!(tx, "tx_auto_key");
+}
+
+#[tokio::test]
+async fn test_http_proxy_purchase_secret_missing_is_fail_closed() {
+    let pool = SqlitePoolOptions::new()
+        .connect("sqlite::memory:")
+        .await
+        .unwrap();
+    let engine = StripeCommerceEngine::new(
+        SecretString::from("sk_live_123456789".to_string()), // gitleaks:allow
+        SecretString::from("whsec_live_987654".to_string()), // gitleaks:allow
+        pool,
+        Some("http://127.0.0.1:9".to_string()),
+        None,
+    );
+    assert!(!engine.is_mock);
+
+    let err = engine
+        .execute_autonomous_purchase(Uuid::new_v4(), Uuid::new_v4(), serde_json::json!({}))
+        .await
+        .expect_err("secret missing must fail-closed");
+    match err {
+        AiomeError::Infrastructure { reason } => {
+            assert!(
+                reason.contains("Nurture S2S secret not configured"),
+                "reason={reason}"
+            );
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn test_http_proxy_purchase_nurture_error_is_fail_closed() {
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+    let engine = live_engine_with_nurture(&mock_server.uri(), "test_secret").await;
+
+    Mock::given(method("POST"))
+        .and(path("/internal/purchase"))
+        .respond_with(ResponseTemplate::new(500).set_body_json(serde_json::json!({
+            "error": "item missing"
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let err = engine
+        .execute_autonomous_purchase(Uuid::new_v4(), Uuid::new_v4(), serde_json::json!({}))
+        .await
+        .expect_err("must not fake success on Nurture 500");
+    match err {
+        AiomeError::Infrastructure { reason } => {
+            assert!(
+                reason.contains("Nurture purchase S2S failed"),
+                "reason={reason}"
+            );
+            assert!(
+                !reason.contains("item missing"),
+                "upstream body must not leak into client reason: {reason}"
+            );
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn test_http_proxy_purchase_bad_json_is_fail_closed() {
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+    let engine = live_engine_with_nurture(&mock_server.uri(), "test_secret").await;
+
+    Mock::given(method("POST"))
+        .and(path("/internal/purchase"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("not-json"))
+        .mount(&mock_server)
+        .await;
+
+    let err = engine
+        .execute_autonomous_purchase(Uuid::new_v4(), Uuid::new_v4(), serde_json::json!({}))
+        .await
+        .expect_err("must fail on undeserializable body");
+    match err {
+        AiomeError::Infrastructure { reason } => {
+            assert_eq!(
+                reason, "Failed to deserialize Nurture purchase response",
+                "reason must be opaque (no Debug dump): {reason}"
+            );
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn test_http_proxy_purchase_oversized_idempotency_falls_back() {
+    use wiremock::matchers::{body_partial_json, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+    let engine = live_engine_with_nurture(&mock_server.uri(), "test_secret").await;
+    let agent_id = Uuid::new_v4();
+    let item_id = Uuid::new_v4();
+    let expected = format!("auto_{}_{}", agent_id, item_id);
+    let oversized = "k".repeat(129);
+
+    Mock::given(method("POST"))
+        .and(path("/internal/purchase"))
+        .and(body_partial_json(serde_json::json!({
+            "idempotency_key": expected,
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "transaction_id": "tx_oversized_fallback"
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let tx = engine
+        .execute_autonomous_purchase(
+            agent_id,
+            item_id,
+            serde_json::json!({ "idempotency_key": oversized }),
+        )
+        .await
+        .expect("oversized key should fall back");
+    assert_eq!(tx, "tx_oversized_fallback");
+}
+
+#[tokio::test]
+async fn test_http_proxy_purchase_empty_transaction_id_is_fail_closed() {
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+    let engine = live_engine_with_nurture(&mock_server.uri(), "test_secret").await;
+
+    Mock::given(method("POST"))
+        .and(path("/internal/purchase"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "transaction_id": "   "
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let err = engine
+        .execute_autonomous_purchase(Uuid::new_v4(), Uuid::new_v4(), serde_json::json!({}))
+        .await
+        .expect_err("empty transaction_id must not count as success");
+    match err {
+        AiomeError::Infrastructure { reason } => {
+            assert!(reason.contains("empty transaction_id"), "reason={reason}");
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn test_http_proxy_purchase_oversized_transaction_id_is_fail_closed() {
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+    let engine = live_engine_with_nurture(&mock_server.uri(), "test_secret").await;
+
+    Mock::given(method("POST"))
+        .and(path("/internal/purchase"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "transaction_id": "t".repeat(129)
+        })))
+        .mount(&mock_server)
+        .await;
+
+    let err = engine
+        .execute_autonomous_purchase(Uuid::new_v4(), Uuid::new_v4(), serde_json::json!({}))
+        .await
+        .expect_err("oversized transaction_id must fail-closed");
+    match err {
+        AiomeError::Infrastructure { reason } => {
+            assert!(
+                reason.contains("oversized transaction_id"),
+                "reason={reason}"
+            );
+        }
+        other => panic!("unexpected error: {other:?}"),
+    }
+}
+
 #[tokio::test]
 async fn test_stripe_commerce_production_block() {
     let pool = SqlitePoolOptions::new()

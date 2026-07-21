@@ -1,3 +1,10 @@
+## 🔍 OP-011 autonomous purchase S2S（2026-07-22）
+
+- **変更**: Stripe `execute_autonomous_purchase` の idempotency 転送 + 空 tx_id 拒否 + purchase wiremock P/N。OPEN/KC_LEGAL/COMPLIANCE を「無償 KC 購入解禁」に更新。
+- **影響**: Local/Cloud（Stripe Factory + NURTURE_*）のみ。Desktop InProcess は Bridge 直（非変更）。有償 KC / Fiat 非開放。
+- **検証**: purchase 8 + stripe_commerce 2 + /reflexion×4（空/過大 tx_id・クライアント+ログ本文非漏洩・idempotency 長制限）
+- **残**: なし（OP-011 クローズ）。他 S2S メソッドの body→reason は本 OP 外
+
 ## 🔍 OP-027 Stripe mock centralization（2026-07-22）
 
 - **変更**: `aiome-commerce::mock::MockCommerceEngine` に Stripe 結合契約（安定 session/sub ID・署名 Negative・escrow シード）を集約。`api_integration_tests/common.rs` ローカル再定義排除。red-team 専用は `RedTeamMockCommerceEngine`。

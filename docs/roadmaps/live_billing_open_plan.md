@@ -40,7 +40,7 @@
 | リダイレクト URL の https + `ALLOWED_ORIGINS` ホワイトリスト検証 | `routes/commerce_helpers.rs` `validate_redirect_url` |
 | 秘密の Zero-Trust 管理（AbyssVault → `fetch_and_inject_secrets`、compose 直書き禁止） | `docker-compose.production.yml` + `stripe-production-setup.md` §2 |
 | RBAC / eKYC ゲート（subscription 作成は eKYC 必須、IDOR 拒否） | `commerce.rs` `create_subscription` / `create_checkout_session` |
-| 有償 KC・自律購買の封印（`execute_autonomous_purchase` は Mock 封印、OP-011 で封印維持判定済） | `libs/aiome-commerce/src/stripe/mod.rs` `is_mock` / R3-3 |
+| 有償 KC 封印（無償 KC マーケット購入は OP-011 ✅ 2026-07-22。dev mock `tx_mock` 短絡は維持） | `libs/aiome-commerce/src/stripe/mod.rs` `is_mock` / Nurture S2S |
 
 ### 0.2 Live オープンのブロッカー（本計画で解消する）
 
@@ -62,7 +62,7 @@
 
 - 有償 KC チャージ（資金決済法・前払式支払手段の論点があるため、法務完了まで開かない）
 - 有償スキル/ボイス販売・マーケット α（特商法 + 資金決済法）
-- `execute_autonomous_purchase` 封印解除（OP-011、ポストリリース判定済み）
+- ~~`execute_autonomous_purchase` 封印解除（OP-011）~~ → **✅ 2026-07-22**（無償 KC マーケット S2S。有償チャージは非対象）
 
 ---
 

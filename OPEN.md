@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-22（OP-087 Q5/Q6 ✅）**
+**最終更新: 2026-07-22（OP-011 ✅）**
 
 > **実装手順の正本**:
 > - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・P1–P4 ✅ / **Q5 ADR-055 ✅** / **Q6 untrack ✅**。Path B は都度 Human。bind-mount **物理撤去**は ADR-055 実行ゲート）
@@ -47,7 +47,7 @@
   - [x] **OP-083-C**: AgentWallet + Vault `X402_SIGNER_KEY` + 実署名 + Factory + DI — **2026-07-20 完了**
   - [x] **OP-083-D**: `OnChainAmount` / `currency.rs` — **2026-07-20 完了**
 - [x] **OP-010**: Stripe Customer Portal 統合 — クレート追加、ポータル URL 生成エンドポイント新設（2026-05-28、HANDOVER.md P1-1）→ **2026-07-06 クローズ**（R2-5 照合: 実 Stripe Billing Portal API 実装済み。ADR-051）
-- [ ] **OP-011**: `execute_autonomous_purchase` の封印解除 — Nurture /internal/purchase へのプロキシ実装（2026-05-28、HANDOVER.md P1-4）→ **R3-3 リリース判定（2026-07-06）: Public Beta では封印維持。自律購買（実通貨 A2C 購入）はポストリリーススコープ。コード変更なし**。**OP-086 後回し**
+- [x] **OP-011**: `execute_autonomous_purchase` → Nurture `/internal/purchase` S2S — **2026-07-22 完了**（本番 `!is_mock` 委譲、idempotency/tx_id 長制限、空 tx 拒否、上流ボディ非漏洩。wiremock P/N。有償 KC・Fiat 非対象）。Desktop InProcess は Bridge 直。正本: CHANGELOG / `KC_LEGAL_POSITION.md`
 - [x] **OP-012**: PostgreSQL 本番環境での統合デプロイ検証（BAN 統合含む）→ **2026-07-06 完了**（R3-1: `docker-compose.production-verify.yml` + `scripts/verify-production-postgres.sh` + `postgres_production_verify.rs` — 3 DB マイグレーション + BAN ラウンドトリップ）
 - [x] **OP-014**: CLI ツールを用いたローカル Keychain 移行動作検証 → **2026-07-06 完了**（R3-2: `scripts/verify-keychain-cli.sh` — abyss-vault set/get/delete + 非 whitelist 拒否 + macOS Keychain smoke）
 
@@ -103,6 +103,7 @@
 
 ## ✅ 解決（直近のみ保持）
 
+- [x] **OP-011**: 自律購買（無償 KC マーケット）S2S → **2026-07-22 完了**（idempotency 転送 + wiremock P/N。有償 KC / Fiat 非対象。CHANGELOG [Unreleased]）
 - [x] **OP-087**: MC static Q5/Q6 → **2026-07-22 完了**（ADR-055 + index untrack / `static.stub`。CHANGELOG [Unreleased]）
 - [x] **OP-020 / OP-020-F5**: Soul Sync S-1〜S-4 → **2026-07-22 完了**（hub opaque relay + pairing + Automerge Experience + 2ノード 60s E2E。CHANGELOG [Unreleased]）
 - [x] **OP-086**: **Agentic 本番硬化** → **2026-07-19 Wave D 本番クローズ**（正本 v1.3）。A1–A4 / B1–B3 コード ✅ + **Wave D**: key-proxy 本番再ビルド・B1 telemetry 反映・A1 Unauthenticated 0・Vault 整合。compose key-proxy に `CELL_ID` 追加。Wave C=ゲート待ち。CHANGELOG [Unreleased]

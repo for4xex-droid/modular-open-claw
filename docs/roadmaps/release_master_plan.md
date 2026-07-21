@@ -116,7 +116,7 @@ R0 台帳照合 ──→ R1 コード完成（UI残 + 小粒P1） ──→ R2 
 |---|---|---|---|---|
 | R3-1 | ✅ PostgreSQL 本番構成での統合デプロイ検証（BAN 統合含む） | OP-012 | Main | 済（2026-07-06、`docker-compose.production-verify.yml` + `scripts/verify-production-postgres.sh` + `postgres_production_verify.rs`） |
 | R3-2 | ✅ ローカル Keychain 移行の CLI 動作検証 | OP-014 | Main | 済（2026-07-06、`scripts/verify-keychain-cli.sh` — env ラウンドトリップ + macOS Keychain smoke） |
-| R3-3 | ✅ `execute_autonomous_purchase` 封印解除の**リリース時判定**: Public Beta では封印のまま（自律購買はポストリリース。OPEN.md OP-011 に記録） | OP-011 | Main | 済（2026-07-06、コード不変） |
+| R3-3 | ✅ Public Beta 時点は封印維持判定。**ポストリリース OP-011 ✅ 2026-07-22**（無償 KC マーケット S2S。有償チャージは非対象） | OP-011 | Main | 済（判定 2026-07-06 / 実装 2026-07-22） |
 | R3-4 | クリーン環境 Quick Start 実走（G1 検証。Docker 1コマンド→ログイン→チャット） | — | **Human**（✅ チェックリスト `docs/guides/QUICK_START_VERIFICATION.md` 2026-07-06） | 5分以内に完走 |
 
 ---

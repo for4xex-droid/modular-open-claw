@@ -23,7 +23,7 @@
 最新の実行計画は **[implementation_plan.md](docs/roadmaps/implementation_plan.md)** にて定義されています。
 未解決タスクの一覧・進捗は **[OPEN.md](OPEN.md)** で一元管理しています。
 - **P1-1: Stripe Customer Portal 統合**（→ OPEN.md OP-010）
-- **P1-4: `execute_autonomous_purchase` の封印解除**（→ OPEN.md OP-011）
+- **P1-4: `execute_autonomous_purchase` の封印解除**（→ OPEN.md OP-011）→ **✅ 2026-07-22**（無償 KC マーケット S2S。有償チャージは非対象）
 
 ## 🛡️ 開発原則（AGENTS.md）
 - **Scope Lock 原則**: 各フェーズ（計画・設計・実装・検証）の境界を厳守すること。

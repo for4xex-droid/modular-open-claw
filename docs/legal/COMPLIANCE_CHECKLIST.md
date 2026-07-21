@@ -79,8 +79,10 @@
 次は**開かない限り**追加の法務文書は不要（開く前に再評価）:
 
 - 有償 KC チャージ / KC→現金・ギフト換金
-- クリエイター市場での有償販売
-- `execute_autonomous_purchase` の封印解除
+- クリエイター市場での有償販売（法定通貨建）
+- Fiat 一回払い（`mode=payment`）や有償 KC チャージ導線の公開
+
+注: OP-011（2026-07-22）で解禁したのは**無償 KC のマーケット購入**（Nurture `/internal/purchase`）のみ。有償化は上記のまま凍結。
 
 根拠: [`KC_LEGAL_POSITION.md`](KC_LEGAL_POSITION.md)
 

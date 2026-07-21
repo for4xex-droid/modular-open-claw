@@ -1,7 +1,7 @@
 # Karma Coins (KC) の法的位置づけ
 
 **版**: v1.0
-**最終更新日**: 2026-07-14
+**最終更新日**: 2026-07-22
 **性質**: 社内正本（公開規約への反映は `TERMS_OF_SERVICE.md` §4 を参照）
 
 ## 1. 結論
@@ -24,7 +24,7 @@ KC は現行実装において:
 | 実装 | 状態 | 逸脱時のリスク |
 |---|---|---|
 | `create_checkout_session` が subscription mode 固定 | ✅ 封印 | 一回払い（`mode=payment`）で KC を販売すると対価発行に該当 |
-| `execute_autonomous_purchase` の Mock 封印（OP-011） | ✅ 封印維持 | 実通貨での自律購買は代理決済・資金移動の論点を追加で生む |
+| `execute_autonomous_purchase` → Nurture `/internal/purchase`（OP-011） | ✅ **無償 KC マーケット購入のみ解禁**（本番 `!is_mock` + Nurture S2S。Desktop は Bridge 直） | 有償 KC チャージや法定通貨での代理決済に拡張すると資金決済法・特商法の再評価が必須 |
 | Webhook `checkout.session.completed` の `asset_id` 経路（コイン加算） | ⚠️ コードは存在するが到達不能（アセット有償販売導線が非公開） | 導線を公開すると KC 建て有償販売＝資金決済法・特商法の再評価が必須 |
 | UI の「チャージ」文言（VoiceStore 等） | ⚠️ 是正対象（OP-084 L1-1 / 本計画 G-12） | 「購入できる」誤認を与える表示は不当表示リスク |
 

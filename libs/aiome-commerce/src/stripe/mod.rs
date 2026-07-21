@@ -680,8 +680,9 @@ impl CommerceEngine for StripeCommerceEngine {
         &self,
         agent_id: Uuid,
         item_id: Uuid,
-        _metadata: serde_json::Value,
+        metadata: serde_json::Value,
     ) -> Result<String, AiomeError> {
+        // Dev mock short-circuit (sk_test_mock / whsec_test). Production always hits Nurture S2S.
         if self.is_mock {
             return Ok("tx_mock".into());
         }
@@ -691,11 +692,22 @@ impl CommerceEngine for StripeCommerceEngine {
             &self.nurture_secret,
             &self.nurture_client,
         ) {
+            // OP-011: forward client idempotency_key when present; never forward other metadata.
+            // Cap length to avoid log/DoS abuse; oversized keys fall back to deterministic auto_*.
+            const MAX_IDEMPOTENCY_KEY_LEN: usize = 128;
+            let idempotency_key = metadata
+                .get("idempotency_key")
+                .and_then(|v| v.as_str())
+                .map(str::trim)
+                .filter(|s| !s.is_empty() && s.len() <= MAX_IDEMPOTENCY_KEY_LEN)
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("auto_{}_{}", agent_id, item_id));
+
             let req_url = format!("{}/internal/purchase", url);
             let payload = serde_json::json!({
                 "buyer": agent_id,
                 "item_id": item_id,
-                "idempotency_key": format!("auto_{}_{}", agent_id, item_id),
+                "idempotency_key": idempotency_key,
             });
 
             let mut req = client
@@ -717,46 +729,86 @@ impl CommerceEngine for StripeCommerceEngine {
                         }
 
                         match resp.json::<LocalPurchaseResponse>().await {
-                            Ok(body) => return Ok(body.transaction_id),
+                            Ok(body) => {
+                                const MAX_TX_ID_LEN: usize = 128;
+                                let tx = body.transaction_id.trim();
+                                if tx.is_empty() {
+                                    return Err(AiomeError::Infrastructure {
+                                        reason:
+                                            "Nurture purchase S2S returned empty transaction_id"
+                                                .into(),
+                                    });
+                                }
+                                if tx.len() > MAX_TX_ID_LEN {
+                                    return Err(AiomeError::Infrastructure {
+                                        reason:
+                                            "Nurture purchase S2S returned oversized transaction_id"
+                                                .into(),
+                                    });
+                                }
+                                return Ok(tx.to_string());
+                            }
                             Err(e) => {
+                                // Do not echo Debug detail to API clients (may include URL fragments).
+                                tracing::warn!(
+                                    error = %e,
+                                    "Failed to deserialize Nurture purchase response"
+                                );
                                 return Err(AiomeError::Infrastructure {
-                                    reason: format!(
-                                        "Failed to deserialize Nurture purchase response: {:?}",
-                                        e
-                                    ),
-                                })
+                                    reason: "Failed to deserialize Nurture purchase response"
+                                        .into(),
+                                });
                             }
                         }
                     } else {
                         let status = resp.status();
-                        let text = match resp.text().await {
-                            Ok(t) => t,
+                        // Log body server-side only — never put upstream body into AiomeError
+                        // (Nurture may echo tokens / PII in error JSON).
+                        // Consume body for connection reuse, but never log contents
+                        // (aggregators are a second leak surface for tokens/PII).
+                        match resp.text().await {
+                            Ok(text) => {
+                                tracing::warn!(
+                                    %status,
+                                    body_len = text.len(),
+                                    "Nurture purchase S2S non-success (body redacted)"
+                                );
+                            }
                             Err(e) => {
                                 tracing::warn!(
-                                    "⚠️ [Billing] Failed to read error response body: {:?}",
-                                    e
+                                    %status,
+                                    error = %e,
+                                    "Nurture purchase S2S non-success (body unread)"
                                 );
-                                String::new()
                             }
-                        };
+                        }
                         return Err(AiomeError::Infrastructure {
-                            reason: format!(
-                                "Nurture purchase S2S failed with status [{}]: {}",
-                                status, text
-                            ),
+                            reason: format!("Nurture purchase S2S failed with status [{}]", status),
                         });
                     }
                 }
                 Err(e) => {
+                    tracing::warn!(error = %e, "Nurture purchase S2S request failed");
                     return Err(AiomeError::Infrastructure {
-                        reason: format!("Nurture purchase S2S request failed: {:?}", e),
+                        reason: "Nurture purchase S2S request failed".into(),
                     });
                 }
             }
         }
 
+        // Distinguish missing URL vs missing secret/client (fail-closed; clearer ops signal).
+        if self.nurture_url.is_none() {
+            return Err(AiomeError::Infrastructure {
+                reason: "Nurture S2S URL not configured".into(),
+            });
+        }
+        if self.nurture_secret.is_none() {
+            return Err(AiomeError::Infrastructure {
+                reason: "Nurture S2S secret not configured".into(),
+            });
+        }
         Err(AiomeError::Infrastructure {
-            reason: "Nurture S2S URL not configured".into(),
+            reason: "Nurture S2S HTTP client not configured".into(),
         })
     }
 

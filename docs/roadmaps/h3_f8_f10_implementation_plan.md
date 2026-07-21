@@ -184,7 +184,7 @@ cd apps/management-console && npx jest 2>&1 | tail -4
 
 1. **`commercial/` 配下と `routes/commerce.rs` の変更**（読み取り・呼び出しのみ。変更が必要になったら中断・報告）。
 2. 未使用の `GigOrderStatus`（Bidding/InProgress/Verified/Disputed）の実装追加（紛争解決 Court は次期。短縮経路のまま接続する）。
-3. 実通貨決済（OP-011 自律購買封印が解除されるまで Mock Commerce のみ）。
+3. 法定通貨建の自律決済は非対象（OP-011 は無償 KC マーケット S2S のみ ✅ 2026-07-22。有償チャージは凍結）。
 4. hub にエスクロー・決済ロジックを置かない（hub は署名検証つき中継に徹する）。
 5. 独自トークン・ブロックチェーンの導入。
 
