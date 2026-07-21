@@ -542,7 +542,8 @@
     "localMemory": "Local Memory",
     "federatedMemory": "Federated Memory",
     "chronicles": "CHRONICLES",
-    "error": "Failed to load timeline data"
+    "error": "Failed to load timeline data",
+    "openCausal": "Trace"
   },
   "agent": {
     "template": {
@@ -838,7 +839,9 @@
     "clickNode": "Click a node to view details",
     "invalidJobId": "Invalid Job ID format. Only alphanumeric, _, and - allowed.",
     "fetchData": "Fetch analysis data",
-    "fitMap": "FIT MAP"
+    "fitMap": "FIT MAP",
+    "fetchFailed": "Failed to fetch trajectory",
+    "unknownError": "Unknown error"
   },
   "ban": {
     "title": "Governance & BAN Compliance Registry",

@@ -10,6 +10,7 @@ import { Zap, Terminal, BrainCircuit, Clock, Sparkles } from 'lucide-react';
 import { API_BASE } from "../config";
 import { authenticatedFetch } from '../lib/auth';
 import { useTranslation } from '../i18n';
+import { dispatchA2uiNavigate } from '../lib/a2uiTabs';
 import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
 
@@ -177,8 +178,8 @@ const Timeline: React.FC = () => {
                                             position: 'relative',
                                             overflow: 'hidden'
                                         }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'center' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'center', gap: '0.75rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                     <span style={{
                                                         fontSize: '0.7rem',
                                                         fontWeight: 800,
@@ -193,8 +194,25 @@ const Timeline: React.FC = () => {
                                                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                                                         {isKarma ? `${(e.karma_type || 'UNKNOWN').toUpperCase()} | JOB #${e.job_id || '?'}` : (e.event_type || 'SYSTEM').toUpperCase()}
                                                     </span>
+                                                    {isKarma && e.job_id && (
+                                                        <button
+                                                            type="button"
+                                                            data-testid={`timeline-open-causal-${e.job_id}`}
+                                                            className="secondary-button"
+                                                            onClick={() => dispatchA2uiNavigate({ tab: 'causal', jobId: e.job_id })}
+                                                            style={{
+                                                                padding: '0.15rem 0.55rem',
+                                                                fontSize: '0.7rem',
+                                                                borderColor: 'var(--accent-cyan-30)',
+                                                                color: 'var(--accent-cyan)',
+                                                                background: 'transparent',
+                                                            }}
+                                                        >
+                                                            {t('timeline.openCausal')}
+                                                        </button>
+                                                    )}
                                                 </div>
-                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', flexShrink: 0 }}>
                                                     {new Date(e.created_at).toLocaleTimeString()}
                                                 </span>
                                             </div>

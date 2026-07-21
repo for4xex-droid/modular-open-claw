@@ -1,39 +1,37 @@
-# Wave: UI バックログ整理 + OP-020 再定義 + OP-062（v1.4）
+# Wave: UI バックログ整理 + OP-020 再定義 + OP-062（v1.5）
 
-- **ステータス**: Phase A + D + **C3（OP-021 i18n）✅ 2026-07-21**。残は任意 C1–C2 / 後日 F-5
-- **目的**: OP-064（Human 進行中）と並行して、Agent が着手可能な次波を実コード根拠で一本化する
-- **対象**: OP-020（再定義済）/ OP-021 / OP-022 / OP-026 / OP-062
-- **非対象**: OP-087 P4・OP-011・OP-064・Upstream・**OP-020-F5 コード**（別ゲート）
+- **ステータス**: Phase A / D / C3 / **C1–C2（OP-022）✅ 2026-07-22**。残は後日 F-5 のみ（本 Wave polish 完了）
+- **目的**: OP-064（Human）と並行して、Agent が着手可能な次波を実コード根拠で一本化する
+- **対象**: OP-020（再定義済）/ OP-021 ✅ / OP-022 ✅ / OP-026 ✅ / OP-062 ✅
+- **非対象**: OP-087 Q5/Q6・OP-011・OP-064・Upstream・**OP-020-F5 コード**（別ゲート）・Ban `expires_at`
 - **正本分担（重複排除）**:
   | 主題 | SSOT | 本書の役割 |
   |------|------|------------|
   | 本 Wave 全体・着手順 | **本ファイル** | ゲート・価値順・抜け漏れ防止 |
-  | OP-062 実装手順 | [`remaining_work_foolproof_plan.md`](remaining_work_foolproof_plan.md) §7 Wave G2 | 詳細ステップはそちらへ委譲 |
+  | OP-062 実装手順 | foolproof §7 G2 / **OP-088** | 完了済。再実装禁止 |
   | OP-020-F5 実装骨格 | [`h2_f0_f4_f7_implementation_plan.md`](h2_f0_f4_f7_implementation_plan.md) PART 4 | S-1〜S-4 は再記述しない |
   | Federation transport | ADR-053 | 再実装禁止 |
-  | FE i18n ランタイム | `apps/management-console/src/i18n/` | 新規 i18n 機構禁止。`causal` / `mcp` と同型 |
+  | FE 画面遷移バス | `a2ui-navigate` + `a2uiTabs.ts` | **新規 Router / URL クエリ層を作らない** |
+  | FE i18n ランタイム | `apps/management-console/src/i18n/` | 新規 i18n 機構禁止 |
 
-## 0. 実コード監査サマリ（2026-07-21 再検証）
+## 0. 実コード監査サマリ（2026-07-22 再検証）
 
 | ID | 実コード | 判定 |
 |----|----------|------|
-| **OP-021** | `BanDashboard.tsx` + admin bans API。シェル（`nav`/`page`）+ **コンポーネント `ban.*` i18n ✅**。`expires_at` 型のみ・表示なし | **完了**。expires=本 Wave 外 |
-| **OP-022** | `CausalVisualizer.tsx` + `/api/v1/trajectory/:id`。手動 Job ID 入力。**URL query / Activity 深リンクなし** | **コア UI ✅**。発見性 polish |
-| **OP-026** | Probe=`x_signal_probe.rs` ✅。`build_active_trend_sonar` が毎リクエスト/Dream 周期で settings 読込 ✅。UI は `x_bearer_token` のみ。`search_api_key` は ALLOWED_KEYS+SECRETS 済・**別 adapter**（WebSearch/Serp） | **実ギャップ=Channel Bridges 運用 UI** |
-| **OP-020** | ADR-053 transport ✅。`HubMessage::SoulSyncRelay` / `paired_devices` **ゼロ** | 再定義済。コードは h2 PART 4 |
-| **OP-062** | `NurtureMode::InProcess` ✅（2026-07-21）。既定はなお Local。Desktop 既定化は **OP-088** | **コア完了**。後継: [`desktop_inprocess_default_plan.md`](desktop_inprocess_default_plan.md) |
+| **OP-021** | `ban.*` i18n + `/reflexion` Negative ✅ | **完了** |
+| **OP-022** | Causal + trajectory API。C1–C2: Timeline → `dispatchA2uiNavigate` + sessionStorage。手動入力維持 | **完了**（§4.2） |
+| **OP-026** | Channel Bridges `search_api_key` + VaultKeyStatus ✅ 2026-07-21 | **完了**（A3 疎通 UI は既定スキップのまま） |
+| **OP-020** | ADR-053 transport ✅。`SoulSyncRelay` ゼロ | 再定義済。コードは別ゲート |
+| **OP-062 / OP-088** | Desktop 既定 InProcess ✅ | **完了**（本 Wave D 再実装禁止） |
 
-### 価値順（残コード作業）
+### 価値順（**現時点の残**）
 
 ```text
-1. Phase A  OP-026 Channel Bridges 運用 UI     … 唯一の明確な FE ギャップ
-2. Phase D  OP-062 InProcess（明示許可）       … Desktop 品質・Safety-Critical
-3. Phase C  polish（任意・低優先）             … 021 i18n / 022 深リンク
-4. （後日）OP-020-F5 コード                     … 「OP-020-F5 を実装しろ」
+1. （後日）OP-020-F5 コード                            … 「OP-020-F5 を実装しろ」
+2. OPEN 他レーン（本書外）: OP-087 Q5/Q6 / OP-011 / OP-027 / OP-064 / Upstream
 ```
 
-Phase L（台帳）・Phase B（再定義 docs）は **完了**。実行順から外す。
-
+~~Phase A / D / C3 / C1–C2~~ は完了。実行順から外す。
 ---
 
 ## 1. Phase L — 台帳衛生 ✅ 完了
@@ -97,14 +95,14 @@ OPEN OP-021/022・MEMORY Blind Spot・CHANGELOG 同期済み（2026-07-20）。
 
 ---
 
-## 4. Phase C — polish（任意・A/D の後）
+## 4. Phase C — polish（任意）
 
 | ID | 内容 | 注記 |
 |----|------|------|
-| C1 | Causal: Activity / 履歴 → Job ID 受け渡し（`?id=` または props）。手動入力は残す | 新 API 不要 |
-| C2 | Causal: Jest で fetch 成功パス（モック） | 既存 `CausalVisualizer.test.tsx` 拡張 |
-| C3 | Ban: ハードコード英語 → i18n | ✅ 2026-07-21（§4.1）。**admin API 非変更** |
-| ~~C4~~ | ~~expires_at~~ | **本 Wave 外**。INSERT が `expires_at` 未書き込み + `BanRequest` 未対応 → BanStore/trait/Mock + admin（Safety-Critical 近傍）。別 OP |
+| C1 | Causal: Timeline / 他画面 → Job ID 受け渡し。手動入力は残す | ✅ 2026-07-22（§4.2） |
+| C2 | Causal: Jest で fetch 成功 / 失敗パス（モック） | ✅ 2026-07-22（§4.2） |
+| C3 | Ban: ハードコード英語 → i18n | ✅ 2026-07-21（§4.1） |
+| ~~C4~~ | ~~expires_at~~ | **本 Wave 外**（BanStore/admin）。別 OP |
 
 ### 4.1 C3 / OP-021 i18n — 実装契約（2026-07-21 実コード検証）
 
@@ -195,20 +193,91 @@ OPEN OP-021/022・MEMORY Blind Spot・CHANGELOG 同期済み（2026-07-20）。
 #### 着手フレーズ
 
 「OP-021 を実装しろ」または「C3 を実装しろ」
+
+### 4.2 C1–C2 / OP-022 Causal polish — 実装契約（2026-07-22 実コード検証）
+
+#### 事実（推測禁止）
+
+| 項目 | 根拠 |
+|------|------|
+| API | `GET /api/v1/trajectory/{id}` + `.../diagnosis`（`routes/jobs.rs`）。**Job 一覧 API は本 polish で新設しない** |
+| UI | `CausalVisualizer.tsx` — 手動 `jobId` + `validateAndFetch`（`/^[a-zA-Z0-9_\-]+$/`）+ `authenticatedFetch` |
+| 二重マウント | `AppRoutes` `activeTab==="causal"` **と** `HomePage` `observeSubTab==="trace"` |
+| 画面遷移 | React Router / `URLSearchParams` **なし**。タブは `App` の `activeTab` state + **`a2ui-navigate` CustomEvent**（`detail.tab`、`isValidA2uiNavTab`） |
+| Activity | `ActivityView` = Timeline / Diagnostics / PromptStats。`Timeline` は karma 行に `job_id` を**表示のみ**（クリックなし） |
+| Jest | `CausalVisualizer.test.tsx` — レンダー / 入力 / overlay 配置のみ。**fetch 成功パスなし** |
+| i18n | `causal.*` 済。ハードコード残: `"Failed to fetch trajectory"` / `'Unknown error'`（任意で `causal.fetchFailed` 等へ。C1 必須ではない） |
+
+#### 旧 C1 文言の訂正（車輪の再発明防止）
+
+| 旧計画 | 問題 | 固定方針 |
+|--------|------|----------|
+| `?id=` URL クエリ | App にクエリ層がない。導入は Router 新設に近い | **やらない** |
+| 「Activity 連携」曖昧 | ActivityView 自体に job 導線なし。実データは **Timeline の `job_id`** | Timeline → Causal を第一導線 |
+| props のみ | 二重マウント + App 非接続で props 貫通が重い | **既存イベントバス拡張**を優先 |
+
+#### 再利用（再発明禁止）
+
+| やること | やらないこと |
+|----------|----------------|
+| `a2ui-navigate` の `detail` を `{ tab: string, jobId?: string }` に**後方互換拡張** | react-router / hash ルーティング新設 |
+| Causal 側でイベント購読 **または** `sessionStorage` キー 1 つ（例: `aiome.causalJobId`）で初期 ID 受領 | グローバル Context / Redux 新設 |
+| `Timeline` で `job_id` がある行だけクリック可能にし `tab: 'causal'` + `jobId` を dispatch | 新規「Job ピッカー」画面・jobs 一覧 API |
+| 手動入力 + Enter / ボタンは**維持** | 手動入力削除 |
+| C2: `authenticatedFetch` mock で trajectory JSON 成功パス | vis-network 実描画の E2E 必須化 |
+| 既存 `validateAndFetch` / trajectory・diagnosis エンドポイント | 新 diagnosis UI・新 graph ライブラリ |
+
+#### C1 作業分割
+
+| ステップ | 内容 | ファイル目安 |
+|----------|------|----------------|
+| C1-a | `a2ui-navigate` detail 型を文書化（`a2uiTabs.ts` 近傍 or コメント）。`App.tsx` は `tab` のみでも動作継続 | `a2uiTabs.ts` / `App.tsx`（jobId を無視してよい） |
+| C1-b | `CausalVisualizer`: mount 時 + イベントで `jobId` を受けたら `setJobId` → `validateAndFetch`。無効 ID は既存 invalid メッセージ | `CausalVisualizer.tsx` |
+| C1-c | `Timeline`: `job_id` ありの karma 行に「Trace」操作（button）。`dispatchEvent(a2ui-navigate, { tab:'causal', jobId })` | `Timeline.tsx` + 最小 i18n 1 キー可（`timeline.openCausal`） |
+| C1-d | Home `trace` 埋め込みでも同じイベントを聴く（二重マウント耐性）。cockpit `causal` タブへ寄せるなら `tab:'causal'` で十分 | 新 Home 状態機械は作らない |
+
+#### C2 検証契約
+
+| 種別 | 内容 |
+|------|------|
+| Positive | mock `trajectory/{id}` 200 + nodes → fetch が呼ばれ loading が終わり（空状態 `causal.enterJobId` が消えるか、エラーが無い） |
+| Negative | 不正 ID → `causal.invalidJobId`（fetch 未呼出）。`!ok` → エラー表示（文言は現行英語でも可） |
+| 非目標 | Network 実サーバ、vis-network ノード数の DOM assert |
+
+#### 変更ファイル（最大）
+
+1. `CausalVisualizer.tsx`（+ 任意 i18n エラーキー）  
+2. `Timeline.tsx`（+ 任意 `timeline.openCausal`）  
+3. `a2uiTabs.ts` または小さな型コメント（detail 拡張の正本）  
+4. `CausalVisualizer.test.tsx` / `Timeline.test.tsx`（クリック導線）  
+5. `App.tsx` は **変更最小**（tab 切替既存で足りるなら触らない）
+
+**触らない**: trajectory/diagnosis ハンドラ、Ban、OP-020-F5、React Router、jobs 一覧 API、OP-087
+
+#### DoD
+
+1. Timeline の `job_id` 付き行から Causal が開き、同じ ID で fetch が走る（手動入力も残る）  
+2. C2 Jest Positive + Negative PASS  
+3. 新 Router / 新 API ゼロ  
+4. OPEN OP-022 更新 + CHANGELOG 1 行（実装時）
+
+#### 着手フレーズ
+
+「OP-022 を実装しろ」または「C1–C2 を実装しろ」／「OP-022 polish を実装しろ」
+
 ---
 
-## 5. Phase D — OP-062 Tauri `NurtureMode::InProcess`
+## 5. Phase D — OP-062 Tauri `NurtureMode::InProcess`（✅ 完了・履歴）
 
-### 5.1 事実
+> **2026-07-21 以降**: OP-062 コア + **OP-088** Desktop 既定 InProcess でクローズ。以下は当時の差分メモ。**再実装しない**。
 
-| 項目 | 状態 |
+### 5.1 事実（完了時点の記録）
+
+| 項目 | 状態（計画当時 → 現在） |
 |------|------|
-| ADR | `commercial/docs/decisions/012-agenthook-fire-path-unification.md` Accepted |
-| api-server | `bootstrap/plugins.rs` 既存 — **再発明しない** |
-| Tauri | `lib.rs` `NurtureMode` / `resolve_nurture_mode` / `start_sidecars` |
-| 現行優先 | **Cloud → Disabled → Local**（InProcess なし） |
-| Desktop ビルド | `desktop_sidecar_manager.py` が `api-server` を **feature なし**で build |
-| `.env.example` | `NURTURE_IN_PROCESS` コメント済 |
+| ADR | `012-agenthook-fire-path-unification` Accepted |
+| 現在の正本 | OP-088 / `desktop_inprocess_default_plan.md` / Settings Mode UI |
+| Desktop | 既定 InProcess。公式 sidecar は api-server+key-proxy（nurture-api 非同梱） |
 
 ### 5.2 実装詳細の委譲
 
@@ -247,18 +316,16 @@ OPEN OP-021/022・MEMORY Blind Spot・CHANGELOG 同期済み（2026-07-20）。
 - api-server Plugin 登録の再実装  
 - 「OP-062 を実装しろ」なしの `lib.rs` 編集  
 
-**実装許可**: 明示 **「OP-062 を実装しろ」** + Q2 回答推奨。
+**実装許可**: ~~「OP-062 を実装しろ」~~ → **完了**（OP-088 含む）。再実行禁止。
 
 ---
 
-## 6. 実行順（v1.3）
+## 6. 実行順（v1.5）
 
 ```text
-[済] Phase L / B
-  → Phase A  OP-026（FE）
-  → Phase D  OP-062（明示許可 + Q2）   ※ A と並列可（別ドメイン）
-  →（任意）Phase C polish
+[済] Phase L / B / A / D / C3 / C1–C2（OP-022）
   →（後日）OP-020-F5 コード（h2 PART 4 + 明示許可）
+  →（本書外）OP-087 Q5/Q6 / OP-011 / OP-027 / OP-064 / Upstream
 ```
 
 ---
@@ -279,8 +346,8 @@ OPEN OP-021/022・MEMORY Blind Spot・CHANGELOG 同期済み（2026-07-20）。
 |----------|----------------|
 | A | 「OP-026 を実装しろ」 |
 | D | 「OP-062 を実装しろ」（+ Q2） |
-| C3 / OP-021 | 「OP-021 を実装しろ」／「C3 を実装しろ」（契約は §4.1） |
-| C1–C2 | 「OP-022 polish を実装しろ」等 |
+| C3 / OP-021 | ✅ 完了 |
+| C1–C2 / OP-022 | ✅ 完了（2026-07-22） |
 | F-5 コード | 「OP-020-F5 を実装しろ」 |
 
 ---
@@ -338,3 +405,16 @@ OPEN OP-021/022・MEMORY Blind Spot・CHANGELOG 同期済み（2026-07-20）。
 - ✅ network 3 文言 → `common.networkError` 統合は意図的トレードオフ（再発明回避）
 - ✅ テスト側 ConfirmModal mock の `Cancel` 固定を契約に明記（実装時に `cancelText` へ）
 - 判定: [x] ✅ **PASS** — 追加の計画肥大化は不要。実装許可待ち
+
+### Round 5（2026-07-22）— 残存フェーズ（OP-022）実コード再検証
+
+| 検出 | 対応（§4.2 / v1.5） |
+|------|---------------------|
+| 価値順が A/D 未完了のまま | A/D/C3 完了済みに更新。残=C1–C2 のみ |
+| C1 の `?id=` が Router 新設を誘発 | **禁止**。`a2ui-navigate` + 任意 sessionStorage |
+| 「Activity 連携」が ActivityView 全体に聞こえる | 実導線は **Timeline.`job_id`** に限定 |
+| Causal 二重マウント未言及 | Home `trace` + AppRoutes `causal` を契約に明記 |
+| Job ピッカー / 一覧 API を勝手に広げうる | **Out of scope** 明示 |
+| C2 が「成功パス」だけで Negative 欠落 | invalid ID + `!ok` を契約化 |
+
+判定: [x] ✅ **PASS** — OP-022 は §4.2 で実装可。コード変更は明示許可後。

@@ -6,10 +6,11 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Timeline from './Timeline';
 import { authenticatedFetch } from '../lib/auth';
+import { CAUSAL_JOB_ID_STORAGE_KEY } from '../lib/a2uiTabs';
 
 jest.mock('../lib/auth', () => ({
     authenticatedFetch: jest.fn(),
@@ -29,7 +30,8 @@ jest.mock('../i18n', () => ({
                 'timeline.noRecords': 'No records found in sovereign ledger',
                 'timeline.localMemory': 'Local Memory',
                 'timeline.federatedMemory': 'Federated Memory',
-                'timeline.evolutionStep': 'Evolution Step'
+                'timeline.evolutionStep': 'Evolution Step',
+                'timeline.openCausal': 'Trace',
             };
             return options?.defaultValue || defaults[key] || key;
         }
@@ -39,6 +41,7 @@ jest.mock('../i18n', () => ({
 describe('Timeline', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        sessionStorage.clear();
     });
 
     it('should show loading indicator on mount', () => {
@@ -121,6 +124,54 @@ describe('Timeline', () => {
 
         // 外部連携インスピレーションの表示検証
         expect(screen.getByText('Rule adherence yields perfect precision.')).toBeInTheDocument();
+
+        // OP-022: job_id 付き karma 行に Causal 導線
+        expect(screen.getByTestId('timeline-open-causal-101')).toBeInTheDocument();
+        expect(screen.getByTestId('timeline-open-causal-102')).toBeInTheDocument();
+    });
+
+    it('dispatches a2ui-navigate with jobId when Trace is clicked', async () => {
+        const mockHealth = { node_id: 'node-local-111' };
+        const mockKarma = [
+            {
+                id: 'k1',
+                created_at: '2026-05-30T10:00:00Z',
+                node_id: 'node-local-111',
+                karma_type: 'Technical',
+                job_id: 'job_trace_1',
+                lesson: 'Trace me',
+            },
+        ];
+
+        (authenticatedFetch as jest.Mock).mockImplementation((url: string) => {
+            if (url.includes('/api/health')) {
+                return Promise.resolve({ ok: true, json: async () => mockHealth });
+            }
+            if (url.includes('/api/synergy/karma')) {
+                return Promise.resolve({ ok: true, json: async () => mockKarma });
+            }
+            if (url.includes('/api/system/evolution')) {
+                return Promise.resolve({ ok: true, json: async () => [] });
+            }
+            return Promise.resolve({ ok: false });
+        });
+
+        const navListener = jest.fn();
+        window.addEventListener('a2ui-navigate', navListener);
+
+        render(<Timeline />);
+        await waitFor(() => {
+            expect(screen.getByTestId('timeline-open-causal-job_trace_1')).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId('timeline-open-causal-job_trace_1'));
+
+        expect(sessionStorage.getItem(CAUSAL_JOB_ID_STORAGE_KEY)).toBe('job_trace_1');
+        expect(navListener).toHaveBeenCalled();
+        const evt = navListener.mock.calls[0][0] as CustomEvent;
+        expect(evt.detail).toEqual({ tab: 'causal', jobId: 'job_trace_1' });
+
+        window.removeEventListener('a2ui-navigate', navListener);
     });
 
     it('should render empty state when no events exist', async () => {

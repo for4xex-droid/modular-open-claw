@@ -1,3 +1,10 @@
+## 🔍 OP-022 Causal C1–C2（2026-07-22）
+
+- **変更**: `a2uiTabs` に navigate detail/`dispatchA2uiNavigate`/sessionStorage。`CausalVisualizer` 深リンク受領。`Timeline` Trace ボタン。`causal.fetchFailed` 等。
+- **影響**: 既存 `a2ui-navigate` は tab のみで後方互換。新 Router / trajectory API なし。
+- **検証**: CausalVisualizer + Timeline + i18n 18 PASS、`tsc --noEmit`
+- **残**: 本 Wave polish 完了。F-5 / OP-087 Q5–Q6 は別レーン
+
 ## 🔍 OP-021 BanDashboard i18n（2026-07-21）
 
 - **変更**: `BanDashboard.tsx` → `ban.*` / `common.networkError` / `common.cancel`。en+ja。テスト mock を Causal 同型に。

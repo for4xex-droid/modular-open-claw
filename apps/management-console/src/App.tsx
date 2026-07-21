@@ -37,7 +37,7 @@ import { useAgentIdentity } from "./hooks/useAgentIdentity";
 import { useTokenHealth } from "./hooks/useTokenHealth";
 import { CheckoutSuccess } from "./components/commerce/CheckoutSuccess";
 import { APP_VERSION, API_BASE, STRIPE_PRICE_ID } from "./config";
-import { isValidA2uiNavTab } from "./lib/a2uiTabs";
+import { isValidA2uiNavTab, stashCausalJobId, type A2uiNavigateDetail } from "./lib/a2uiTabs";
 
 // Split components / configurations
 import { AppSidebar } from "./components/AppSidebar";
@@ -102,7 +102,12 @@ function App() {
 
   useEffect(() => {
     const onA2uiNavigate = (event: Event) => {
-      const tab = (event as CustomEvent<{ tab?: string }>).detail?.tab;
+      const detail = (event as CustomEvent<A2uiNavigateDetail>).detail;
+      const tab = detail?.tab;
+      const jobId = detail?.jobId;
+      if (typeof jobId === 'string' && jobId.length > 0) {
+        stashCausalJobId(jobId);
+      }
       if (typeof tab === 'string' && isValidA2uiNavTab(tab)) {
         setActiveTab(tab);
       }

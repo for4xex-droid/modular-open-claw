@@ -4,7 +4,7 @@
  *
  * Licensed under the Business Source License 1.1.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Network, Options } from "vis-network";
 import { DataSet } from "vis-data";
 import { GitBranch, ZoomIn, ZoomOut, Maximize, AlertCircle, Info, ChevronRight } from 'lucide-react';
@@ -13,8 +13,15 @@ import { TrajectoryStep, AgentDiagnosis, CausalGraphResponse, CausalGraphNode } 
 import { authenticatedFetch } from '../lib/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../i18n';
+import {
+    A2UI_NAVIGATE_EVENT,
+    takeCausalJobIdFromStorage,
+    type A2uiNavigateDetail,
+} from '../lib/a2uiTabs';
 
 import { cssVar } from '../utils/cssVar';
+
+const JOB_ID_REGEX = /^[a-zA-Z0-9_\-]+$/;
 
 const CausalVisualizer: React.FC = () => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -28,13 +35,13 @@ const CausalVisualizer: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const { t } = useTranslation();
 
-    const fetchTrajectory = async (id: string) => {
+    const fetchTrajectory = useCallback(async (id: string) => {
         if (!id) return;
         setLoading(true);
         setError(null);
         try {
             const res = await authenticatedFetch(`${API_BASE}/api/v1/trajectory/${id}`);
-            if (!res.ok) throw new Error("Failed to fetch trajectory");
+            if (!res.ok) throw new Error(t('causal.fetchFailed'));
             const data = await res.json();
             setSteps(data.nodes.map((n: CausalGraphNode) => n.step) || []);
             setGraph(data);
@@ -48,11 +55,44 @@ const CausalVisualizer: React.FC = () => {
                 setDiagnosis(null);
             }
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : 'Unknown error');
+            setError(e instanceof Error ? e.message : t('causal.unknownError'));
+            setSteps([]);
+            setGraph(null);
+            setDiagnosis(null);
         } finally {
             setLoading(false);
         }
-    };
+    }, [t]);
+
+    const validateAndFetch = useCallback((id: string) => {
+        if (!JOB_ID_REGEX.test(id)) {
+            setError(t('causal.invalidJobId'));
+            return;
+        }
+        setJobId(id);
+        void fetchTrajectory(id);
+    }, [fetchTrajectory, t]);
+
+    // OP-022 C1: one-shot sessionStorage handoff (dual-mount AppRoutes + HomePage)
+    useEffect(() => {
+        const fromStorage = takeCausalJobIdFromStorage();
+        if (fromStorage) {
+            validateAndFetch(fromStorage);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only consume
+    }, []);
+
+    // Live a2ui-navigate with jobId (already-mounted Causal / same-tab re-nav)
+    useEffect(() => {
+        const onNav = (event: Event) => {
+            const incoming = (event as CustomEvent<A2uiNavigateDetail>).detail?.jobId;
+            if (typeof incoming === 'string' && incoming.length > 0) {
+                validateAndFetch(incoming);
+            }
+        };
+        window.addEventListener(A2UI_NAVIGATE_EVENT, onNav);
+        return () => window.removeEventListener(A2UI_NAVIGATE_EVENT, onNav);
+    }, [validateAndFetch]);
 
     useEffect(() => {
         if (!containerRef.current || !graph || graph.nodes.length === 0) return;
@@ -124,15 +164,6 @@ const CausalVisualizer: React.FC = () => {
             case 'Correction': return { background: cssVar('--accent-rose'), border: cssVar('--accent-rose') };
             default: return { background: cssVar('--bg-dark-sidebar'), border: cssVar('--text-muted') };
         }
-    };
-
-    const validateAndFetch = (id: string) => {
-        const jobIdRegex = /^[a-zA-Z0-9_\-]+$/;
-        if (!jobIdRegex.test(id)) {
-            setError(t('causal.invalidJobId'));
-            return;
-        }
-        fetchTrajectory(id);
     };
 
     return (

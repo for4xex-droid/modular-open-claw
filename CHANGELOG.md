@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Added (OP-022 Causal deep-link 2026-07-22)
+- **C1**: `a2ui-navigate` に任意 `jobId`（`dispatchA2uiNavigate` / `aiome.causalJobId`）。Timeline の karma 行から Causal へ。手動 Job ID 入力は維持。
+- **C2**: CausalVisualizer Jest（fetch 成功・不正 ID・!ok・イベント/ストレージ深リンク）+ Timeline Trace 導線テスト。Router / 一覧 API なし。
+
 ### Changed (OP-021 BanDashboard i18n 2026-07-21)
 - **C3**: `BanDashboard` を `useTranslation` + `ban.*` に配線。`common.cancel` 追加。API 既定 reason / severity value は英語定数のまま。Jest（key assert）+ i18n parity PASS。
 - **/reflexion**: エラー応答の非 JSON を `readErrorMessage` で安全処理（誤って `common.networkError` に落とさない）。空 reason → `Policy violation`・fetch 403 toast・非 JSON ban エラーの Negative テスト追加（10 PASS）。

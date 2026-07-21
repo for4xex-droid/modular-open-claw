@@ -542,7 +542,8 @@
     "localMemory": "ローカル・メモリ",
     "federatedMemory": "連合（フェデレーテッド）メモリ",
     "chronicles": "クロニクル",
-    "error": "タイムラインデータの読み込みに失敗しました"
+    "error": "タイムラインデータの読み込みに失敗しました",
+    "openCausal": "トレース"
   },
   "agent": {
     "template": {
@@ -838,7 +839,9 @@
     "clickNode": "ノードをクリックして詳細を表示",
     "invalidJobId": "無効なジョブ ID 形式です。英数字、_、- のみ使用できます。",
     "fetchData": "分析データを取得",
-    "fitMap": "全体表示"
+    "fitMap": "全体表示",
+    "fetchFailed": "軌跡の取得に失敗しました",
+    "unknownError": "不明なエラー"
   },
   "ban": {
     "title": "ガバナンス & BAN コンプライアンス台帳",
