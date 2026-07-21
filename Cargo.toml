@@ -89,8 +89,6 @@ unused_assignments = "deny"
 [workspace.lints.clippy]
 unwrap_used = "deny"
 
-[workspace.dependencies.wasmtime]
-version = "44.0.3"
-
-[workspace.dependencies.wasmtime-wasi]
-version = "44.0.3"
+# OP-032: infrastructure はソースで wasmtime を直接使わない。
+# host WASM は extism 1.30（wasmtime ^43）経由。直依存が必要になったら再追加し 45+ を選ぶこと。
+# （0188 は旧 wasmtime-wasi 44 直依存向け。直依存削除で当該経路を消滅させる）

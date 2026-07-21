@@ -34,11 +34,9 @@ html-escape = "0.2"
 regex = "1.12.3"
 async-recursion = "1.1.1"
 unicode-normalization = { workspace = true }
-wasmtime = { workspace = true }
-wasmtime-wasi = { workspace = true }
-extism = "1.21.0"
-extism-convert = "1.21.0"
-wasi = "0.14.7"
+# OP-032: 直依存 wasmtime / wasmtime-wasi / wasi を廃止（src 未使用）。実行時は extism 経由。
+extism = "1.30.0"
+extism-convert = "1.30.0"
 tokio-util = { workspace = true, features = ["codec", "io"] }
 secrecy = { version = "0.8.0", features = ["serde"] }
 jsonschema = { workspace = true }

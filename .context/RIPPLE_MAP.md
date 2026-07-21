@@ -1,3 +1,31 @@
+## 🔍 OP-032 extism 1.30 C1–C4（2026-07-22）
+
+- **変更**: extism 1.30；未使用 wasmtime/wasmtime-wasi/wasi 直依存削除；deny/audit/commercial から 41/wasi-44 系 ignore 削除。
+- **影響**: WASM ホストは extism→wasmtime **43.0.2** のみ。skills ホスト API 非破壊。deny ignore 21→8（OP-068 継続）。
+- **検証**: skills 51 PASS；deny/audit ok；`cargo check --workspace --tests` GREEN（1.93.1）。/reflexion×6: lock MSRV・§8.4・別指示・TECH_DEBT・release_master/foolproof Watch の OP-030〜034 一括表記を分離。
+- **残**: なし（OP-032 クローズ）。OP-068 残 8（serenity/tauri 経路）。yanked `spin` は本 OP 外
+
+## 🔍 Upstream Phase C0 OP-032 recon（2026-07-22）
+
+- **変更**: foolproof §8.4 調査レポート。依存・API・Gate β 予測・リスク・コミット分割。
+- **影響**: 文書のみ（実装は上記 OP-032 エントリ）。
+- **検証**: C0 時点の tree / crates.io 調査
+- **残**: なし（C1–C4 ✅・上記実装エントリ）
+
+## 🔍 Upstream Phase B watcher（2026-07-22）
+
+- **変更**: `watch_upstream_blockers.py` に OP/Issue 併記 + wasmtime INFO。unit 拡充。
+- **影響**: 監視スクリプトのみ。ci.yml / HEARTBEAT / Rust 依存非変更。
+- **検証**: `test_watch_upstream_blockers.py` + ライブ実行（extism α → exit 1）
+- **残**: なし（OP-032 実装済。watcher の extism GATE は α 監視として継続）
+
+## 🔍 Upstream Phase A 文書同期（2026-07-22）
+
+- **変更**: OPEN Upstream / foolproof §8 v1.8 / tech_debt Wave D。Gate α≠β、41/0188-cleared、OP-068=deny ignore=0。
+- **影響**: 文書。当時 OP-032 bump は未着手 → 実装は上記 OP-032 エントリで完了。
+- **検証**: 文書 + watcher 実測は OPEN 表
+- **残**: なし（Phase B/C ✅）
+
 ## 🔍 OP-011 autonomous purchase S2S（2026-07-22）
 
 - **変更**: Stripe `execute_autonomous_purchase` の idempotency 転送 + 空 tx_id 拒否 + purchase wiremock P/N。OPEN/KC_LEGAL/COMPLIANCE を「無償 KC 購入解禁」に更新。

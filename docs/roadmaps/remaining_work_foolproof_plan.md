@@ -1,11 +1,11 @@
-# 残存ワーク Foolproof 実行計画（v1.4）
+# 残存ワーク Foolproof 実行計画（v1.8）
 
 > **作成**: 2026-07-10（v1.0）  
-> **改訂**: v1.1 → **v1.2**（Human NT 拡充）→ **v1.3**（NT-2 実装ゲート分離）→ **v1.4**（2026-07-13: NT-2=done・§8 R-A〜R-D 閉じ / OPEN OP-078・077・079）→ **v1.5**（2026-07-13: Local LLM /reflexion 残リスク LL-A〜D → OP-080〜082）→ **v1.6**（2026-07-14: **NT-1 PASS** / OP-057-R・R2-1 クローズ）→ **v1.7**（2026-07-14: **NT-5 PASS** / OP-063 撮影完了・R4-2 待ち）  
+> **改訂**: … → **v1.7**（2026-07-14: NT-5 PASS）→ **v1.8**（2026-07-22: §8 二段ゲート）→ **v1.8+§8.5**（2026-07-22: OP-032 C1–C4 実装結果）  
 > **根拠**: `OPEN.md` + `near_term_public_beta_plan.md` v5.1 + 運用正本（stripe-production-setup / QUICK_START_VERIFICATION / MESSAGING §8 / OPERATIONS_MANUAL §8 / release-preflight）  
 > **タスク正本**: [`OPEN.md`](../../OPEN.md)（本計画は手順のみ。ID の二重管理をしない）  
-> **ステータス**: Wave A1/A2/A3 ✅。NT-1〜6 ✅。**R5-5 / v1.2.0 Public Beta 公開 ✅**（2026-07-14）。**方針 B（OP-084）✅ 2026-07-18** / **closeout R4 ✅** / **OP-086 Wave D ✅ 2026-07-19**。**OP-051 ✅** / **OP-083 ✅ C/D 2026-07-20** / **OP-011 ✅ 2026-07-22**。残 Human: **NT-7**（任意・OP-064）。**OP-059-UI ✅ / OP-080 ✅ / OP-081 ✅ / OP-070 ✅**
-> **Human Wave 実行計画（状態・順・DoD 一冊）**: [`human_wave_execution_plan.md`](human_wave_execution_plan.md)（**v1.2**・2026-07-14）
+> **ステータス**: Wave A1/A2/A3 ✅。NT-1〜6 ✅。**R5-5 / v1.2.0 Public Beta 公開 ✅**。**OP-084 / closeout R4 / OP-086 D / OP-051 / OP-083 / OP-011 / OP-032 ✅**。Upstream 残: serenity/tauri（OP-030/031/033/034）・OP-068 deny **残 8**。残 Human: **NT-7**（任意・OP-064）。  
+> **Human Wave 実行計画（状態・順・DoD 一冊）**: [`human_wave_execution_plan.md`](human_wave_execution_plan.md)（**v1.2**・2026-07-14）  
 > **Human 実行の超詳細版（コピペ正本）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）— 進行は **`/nt-assist`** + `scripts/nt_gate.py`（1ステップ・秘密禁止）。§2 H-1 は要約。
 
 ---
@@ -99,9 +99,9 @@ B5 実行前ゲート / `String` 戻り、B3=`Failed`、対象 5 箇所、napi �
 
 ### 1.4 Watch
 
-| ID | 方法 | 実装しない |
-|----|------|------------|
-| OP-030–034 / OP-068 | `scripts/watch_upstream_blockers.py` | Upstream |
+| ID | 方法 | 実装しない / 備考 |
+|----|------|-------------------|
+| OP-030/031/033/034 / OP-068（**OP-032 ✅**） | Gate α: `scripts/watch_upstream_blockers.py`。Gate β・着手順は **§8** | 監視のみだった時代は終了。α 到達 OP は β 付きで実装可（明示許可後） |
 | X402 本番鍵 | `aiome-commerce/src/x402.rs` + Vault `X402_SIGNER_KEY` | Q2+SC（[`op083_cd_x402_plan.md`](op083_cd_x402_plan.md)） |
 | CF Gateway | [blog](https://blog.cloudflare.com/monetization-gateway/) | waitlist |
 
@@ -871,11 +871,127 @@ Wave ゲート / 価値順の正本: [`wave_ui_p2p_tauri_plan.md`](wave_ui_p2p_t
 
 ---
 
-## 8. Wave W — 監視のみ
+## 8. Wave W — Upstream（二段ゲート）
+
+> **正本**: タスク状態は [`OPEN.md`](../../OPEN.md) Upstream 節。Issue↔TARGET↔ACTION は [`.cargo/audit.toml`](../../.cargo/audit.toml) コメント。RUSTSEC ID 一覧は `deny.toml`（OP-068=**残 8**・OP-032 後）/ audit（超集合・Tauri 等）。**新 upstream 専用 roadmap は作らない。**
+
+### 8.1 二段ゲート
+
+| ゲート | 定義 | コマンド注意 |
+|--------|------|----------------|
+| **α Reachable** | crates.io 安定版 ≥ 監視閾値 | `python3 scripts/watch_upstream_blockers.py`（**パイプに繋がない**。`\| tail; echo $?` は tail の exit になる） |
+| **β Clear** | bump 後に advisory が実際に消える | `cargo tree -i <crate>` → `cargo deny check advisories` → `cargo audit` → **消えた ID だけ** ignore 削除（bump と別コミット推奨） |
+
+| クリア種別 | 意味 |
+|------------|------|
+| 41-cleared | lock から **wasmtime 41.x** 消滅 → deny の 41.x 系 ID を削除候補 |
+| 0188-cleared | **wasmtime-wasi 44 経路消滅**（45+ bump **または** 未使用直依存削除）→ **RUSTSEC-2026-0188** 削除候補 |
+| OP-068 done | **`deny.toml` ignore = 0**。audit の Tauri/GTK/unic/unmaintained は OP-033 以降 |
+
+α だけでは ignore を消さない。β なしの「到達したから削除」は禁止。
+
+### 8.2 監視（Gate α）
 
 ```bash
 python3 scripts/watch_upstream_blockers.py
+# UNBLOCKED 時はスクリプトが exit 1（意図的）。CI 本体（ci.yml）には載せない。
+# 通知したい場合のみ独立 workflow を検討。HEARTBEAT.md には載せない。
 ```
+
+| watcher クレート | 閾値 | OPEN | exit への影響 |
+|------------------|------|------|----------------|
+| serenity | ≥0.13.0 | OP-030（Issue A） | GATE |
+| extism | ≥1.22.0 | OP-032（Issue C）✅ | GATE（到達アラート用・実装済） |
+| tauri | ≥3.0.0 | OP-033（Issue D） | GATE |
+| wasmtime | ≥45.0.0（表示） | OP-068/032 ヒント | **INFO のみ**（exit を立てない） |
+
+bastion / quick-xml は watcher 非対象（OP-031 は 030 後、OP-034 は 033 後）。出力に `OP-xxx / Issue X` を併記（Phase B）。unit: `python3 scripts/test_watch_upstream_blockers.py`。
+
+**2026-07-22 実測**: extism **α ✅**（1.30.0）。serenity / tauri **α ❌**。
+
+### 8.3 着手順（α 到達時のみ）
+
+1. **OP-032** ✅（2026-07-22・§8.4 / §8.5）  
+2. OP-030 → OP-031（serenity α 後）— アンカー `channel_bridge/discord.rs`  
+3. OP-033 → OP-034（tauri α 後・T-003・明示許可）  
+4. OP-068 — deny ignore=0 のときだけクローズ PR  
+
+**PR 規約**: Upstream 1 Issue 系列 = 分割可だが **一括メガ PR 禁止**。ignore 削除は tree 確認後。
+
+**作らないもの**: 新監視フレームワーク、RUSTSEC フルリストの計画書複製、HEARTBEAT 改変。
+
+### 8.4 OP-032 C0 調査レポート（2026-07-22・bump なし）
+
+> **凍結スナップショット**: 以下は実装前の調査記録。**現行の事実正本は §8.5**（extism 1.30・wasmtime 43.0.2・0188 は直依存削除で cleared・deny 21→8）。
+
+#### 現状スナップショット（C0 時点）
+
+| 項目 | 値 |
+|------|-----|
+| Gate α | extism crates.io **1.30.0** ✅ / local **1.21.0** |
+| pin | `libs/infrastructure/Cargo.toml`: `extism`/`extism-convert` **1.21.0**；workspace `wasmtime`/`wasmtime-wasi` **44.0.3** |
+| lock wasmtime | **41.0.4**（extism 1.21 ツリーのみ）+ **44.0.3**（infrastructure 直依存 + wasmtime-wasi） |
+| lock wasmtime-wasi | **44.0.3** のみ |
+| `use wasmtime` in `infrastructure/src` | **0 件**（Cargo 依存はあるがソース未使用。削除は C の任意・Preserve Intent） |
+| ホスト API 面 | `extism::{Plugin, Manifest, Wasm, Function, UserData, Val, ValType, Error}` — `skills/{mod,harness,host_fns}.rs` |
+| guest PDK | `libs/wasm-skills/*/Cargo.toml` → `extism-pdk = "1.4.1"`（ホスト bump と独立） |
+| 回帰テスト | `skills/tests.rs` 他・既存 `#[cfg(test)]`（新スイート新設不要） |
+
+#### ツリー（なぜ 41 が残るか）
+
+```
+wasmtime@41.0.4 ← extism 1.21.0 ← infrastructure
+wasmtime@44.0.3 ← infrastructure（直）+ wasmtime-wasi 44.0.3
+```
+
+#### crates.io: extism 1.30.0 の依存
+
+| dep | req |
+|-----|-----|
+| wasmtime | **^43**（= 43.x。**45 ではない**） |
+| wasi-common | **^43** |
+| extism-convert / manifest | ^1.30.0 |
+
+**当時の仮説**: 最新安定 extism でも 0188 は自動解消されない → workspace `wasmtime-wasi` の **45+ bump** が必要、と見ていた（**実装では直依存削除で cleared** → §8.5）。
+
+#### Gate β 予測（実装前仮説・確定結果は §8.5）
+
+| 作業 | 期待（C0） |
+|------|------|
+| C1: extism + extism-convert → **1.30.x** | lock から **wasmtime 41.x 消滅** → deny **0085–0089・0091–0096 / 0114** 系を削除候補（**41-cleared**） |
+| C2a: workspace wasmtime を残す/上げる | extism は 43.x を別コピーで持つ可能性あり（41+43+44 の三重は避けるよう調整） |
+| C2b: workspace **wasmtime-wasi → 45+** または経路削除 | **0188** 削除候補。extism の wasi-common@43 とは別クレート |
+| C3 | `Plugin::new` / host `Function` API のコンパイル差を最小修正。`cargo test -p infrastructure`（skills） |
+| C4 | 消えた ID だけ deny（+ commercial 同期）から削除。α だけで消さない |
+| 非目標 | serenity/tauri、audit GTK 一括、OP-068 完了宣言、PDK 強制 major |
+
+#### リスク
+
+1. **二重/三重 wasmtime**: extism^43 と workspace 44/45 が共存しバイナリ肥大・deny 判定が紛らわしい → tree で版を数え、ignore は「該当パッケージ消滅」単位で削る  
+2. **ホスト API 破壊**: 1.21→1.30 は minor だが `Function`/`Plugin` シグネチャ差の可能性 → C3 で check 赤なら最小追従  
+3. **0188 取りこぼし**: extism だけ上げて wasi 44 を残すと OP-068 は閉じない → C2b を同一系列の後続コミットで明示  
+4. **未使用 wasmtime 直依存**: ソース 0 参照。C で `cargo check` 緑を保ったまま残すのが既定（削除は別判断）
+
+#### C 実装時の推奨コミット分割
+
+1. `chore(op-032): bump extism to 1.30` (+ API 最小)  
+2. `chore(op-032): bump workspace wasmtime-wasi to 45+`（0188 用・可能なら）  
+3. `chore(op-068): drop cleared deny ignores`（tree/deny 緑確認後）
+
+**C0 結論（当時）**: Gate α は満たす。実装価値あり（41 ツリー除去が主益）。**0188 は extism bump だけでは不可**（当時仮説）。実装結果は **§8.5**。
+
+### 8.5 OP-032 実装結果（2026-07-22・C1–C4）
+
+| 項目 | 結果 |
+|------|------|
+| C1 | `extism` / `extism-convert` **1.30.0** |
+| C2 | 未使用直依存 `wasmtime` / `wasmtime-wasi` / `wasi` **削除**（workspace pin も撤去）。lock: wasmtime **43.0.2** のみ・`wasmtime-wasi` **なし**。wasmtime **47** / 広範 lock update は MSRV 1.94 のため不採用 |
+| C3 | ホスト API 差分なし。`cargo test -p infrastructure --lib skills` **51 PASS** |
+| C4 Gate β | deny/audit/commercial から **0085–0089・0091–0096・0114・0188** 削除。deny ignore **21→8** |
+| lock 衛生 | `cargo generate-lockfile` / 広範 update 禁止。`cargo update -p extism -p extism-convert` のみ（MSRV 1.93 維持） |
+| 41-cleared | ✅ |
+| 0188-cleared | ✅（経路削除。45+ bump は不要だった） |
+| OP-068 | **未クローズ**（残 8: idna/rand/rustls-webpki/quick-xml） |
 
 x402: `X402Negotiator` は買い手側資産。Stripe HTTP 402（Pro）と**混同禁止**。CF Gateway は実装しない。
 
@@ -888,10 +1004,10 @@ H: NT-1 ∥ NT-2 ∥ NT-3 ∥ NT-5  →  NT-6 → 公開
 A1 ∥ A2（Beta と並列可）
 A3（PR 分離推奨）
 G1 / G2（各ゲート後のみ）
-W（常時）
+W（§8: α 監視常時 / α 到達 OP のみ β 付き実装）
 ```
 
-**推奨 Agent 順**: A1 → A2 → A3。
+**推奨 Agent 順**: 残 Agent 本線は消化済。Upstream は **§8**（OP-032 ✅。次は serenity/tauri α）。
 
 ---
 

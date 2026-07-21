@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-22（OP-011 ✅）**
+**最終更新: 2026-07-22（Upstream Phase C0 調査）**
 
 > **実装手順の正本**:
 > - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・P1–P4 ✅ / **Q5 ADR-055 ✅** / **Q6 untrack ✅**。Path B は都度 Human。bind-mount **物理撤去**は ADR-055 実行ゲート）
@@ -78,20 +78,30 @@
 - [x] **OP-062**: Tauri `NurtureMode::InProcess` — **2026-07-21 完了**（Disabled>Cloud>InProcess>Local、sidecar 非 spawn + `NURTURE_IN_PROCESS` 注入、Desktop `api-server --features nurture`、unit 6 PASS）。ADR-012 / foolproof G2
 - [x] **OP-088**: Desktop **既定 InProcess** — 正本 [`desktop_inprocess_default_plan.md`](docs/roadmaps/desktop_inprocess_default_plan.md) **v1.3**。**Ship 本線 P0-pre…P3 ✅** + **CI `desktop-sidecar` ✅** + **P4 ✅** + **P5-a/b/c ✅** + **P5-d→OP-089 ✅** — 詳細 [`op088_p5_polish_plan.md`](docs/roadmaps/op088_p5_polish_plan.md) **v1.5**
 - [x] **OP-089**: OSS / Economy 二系統 Desktop チャネル — **2026-07-21 完了**（`--channel economy|oss`、cargo-tree Fail-Closed、CI、[`DESKTOP_CHANNELS.md`](docs/guides/DESKTOP_CHANNELS.md)、正本 [`op089_oss_economy_dual_channel_plan.md`](docs/roadmaps/op089_oss_economy_dual_channel_plan.md) v1.0）
-- [ ] **OP-068**: deny.toml `[advisories].ignore` に登録した 21 件（wasmtime 41.x / rustls-webpki 旧版 / idna 0.4 / quick-xml 0.39 / rand 0.8）の解消。実体は OP-030〜OP-034 の Upstream 待ちと同根。上流更新後に ignore を削除すること（2026-07-04。旧 OP-061 重複採番を 2026-07-05 改番）
+- [ ] **OP-068**: `deny.toml` `[advisories].ignore` **残 8 件**の解消（クローズ条件は **deny ignore=0**。OP-032 で 21→8。`.cargo/audit.toml` は超集合で Tauri/unmaintained 等を含む→OP-033 以降）。実体は OP-030/031/033/034 と同根（**OP-032 ✅**）。**Gate α≠Gate β**。運用正本: [`remaining_work_foolproof_plan.md`](docs/roadmaps/remaining_work_foolproof_plan.md) §8。2026-07-04 起票
 - [ ] **OP-064**: ベータユーザー 5〜10 人の獲得と実名テスティモニアル収集。launch（本格トラフィック獲得）の前提条件。バイラル32原則 #14/#29 対応（**Human**・OP-086 では後回し、2026-07-05）
 - [x] **OP-065**: Pro 価格改定 $9.99 → **$19.99/月**（2026-07-05 ユーザー決定）。MESSAGING.md / LP i18n / README / ProUpgradeModal 表示 / stripe-setup.md / .env.example を同期。Stripe Payment Link・Price ID の実体差し替えは OP-057 に統合。
 - [x] **OP-066**: UI 全体改善計画 — **2026-07-05 R1 完了**（U0–U5-B + U4 A2UI。Jest 392 PASS / hex 0 / deep-scan 0）。残: U2-4 の `variant` props 統合（任意・Context 化で履歴分断は解消済み）、U1-3 ギフト/ギルド（FE 未実装のため対象外）。OP-002 目視 ✅ 2026-07-13。
 - [x] **OP-073**: **W2 ワークフロー実行エンジン本実装** — W2-0〜W2-8 完了（2026-07-08）。E2E 3本 PASS、`cargo test --workspace` PASS。Human SSRF Walkthrough A/B/C PASSED（2026-07-09）。
 - [x] **OP-074**: **WorkflowExecutionTracker 再起動復旧** — **2026-07-09 完了**（`recover_orphan_executions` + store クエリ + 起動時呼び出し。CHANGELOG [Unreleased] 参照）
 
-## 🔵 Upstream 待ち（scripts/watch_upstream_blockers.py で監視中）
+## 🔵 Upstream 待ち（`scripts/watch_upstream_blockers.py` = Gate α）
 
-- [ ] **OP-030**: serenity 0.13+ リリース待ち → `discord.rs` 改修で RUSTSEC-2026-0098 等を解除（Issue A）
-- [ ] **OP-031**: bastion-core TLS/DNS 近代化（Issue A 完了後、idna 等 CVE 解除）（Issue B）
-- [ ] **OP-032**: extism v1.22+ / wasmtime v43+ で Wasmtime CVE 解除（Issue C）
-- [ ] **OP-033**: tauri v3.0.0+ で GTK4/unic CVE 解除（Issue D）
-- [ ] **OP-034**: Tauri の `plist` 依存更新後、`.cargo/audit.toml` の quick-xml 無視設定（RUSTSEC-2026-0194/0195）を削除し `cargo update -p quick-xml`（2026-07-02）
+> **最終確認: 2026-07-22**（`watch_upstream_blockers.py`・パイプなし）。**Gate α** = crates.io 到達。**Gate β** = bump 後 `cargo tree` + `cargo deny` + `cargo audit` で消えた ID だけ ignore 削除。運用: foolproof **§8 Wave W**。Issue↔TARGET 正本: [`.cargo/audit.toml`](.cargo/audit.toml) コメント（複製しない）。
+>
+> | クレート | crates.io（確認日） | local lock | Gate α |
+> |---|---|---|---|
+> | extism | **1.30.0** | **1.30.0** → wasmtime / wasi-common **43.0.2**（直依存 wasmtime/wasi なし） | **✅ Reachable**（≥1.22）・**実装済** |
+> | serenity | 0.12.5 | 0.12.5 | ❌ |
+> | tauri | 2.11.5 | 2.x | ❌ |
+>
+> **版の言葉**: Reachable（watcher 閾値）≠ 41-cleared（lock から wasmtime 41.x 消滅）≠ 0188-cleared（wasi-44 経路消滅。45+ bump または直依存削除）。
+
+- [ ] **OP-030**（Issue A）: serenity ≥0.13 → `libs/infrastructure/src/channel_bridge/discord.rs` 追従 → Gate β で rustls-webpki/rand/idna（serenity 経路）ignore 削除
+- [ ] **OP-031**（Issue B）: **OP-030 完了後**に bastion-core TLS/DNS・残 idna/trust-dns。upstream 版が無ければ実装せず OPEN に継続監視を記録
+- [x] **OP-032**（Issue C）: **2026-07-22 完了** — C1 extism/extism-convert **1.30**；C2 未使用 `wasmtime`/`wasmtime-wasi`/`wasi` 直依存削除（lock は **43.0.2** のみ・`wasmtime-wasi` なし；`cargo update -p extism` のみで lock 汚染回避）；C3 skills **51 PASS**；C4 Gate β で deny **0085–0089・0091–0096・0114・0188** 削除（21→**8**）。アンカー: `skills/{mod,harness,host_fns}.rs`
+- [ ] **OP-033**（Issue D）: tauri ≥3.0 → GTK4/unic 系 audit ignore 削除（T-003）。明示許可後
+- [ ] **OP-034**: OP-033 後。`plist`→ quick-xml で audit **0194/0195** 削除
 
 ## 🌱 Project-Nurture 側（経済・コンプライアンス）
 
@@ -103,6 +113,7 @@
 
 ## ✅ 解決（直近のみ保持）
 
+- [x] **OP-032**: extism 1.30 + wasmtime 41/wasi-44 経路除去 → **2026-07-22 完了**（deny 21→8。CHANGELOG [Unreleased]）
 - [x] **OP-011**: 自律購買（無償 KC マーケット）S2S → **2026-07-22 完了**（idempotency 転送 + wiremock P/N。有償 KC / Fiat 非対象。CHANGELOG [Unreleased]）
 - [x] **OP-087**: MC static Q5/Q6 → **2026-07-22 完了**（ADR-055 + index untrack / `static.stub`。CHANGELOG [Unreleased]）
 - [x] **OP-020 / OP-020-F5**: Soul Sync S-1〜S-4 → **2026-07-22 完了**（hub opaque relay + pairing + Automerge Experience + 2ノード 60s E2E。CHANGELOG [Unreleased]）

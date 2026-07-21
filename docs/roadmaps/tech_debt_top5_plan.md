@@ -59,7 +59,7 @@
 | P1 Fail-Closed（ADR-033） | P: SENTINEL。N: `DROP TABLE immune_rules` + benign → 拒否 |
 | P2 OP-054 = 可視性のみ完了 | `with_llm` / `get_embedding_provider` が `pub(crate)`。外部呼び出しゼロ確認済み |
 | P3 ADR 起草のみ | `docs/decisions/054-error-hierarchy.md`（番号空き） |
-| P4 bump なし | OP-030–034 非実装 |
+| P4 | 当初 bump なし。**2026-07-22**: α 到達 OP は §8 二段ゲートで実装可（**OP-032 ✅**・deny 21→8） |
 | P5 HEX | entry ゲート GREEN。html 手動 |
 
 ---
@@ -73,7 +73,7 @@
 | **OP-075** | router Fail-Closed + stream 初期を `evaluate_security` + agent_engine を同 API に集約 |
 | **OP-054**（旧 A） | `with_llm` / `get_embedding_provider` → `pub(crate)` |
 | **OP-051** | ADR-054 起草のみ |
-| **OP-068** | 監視のみ |
+| **OP-068** | deny ignore=0 でクローズ（OP-032 後 **残 8**）。手順は foolproof §8 |
 | **OP-029** | HEX + ゲート |
 | **OP-076** | MCP/UI/example キー名 |
 | **QW-21..23** | licenses / SSE 残ログ / KC warn |
@@ -222,7 +222,9 @@ ADR-054 **Accepted 2026-07-20**。実装正本: [`op051_error_hierarchy_plan.md`
 
 ## 6. Wave D — OP-068（P4）
 
-監視のみ。scc は dev。cargo bump なし。
+当初（v1.3）: 監視のみ・cargo bump なし。
+
+**2026-07-22 更新**: Gate α/β 分離。**OP-032 ✅**（extism 1.30・deny 21→8・§8.5）。OP-068 クローズは **`deny.toml` ignore=0**（残 8。audit の Tauri 等は OP-033 以降）。運用正本: foolproof **§8**。
 
 ---
 

@@ -1,5 +1,23 @@
 ## [Unreleased]
 
+### Changed (OP-032 extism 1.30 / Gate β 2026-07-22)
+- **C1**: `infrastructure` の `extism` / `extism-convert` → **1.30.0**（lock: wasmtime / wasi-common **43.0.2**）。
+- **C2**: ソース未使用の直依存 `wasmtime`・`wasmtime-wasi`・`wasi` を削除（41+44 二重ツリー解消。`wasmtime-wasi` 消滅で **0188** 経路も消失。wasmtime 47 / 広範 `cargo update` は MSRV 1.94 のため不採用。lock は `cargo update -p extism -p extism-convert` のみ）。
+- **C3**: ホスト API 差分なし。`cargo test -p infrastructure --lib skills` **51 PASS**。`cargo check --workspace --tests` GREEN（rustc 1.93.1）。
+- **C4**: `deny.toml` / `commercial/deny.toml` / `.cargo/audit.toml` から **0085–0089・0091–0096・0114・0188** を削除（deny ignore **21→8**）。OP-068 は未クローズ。
+
+### Changed (Upstream Phase C0 OP-032 recon 2026-07-22)
+- **調査のみ**（bump なし・凍結記録）: foolproof **§8.4** — 当時 lock は wasmtime 41（extism 1.21）+ 44（workspace）。0188 は wasi 45+ が必要と**仮説**（実装結果は §8.5 / 上記 OP-032 エントリ）。
+
+### Changed (Upstream Phase B watcher 2026-07-22)
+- **`watch_upstream_blockers.py`**: 出力に `OP-030/032/033` + Issue を併記。`wasmtime` は INFO（45+ / 0188 ヒント、exit 非駆動）。exit 1=いずれかの GATE α 到達。
+- **unit**: `test_watch_upstream_blockers.py`（到達/未達/INFO 単独では exit 0）。ci.yml / HEARTBEAT 非配線。
+
+### Changed (Upstream Phase A docs 2026-07-22)
+- **OPEN**: Upstream 節に Gate α/β・2026-07-22 実測（extism α ✅）・OP-031=Issue B を明記。OP-068 クローズ条件=deny ignore=0（当時 ignore 21）。
+- **foolproof v1.8**: §8 Wave W を二段ゲート運用に拡充（新 roadmap なし）。
+- **tech_debt Top5 Wave D**: 「bump なし」を α 到達時のみ β 付き実装可に更新。
+
 ### Changed (OP-011 autonomous purchase S2S 2026-07-22)
 - **本番経路**: `StripeCommerceEngine::execute_autonomous_purchase`（`!is_mock`）が Nurture `POST /internal/purchase` へ委譲。`metadata.idempotency_key` を trim 後転送（空/空白は `auto_{agent}_{item}`。他メタデータは非転送）。
 - **Fail-Closed**: URL/secret/client 欠落を区別。空/過大（>128）`transaction_id` 拒否。idempotency ≤128（超過は `auto_*`）。

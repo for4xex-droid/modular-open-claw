@@ -70,8 +70,8 @@ feature-depth = 1
 # A list of advisory IDs to ignore. Note that ignored advisories will still
 # output a note when they are encountered.
 ignore = [
-    # 以下はすべて間接依存の旧メジャーバージョン起因で、semver 互換の cargo update では
-    # 修正不能（上流クレートのメジャー更新が必要）。OPEN.md OP-068 で追跡 (CI修繕 2026-07-04)
+    # 間接依存の旧メジャー起因（semver 互換 update では修正不能）。OPEN.md OP-068 で追跡。
+    # OP-032（2026-07-22）: wasmtime 41 / wasmtime-wasi 44 経路消滅 → 0085–0089・0091–0096・0114・0188 を削除済。残 8。
     { id = "RUSTSEC-2024-0421", reason = "idna 0.4 (trust-dns 経由の間接依存)。修正は idna >=1.0" },
     { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.39 (間接依存)。修正は次期メジャー" },
     { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.39 (間接依存)。修正は次期メジャー" },
@@ -80,19 +80,6 @@ ignore = [
     { id = "RUSTSEC-2026-0098", reason = "rustls-webpki 旧版 (間接依存)。修正はメジャー更新" },
     { id = "RUSTSEC-2026-0099", reason = "rustls-webpki 旧版 (間接依存)。修正はメジャー更新" },
     { id = "RUSTSEC-2026-0104", reason = "rustls-webpki 旧版 (間接依存)。修正はメジャー更新" },
-    { id = "RUSTSEC-2026-0085", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-068)" },
-    { id = "RUSTSEC-2026-0086", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-068)" },
-    { id = "RUSTSEC-2026-0087", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-068)" },
-    { id = "RUSTSEC-2026-0088", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-068)" },
-    { id = "RUSTSEC-2026-0089", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-068)" },
-    { id = "RUSTSEC-2026-0091", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-068)" },
-    { id = "RUSTSEC-2026-0092", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-068)" },
-    { id = "RUSTSEC-2026-0093", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-068)" },
-    { id = "RUSTSEC-2026-0094", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-068)" },
-    { id = "RUSTSEC-2026-0095", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-068)" },
-    { id = "RUSTSEC-2026-0096", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-068)" },
-    { id = "RUSTSEC-2026-0114", reason = "wasmtime 41.x。修正は 45+ へのメジャー更新 (OP-068)" },
-    { id = "RUSTSEC-2026-0188", reason = "wasmtime-wasi 44.x。修正は 45+ へのメジャー更新 (OP-068)" },
 ]
 # unmaintained 勧告は間接依存（Tauri の GTK3 バインディング等、上流更新待ち）が大半のため、
 # ワークスペース直接依存のみを検査対象とする (CI修繕 2026-07-04)
