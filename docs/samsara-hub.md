@@ -17,6 +17,7 @@ Detailed documentation for the `samsara-hub` crate.
 - `src/hub_ws_tests.rs`
 - `src/hub_reliability_tests.rs`
 - `src/handlers/commune.rs`
+- `src/handlers/soul_sync.rs`
 - `src/handlers/system.rs`
 - `src/handlers/timeline.rs`
 - `src/handlers/middleware.rs`

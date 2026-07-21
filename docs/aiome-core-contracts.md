@@ -12,6 +12,7 @@ Detailed documentation for the `aiome-core-contracts` crate.
 - `src/contracts.rs`
 - `src/expression.rs`
 - `src/commune.rs`
+- `src/soul_sync.rs`
 - `src/traits.rs`
 - `src/audit.rs`
 - `src/oxilean.rs`

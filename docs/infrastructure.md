@@ -85,6 +85,7 @@ Detailed documentation for the `infrastructure` crate.
 - `src/generative_engine.rs`
 - `src/polar_quant.rs`
 - `src/artifact_store_tests.rs`
+- `src/soul_experience_crdt.rs`
 - `src/browser_conductor.rs`
 - `src/html_report.rs`
 - `src/cortex_compiler_tests.rs`
@@ -95,6 +96,7 @@ Detailed documentation for the `infrastructure` crate.
 - `src/aiome_log.rs`
 - `src/soul_adapter.rs`
 - `src/oss_type_matcher.rs`
+- `src/soul_sync_transport.rs`
 - `src/invariant_dag_tests.rs`
 - `src/testing/mock_jq.rs`
 - `src/testing/mod.rs`
