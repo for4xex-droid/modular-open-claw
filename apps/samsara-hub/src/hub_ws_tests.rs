@@ -380,15 +380,13 @@ async fn assert_canary_absent_from_sqlite(pool: &shared::db::DatabasePool, canar
                         safe,
                         name
                     );
-                } else if let Ok(v) = row.try_get::<Option<String>, _>(name) {
-                    if let Some(v) = v {
-                        assert!(
-                            !v.contains(canary),
-                            "Soul canary leaked into hub DB {}.{}",
-                            safe,
-                            name
-                        );
-                    }
+                } else if let Ok(Some(v)) = row.try_get::<Option<String>, _>(name) {
+                    assert!(
+                        !v.contains(canary),
+                        "Soul canary leaked into hub DB {}.{}",
+                        safe,
+                        name
+                    );
                 }
             }
         }
