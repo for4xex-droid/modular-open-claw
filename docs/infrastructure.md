@@ -63,6 +63,7 @@ Detailed documentation for the `infrastructure` crate.
 - `src/supervisor.rs`
 - `src/workspace_manager_tests.rs`
 - `src/cortex_ingester_tests.rs`
+- `src/tool_catalog_capability.rs`
 - `src/memory_crystallizer.rs`
 - `src/disk_quota.rs`
 - `src/constraint_checker.rs`
