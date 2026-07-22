@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-22（Upstream Phase C0 調査）**
+**最終更新: 2026-07-22（進化的アーキテクチャ整合計画 v2.2）**
 
 > **実装手順の正本**:
 > - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・P1–P4 ✅ / **Q5 ADR-055 ✅** / **Q6 untrack ✅**。Path B は都度 Human。bind-mount **物理撤去**は ADR-055 実行ゲート）
@@ -12,6 +12,7 @@
 > - **Human 実行ランブック（NT-1〜7・コピペ超詳細）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）  
 > - **Agent アシスト（推奨・1ステップ進行）**: [`.agent/workflows/nt-assist.md`](.agent/workflows/nt-assist.md)（`/nt-assist`）+ [`scripts/nt_gate.py`](scripts/nt_gate.py)
 > - **残存ワーク統合（Human + Agent・foolproof）**: [`docs/roadmaps/remaining_work_foolproof_plan.md`](docs/roadmaps/remaining_work_foolproof_plan.md)（**v1.2**・2026-07-10・Human NT-* 詳細化 + Agent `/perfect-plan` PASS）
+> - **進化的アーキテクチャ（加算・大規模リファクタ禁止）**: [`docs/roadmaps/evolutionary_architecture_plan.md`](docs/roadmaps/evolutionary_architecture_plan.md)（**v2.2**・**OP-090–093 ✅**。Upstream/Human は別レーン）
 > - **直近 Public Beta（Human ゲート中心）**: [`docs/roadmaps/near_term_public_beta_plan.md`](docs/roadmaps/near_term_public_beta_plan.md)（**v5.1**・2026-07-10・`/perfect-plan`+`/reflexion` 検証済み。秘密は AbyssVault、compose への API キー追加は禁止）
 > - **技術負債 Wave 3 以降**: [`docs/roadmaps/remaining_tasks_implementation_plan.md`](docs/roadmaps/remaining_tasks_implementation_plan.md)（v6。Wave 1/2 完了済み）
 > - **TECH_DEBT Top 5（OP-075/054/051/068/029+QW）**: [`docs/roadmaps/tech_debt_top5_plan.md`](docs/roadmaps/tech_debt_top5_plan.md)（**v1.3**・2026-07-10・実装完了。OP-054=可視性のみ）
@@ -80,6 +81,10 @@
 - [x] **OP-089**: OSS / Economy 二系統 Desktop チャネル — **2026-07-21 完了**（`--channel economy|oss`、cargo-tree Fail-Closed、CI、[`DESKTOP_CHANNELS.md`](docs/guides/DESKTOP_CHANNELS.md)、正本 [`op089_oss_economy_dual_channel_plan.md`](docs/roadmaps/op089_oss_economy_dual_channel_plan.md) v1.0）
 - [ ] **OP-068**: `deny.toml` `[advisories].ignore` **残 8 件**の解消（クローズ条件は **deny ignore=0**。OP-032 で 21→8。`.cargo/audit.toml` は超集合で Tauri/unmaintained 等を含む→OP-033 以降）。実体は OP-030/031/033/034 と同根（**OP-032 ✅**）。**Gate α≠Gate β**。運用正本: [`remaining_work_foolproof_plan.md`](docs/roadmaps/remaining_work_foolproof_plan.md) §8。2026-07-04 起票
 - [ ] **OP-064**: ベータユーザー 5〜10 人の獲得と実名テスティモニアル収集。launch（本格トラフィック獲得）の前提条件。バイラル32原則 #14/#29 対応（**Human**・OP-086 では後回し、2026-07-05）
+- [x] **OP-090**: Architecture Fitness **Harness** — `scripts/architecture_fitness.py`（F-1〜F-4、F-5 任意委譲）。unit + Negative（shared 一時依存→FAIL→復元）。CI 必須化は未実施。正本: [`evolutionary_architecture_plan.md`](docs/roadmaps/evolutionary_architecture_plan.md) **v2.2** §6。**2026-07-22 完了**
+- [x] **OP-091**: infrastructure **論理境界** — `lib.rs` セクション + [`056-infrastructure-logical-boundaries.md`](docs/decisions/056-infrastructure-logical-boundaries.md)。物理分割なし。**2026-07-22 完了**
+- [x] **OP-092**: Capability **Progressive Disclosure** — `ToolCatalogCapabilityProvider` + bootstrap `CapabilityRegistry` → `TaskDispatcher::with_capability_registry`。Token 新認可なし。**2026-07-22 完了**
+- [x] **OP-093**: Tool 拒否 **reason_code** — `tool_call_router` の BLOCK/tracing/ImmuneAlert を拡張（二重 audit なし）。**2026-07-22 完了**
 - [x] **OP-065**: Pro 価格改定 $9.99 → **$19.99/月**（2026-07-05 ユーザー決定）。MESSAGING.md / LP i18n / README / ProUpgradeModal 表示 / stripe-setup.md / .env.example を同期。Stripe Payment Link・Price ID の実体差し替えは OP-057 に統合。
 - [x] **OP-066**: UI 全体改善計画 — **2026-07-05 R1 完了**（U0–U5-B + U4 A2UI。Jest 392 PASS / hex 0 / deep-scan 0）。残: U2-4 の `variant` props 統合（任意・Context 化で履歴分断は解消済み）、U1-3 ギフト/ギルド（FE 未実装のため対象外）。OP-002 目視 ✅ 2026-07-13。
 - [x] **OP-073**: **W2 ワークフロー実行エンジン本実装** — W2-0〜W2-8 完了（2026-07-08）。E2E 3本 PASS、`cargo test --workspace` PASS。Human SSRF Walkthrough A/B/C PASSED（2026-07-09）。

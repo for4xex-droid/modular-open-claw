@@ -16,6 +16,11 @@ async fn emit_tool_event(tx: &mpsc::Sender<ToolExecutionEvent>, event: ToolExecu
     }
 }
 
+/// Append a stable machine-readable `reason_code=` token (OP-093). Human text is preserved.
+fn with_reason_code(message: impl AsRef<str>, reason_code: &str) -> String {
+    format!("{} reason_code={}", message.as_ref(), reason_code)
+}
+
 /// Tool Execution Result suitable for both Sync (AgentEngine) and Async (SSE) usage
 #[derive(Debug, Clone)]
 pub enum ToolExecutionEvent {
@@ -55,7 +60,11 @@ impl ToolCallRouter for DefaultToolCallRouter {
         if let shared::guardrails::ValidationResult::Blocked(reason) =
             shared::guardrails::validate_input(prompt)
         {
-            return Err(format!("🚨 [GUARDRAIL BLOCK] {}", reason));
+            tracing::warn!(reason_code = "guardrail", %reason, "Guardrail block");
+            return Err(with_reason_code(
+                format!("🚨 [GUARDRAIL BLOCK] {}", reason),
+                "guardrail",
+            ));
         }
 
         // 2. Immune System check
@@ -66,7 +75,11 @@ impl ToolCallRouter for DefaultToolCallRouter {
             .await
         {
             Ok(Some(rule)) => {
-                tracing::warn!("Sentinel Block activated: pattern `{}`", rule.pattern);
+                tracing::warn!(
+                    reason_code = "sentinel",
+                    pattern = %rule.pattern,
+                    "Sentinel Block activated"
+                );
                 // Also record the block if it's SSE (or any async path) — best practice
                 let stats = state.job_queue.get_agent_stats().await.unwrap_or_default();
                 if let Err(e) = state
@@ -74,7 +87,10 @@ impl ToolCallRouter for DefaultToolCallRouter {
                     .record_evolution_event(
                         stats.level,
                         "ImmuneAlert",
-                        &format!("Block: {} (Pattern: {})", rule.action, rule.pattern),
+                        &format!(
+                            "Block: {} (Pattern: {}) reason_code=sentinel",
+                            rule.action, rule.pattern
+                        ),
                         None,
                         None,
                     )
@@ -82,19 +98,24 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 {
                     tracing::warn!("Failed to record ImmuneAlert evolution event: {}", e);
                 }
-                return Err(format!(
-                    "🚨 [SENTINEL BLOCK] {}\nPattern: {}",
-                    rule.action, rule.pattern
+                return Err(with_reason_code(
+                    format!(
+                        "🚨 [SENTINEL BLOCK] {}\nPattern: {}",
+                        rule.action, rule.pattern
+                    ),
+                    "sentinel",
                 ));
             }
             Err(e) => {
                 tracing::error!(
+                    reason_code = "immune_db_error",
                     error = %e,
                     "[Security] immune verify_intent failed; denying request (fail-closed)"
                 );
-                return Err(
-                    "🚨 [SECURITY BLOCK] Unable to verify immune status. Request denied.".into(),
-                );
+                return Err(with_reason_code(
+                    "🚨 [SECURITY BLOCK] Unable to verify immune status. Request denied.",
+                    "immune_db_error",
+                ));
             }
             _ => {}
         }
@@ -124,12 +145,15 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 if total > 10 {
                     let fail_rate = stats.failure_count as f64 / total as f64;
                     if fail_rate > state_rc.skill_arena.culling_threshold {
-                        let msg = format!(
-                            "[MoE Culling] Skill `{}` rejected due to high failure rate ({:.1}%)",
-                            sn,
-                            fail_rate * 100.0
+                        let msg = with_reason_code(
+                            format!(
+                                "[MoE Culling] Skill `{}` rejected due to high failure rate ({:.1}%)",
+                                sn,
+                                fail_rate * 100.0
+                            ),
+                            "moe_culling",
                         );
-                        tracing::warn!("{}", msg);
+                        tracing::warn!(reason_code = "moe_culling", skill = %sn, message = %msg);
                         emit_tool_event(&tx_clone, ToolExecutionEvent::Error(msg)).await;
                         return;
                     }
@@ -138,13 +162,17 @@ impl ToolCallRouter for DefaultToolCallRouter {
 
             // === Security Guardrail: Path Traversal Prevention ===
             if sn.contains('/') || sn.contains('\\') || sn.contains("..") {
-                tracing::warn!("Path traversal blocked in skill execution: {}", sn);
+                tracing::warn!(
+                    reason_code = "path_traversal",
+                    skill = %sn,
+                    "Path traversal blocked in skill execution"
+                );
                 emit_tool_event(
                     &tx_clone,
-                    ToolExecutionEvent::Error(
-                        "[Guardrail Block] Invalid skill name: potential path traversal detected"
-                            .to_string(),
-                    ),
+                    ToolExecutionEvent::Error(with_reason_code(
+                        "[Guardrail Block] Invalid skill name: potential path traversal detected",
+                        "path_traversal",
+                    )),
                 )
                 .await;
                 return;
@@ -303,12 +331,13 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 let key = format!("agency.{}.mcp_suspended", agent_id);
                 match state_rc.job_queue.get_setting_value(&key).await {
                     Ok(Some(val)) if val == "true" => {
+                        tracing::warn!(reason_code = "mcp_suspended", %agent_id, "MCP access suspended");
                         emit_tool_event(
                             &tx_clone,
-                            ToolExecutionEvent::Error(
-                                "[Billing] MCP access suspended. Please update payment method."
-                                    .to_string(),
-                            ),
+                            ToolExecutionEvent::Error(with_reason_code(
+                                "[Billing] MCP access suspended. Please update payment method.",
+                                "mcp_suspended",
+                            )),
                         )
                         .await;
                         return;
@@ -316,16 +345,17 @@ impl ToolCallRouter for DefaultToolCallRouter {
                     Ok(_) => {}
                     Err(e) => {
                         tracing::error!(
+                            reason_code = "mcp_billing_db_error",
                             error = %e,
                             setting_key = %key,
                             "[Billing] mcp_suspended setting read failed; denying MCP tool (fail-closed)"
                         );
                         emit_tool_event(
                             &tx_clone,
-                            ToolExecutionEvent::Error(
-                                "[Billing] Unable to verify MCP billing status. Request denied."
-                                    .to_string(),
-                            ),
+                            ToolExecutionEvent::Error(with_reason_code(
+                                "[Billing] Unable to verify MCP billing status. Request denied.",
+                                "mcp_billing_db_error",
+                            )),
                         )
                         .await;
                         return;
@@ -334,11 +364,16 @@ impl ToolCallRouter for DefaultToolCallRouter {
 
                 if let Some(engine) = state_rc.commerce_engine.as_opt() {
                     if let Err(e) = engine.validate_activity(agent_id, "mcp_tool", 1).await {
+                        tracing::warn!(
+                            reason_code = "mcp_validate_denied",
+                            error = %e,
+                            "MCP validate_activity denied"
+                        );
                         emit_tool_event(
                             &tx_clone,
-                            ToolExecutionEvent::Error(format!(
-                                "[Billing] MCP tool access denied: {}",
-                                e
+                            ToolExecutionEvent::Error(with_reason_code(
+                                format!("[Billing] MCP tool access denied: {}", e),
+                                "mcp_validate_denied",
                             )),
                         )
                         .await;
@@ -743,11 +778,15 @@ mod tests {
         let mut rx = router.execute_skill("some_mcp_tool", "{}", &state).await;
 
         let mut got_suspend_error = false;
+        let mut saw_code = false;
 
         while let Some(evt) = rx.recv().await {
             if let ToolExecutionEvent::Error(msg) = evt {
                 if msg.contains("[Billing] MCP access suspended") {
                     got_suspend_error = true;
+                }
+                if msg.contains("reason_code=mcp_suspended") {
+                    saw_code = true;
                 }
             }
         }
@@ -756,6 +795,7 @@ mod tests {
             got_suspend_error,
             "MCP suspended guard should emit an error event"
         );
+        assert!(saw_code, "mcp_suspended must include reason_code");
     }
 
     #[tokio::test]
@@ -808,6 +848,18 @@ mod tests {
             msg.contains("Unable to verify immune"),
             "unexpected message: {msg}"
         );
+        assert!(
+            msg.contains("reason_code=immune_db_error"),
+            "OP-093 reason_code missing: {msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_tool_call_router_ok_path_has_no_reason_code() {
+        let router = DefaultToolCallRouter;
+        let (state, _guard) = setup_mock_state().await;
+        let res = router.evaluate_security("hello status check", &state).await;
+        assert!(res.is_ok(), "benign prompt should pass: {res:?}");
     }
 
     /// N2 coverage note: SSE initial path (`stream.rs`) calls the same

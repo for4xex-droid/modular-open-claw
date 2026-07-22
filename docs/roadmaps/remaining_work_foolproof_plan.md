@@ -4,7 +4,7 @@
 > **改訂**: … → **v1.7**（2026-07-14: NT-5 PASS）→ **v1.8**（2026-07-22: §8 二段ゲート）→ **v1.8+§8.5**（2026-07-22: OP-032 C1–C4 実装結果）  
 > **根拠**: `OPEN.md` + `near_term_public_beta_plan.md` v5.1 + 運用正本（stripe-production-setup / QUICK_START_VERIFICATION / MESSAGING §8 / OPERATIONS_MANUAL §8 / release-preflight）  
 > **タスク正本**: [`OPEN.md`](../../OPEN.md)（本計画は手順のみ。ID の二重管理をしない）  
-> **ステータス**: Wave A1/A2/A3 ✅。NT-1〜6 ✅。**R5-5 / v1.2.0 Public Beta 公開 ✅**。**OP-084 / closeout R4 / OP-086 D / OP-051 / OP-083 / OP-011 / OP-032 ✅**。Upstream 残: serenity/tauri（OP-030/031/033/034）・OP-068 deny **残 8**。残 Human: **NT-7**（任意・OP-064）。  
+> **ステータス**: Wave A1/A2/A3 ✅。NT-1〜6 ✅。**R5-5 / v1.2.0 Public Beta 公開 ✅**。**OP-084 / closeout R4 / OP-086 D / OP-051 / OP-083 / OP-011 / OP-032 ✅**。Upstream 残: serenity/tauri（OP-030/031/033/034）・OP-068 deny **残 8**。残 Human: **NT-7**（任意・OP-064）。加算: **OP-090–093**（[`evolutionary_architecture_plan.md`](evolutionary_architecture_plan.md) **v2.2**・Upstream/Human より後）。  
 > **Human Wave 実行計画（状態・順・DoD 一冊）**: [`human_wave_execution_plan.md`](human_wave_execution_plan.md)（**v1.2**・2026-07-14）  
 > **Human 実行の超詳細版（コピペ正本）**: [`docs/guides/HUMAN_PUBLIC_BETA_RUNBOOK.md`](../guides/HUMAN_PUBLIC_BETA_RUNBOOK.md)（**v1.6**）— 進行は **`/nt-assist`** + `scripts/nt_gate.py`（1ステップ・秘密禁止）。§2 H-1 は要約。
 

@@ -35,6 +35,8 @@ pub struct TaskDispatcher {
     pub(crate) immune_system: Option<Arc<crate::immune_system::AdaptiveImmuneSystem>>,
     pub(crate) quality_gate_store: Option<Arc<dyn crate::quality_gate_store::QualityGateStore>>,
     pub(crate) hook_manager: Option<Arc<crate::security::hook_manager::HookManager>>,
+    /// Progressive Disclosure catalog (OP-092). Optional; set via [`Self::with_capability_registry`].
+    pub(crate) capability_registry: Option<Arc<crate::capability_registry::CapabilityRegistry>>,
 }
 
 impl TaskDispatcher {
@@ -189,7 +191,25 @@ impl TaskDispatcher {
             immune_system,
             quality_gate_store,
             hook_manager,
+            capability_registry: None,
         }
+    }
+
+    /// Attach a [`CapabilityRegistry`] for Progressive Disclosure (OP-092).
+    pub fn with_capability_registry(
+        mut self,
+        registry: Arc<crate::capability_registry::CapabilityRegistry>,
+    ) -> Self {
+        self.capability_registry = Some(registry);
+        self
+    }
+
+    /// Capability summary for planners / fallback tool discovery (empty if unset).
+    pub fn capabilities_summary(&self) -> Vec<serde_json::Value> {
+        self.capability_registry
+            .as_ref()
+            .map(|r| r.get_capabilities_summary())
+            .unwrap_or_default()
     }
 
     /// Register a new Conductor

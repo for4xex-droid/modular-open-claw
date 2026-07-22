@@ -590,6 +590,19 @@ impl TaskDispatcher {
                     } else {
                         error!("Dequeued job {}, but no capable conductor found. This shouldn't happen due to dequeue filter.", job.id);
 
+                        let capability_hint = {
+                            let summary = self.capabilities_summary();
+                            if summary.is_empty() {
+                                String::new()
+                            } else {
+                                let names: Vec<String> = summary
+                                    .iter()
+                                    .filter_map(|v| v.get("name").and_then(|n| n.as_str()))
+                                    .map(|s| s.to_string())
+                                    .collect();
+                                format!(" Capabilities available: {}.", names.join(", "))
+                            }
+                        };
                         let fallback_msg = if let Some(discovery) = &self.tool_discovery {
                             let instruction = if !job.topic.is_empty() {
                                 &job.topic
@@ -598,12 +611,21 @@ impl TaskDispatcher {
                             };
                             match discovery.suggest_tools(instruction).await {
                                 Ok(tools) if !tools.is_empty() => {
-                                    format!("No conductor found. However, ToolDiscoveryEngine suggests downloading: {}", tools.join(", "))
+                                    format!(
+                                        "No conductor found. However, ToolDiscoveryEngine suggests downloading: {}.{}",
+                                        tools.join(", "),
+                                        capability_hint
+                                    )
                                 }
-                                _ => "No capable conductor found and no alternative tools discovered.".to_string(),
+                                _ => format!(
+                                    "No capable conductor found and no alternative tools discovered.{}",
+                                    capability_hint
+                                ),
                             }
-                        } else {
+                        } else if capability_hint.is_empty() {
                             "No capable conductor found.".to_string()
+                        } else {
+                            format!("No capable conductor found.{}", capability_hint)
                         };
 
                         if let Err(db_err) = self.job_queue.fail_job(&job.id, &fallback_msg).await {

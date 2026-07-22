@@ -27,6 +27,11 @@ impl CapabilityRegistry {
         self.providers.push(provider);
     }
 
+    /// 登録済みプロバイダー数（起動時配線検証用）
+    pub fn provider_count(&self) -> usize {
+        self.providers.len()
+    }
+
     /// 全コンポーネントの能力要約を取得 (Progressive Disclosure)
     pub fn get_capabilities_summary(&self) -> Vec<serde_json::Value> {
         self.providers

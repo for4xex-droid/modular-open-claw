@@ -224,7 +224,7 @@ ADR-054 **Accepted 2026-07-20**。実装正本: [`op051_error_hierarchy_plan.md`
 
 当初（v1.3）: 監視のみ・cargo bump なし。
 
-**2026-07-22 更新**: Gate α/β 分離。**OP-032 ✅**（extism 1.30・deny 21→8・§8.5）。OP-068 クローズは **`deny.toml` ignore=0**（残 8。audit の Tauri 等は OP-033 以降）。運用正本: foolproof **§8**。
+**2026-07-22 更新**: Gate α/β 分離。**OP-032 ✅**（extism 1.30・deny 21→8・§8.5）。OP-068 クローズは **`deny.toml` ignore=0**（残 8。audit の Tauri 等は OP-033 以降）。運用正本: foolproof **§8**。加算的アーキテクチャ改善は本 Top5 の再オープンではなく [`evolutionary_architecture_plan.md`](evolutionary_architecture_plan.md) **v2.1**（OP-090–093）。
 
 ---
 

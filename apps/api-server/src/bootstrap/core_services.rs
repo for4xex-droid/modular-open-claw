@@ -737,6 +737,19 @@ pub async fn init_core_services(
         Arc::new(infrastructure::quality_gate_store::SqliteQualityGateStore::new(db_pool.clone()))
             as Arc<dyn infrastructure::quality_gate_store::QualityGateStore>;
 
+    // OP-092: Capability Progressive Disclosure — Tool catalog provider on shared WasmSkillManager
+    let mut capability_registry = infrastructure::capability_registry::CapabilityRegistry::new();
+    capability_registry.register(Arc::new(
+        infrastructure::tool_catalog_capability::ToolCatalogCapabilityProvider::new(
+            wasm_skill_manager.clone(),
+        ),
+    ));
+    let capability_registry = Arc::new(capability_registry);
+    tracing::info!(
+        providers = capability_registry.provider_count(),
+        "✅ [CapabilityRegistry] registered ToolCatalogCapabilityProvider"
+    );
+
     let mut task_dispatcher = infrastructure::task_orchestrator::TaskDispatcher::new(
         job_queue.clone(),
         std::time::Duration::from_millis(100),
@@ -753,7 +766,8 @@ pub async fn init_core_services(
         )),
         Some(quality_gate_store.clone()),
         Some(hook_manager.clone()),
-    );
+    )
+    .with_capability_registry(capability_registry);
     // Register DockerConductor
     let grpc_config = infrastructure::grpc::a2a_grpc_client::GrpcClientConfig {
         endpoint_url: config.a2a_node_url.clone(), // dynamically overwritten in conduct()

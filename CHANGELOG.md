@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+### Added (Wave E OP-090–093 2026-07-22)
+- **OP-090**: `scripts/architecture_fitness.py` — F-1〜F-3（Cargo.toml 依存方向）+ F-4（prod/test 行数分離）。F-5 は pattern-enforcer/deep-scan の任意委譲のみ。`test_architecture_fitness.py`（Positive + Negative 注入→復元）。
+- **OP-091**: `libs/infrastructure/src/lib.rs` に ADR-056 セクション見出し。[`056-infrastructure-logical-boundaries.md`](docs/decisions/056-infrastructure-logical-boundaries.md)（物理分割禁止・新規 mod はセクション必須）。
+- **OP-092**: `ToolCatalogCapabilityProvider`（`list_skills*` 再利用）を bootstrap で `CapabilityRegistry` 登録し `TaskDispatcher::with_capability_registry` へ接続。Token 新認可なし。
+- **OP-093**: `tool_call_router` 拒否経路に安定 `reason_code=`（guardrail/sentinel/immune_db_error/mcp_suspended 等）+ tracing フィールド。ImmuneAlert は置換せず payload に code 追加。
+
+### Added (evolutionary architecture plan 2026-07-22)
+- **計画 v2.2**: [`evolutionary_architecture_plan.md`](docs/roadmaps/evolutionary_architecture_plan.md) — 第3次実コード検証で構造欠陥0を確認。OP-092 は `list_skills*` / `discover_tools` **再利用必須**（カタログ再実装禁止）。OP-090–093 の機能性レーンは維持。
+
 ### Changed (OP-032 extism 1.30 / Gate β 2026-07-22)
 - **C1**: `infrastructure` の `extism` / `extism-convert` → **1.30.0**（lock: wasmtime / wasi-common **43.0.2**）。
 - **C2**: ソース未使用の直依存 `wasmtime`・`wasmtime-wasi`・`wasi` を削除（41+44 二重ツリー解消。`wasmtime-wasi` 消滅で **0188** 経路も消失。wasmtime 47 / 広範 `cargo update` は MSRV 1.94 のため不採用。lock は `cargo update -p extism -p extism-convert` のみ）。

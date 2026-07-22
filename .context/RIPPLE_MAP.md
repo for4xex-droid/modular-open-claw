@@ -1,3 +1,17 @@
+## 🔍 Wave E OP-090–093（2026-07-22）
+
+- **変更**: fitness harness；infra `lib.rs` セクション + ADR-056；`ToolCatalogCapabilityProvider` + Registry→TaskDispatcher；`tool_call_router` `reason_code`
+- **影響**: bootstrap `core_services` / dispatcher fallback 文言 / router 拒否メッセージ末尾。auth・commerce・Vault 非変更。CI に fitness 未配線
+- **検証**: `test_architecture_fitness` P/N；`tool_catalog_capability`；router immune/mcp reason_code；`cargo check -p infrastructure` / router 系
+- **残**: fitness の CI 必須化は明示後。Provider 第2波は別 OP
+
+## 🔍 evolutionary_architecture_plan v2.2（2026-07-22）
+
+- **変更**: 第3次検証 PASS。OP-092 に `list_skills*` / `discover_tools` 再利用拘束を追加（再スキャン禁止）。
+- **影響**: 文書 + OPEN。実装は上記 Wave E エントリ。
+- **検証**: （計画時点）Provider=Mockのみ、Registry 未配線、F-1〜F3 OK
+- **残**: なし（実装完了）
+
 ## 🔍 OP-032 extism 1.30 C1–C4（2026-07-22）
 
 - **変更**: extism 1.30；未使用 wasmtime/wasmtime-wasi/wasi 直依存削除；deny/audit/commercial から 41/wasi-44 系 ignore 削除。
