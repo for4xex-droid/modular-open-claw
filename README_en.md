@@ -141,7 +141,7 @@ Other products bolt the economy on as a plugin. In Aiome, the economy interface 
 
 | Transaction Model | Description |
 |---|---|
-| 🏪 AI Goes Shopping (B2A) | Agents autonomously discover and purchase digital assets like LoRA personalities, VRM avatars, and voice models under CSAM triple-layer defense and on-memory DRM. |
+| 🏪 AI Goes Shopping (B2A) | Discover and purchase digital assets (LoRA, VRM, voice) under CSAM triple-layer defense and on-memory DRM. Agent MCP buy stays frozen by default; HTTP requires Pro+eKYC. |
 | 🤝 Agents Trade Skills (A2A) | WASM skills and knowledge are autonomously exchanged between agents via escrow contracts and the Karma reputation registry to expand capabilities. |
 | 🎁 AI Gives Back (A2C) | The OS senses user dedication and triggers surprise gifts or real-world rewards (via Tremendous API, etc.) based on Karma score and care streaks (Easter Egg strategy). |
 
@@ -166,7 +166,7 @@ All of the following capabilities are built directly into the OS, not left as pl
 - 🏥 **Self-Healing (Watchtower)**: An autonomous diagnostic loop that infers failure causes, extracts repair hints, and ensures idempotent retries when tasks fail. Fortified with a "Verify-to-Iterate Loop" that intercepts Oracle validation rejections (Reject/Revise) and feeds structural feedback back to the planner for self-repair.
 - 💾 **Crash Recovery & Backup**: Automated WAL-safe online snapshots using `sqlite3 .backup` coupled with a Pre-migration Guard. A bulletproof data protection architecture ensuring rapid recovery from unpredictable failures or migration corruptions.
 - 🎨 **Creative Studio**: A dynamic evaluation environment where agent-generated tools and skills are executed safely inside WASM sandboxes.
-- 🎭 **Avatar & Voice**: A "living expression" engine powering interactions through synthetic voice and VRM Avatars, transcending text.
+- 🎭 **Avatar & Voice**: Expression via synthetic voice and avatars — shipping **2D images** today; **3D VRM** wiring is Phase E. Inochi is frozen; Live2D is a later plug-in slot.
 - 💰 **Agent Economy (Commerce & Gig)**: An escrow and economic foundation enabling AIs to autonomously contract, verify, and depend on each other for tasks. Equipped with a self-responsibility "Resilient Escrow Refund" architecture that ensures instantaneous fund release upon task failure or UI rejection.
 - 🏪 **LoRA Marketplace**: A personality distribution platform where agents can safely trade and share LoRA adapters via escrow payments and file-isolated sandboxes.
 - 📣 **Buzz Protocol (Autonomous SNS Worker)**: An autonomous background worker that drafts and schedules social media content based on trends, LLM generation, and daily quotas. Includes a built-in Approval/Rejection interface for human-in-the-loop safety before publishing.

@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-25（Phase E E5 Inochi UI/文書凍結）**
+**最終更新: 2026-07-25（/docs-sync・Gate α 再確認）**
 
 > **実装手順の正本**:
 > - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・P1–P4 ✅ / **Q5 ADR-055 ✅** / **Q6 untrack ✅**。Path B は都度 Human。bind-mount **物理撤去**は ADR-055 実行ゲート）
@@ -94,13 +94,13 @@
 
 ## 🔵 Upstream 待ち（`scripts/watch_upstream_blockers.py` = Gate α）
 
-> **最終確認: 2026-07-24**（`watch_upstream_blockers.py`）。**Gate α** = crates.io 到達。**Gate β** = bump 後 `cargo tree` + `cargo deny` + `cargo audit` で消えた ID だけ ignore 削除。運用: foolproof **§8 Wave W**。Issue↔TARGET 正本: [`.cargo/audit.toml`](.cargo/audit.toml) コメント（複製しない）。
+> **最終確認: 2026-07-25**（`watch_upstream_blockers.py`）。**Gate α** = crates.io 到達。**Gate β** = bump 後 `cargo tree` + `cargo deny` + `cargo audit` で消えた ID だけ ignore 削除。運用: foolproof **§8 Wave W**。Issue↔TARGET 正本: [`.cargo/audit.toml`](.cargo/audit.toml) コメント（複製しない）。
 >
 > | クレート | crates.io（確認日） | local lock | Gate α |
 > |---|---|---|---|
 > | extism | **1.30.0** | **1.30.0** → wasmtime / wasi-common **43.0.2**（直依存 wasmtime/wasi なし） | **✅ Reachable**（≥1.22）・**実装済** |
-> | serenity | 0.12.5（2026-07-24） | 0.12.5 | ❌ |
-> | tauri | 2.11.5（2026-07-24） | 2.x | ❌ |
+> | serenity | 0.12.5（2026-07-25） | 0.12.5 | ❌ |
+> | tauri | 2.11.5（2026-07-25） | 2.x | ❌ |
 >
 > **版の言葉**: Reachable（watcher 閾値）≠ 41-cleared（lock から wasmtime 41.x 消滅）≠ 0188-cleared（wasi-44 経路消滅。45+ bump または直依存削除）。
 

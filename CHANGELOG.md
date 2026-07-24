@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Changed (/docs-sync 2026-07-25)
+- **OPEN**: Gate α 最終確認を 2026-07-25 に更新（serenity 0.12.5 / tauri 2.11.5 とも ❌。新規解禁なし）。
+- **README / README_en**: Avatar 訴求を出荷実態（2D + Phase E VRM / Inochi 凍結）に同期。B2A を MCP buy 凍結＋HTTP Pro/eKYC に整合。
+- **release_master_plan**: OP-051 Accepted・Phase E / OP-064 残フォローを反映。
+- **biz_value**: [`scripts/oneoff/biz_value_report.html`](scripts/oneoff/biz_value_report.html) を総合 3.6 に更新。
+
 ### Changed (Phase E E5 Inochi 凍結 2026-07-25)
 - **UI**: Settings/Home/Diorama/CharacterPanel/AvatarViewer から `inx` 経路を除去。legacy `localStorage=inx` → `lite`。`InxRenderer` は unmounted + `@deprecated`。
 - **文書**: LP `free_f4` を「2D アバター」へ（Inochi 訴求削除）。ADR-022 / PRIVACY / SYSTEM_PANORAMA / avatar-engine description 同期。`ARCHITECTURE.md` 再生成。`docs/api-server.md` deprecate 注記。
