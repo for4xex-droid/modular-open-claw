@@ -215,7 +215,16 @@ some_skill { "data": "hello" }"#;
         let results = process_generated_tool_calls(reply_from_llm, &state, &mut steps, None).await;
 
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0], "[Hook Block] Hook Policy Block");
+        assert!(
+            results[0].starts_with("[Hook Block] Hook Policy Block"),
+            "unexpected hook deny payload: {}",
+            results[0]
+        );
+        assert!(
+            results[0].contains("reason_code=hook_deny"),
+            "hook deny must include stable reason_code: {}",
+            results[0]
+        );
     }
 
     #[tokio::test]
