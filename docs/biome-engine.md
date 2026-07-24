@@ -6,14 +6,14 @@
 Detailed documentation for the `biome-engine` crate.
 
 ### 📂 Source Files
-- `src/rarity.rs`
+- `src/crisis.rs`
+- `src/genome.rs`
 - `src/grid.rs`
 - `src/lib.rs`
-- `src/pattern.rs`
-- `src/crisis.rs`
-- `src/element.rs`
-- `src/evolution.rs`
-- `src/lenia.rs`
 - `src/particle.rs`
-- `src/genome.rs`
+- `src/pattern.rs`
+- `src/element.rs`
+- `src/rarity.rs`
+- `src/evolution.rs`
 - `src/species_library.rs`
+- `src/lenia.rs`

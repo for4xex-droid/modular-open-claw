@@ -7,14 +7,14 @@ Detailed documentation for the `key-proxy` crate.
 
 ### 📂 Source Files
 - `src/tests.rs`
-- `src/auth.rs`
-- `src/telemetry.rs`
 - `src/config.rs`
-- `src/main.rs`
+- `src/telemetry.rs`
+- `src/auth.rs`
 - `src/quota.rs`
+- `src/main.rs`
+- `src/handlers/mod.rs`
+- `src/handlers/llm.rs`
+- `src/handlers/secrets.rs`
 - `src/handlers/passthrough.rs`
 - `src/handlers/vault_admin.rs`
-- `src/handlers/llm.rs`
 - `src/handlers/wordpress.rs`
-- `src/handlers/mod.rs`
-- `src/handlers/secrets.rs`
