@@ -103,7 +103,7 @@ Detailed documentation for the `api-server` crate.
 - `src/routes/buzz.rs`
 - `src/routes/nurture_mcp_proxy.rs`
 - `src/routes/proof_verifier.rs`
-- `src/routes/inochi2d.rs` — **DEPRECATED** (Phase E E5: Inochi product-frozen; UI unmounted; do not expand)
+- `src/routes/inochi2d.rs`
 - `src/routes/skill.rs`
 - `src/routes/vault.rs`
 - `src/routes/cortex.rs`
