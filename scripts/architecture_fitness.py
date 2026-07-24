@@ -8,7 +8,8 @@ Thin checks only:
   F-4 prod .rs line counts (tests reported separately)
   F-5 optional: call pattern-enforcer / deep-scan (no reimplementation)
 
-Local use by default. CI gating requires explicit follow-up permission.
+CI: `.github/workflows/ci.yml` job `architecture-fitness`
+(unit tests + default F-1..F-3 gate; F-5 flags off — separate jobs).
 """
 
 from __future__ import annotations

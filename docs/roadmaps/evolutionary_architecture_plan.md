@@ -152,10 +152,10 @@ v2 Wave E はこの3点を加算で塞ぐ。
 - score_tracker の流用（別ドメイン）  
 
 ### DoD
-- [ ] 現行 tree で F-1〜F-3 PASS  
-- [ ] Negative: `shared/Cargo.toml` に一時 `infrastructure` 依存を足して F-1 FAIL → 復元  
-- [ ] F-4 が上表と矛盾しない（±ファイル移動は許容）  
-- [ ] 初回はローカル実行のみ。CI 必須化は明示許可後  
+- [x] 現行 tree で F-1〜F-3 PASS  
+- [x] Negative: 一時ツリーへ `infrastructure` 依存注入で F-1 FAIL → 復元（live `shared/Cargo.toml` 非破壊）  
+- [x] F-4 が上表と矛盾しない（±ファイル移動は許容）  
+- [x] 初回はローカル実行のみ。CI 必須化は明示許可後 → **2026-07-24** `architecture-fitness` job（unit + F-1..F-3。F-5 非委譲）
 
 ### 工数
 1–2 日  

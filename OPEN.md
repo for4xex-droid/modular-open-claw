@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-22（進化的アーキテクチャ整合計画 v2.2）**
+**最終更新: 2026-07-25（OP-094 GitHub↔LP 公開面整合）**
 
 > **実装手順の正本**:
 > - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・P1–P4 ✅ / **Q5 ADR-055 ✅** / **Q6 untrack ✅**。Path B は都度 Human。bind-mount **物理撤去**は ADR-055 実行ゲート）
@@ -81,10 +81,11 @@
 - [x] **OP-089**: OSS / Economy 二系統 Desktop チャネル — **2026-07-21 完了**（`--channel economy|oss`、cargo-tree Fail-Closed、CI、[`DESKTOP_CHANNELS.md`](docs/guides/DESKTOP_CHANNELS.md)、正本 [`op089_oss_economy_dual_channel_plan.md`](docs/roadmaps/op089_oss_economy_dual_channel_plan.md) v1.0）
 - [ ] **OP-068**: `deny.toml` `[advisories].ignore` **残 8 件**の解消（クローズ条件は **deny ignore=0**。OP-032 で 21→8。`.cargo/audit.toml` は超集合で Tauri/unmaintained 等を含む→OP-033 以降）。実体は OP-030/031/033/034 と同根（**OP-032 ✅**）。**Gate α≠Gate β**。運用正本: [`remaining_work_foolproof_plan.md`](docs/roadmaps/remaining_work_foolproof_plan.md) §8。2026-07-04 起票
 - [ ] **OP-064**: ベータユーザー 5〜10 人の獲得と実名テスティモニアル収集。launch（本格トラフィック獲得）の前提条件。バイラル32原則 #14/#29 対応（**Human**・OP-086 では後回し、2026-07-05）
-- [x] **OP-090**: Architecture Fitness **Harness** — `scripts/architecture_fitness.py`（F-1〜F-4、F-5 任意委譲）。unit + Negative（shared 一時依存→FAIL→復元）。CI 必須化は未実施。正本: [`evolutionary_architecture_plan.md`](docs/roadmaps/evolutionary_architecture_plan.md) **v2.2** §6。**2026-07-22 完了**
+- [x] **OP-090**: Architecture Fitness **Harness** — `scripts/architecture_fitness.py`（F-1〜F-4、F-5 任意委譲）。unit + Negative（一時ツリー注入）。**CI**: `architecture-fitness`（unit + F-1..F-3。F-5 は pattern-check/deep-scan に委譲済みのため非呼び出し）。正本: [`evolutionary_architecture_plan.md`](docs/roadmaps/evolutionary_architecture_plan.md) **v2.2** §6。**2026-07-22 完了** / CI **2026-07-24**
 - [x] **OP-091**: infrastructure **論理境界** — `lib.rs` セクション + [`056-infrastructure-logical-boundaries.md`](docs/decisions/056-infrastructure-logical-boundaries.md)。物理分割なし。**2026-07-22 完了**
 - [x] **OP-092**: Capability **Progressive Disclosure** — `ToolCatalogCapabilityProvider` + bootstrap `CapabilityRegistry` → `TaskDispatcher::with_capability_registry`。Token 新認可なし。**2026-07-22 完了**
 - [x] **OP-093**: Tool 拒否 **reason_code** — `tool_call_router` の BLOCK/tracing/ImmuneAlert を拡張（二重 audit なし）。**2026-07-22 完了**
+- [x] **OP-094**: **GitHub ↔ LP 公開面整合** — MESSAGING §9 / COMPLIANCE §7 / README Live 表記。Release `v1.2.0` body 訂正（タグ不動）。Payment Link Live 確定・LP CTA 変更なし。正本: [`op094_public_surface_sync_plan.md`](docs/roadmaps/op094_public_surface_sync_plan.md)。**2026-07-25 完了**
 - [x] **OP-065**: Pro 価格改定 $9.99 → **$19.99/月**（2026-07-05 ユーザー決定）。MESSAGING.md / LP i18n / README / ProUpgradeModal 表示 / stripe-setup.md / .env.example を同期。Stripe Payment Link・Price ID の実体差し替えは OP-057 に統合。
 - [x] **OP-066**: UI 全体改善計画 — **2026-07-05 R1 完了**（U0–U5-B + U4 A2UI。Jest 392 PASS / hex 0 / deep-scan 0）。残: U2-4 の `variant` props 統合（任意・Context 化で履歴分断は解消済み）、U1-3 ギフト/ギルド（FE 未実装のため対象外）。OP-002 目視 ✅ 2026-07-13。
 - [x] **OP-073**: **W2 ワークフロー実行エンジン本実装** — W2-0〜W2-8 完了（2026-07-08）。E2E 3本 PASS、`cargo test --workspace` PASS。Human SSRF Walkthrough A/B/C PASSED（2026-07-09）。
@@ -92,13 +93,13 @@
 
 ## 🔵 Upstream 待ち（`scripts/watch_upstream_blockers.py` = Gate α）
 
-> **最終確認: 2026-07-22**（`watch_upstream_blockers.py`・パイプなし）。**Gate α** = crates.io 到達。**Gate β** = bump 後 `cargo tree` + `cargo deny` + `cargo audit` で消えた ID だけ ignore 削除。運用: foolproof **§8 Wave W**。Issue↔TARGET 正本: [`.cargo/audit.toml`](.cargo/audit.toml) コメント（複製しない）。
+> **最終確認: 2026-07-24**（`watch_upstream_blockers.py`）。**Gate α** = crates.io 到達。**Gate β** = bump 後 `cargo tree` + `cargo deny` + `cargo audit` で消えた ID だけ ignore 削除。運用: foolproof **§8 Wave W**。Issue↔TARGET 正本: [`.cargo/audit.toml`](.cargo/audit.toml) コメント（複製しない）。
 >
 > | クレート | crates.io（確認日） | local lock | Gate α |
 > |---|---|---|---|
 > | extism | **1.30.0** | **1.30.0** → wasmtime / wasi-common **43.0.2**（直依存 wasmtime/wasi なし） | **✅ Reachable**（≥1.22）・**実装済** |
-> | serenity | 0.12.5 | 0.12.5 | ❌ |
-> | tauri | 2.11.5 | 2.x | ❌ |
+> | serenity | 0.12.5（2026-07-24） | 0.12.5 | ❌ |
+> | tauri | 2.11.5（2026-07-24） | 2.x | ❌ |
 >
 > **版の言葉**: Reachable（watcher 閾値）≠ 41-cleared（lock から wasmtime 41.x 消滅）≠ 0188-cleared（wasi-44 経路消滅。45+ bump または直依存削除）。
 
@@ -127,7 +128,7 @@
 - [x] **OP-023**: ホットパス unwrap 棚卸し → **2026-07-18**（OP-086 B3、`enforce_unwrap_deny.py` 0）
 - [x] **OP-082**: Pattern B Linux `extra_hosts` → **2026-07-18**（OP-086 B2）
 - [x] **OP-084**: **実課金オープン（Stripe 方針 B / Live 切替）** → **2026-07-18 H4 PASS + L5-3 クローズ + R4 完了**（正本: [`live_billing_open_plan.md`](docs/roadmaps/live_billing_open_plan.md) v1.2 + [`billing_closeout_plan.md`](docs/roadmaps/billing_closeout_plan.md) **v1.5**）。L3-2 Vault `sk_live`/`whsec`・L3-3 `STRIPE_TEST_MODE=false`+live Price・L3-4 正本 Webhook 7 イベント＋legacy disabled・L4-1 Live Checkout→unlock・L4-2 偽署名 400・L4-3 `subscription.deleted`→suspend・L4-4 返金/クレジット+cancel→Free。closeout **R4 ✅**（空文字ガード本番同梱 + P/N/R）
-- [x] **OP-085**: **法務ドキュメント整備** → **2026-07-15 エージェント完了 + 2026-07-16 公開検証完了**（正本: [`COMPLIANCE_CHECKLIST.md`](docs/legal/COMPLIANCE_CHECKLIST.md) §7）。Deploy Landing Page success・公開 bundle に特商法住所/電話・トライアル非提供・解約可文言。Payment Link に「14 days free」なし（`pk_test` = Test）。**Live プロフィール/領収書は OP-084** に移管。
+- [x] **OP-085**: **法務ドキュメント整備** → **2026-07-15 エージェント完了 + 2026-07-16 公開検証完了**（正本: [`COMPLIANCE_CHECKLIST.md`](docs/legal/COMPLIANCE_CHECKLIST.md) §7）。Deploy Landing Page success・公開 bundle に特商法住所/電話・トライアル非提供・解約可文言。Payment Link trial なし。**2026-07-16 時点の HTML は `pk_test` 混在あり** → OP-084 Live + **OP-094** で COMPLIANCE を `livemode=true` に更新。**Live プロフィール/領収書は OP-084** に移管。
 - [x] **OP-063**: LP 用証拠ビジュアル（MESSAGING §8 / NT-5）→ **2026-07-14 撮影完了** + **R4-2 組込完了**（`docs/assets/evidence/2026-07-14/` 7/7、LP Showcase 実機画像、README/README_en 同期）
 - [x] **OP-057-R**: OP-057 残タスク → **2026-07-14 完了**（**(1)** NT-1 / R2-1: `app.aiome.dev` 方針 A（Test）・Step0 distroless PASS・Vault（key-proxy）・Webhook7 + whsec・MC Checkout→PlanBadge Pro・Negative（`STRIPE_API_KEY` 削除→拒否→復元）。**(2)** 決済→Pro コードは 2026-07-05 完了済み）
 - [x] **OP-002**: Biome `alpha:false` 目視（NT-3 / LL-C）→ **2026-07-13 完了**（Human PASS + Negative）

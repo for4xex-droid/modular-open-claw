@@ -1,6 +1,6 @@
 # Aiome メッセージング SSOT (Single Source of Truth)
 
-> 作成: 2026-07-03 / **最終更新: 2026-07-05** / 根拠: `docs/roadmaps/pr_quality_improvement_plan.md` §1.4–1.7
+> 作成: 2026-07-03 / **最終更新: 2026-07-25（OP-094）** / 根拠: `docs/roadmaps/pr_quality_improvement_plan.md` §1.4–1.7
 > LP・README・commercial/README・SNS 等、対外コピーはすべて本書から引用すること。
 > 本書にない主張（数字・実績・機能）を対外文書に書くことを禁止する。
 
@@ -142,27 +142,36 @@ A. ありません。MCP（Model Context Protocol）対応で外部ツールと�
 
 ## 9. 課金導線の現状と説明文（M-2）
 
+**最終更新: 2026-07-25（OP-094 公開面整合）**
+
 ### Pro 購入フローの公式説明（LP・サポート回答用）
 
-> Pro プラン（$19.99/月・いつでも解約可）のお支払いは、LP（https://aiome.dev/#pricing）の「プロへアップグレード」ボタンから Stripe の安全な決済ページで行えます。セルフホスト環境で Pro 機能を有効化するには、決済後に `docs/operations/stripe-setup.md` の手順に従って Stripe キーを設定してください（`STRIPE_API_KEY` 未設定時は Mock モードで動作します）。
+> Pro プラン（$19.99/月・いつでも解約可）のお支払いは、LP（https://aiome.dev/#pricing）の「プロへアップグレード」ボタンから Stripe の安全な決済ページ（**Live Payment Link**）で行えます。
+>
+> **本番ホスト（app.aiome.dev 等）**: `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` は **AbyssVault 経由**で注入します（compose 直書き禁止）。`STRIPE_TEST_MODE=false` + live Price ID。正本: [`stripe-production-setup.md`](../operations/stripe-production-setup.md) / OP-084（2026-07-18 Live）。
+>
+> **セルフホスト（自前 MC）**: LP Payment Link で決済しただけでは Pro は自動解錠されません。Vault（推奨）または `.env` に Stripe キー + Webhook を設定し、[`stripe-setup.md`](../operations/stripe-setup.md) の手順どおり Checkout/Webhook 閉ループを接続してください。
+>
+> **ローカル開発・未設定時**: `.env` に `STRIPE_API_KEY` が無い場合は `MockCommerceEngine` にフォールバックし、Mock 経済で Pro 以外の OS 機能を体験できます（Free プラン体験。§2 の Mock 経済メッセージと同義）。
 
-### LP Stripe Payment Link（公式 URL、2026-07-05）
+### LP Stripe Payment Link（公式 URL、2026-07-05 / Live 確認 2026-07-16）
 
 | 項目 | 値 |
 |---|---|
 | **Payment Link URL** | `https://buy.stripe.com/aFa00i9cEaVE4ay4y9f7i03` |
 | **Payment Link ID** | `plink_1TpXHCBcUTwo5TwLnO1BJneY` |
 | **Price ID** | `price_1TpXFpBcUTwo5TwLmK9SQbKL` |
+| **mode** | **Live**（`livemode=true`。Stripe CLI `--live` 2026-07-16 + OP-084 L4 実カード 2026-07-17〜18） |
 | **コード配置** | `docs/landing/src/components/Pricing.tsx`（Pro CTA `href`） |
 | **商品名（Checkout 表示）** | Aiome Autonomous Pro（最新） |
 | **価格** | $19.99/月（自動更新・いつでも解約可） |
 | **税** | 日本からのアクセス時、Stripe Checkout に JCT 10% が加算され **$21.99/月** と表示される場合あり（LP 表記 $19.99 は税抜ベース） |
-| **旧 Link（無効）** | `https://buy.stripe.com/aFa9AS1Kc1l47mK3u5f7i01` — Stripe 側で **inactive**（「The link is no longer active.」）。本番 LP が旧 URL を配信している間は決済不可。**main push → Pages デプロイで解消**。 |
+| **旧 Link（無効）** | `https://buy.stripe.com/aFa9AS1Kc1l47mK3u5f7i01` — Stripe 側 **inactive**（2026-07-05 以降 LP は上記 Live URL のみ。`Pricing.link.test.tsx` が旧 URL 配線を拒否） |
 
-### 既知の導線ギャップ（OPEN.md 起票済み）
+### 導線ギャップ（解消済み・OPEN 参照）
 
 1. ~~**OP-057**~~: LP 決済基盤（Payment Link・Price ID・ローカル env）→ **2026-07-05 完了**。
-2. **OP-057-R**（⏸️ 後回し）: 本番ホスト env 反映 + 決済→Pro ライセンス自動有効化。Biome ブラッシュアップ計画（`biome_lenia_overhaul_plan.md` §13 等）と同一バッチで着手（2026-07-05 ユーザー決定）。Safety-Critical のため実装は人間レビュー必須。
+2. ~~**OP-057-R**~~: 本番ホスト env 反映 + 決済→Pro ライセンス自動有効化 → **2026-07-14 完了**（NT-1 / OP-084 へ移行。OPEN 解決済みセクション参照）。
 3. ~~**OP-058**~~: **2026-07-04 解消** — `ProUpgradeModal` は `App.tsx` にマウント済み（`STRIPE_PRICE_ID` 連携）。
 
 ### ハイブリッド価格の再パッケージ案（価格改定はユーザー専権・未実施）

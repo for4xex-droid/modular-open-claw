@@ -321,7 +321,7 @@ OS 自体はセルフホストで $0/月です。LLM の利用量はコンソー
 | **Pro (Autonomous)** | 実経済圏の解禁（順次） | **$19.99/月**（いつでも解約可） |
 | **Agency (B2B)** | マルチテナント運用 | 準備中 (Coming Soon) |
 
-Pro 購入は [公式 LP（aiome.dev/#pricing）](https://aiome.dev/#pricing) の Stripe Payment Link から行います。対外コピーの SSOT は [`docs/marketing/MESSAGING.md`](docs/marketing/MESSAGING.md)、Stripe 設定手順は [`docs/operations/stripe-setup.md`](docs/operations/stripe-setup.md) を参照してください。
+Pro 購入は [公式 LP（aiome.dev/#pricing）](https://aiome.dev/#pricing) の Stripe Payment Link（**Live**）から行います。本番ホストでは Stripe 秘密情報は AbyssVault 注入（[`stripe-production-setup.md`](docs/operations/stripe-production-setup.md)）。**セルフホスト**では LP 決済だけでは Pro 解錠されず、Webhook + キー設定が必要（[`MESSAGING.md`](docs/marketing/MESSAGING.md) §9）。ローカルで `STRIPE_API_KEY` 未設定時のみ Mock 経済にフォールバックします。Stripe 設定手順は [`docs/operations/stripe-setup.md`](docs/operations/stripe-setup.md) を参照してください。
 
 アプリケーション内の商業トランザクション（Gig の履行決済、アセット購入等）には、プラットフォーム手数料として取引額の **15%** が適用され、残る **85%** がクリエイターに分配されます（[利用規約](docs/legal/TERMS_OF_SERVICE.md) と同一）。
 

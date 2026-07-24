@@ -1,7 +1,21 @@
 ## [Unreleased]
 
+### Fixed (OP-094 GitHub↔LP 公開面 2026-07-25)
+- **MESSAGING §9 / COMPLIANCE §7 / README**: 本番は AbyssVault + Live（OP-084）。Mock はローカル未設定時のみ。Payment Link `livemode=true` を明記。
+- **Release `v1.2.0` body**: soft-launch 誤記を除去（タグ不動）。正本 [`v1.2.0-release-body-op094.md`](docs/releases/v1.2.0-release-body-op094.md)。
+- **/reflexion**: MESSAGING の OP-057-R 後回し表記を OPEN 実態（✅ 2026-07-14）へ同期。旧 Payment Link 行の陳腐化文言を除去。COMPLIANCE §7 見出しを Live 後追補に合わせて更新。
+- **/reflexion（2回目）**: MESSAGING §9 にセルフホスト Pro 解錠手順を復帰。「既知ギャップ」見出しを解消済み表記へ。
+- **/reflexion（3回目）**: COMPLIANCE 最終更新日を 2026-07-25 に。`stripe-setup.md` §2.5 の Live mode + 陳腐な「push 前は旧 Link」文言を除去。README 課金段落にセルフホスト Pro 解錠を追記。
+- **/reflexion（4回目）**: MESSAGING 文書ヘッダ最終更新日を 2026-07-25 に。OPEN 解決済 OP-085 の `pk_test=Test` 表記を OP-094 Live 記録へ整合。
+
 ### Security
 - **ammonia 4.1.4**: RUSTSEC-2026-0213（SVG `animate`/`set` XSS）解消のため `libs/core` / `libs/infrastructure` を 4.1.3→4.1.4。
+
+### Added (OP-090 CI 2026-07-24)
+- **`architecture-fitness` job**: `scripts/test_architecture_fitness.py` + `architecture_fitness.py`（F-1..F-3 ゲート。F-5 フラグなし）。`trigger-nurture` の `needs` に追加。
+
+### Fixed (workflow DNS flake 2026-07-24)
+- **`test_validation_success`**: HttpRequest URL を `https://github.com` → `https://1.1.1.1`（IP リテラル）。ローカル pre-push で DNS 失敗時に fail-closed で落ちるフレークを解消。
 
 ### Fixed (Wave E /reflexion 2026-07-24)
 - **OP-090 F-4**: `api_integration_tests/` 等を test 区分へ（prod_top 汚染解消）。

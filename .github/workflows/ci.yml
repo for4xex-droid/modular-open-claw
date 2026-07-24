@@ -300,6 +300,25 @@ jobs:
       - name: Run pattern enforcer
         run: bash scripts/pattern-enforcer.sh --ci
 
+  architecture-fitness:
+    name: Architecture Fitness (OP-090)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Fitness unit tests
+        run: python3 scripts/test_architecture_fitness.py
+
+      - name: F-1..F-3 gate
+        # F-4 is report-only inside the script. F-5 (--with-*) stays off;
+        # pattern-enforcer / deep-scan already have dedicated jobs.
+        run: python3 scripts/architecture_fitness.py
+
   zero-panic:
     name: Zero-Panic Quality Gate
     runs-on: ubuntu-latest
@@ -512,7 +531,7 @@ jobs:
 
   trigger-nurture:
     name: Trigger Nurture CI
-    needs: [test, desktop-sidecar, frontend, e2e, audit, license-header, forbid-unsafe, docs-sync, pattern-check, zero-panic, deep-scan, semver-check, unused-deps, sbom, docker-build]
+    needs: [test, desktop-sidecar, frontend, e2e, audit, license-header, forbid-unsafe, docs-sync, pattern-check, architecture-fitness, zero-panic, deep-scan, semver-check, unused-deps, sbom, docker-build]
     if: github.ref == 'refs/heads/main' && success()
     runs-on: ubuntu-latest
     steps:

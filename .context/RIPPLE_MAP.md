@@ -1,16 +1,30 @@
+## 🔍 OP-094 GitHub↔LP 公開面整合（2026-07-25）
+
+- **変更**: MESSAGING §9 / COMPLIANCE §7 / README Live 表記。Release v1.2.0 body 訂正。errata + body 正本を `docs/releases/` に追加
+- **影響**: 対外文書・Release notes のみ。Pricing.tsx / commerce / deploy-landing 非変更
+- **検証**: Payment Link Live（OP-084 記録）。`Pricing.link.test` PASS。Release body に soft-launch 残存なし
+- **残**: なし（/reflexion×4: 上記 + MESSAGING ヘッダ・OPEN OP-085）
+
+## 🔍 OP-090 fitness CI + workflow DNS flake（2026-07-24）
+
+- **変更**: `ci.yml` に `architecture-fitness`（unit + F-1..F-3）。`test_validation_success` の URL を IP リテラル化。OPEN/CHANGELOG/plan DoD 同期
+- **影響**: CI `needs` / ローカル pre-push 安定性。F-5・compose bind-mount・Upstream 非変更
+- **検証**: fitness 10 PASS + live F-1..F-3 PASS；`workflow::tests::test_validation_success`
+- **残**: ADR-055 実行 / Upstream Gate α / OP-064 Human
+
 ## 🔍 Wave E /reflexion（2026-07-24）
 
 - **変更**: F-4/`api_integration_tests`；reason_code 拡充；schema 上限整合；F-1 を named/`package=`/workspace 継承リネーム/dev·build まで硬化
 - **影響**: fitness パーサ・拒否メッセージ・テストのみ。認可ルール非変更
 - **検証**: fitness 10 PASS（workspace 継承リネームの run_fitness Negative 含む）；live F-1〜F-3 PASS
-- **残**: fitness CI 必須化は明示後。`"""` 三重引用 package= は薄い harness 対象外
+- **残**: fitness CI ✅（上記エントリ）。`"""` 三重引用 package= は薄い harness 対象外
 
 ## 🔍 Wave E OP-090–093（2026-07-22）
 
 - **変更**: fitness harness；infra `lib.rs` セクション + ADR-056；`ToolCatalogCapabilityProvider` + Registry→TaskDispatcher；`tool_call_router` `reason_code`
-- **影響**: bootstrap `core_services` / dispatcher fallback 文言 / router 拒否メッセージ末尾。auth・commerce・Vault 非変更。CI に fitness 未配線
+- **影響**: bootstrap `core_services` / dispatcher fallback 文言 / router 拒否メッセージ末尾。auth・commerce・Vault 非変更。fitness CI は後続エントリで配線
 - **検証**: `test_architecture_fitness` P/N；`tool_catalog_capability`；router immune/mcp reason_code；`cargo check -p infrastructure` / router 系
-- **残**: /reflexion で上記追補済み。fitness CI 必須化は明示後。Provider 第2波は別 OP
+- **残**: /reflexion 追補済み。Provider 第2波は別 OP
 
 ## 🔍 evolutionary_architecture_plan v2.2（2026-07-22）
 

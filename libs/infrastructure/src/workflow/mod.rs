@@ -132,7 +132,9 @@ mod tests {
                 "http-1",
                 NodeType::HttpRequest {
                     method: "GET".to_string(),
-                    url_template: "https://github.com".to_string(),
+                    // Public IP literal: avoids flaky DNS (fail-closed when
+                    // AIOME_DEV_MODE/CI unset) while still exercising SSRF path.
+                    url_template: "https://1.1.1.1".to_string(),
                 },
             ),
         ];

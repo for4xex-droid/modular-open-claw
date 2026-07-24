@@ -320,7 +320,7 @@ Both **Aiome Core** and **Nurture Commercial Engine** are unified under the **Bu
 | **Pro (Autonomous)** | Real economy unlocked (rolling out) | **$19.99/month** (cancel anytime) |
 | **Agency (B2B)** | Multi-tenant operations | Coming Soon |
 
-Purchase Pro via the [official landing page (aiome.dev/#pricing)](https://aiome.dev/#pricing) Stripe Payment Link. External copy SSOT: [`docs/marketing/MESSAGING.md`](docs/marketing/MESSAGING.md). Stripe setup: [`docs/operations/stripe-setup.md`](docs/operations/stripe-setup.md).
+Purchase Pro via the [official landing page (aiome.dev/#pricing)](https://aiome.dev/#pricing) Stripe Payment Link (**Live**). Production hosts inject Stripe secrets via AbyssVault ([`stripe-production-setup.md`](docs/operations/stripe-production-setup.md)). **Self-hosted** installs do not unlock Pro from LP checkout alone—Webhook + key setup is required ([`MESSAGING.md`](docs/marketing/MESSAGING.md) §9). Local dev falls back to Mock economy only when `STRIPE_API_KEY` is unset. Stripe setup: [`docs/operations/stripe-setup.md`](docs/operations/stripe-setup.md).
 
 In-app commercial transactions (Gig fulfillment payments, asset purchases, etc.) carry a **15%** platform fee; **85%** goes to creators (same as the [Terms of Service](docs/legal/TERMS_OF_SERVICE.md)).
 
