@@ -39,8 +39,10 @@ TEST_PATH_MARKERS = (
     "/tests/",
     "/tests.rs",
     "_tests.rs",
+    "_tests/",  # e.g. api_integration_tests/
     "/test_utils.rs",
     "/testing.rs",
+    "/api_integration_tests/",
 )
 
 
@@ -58,9 +60,111 @@ def _repo_root(explicit: str | None) -> Path:
     return REPO_ROOT
 
 
-def _dep_keys_from_cargo_toml(text: str) -> set[str]:
-    """Collect dependency package keys from [dependencies] and target tables."""
+# [dependencies.foo] / [dev-dependencies.foo] / [build-dependencies.foo]
+# and target-scoped variants.
+_NAMED_DEP_HEADER = re.compile(
+    r"^\[(?:target\..+\.)?(?:dev-|build-)?dependencies\.([A-Za-z0-9_-]+)\]$"
+)
+# Fields inside a dependency specification (not crate names).
+_DEP_META_KEYS = frozenset(
+    {
+        "path",
+        "version",
+        "features",
+        "optional",
+        "package",
+        "git",
+        "branch",
+        "rev",
+        "registry",
+        "workspace",
+        "default-features",
+        "default_features",
+    }
+)
+_DEP_SECTION_HEADERS = frozenset(
+    {
+        "[dependencies]",
+        "[dev-dependencies]",
+        "[build-dependencies]",
+    }
+)
+_DEP_SECTION_SUFFIXES = (
+    ".dependencies]",
+    ".dev-dependencies]",
+    ".build-dependencies]",
+)
+
+
+def _is_deps_table_header(header: str) -> bool:
+    if header in _DEP_SECTION_HEADERS:
+        return True
+    return header.startswith("[target.") and any(
+        header.endswith(suffix) for suffix in _DEP_SECTION_SUFFIXES
+    )
+
+
+_PACKAGE_EQ_RE = re.compile(r"""package\s*=\s*["']([^"']+)["']""")
+
+
+def _workspace_dep_aliases(text: str) -> dict[str, str]:
+    """Parse root `[workspace.dependencies]` → alias → real package name."""
+    aliases: dict[str, str] = {}
+    in_section = False
+    named_alias: str | None = None
+    for raw in text.splitlines():
+        line = raw.split("#", 1)[0].rstrip()
+        if not line.strip():
+            continue
+        if line.startswith("["):
+            header = line.strip()
+            named = re.match(
+                r"^\[workspace\.dependencies\.([A-Za-z0-9_-]+)\]$", header
+            )
+            if named:
+                in_section = True
+                named_alias = named.group(1)
+                aliases.setdefault(named_alias, named_alias)
+                continue
+            in_section = header == "[workspace.dependencies]"
+            named_alias = None
+            continue
+        if not in_section:
+            continue
+        stripped = line.strip()
+        if named_alias is not None:
+            for pkg in _PACKAGE_EQ_RE.findall(stripped):
+                aliases[named_alias] = pkg
+            continue
+        mq = re.match(r'^"([A-Za-z0-9_-]+)"\s*=\s*(.*)$', stripped)
+        m = re.match(r"^([A-Za-z0-9_-]+)\s*=\s*(.*)$", stripped)
+        if mq:
+            alias, rhs = mq.group(1), mq.group(2)
+        elif m and m.group(1) not in _DEP_META_KEYS:
+            alias, rhs = m.group(1), m.group(2)
+        else:
+            continue
+        pkgs = _PACKAGE_EQ_RE.findall(rhs)
+        aliases[alias] = pkgs[0] if pkgs else alias
+    return aliases
+
+
+def _dep_keys_from_cargo_toml(
+    text: str,
+    workspace_aliases: dict[str, str] | None = None,
+) -> set[str]:
+    """Collect dependency package keys from Cargo.toml dependency tables.
+
+    Covers:
+    - `foo = …` / `"foo" = …` entries
+    - dotted workspace form `foo.workspace = true`
+    - named tables `[dependencies.foo]` (and dev-/build- variants)
+    - rename form `bar = { package = "foo", … }` / `package = "foo"|"foo"` lines
+    - `[dev-dependencies]` / `[build-dependencies]` (layer edges still count)
+    - workspace inheritance: resolve alias via root `[workspace.dependencies]`
+    """
     keys: set[str] = set()
+    workspace_inherited: set[str] = set()
     in_deps = False
     for raw in text.splitlines():
         line = raw.split("#", 1)[0].rstrip()
@@ -68,20 +172,57 @@ def _dep_keys_from_cargo_toml(text: str) -> set[str]:
             continue
         if line.startswith("["):
             header = line.strip()
-            in_deps = header == "[dependencies]" or (
-                header.startswith("[target.") and ".dependencies]" in header
-            )
+            named = _NAMED_DEP_HEADER.match(header)
+            if named:
+                keys.add(named.group(1))
+                # Stay in-deps so multi-line `package = "…"` under the named table is seen.
+                in_deps = True
+                continue
+            in_deps = _is_deps_table_header(header)
             continue
         if not in_deps:
             continue
-        m = re.match(r'^([A-Za-z0-9_-]+)\s*=', line.strip())
-        if m:
-            keys.add(m.group(1))
+        stripped = line.strip()
+        alias: str | None = None
+        # Quoted key: "infrastructure" = { … }
+        mq = re.match(r'^"([A-Za-z0-9_-]+)"\s*=', stripped)
+        if mq:
+            alias = mq.group(1)
+            keys.add(alias)
+        else:
+            # Dotted key: infrastructure.workspace = true
+            md = re.match(r"^([A-Za-z0-9_-]+)(?:\.[A-Za-z0-9_-]+)+\s*=", stripped)
+            if md and md.group(1) not in _DEP_META_KEYS:
+                alias = md.group(1)
+                keys.add(alias)
+                if re.match(r"^[A-Za-z0-9_-]+\.workspace\s*=", stripped):
+                    workspace_inherited.add(alias)
+            else:
+                m = re.match(r"^([A-Za-z0-9_-]+)\s*=", stripped)
+                if m and m.group(1) not in _DEP_META_KEYS:
+                    alias = m.group(1)
+                    keys.add(alias)
+        if alias is not None and re.search(r"\bworkspace\s*=\s*true\b", stripped):
+            workspace_inherited.add(alias)
+        # Inline or multi-line rename: package = "real" / 'real'
+        for pkg in _PACKAGE_EQ_RE.findall(line):
+            keys.add(pkg)
+    if workspace_aliases:
+        for alias in workspace_inherited:
+            real = workspace_aliases.get(alias)
+            if real:
+                keys.add(real)
     return keys
 
 
 def check_dep_edges(root: Path) -> list[CheckResult]:
     results: list[CheckResult] = []
+    ws_toml = root / "Cargo.toml"
+    workspace_aliases: dict[str, str] = {}
+    if ws_toml.is_file():
+        workspace_aliases = _workspace_dep_aliases(
+            ws_toml.read_text(encoding="utf-8")
+        )
     for check_id, rel, forbidden in DEP_EDGE_CHECKS:
         path = root / rel
         if not path.is_file():
@@ -89,7 +230,10 @@ def check_dep_edges(root: Path) -> list[CheckResult]:
                 CheckResult(check_id, False, f"missing Cargo.toml: {rel}")
             )
             continue
-        deps = _dep_keys_from_cargo_toml(path.read_text(encoding="utf-8"))
+        deps = _dep_keys_from_cargo_toml(
+            path.read_text(encoding="utf-8"),
+            workspace_aliases=workspace_aliases,
+        )
         hits = sorted(d for d in forbidden if d in deps)
         if hits:
             results.append(

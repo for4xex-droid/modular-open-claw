@@ -43,8 +43,10 @@ impl CapabilityProvider for ToolCatalogCapabilityProvider {
 
     fn capability_schema(&self) -> serde_json::Value {
         let all = self.skill_manager.list_skills_with_metadata();
-        let total = all.len();
-        let truncated = total > MAX_TOOLS_IN_SCHEMA;
+        // Bare names cover skills without .meta.json (list_skills reuse).
+        let names = self.skill_manager.list_skills();
+        let tool_count = all.len().max(names.len());
+        let truncated = tool_count > MAX_TOOLS_IN_SCHEMA;
         let tools: Vec<serde_json::Value> = all
             .into_iter()
             .take(MAX_TOOLS_IN_SCHEMA)
@@ -56,12 +58,11 @@ impl CapabilityProvider for ToolCatalogCapabilityProvider {
                 })
             })
             .collect();
-        // Also surface bare names from list_skills for empty-meta cases.
-        let names = self.skill_manager.list_skills();
+        let skill_names: Vec<String> = names.into_iter().take(MAX_TOOLS_IN_SCHEMA).collect();
         json!({
-            "tool_count": total.max(names.len()),
+            "tool_count": tool_count,
             "truncated": truncated,
-            "skill_names": names,
+            "skill_names": skill_names,
             "tools": tools,
         })
     }

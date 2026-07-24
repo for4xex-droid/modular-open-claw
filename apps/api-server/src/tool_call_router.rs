@@ -271,11 +271,19 @@ impl ToolCallRouter for DefaultToolCallRouter {
                                 }
 
                                 if is_malicious {
+                                    tracing::warn!(
+                                        reason_code = "ssrf",
+                                        host = %host,
+                                        "SSRF guardrail block"
+                                    );
                                     emit_tool_event(
                                         &tx_clone,
-                                        ToolExecutionEvent::Error(format!(
-                                            "[Guardrail Block] SSRF attempt detected: {}",
-                                            error_msg
+                                        ToolExecutionEvent::Error(with_reason_code(
+                                            format!(
+                                                "[Guardrail Block] SSRF attempt detected: {}",
+                                                error_msg
+                                            ),
+                                            "ssrf",
                                         )),
                                     )
                                     .await;
@@ -286,7 +294,22 @@ impl ToolCallRouter for DefaultToolCallRouter {
                             // robots.txt check
                             if !check_robots_txt_policy(url_str).await {
                                 let host = parsed_url.host_str().unwrap_or("");
-                                emit_tool_event(&tx_clone, ToolExecutionEvent::Error(format!("[Guardrail Block] Access to {} is prohibited by robots.txt policy", host))).await;
+                                tracing::warn!(
+                                    reason_code = "robots_txt",
+                                    %host,
+                                    "robots.txt policy block"
+                                );
+                                emit_tool_event(
+                                    &tx_clone,
+                                    ToolExecutionEvent::Error(with_reason_code(
+                                        format!(
+                                            "[Guardrail Block] Access to {} is prohibited by robots.txt policy",
+                                            host
+                                        ),
+                                        "robots_txt",
+                                    )),
+                                )
+                                .await;
                                 return;
                             }
                         }
@@ -299,21 +322,32 @@ impl ToolCallRouter for DefaultToolCallRouter {
             let pre_verdict = state_rc.hook_chain.execute_pre(&sn, &si).await;
             let actual_input = match pre_verdict {
                 HookVerdict::Deny(reason) => {
-                    tracing::warn!("Hook blocked tool `{}` pre-execution: {}", sn, reason);
+                    tracing::warn!(
+                        reason_code = "hook_deny",
+                        skill = %sn,
+                        "Hook blocked tool pre-execution"
+                    );
                     emit_tool_event(
                         &tx_clone,
-                        ToolExecutionEvent::Error(format!("[Hook Block] {}", reason)),
+                        ToolExecutionEvent::Error(with_reason_code(
+                            format!("[Hook Block] {}", reason),
+                            "hook_deny",
+                        )),
                     )
                     .await;
                     return;
                 }
                 HookVerdict::Ask { reason, .. } => {
-                    tracing::warn!("Hook requested user approval for tool `{}`: {}", sn, reason);
+                    tracing::warn!(
+                        reason_code = "hook_ask",
+                        skill = %sn,
+                        "Hook requested user approval pre-execution"
+                    );
                     emit_tool_event(
                         &tx_clone,
-                        ToolExecutionEvent::Error(format!(
-                            "[Hook Ask] Requires User Approval: {}",
-                            reason
+                        ToolExecutionEvent::Error(with_reason_code(
+                            format!("[Hook Ask] Requires User Approval: {}", reason),
+                            "hook_ask",
                         )),
                     )
                     .await;
@@ -541,18 +575,26 @@ impl ToolCallRouter for DefaultToolCallRouter {
                 .await;
             let final_output = match post_verdict {
                 HookVerdict::Deny(reason) => {
-                    tracing::warn!("Hook blocked tool `{}` post-execution: {}", sn, reason);
-                    let block_msg = format!("[Hook Post-Block] {}", reason);
+                    tracing::warn!(
+                        reason_code = "hook_post_deny",
+                        skill = %sn,
+                        "Hook blocked tool post-execution"
+                    );
+                    let block_msg =
+                        with_reason_code(format!("[Hook Post-Block] {}", reason), "hook_post_deny");
                     emit_tool_event(&tx_clone, ToolExecutionEvent::Error(block_msg)).await;
                     return;
                 }
                 HookVerdict::Ask { reason, .. } => {
                     tracing::warn!(
-                        "Hook requested user approval post-execution for `{}`: {}",
-                        sn,
-                        reason
+                        reason_code = "hook_post_ask",
+                        skill = %sn,
+                        "Hook requested user approval post-execution"
                     );
-                    let block_msg = format!("[Hook Post-Ask] Requires User Approval: {}", reason);
+                    let block_msg = with_reason_code(
+                        format!("[Hook Post-Ask] Requires User Approval: {}", reason),
+                        "hook_post_ask",
+                    );
                     emit_tool_event(&tx_clone, ToolExecutionEvent::Error(block_msg)).await;
                     return;
                 }
@@ -858,8 +900,10 @@ mod tests {
     async fn test_tool_call_router_ok_path_has_no_reason_code() {
         let router = DefaultToolCallRouter;
         let (state, _guard) = setup_mock_state().await;
-        let res = router.evaluate_security("hello status check", &state).await;
-        assert!(res.is_ok(), "benign prompt should pass: {res:?}");
+        match router.evaluate_security("hello status check", &state).await {
+            Ok(()) => {}
+            Err(msg) => panic!("benign prompt must pass without deny reason_code, got: {msg}"),
+        }
     }
 
     /// N2 coverage note: SSE initial path (`stream.rs`) calls the same
@@ -882,11 +926,15 @@ mod tests {
         let mut rx = router.execute_skill("some_mcp_tool", "{}", &state).await;
 
         let mut got_billing_error = false;
+        let mut saw_code = false;
 
         while let Some(evt) = rx.recv().await {
             if let ToolExecutionEvent::Error(msg) = evt {
                 if msg.contains("Insufficient funds") {
                     got_billing_error = true;
+                }
+                if msg.contains("reason_code=mcp_validate_denied") {
+                    saw_code = true;
                 }
             }
         }
@@ -894,6 +942,10 @@ mod tests {
         assert!(
             got_billing_error,
             "MCP validate_activity guard should emit a billing error event"
+        );
+        assert!(
+            saw_code,
+            "mcp_validate_denied must include stable reason_code"
         );
     }
 
@@ -912,14 +964,19 @@ mod tests {
             .execute_skill("firecrawl_scrape", input_ssrf, &state)
             .await;
         let mut got_ssrf_error = false;
+        let mut saw_ssrf_code = false;
         while let Some(evt) = rx_ssrf.recv().await {
             if let ToolExecutionEvent::Error(msg) = evt {
                 if msg.contains("SSRF") {
                     got_ssrf_error = true;
                 }
+                if msg.contains("reason_code=ssrf") {
+                    saw_ssrf_code = true;
+                }
             }
         }
         assert!(got_ssrf_error, "SSRF attempt should be blocked");
+        assert!(saw_ssrf_code, "SSRF block must include reason_code=ssrf");
 
         // 2. DNS Rebinding 防御
         std::env::remove_var("AIOME_DEV_MODE");

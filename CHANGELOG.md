@@ -3,6 +3,12 @@
 ### Security
 - **ammonia 4.1.4**: RUSTSEC-2026-0213（SVG `animate`/`set` XSS）解消のため `libs/core` / `libs/infrastructure` を 4.1.3→4.1.4。
 
+### Fixed (Wave E /reflexion 2026-07-24)
+- **OP-090 F-4**: `api_integration_tests/` 等を test 区分へ（prod_top 汚染解消）。
+- **OP-090 F-1 Negative**: 実 `shared/Cargo.toml` 書き込みをやめ、一時ツリー注入に変更。`package=`（単二重引用）/ `foo.workspace` / 引用キー / dev·build-deps / workspace 継承リネームも検知。
+- **OP-093**: SSRF / robots.txt / Hook pre·post 拒否にも安定 `reason_code=` を付与。`mcp_validate_denied` アサート強化。
+- **OP-092**: `tool_catalog` schema の `truncated` / `skill_names` 上限を `tool_count` と整合。
+
 ### Added (Wave E OP-090–093 2026-07-22)
 - **OP-090**: `scripts/architecture_fitness.py` — F-1〜F-3（Cargo.toml 依存方向）+ F-4（prod/test 行数分離）。F-5 は pattern-enforcer/deep-scan の任意委譲のみ。`test_architecture_fitness.py`（Positive + Negative 注入→復元）。
 - **OP-091**: `libs/infrastructure/src/lib.rs` に ADR-056 セクション見出し。[`056-infrastructure-logical-boundaries.md`](docs/decisions/056-infrastructure-logical-boundaries.md)（物理分割禁止・新規 mod はセクション必須）。
