@@ -18,7 +18,8 @@ Remnants of the removed payout path remain in schema (`nurture_payout_requests`)
 
 4. **Supersede prior CP→gift proposals** — `REMAINING_TASKS.md` L90–91 and `UNCERTAINTY_BREAKTHROUGH.md` CP→Tremendous paths are out of scope.
 
-5. **Schema cleanup** — Drop dead `nurture_payout_requests` table; rename public API from `/withdraw` to `/convert-points` with one-release alias.
+5. **Schema cleanup** — Drop dead `nurture_payout_requests` table; rename public API from `/withdraw` to `/convert-points` with one-release alias.  
+   **Update (2026-07-25)**: Alias `/api/v1/commerce/withdraw` **removed** ahead of the 2026-08-01 sunset (NR-14 / Wave 0c). Use `/api/v1/commerce/convert-points` only.
 
 ## Consequences
 - Creators monetize via in-ecosystem CP→Coin conversion and marketplace sales, not direct fiat withdrawal through Aiome.

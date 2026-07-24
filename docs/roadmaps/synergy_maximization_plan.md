@@ -328,7 +328,7 @@ if let Some(bonus) = SurpriseEngine::evaluate_bonus(
 3. **`/internal/*` の認証弱体化**（OXP 免除案は不採用）
 4. **nurture-api サイドカー内 Webhook Hook の削除**（一本化は ADR-012 の判断。**ADR-012 は W-3 のコード変更前に完了必須**）
 5. **エージェントへの internal Bearer 直接配布**（プロキシ必須）
-6. **`marketplace_buy` の自律実行解禁**（承認キュー統合の検証完了まで。独立タスクで判断）
+6. **`marketplace_buy` の自律実行解禁** — 追跡は [`nurture_remaining_ledger_plan.md`](nurture_remaining_ledger_plan.md) **NR-09 / Wave B'**（既定: MCP whitelist 凍結。新 `PurchasePolicy` 禁止）
 7. **未検証機能の対外訴求**（W-8 で段階解禁）
 
 ## 6. 検証プロトコル（全項目共通・AGENTS.md 準拠）

@@ -66,7 +66,7 @@ This file contains the AST-extracted structural matrix of the codebase. Use it t
 - `/api/v1/commerce/transfer`
 - `/api/v1/commerce/webhook`
 - `/api/v1/commerce/webhook/polar`
-- `/api/v1/commerce/withdraw`
+- `/api/v1/commerce/convert-points`
 - `/api/v1/demo/start`
 - `/api/v1/ekyc/session`
 - `/api/v1/ekyc/status`

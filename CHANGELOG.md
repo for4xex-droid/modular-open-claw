@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Changed (Nurture 残台帳 Wave 0a–0c / A 2026-07-25)
+- **台帳**: `OPEN.md` / `REMAINING_TASKS.md` §3 を [`nurture_remaining_ledger_plan.md`](docs/roadmaps/nurture_remaining_ledger_plan.md) v1.3 Disposition に同期。`UNCERTAINTY_BREAKTHROUGH.md` に superseded 注記。
+- **NR-14**: `/api/v1/commerce/withdraw` alias を **sunset（2026-08-01）前倒しで削除**（`convert-points` のみ）。`deep_scan_matrix` 追随。Negative: 旧 path が 404 または 405（ServeDir fallback）。
+- **NR-09**: MCP whitelist に `marketplace_buy` / `buy` 拒否の回帰ピン。
+- **NR-01**: `formal-verify.yml` に commercial `NurtureEconomyProtocol` TLC ステップを追加（cwd=`commercial`、欠落時 fail）。仕様に `MODULE` ヘッダ追加（意味不変）。**モデル検査自体の DoD は CI ジョブ**（ローカル JRE 非必須）。
+
 ### Fixed (OP-094 GitHub↔LP 公開面 2026-07-25)
 - **MESSAGING §9 / COMPLIANCE §7 / README**: 本番は AbyssVault + Live（OP-084）。Mock はローカル未設定時のみ。Payment Link `livemode=true` を明記。
 - **Release `v1.2.0` body**: soft-launch 誤記を除去（タグ不動）。正本 [`v1.2.0-release-body-op094.md`](docs/releases/v1.2.0-release-body-op094.md)。

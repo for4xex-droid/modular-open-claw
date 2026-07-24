@@ -36,7 +36,17 @@ jobs:
           echo "⚠️  spec file not found, skipping TLC."
         fi
 
-      
+    - name: Run TLC Model Checker (NurtureEconomyProtocol)
+      working-directory: commercial
+      run: |
+        if [ ! -f specs/NurtureEconomyProtocol.tla ]; then
+          echo "🚨 commercial/specs/NurtureEconomyProtocol.tla missing"
+          exit 1
+        fi
+        java -cp ../tla2tools.jar tlc2.TLC specs/NurtureEconomyProtocol.tla \
+          -modelcheck -deadlock -workers auto \
+          -config specs/NurtureEconomyProtocol.cfg
+
     - name: Ensure Rust Toolchain
       uses: dtolnay/rust-toolchain@stable
       

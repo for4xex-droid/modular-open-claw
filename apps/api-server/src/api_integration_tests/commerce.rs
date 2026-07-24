@@ -223,6 +223,28 @@ async fn test_commerce_purchase_unverified_blocked() {
         "Unverified user should not be able to execute purchases"
     );
 }
+
+/// NR-14 / Wave 0c: ADR-052 sunset — legacy `/withdraw` alias must not exist.
+#[serial]
+#[tokio::test]
+async fn test_commerce_withdraw_alias_removed() {
+    let (server, _state, _tmp) = create_test_server().await;
+    let bearer = "Bearer mock_valid_token_ekyctest_user".to_string();
+    let payload = json!({ "amount": 1 });
+
+    let resp = server
+        .post("/api/v1/commerce/withdraw")
+        .add_header(axum::http::header::AUTHORIZATION, &bearer)
+        .json(&payload)
+        .await;
+
+    // ServeDir fallback may yield 405 for POST to a non-route; either means the alias is gone.
+    let status = resp.status_code();
+    assert!(
+        status == StatusCode::NOT_FOUND || status == StatusCode::METHOD_NOT_ALLOWED,
+        "legacy /commerce/withdraw alias must not be served (got {status})"
+    );
+}
 #[serial]
 #[tokio::test]
 async fn test_subscription_lifecycle() {

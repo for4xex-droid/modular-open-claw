@@ -1,3 +1,10 @@
+## 🔍 Nurture 残台帳 Wave 0a–0c / A（2026-07-25）
+
+- **変更**: OPEN/REMAINING Disposition 同期；UNCERTAINTY superseded；`/commerce/withdraw` alias **sunset 前倒し削除**；MCP `marketplace_buy`/`buy` 拒否ピン；`formal-verify` に commercial NurtureEconomy TLC（cwd=commercial）+ MODULE ヘッダ；計画 [`nurture_remaining_ledger_plan.md`](../docs/roadmaps/nurture_remaining_ledger_plan.md) v1.3.1
+- **影響**: router 公開面（旧 alias 404/405）；CI formal-verify；台帳文書。PurchasePolicy / Phase E / 有償 KC 非変更
+- **検証**: `test_rbac_new_tools_whitelisted` PASS；`test_commerce_withdraw_alias_removed` PASS（ServeDir により 404|405）。/reflexion: 計画・CHANGELOG・ADR-052 追記を実装後実態に同期
+- **残**: NR-06 Human / NR-02–03–11 Phase E / NR-07 Legal / Wave B' 製品ゲート
+
 ## 🔍 OP-094 GitHub↔LP 公開面整合（2026-07-25）
 
 - **変更**: MESSAGING §9 / COMPLIANCE §7 / README Live 表記。Release v1.2.0 body 訂正。errata + body 正本を `docs/releases/` に追加

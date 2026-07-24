@@ -479,6 +479,10 @@ pub(crate) mod tests {
         assert!(!check_whitelist("fs_writer"));
         assert!(!check_whitelist("forge_publish"));
 
+        // Negative: Nurture marketplace buy stays gated (NR-09 / Wave 0b)
+        assert!(!check_whitelist("marketplace_buy"));
+        assert!(!check_whitelist("buy"));
+
         // Negative: arbitrary unknown tools
         assert!(!check_whitelist("evil_tool"));
         assert!(!check_whitelist(""));

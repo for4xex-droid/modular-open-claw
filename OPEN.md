@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-25（OP-094 GitHub↔LP 公開面整合）**
+**最終更新: 2026-07-25（Nurture 残台帳 v1.3 Wave 0a–0c / A）**
 
 > **実装手順の正本**:
 > - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・P1–P4 ✅ / **Q5 ADR-055 ✅** / **Q6 untrack ✅**。Path B は都度 Human。bind-mount **物理撤去**は ADR-055 実行ゲート）
@@ -109,9 +109,18 @@
 - [ ] **OP-033**（Issue D）: tauri ≥3.0 → GTK4/unic 系 audit ignore 削除（T-003）。明示許可後
 - [ ] **OP-034**: OP-033 後。`plist`→ quick-xml で audit **0194/0195** 削除
 
-## 🌱 Project-Nurture 側（経済・コンプライアンス）
+## 🌱 Project-Nurture / commercial 残（正本: [`docs/roadmaps/nurture_remaining_ledger_plan.md`](docs/roadmaps/nurture_remaining_ledger_plan.md) v1.3）
 
-- Nurture 側の残存タスク（TLA+ 形式仕様、VRAM 競合調停、On-memory DRM、Saga 補償設計、資金決済法対応、特商法表記、自律購買ポリシー、CP 報酬変換、コールドスタート対策等）は `REMAINING_TASKS.md` セクション3を参照（次回 Nurture 側スプリント時に本台帳または Nurture 側台帳へ正式移入する）。
+- [x] **NR-08** 特商法 / **NR-10** ADR-052（convert-points・payout DROP） / **NR-12** Biome 目視 — 台帳クローズ
+- [x] **NR-14** `/commerce/withdraw` alias 削除（sunset 2026-08-01 **前倒し**）— Wave 0c ✅ 2026-07-25
+- [x] **NR-01** TLA CI 配線: `formal-verify.yml` に commercial `NurtureEconomyProtocol`（cwd=commercial、欠落 fail）— Wave A ✅ 2026-07-25（TLC 実行は CI）
+- [x] **NR-09** エージェント `marketplace_buy` — 既定凍結（MCP whitelist 未解禁）。回帰ピン Wave 0b ✅。解禁トグルは製品ゲート（Wave B'）
+- [ ] **NR-06** BoneChecker 実 VRM コーパス調整（Human）
+- [ ] **NR-02 / NR-03 / NR-11** → Phase E 親計画を別途作成後（E0 three-vrm ゲート）
+- [ ] **NR-07** `MAX_TOTAL_OUTSTANDING_COINS` → [`KC_LEGAL_POSITION.md`](docs/legal/KC_LEGAL_POSITION.md) 有償化ゲート
+- ⏸️ **NR-04** Saga Compensable（例外のみ） / **NR-05** 経済 ZKP・CoinQuantum
+- （別レーン）**NR-13** 他 TLA の CI 配線 — 本計画外
+- スナップショット: [`REMAINING_TASKS.md`](REMAINING_TASKS.md) §3（Disposition 同期済み。正本ドキュメントは `commercial/docs/`）
 
 ## ⏸️ 凍結（解除条件つき）
 

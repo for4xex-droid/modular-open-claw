@@ -1,3 +1,4 @@
+---- MODULE NurtureEconomyProtocol ----
 EXTENDS Integers, Sequences, FiniteSets
 
 RECURSIVE Sum(_)

@@ -2,6 +2,10 @@
 
 > **策定日**: 2026-03-14  
 > **原則**: 技術の壁はすべて既存技術で突破できる。残るのは「私たちの中の不確実性」だけである。
+>
+> **⚠️ 2026-07-25 superseded 注記**: 実行台帳の正本は  
+> [`docs/roadmaps/nurture_remaining_ledger_plan.md`](../../docs/roadmaps/nurture_remaining_ledger_plan.md) **v1.3**。  
+> 下記の古い「未策定／推奨」セルは歴史記録として残す。現状は各節の **SUPERSEDED** 行を優先せよ。
 
 ---
 
@@ -38,10 +42,11 @@ quadrantChart
 ### A1. 経済トランザクションの TLA+ 形式仕様が未策定
 | | |
 |---|---|
+| **SUPERSEDED** | **仕様は存在する** — `commercial/specs/NurtureEconomyProtocol.tla`（`minted` / SurpriseBonus / `CoinsConserved`）。aiome `formal-verify.yml` で TLC（NR-01 / Wave A）。「未策定」は誤り |
 | **現状** | `AiomeQuarantineProtocol.tla` と `SamsaraKarmaProtocol.tla` でWASM隔離とKarma連邦は検証済み |
-| **ギャップ** | 二重通貨の ACID トランザクション（残高減算 + Creator Points 加算のアトミック性）に対する TLA+ 仕様が存在しない |
-| **突破方法** | 新規 `NurtureEconomyProtocol.tla` を策定し、TLC でデッドロック・二重支出・残高不整合がないことを証明 |
-| **残る不確実性** | **ゼロ** — 既に3つの TLA+ 仕様を策定・検証した実績がある |
+| **ギャップ** | ~~二重通貨の ACID に対する TLA+ 仕様が存在しない~~ → 解消済 |
+| **突破方法** | ~~新規策定~~ → CI 配線で継続検証 |
+| **残る不確実性** | **ゼロ**（仕様・CI）。他 TLA（NR-13）は別レーン |
 
 ### ✅ A2. 二重通貨の型レベル分離 (解決済み)
 | | |
@@ -112,10 +117,11 @@ quadrantChart
 ### B3. 特定商取引法の該当可否
 | | |
 |---|---|
+| **SUPERSEDED** | **表記ページは DONE**（LP `/tokushoho` + `docs/legal/TOKUSHOHO.md` / OP-085・OP-094）。NR-08 |
 | **現状** | マーケットプレイスでデジタルコンテンツ（VRM、衣服パーツ）を販売 |
-| **ギャップ** | プラットフォーム事業者としての特商法上の義務（表記義務、クーリングオフ適用、返品ポリシー）が未整理 |
-| **突破方法** | デジタルコンテンツは特商法のクーリングオフ対象外。ただし「特定商取引法に基づく表記」ページは必須。MVP では最小限の表記で開始し、法務レビュー後に拡充 |
-| **残る不確実性** | **低** — 表記義務は形式的であり、テンプレートで対応可能 |
+| **ギャップ** | ~~表記ページ未整備~~ → 公開済（Pro サブスク表記含む） |
+| **突破方法** | 既存 LP / COMPLIANCE を正本とする |
+| **残る不確実性** | **低** — 有償 KC 開放時は別途再評価（`KC_LEGAL_POSITION`） |
 
 ---
 
@@ -124,10 +130,11 @@ quadrantChart
 ### C1. AI の「人格」と「消費行動」のバランス設計
 | | |
 |---|---|
+| **SUPERSEDED** | **`PurchasePolicy` enum は作らない**（NR-09）。実効制御 = MCP whitelist（`marketplace_buy` 未解禁）+ HTTP `execute_purchase`（Pro+eKYC）+ `spend_guard`。解禁トグルは製品ゲート Wave B' |
 | **問い** | AI がどの程度「自律的に」購入を決定し、どの程度「ユーザーの好みに従う」べきか？ |
 | **選択肢** | **α) 完全自律**: Karma から学習した嗜好に基づき独自に購入 / **β) 承認制**: 全購入にユーザー通知 + 3分タイムアウトで自動承認 / **γ) ハイブリッド**: 低額は自律、高額は承認 |
-| **推奨** | **γ ハイブリッド** — 閾値は `NURTURE_AUTO_PURCHASE_LIMIT` で設定可能に |
-| **突破方法** | 実装レベルでは全3パターンを `PurchasePolicy` enum で表現し、設定画面で切り替え可能にする |
+| **推奨** | ~~γ + PurchasePolicy~~ → 既定は MCP buy 凍結。HTTP は eKYC/Pro |
+| **突破方法** | ~~`PurchasePolicy` enum~~ → whitelist / 既存上限の Settings 露出のみ（新エンジン禁止） |
 
 ### C2. Creator Points の価値定義
 | | |

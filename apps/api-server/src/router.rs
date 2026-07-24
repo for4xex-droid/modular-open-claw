@@ -87,11 +87,6 @@ pub fn build_app(
             "/api/v1/commerce/convert-points",
             post(routes::commerce::convert_points),
         )
-        // ADR-052: alias until sunset 2026-08-01 — use /convert-points for new integrations
-        .route(
-            "/api/v1/commerce/withdraw",
-            post(routes::commerce::convert_points),
-        )
         .route(
             "/api/v1/commerce/transfer",
             post(routes::commerce::transfer),
