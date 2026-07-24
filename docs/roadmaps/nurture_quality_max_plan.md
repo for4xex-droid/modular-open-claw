@@ -176,8 +176,9 @@
 
 ## Phase E: VRM 本格配線【別計画に分離】
 
-- three-vrm は依存+デッドコード（`useVrmExpression.ts`、import ゼロ）のみ。実行時は PNG ビルボード。リップシンク（`useVisemeSync.ts` は viseme キューまで実装済み・VRM 未接続）・公式素体・クローゼット・VRAM ピークシフト・一般アセットストア UI は独立計画（別途 /perfect-plan）
-- E-0 のみ本計画: `useVrmExpression.ts` / `GlbRenderer.tsx` 冒頭に「Phase E（VRM 配線計画）で使用予定」コメント付与
+- **実装親（2026-07-25）**: [`phase_e_vrm_wiring_plan.md`](phase_e_vrm_wiring_plan.md) **v1.0**。**E0=Y**。出荷=2D+3D。Inochi 凍結。Live2D=Phase F。
+- three-vrm は依存+デッドコード（`useVrmExpression.ts`、import ゼロ）のみ。実行時は PNG ビルボード。リップシンク（`useVisemeSync.ts` は viseme キューまで実装済み・VRM 未接続）・公式素体・クローゼット・VRAM ピークシフト・一般アセットストア UI は上記親計画 / 別計画へ
+- 本計画の E-0 コメント付与（`useVrmExpression.ts` / `GlbRenderer.tsx`）は済
 
 ---
 

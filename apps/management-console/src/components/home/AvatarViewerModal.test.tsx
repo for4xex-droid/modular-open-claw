@@ -28,10 +28,6 @@ jest.mock('../../lib/glb/GlbRenderer', () => ({
   __esModule: true,
   default: () => <div data-testid="mock-glb"></div>
 }));
-jest.mock('../../lib/inx/InxRenderer', () => ({
-  __esModule: true,
-  default: () => <div data-testid="mock-inx"></div>
-}));
 
 jest.mock('@react-three/drei', () => ({
   OrbitControls: () => null,

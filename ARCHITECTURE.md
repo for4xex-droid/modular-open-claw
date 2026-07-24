@@ -128,7 +128,7 @@ graph TD
 | `aiome-core` | `libs/core` | (Core Module) |
 | `infrastructure` | `libs/infrastructure` | (Core Module) |
 | `shared` | `libs/shared` | (Core Module) |
-| `avatar-engine` | `libs/avatar-engine` | Aiome physical manifestation and 2D asset routing engine (Inochi2D & VRM compatible) |
+| `avatar-engine` | `libs/avatar-engine` | Aiome physical manifestation and 2D asset routing engine (2D + VRM; Inochi2D frozen Phase E E5) |
 | `fs_reader` | `libs/wasm-skills/fs_reader` | (Core Module) |
 | `terminal_exec` | `libs/wasm-skills/terminal_exec` | (Core Module) |
 | `fs_writer` | `libs/wasm-skills/fs_writer` | (Core Module) |

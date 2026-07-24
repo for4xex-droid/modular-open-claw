@@ -39,7 +39,7 @@ describe('Pricing Component', () => {
 
     // Free features
     expect(screen.getByText('Self-Healing AI Agent with Soul System')).toBeInTheDocument();
-    expect(screen.getByText('AI Chat + VRM Avatar (Inochi2D Live Expression)')).toBeInTheDocument();
+    expect(screen.getByText('AI Chat + 2D Avatar')).toBeInTheDocument();
     expect(screen.getByText('WASM Skill Ecosystem + mock economy mode')).toBeInTheDocument();
 
     // Pro features

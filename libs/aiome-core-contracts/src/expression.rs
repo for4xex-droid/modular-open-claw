@@ -42,7 +42,7 @@ pub struct Expression {
     pub audio_path: Option<String>, // DP-9: 音声ファイルのパス
     pub duration_ms: Option<i32>, // DP-9: 音声の長さ(ms)
     pub tts_status: TtsStatus, // Phase 10.1a: TTS生成ステータス
-    pub avatar_params: Option<serde_json::Value>, // Phase 7: Inochi2D/VRM 感情パラメータ
+    pub avatar_params: Option<serde_json::Value>, // Phase 7: VRM 等感情パラメータ（Inochi frozen E5）
     pub created_at: String,
 }
 

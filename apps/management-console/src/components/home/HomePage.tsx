@@ -191,7 +191,7 @@ const DEMO_SEEN_KEY = 'aiome_demo_seen';
         }
     }, [worldSubTab]);
 
-    const modelUrl = (mode as string) === 'vrm' ? getAssetPath('vrm') : ((mode as string) === 'inx' ? getAssetPath('inx') : '');
+    const modelUrl = mode === 'vrm' ? getAssetPath('vrm') : '';
 
     // Settings/World use full width (no CharacterPanel)
     const isFullWidth = activeMainTab === 'settings' || activeMainTab === 'world';

@@ -192,6 +192,8 @@ pub async fn get_ekyc_status_handler(
 }
 
 /// Inochi2D アセットの安全な配信（パス・トラバーサル防御・CORS対応）
+///
+/// **Deprecated (Phase E E5)**: Inochi product-frozen; route retained for PathSandbox tests / compat.
 #[utoipa::path(
     get,
     path = "/api/v1/avatar/inochi2d/{filename}",

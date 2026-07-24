@@ -738,6 +738,7 @@ pub fn build_app(
         .route("/api/health", get(routes::general::get_health_status))
         .route("/health", get(routes::general::get_health_status))
         .route(
+            // DEPRECATED Phase E E5: Inochi frozen — keep for PathSandbox / compat (do not expand)
             "/api/v1/avatar/inochi2d/:filename",
             get(routes::avatar::serve_inochi2d_asset),
         )
@@ -845,6 +846,7 @@ pub fn build_app(
             ),
         )
         .route(
+            // DEPRECATED Phase E E5: Inochi frozen — UI unmounted; removal needs explicit approval
             "/api/v1/avatar/inochi2d/upload",
             axum::routing::post(routes::inochi2d::upload_inochi2d_handler).route_layer(
                 tower::ServiceBuilder::new()

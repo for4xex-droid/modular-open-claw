@@ -214,7 +214,7 @@ if std::env::var("NURTURE_IN_PROCESS").map(|v| v == "true" || v == "1").unwrap_o
 - **変更手順**:
   1. **プロキシルート新設** `apps/api-server/src/routes/nurture_mcp_proxy.rs` — 認証必須（既存 auth middleware 配下）。`Authorization: Bearer {NURTURE_INTERNAL_SECRET}` を付与して nurture-api へ転送する。**転送先の実構造（v3 検証で確定）**: nurture の MCP は単一 POST エンドポイントではなく **SSE 2段構成**（`routes/mod.rs` L27 で `/api/v1` 配下に `.nest("/mcp", …)`、`mcp/server.rs` L28–30: `GET /api/v1/mcp/sse` でセッション確立 → SSE が返す `POST /api/v1/mcp/message?sessionId=…` へ JSON-RPC を送る）。認証は `main.rs` L310–315 の `internal_auth_middleware`（Bearer のみ・OXP 不要）。したがってプロキシは (a) `GET /api/v1/nurture-mcp/sse` と `POST /api/v1/nurture-mcp/message` の2ルートを素通しプロキシする、または (b) プロキシ内部で SSE セッションを管理し単一 `POST /api/v1/nurture-mcp` に集約する、のどちらかを選ぶ。**推奨は (a) 素通し**（セッション状態を持たず単純）。`NURTURE_API_URL` 未設定時は 503 + `{"error":"nurture_disabled"}`。router.rs と OpenAPI に登録
   2. **ツール検出**: HTTP 型 MCP エントリは**サポート済みと検証確認**（`apps/api-server/src/mcp/config.rs` L35–38 `McpTransport::Http`＋L55 `url` フィールド、`discovery.rs` L229–357 `connect_http_server()`。※ `libs/infrastructure/src/mcp/` は存在しない。実装はすべて `apps/api-server/src/mcp/`）。discovery テンプレート（`discovery.rs` L40 `default_config`）に `"nurture": {"transport": "http", "url": "http://localhost:{API_PORT}/api/v1/nurture-mcp/sse"}` を seed する（既存テンプレの HTTP 型記法 L117–144 に合わせる）
-  3. **whitelist 追加**（`mcp/server.rs` L391–407）: `"marketplace_search" | "market_search" | "wallet_balance" => true` を追加。**`marketplace_buy` は本項では `false` のまま**（購買は EconomyInterceptor＋日次上限の防壁があるが、承認キュー統合の検証が終わるまで自律実行は解禁しない。解禁判断は独立タスクとして OPEN.md に起票）
+  3. **whitelist 追加**（`mcp/server.rs` L391–407）: `"marketplace_search" | "market_search" | "wallet_balance" => true` を追加。**`marketplace_buy` は本項では `false` のまま**（購買は EconomyInterceptor＋日次上限の防壁があるが、承認キュー統合の検証が終わるまで自律実行は解禁しない）。**解禁判断は Wave B'=N でクローズ（2026-07-25）** — 将来の明示 Y まで凍結維持
   4. **システムプロンプト**（`system_instructions.rs` L80–92 の `economy_prompt`）: `economic_context` がある場合の文言に「利用可能ツール: marketplace_search（市場検索）, wallet_balance（残高確認）」を追記
 - **完了条件**:
   - Positive: 認証済みユーザーのプロキシ経由 `tools/list` が nurture のツールを返す統合テスト
@@ -328,7 +328,7 @@ if let Some(bonus) = SurpriseEngine::evaluate_bonus(
 3. **`/internal/*` の認証弱体化**（OXP 免除案は不採用）
 4. **nurture-api サイドカー内 Webhook Hook の削除**（一本化は ADR-012 の判断。**ADR-012 は W-3 のコード変更前に完了必須**）
 5. **エージェントへの internal Bearer 直接配布**（プロキシ必須）
-6. **`marketplace_buy` の自律実行解禁** — 追跡は [`nurture_remaining_ledger_plan.md`](nurture_remaining_ledger_plan.md) **NR-09 / Wave B'**（既定: MCP whitelist 凍結。新 `PurchasePolicy` 禁止）
+6. **`marketplace_buy` の自律実行解禁** — **CLOSED Wave B'=N（2026-07-25）**。[`nurture_remaining_ledger_plan.md`](nurture_remaining_ledger_plan.md) NR-09。MCP whitelist 凍結維持。新 `PurchasePolicy` 禁止。将来の解禁は明示 Y のみ
 7. **未検証機能の対外訴求**（W-8 で段階解禁）
 
 ## 6. 検証プロトコル（全項目共通・AGENTS.md 準拠）

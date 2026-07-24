@@ -13,15 +13,15 @@ import CharacterBillboard from '../../lib/vrm/CharacterBillboard';
 import * as THREE from 'three';
 import ErrorBoundary from '../common/ErrorBoundary';
 import GlbRenderer from '../../lib/glb/GlbRenderer';
-import InxRenderer from '../../lib/inx/InxRenderer';
 import { cssVar } from '../../utils/cssVar';
+import type { DisplayMode } from '../../hooks/useDisplayMode';
 
 interface AvatarViewerModalProps {
     isOpen: boolean;
     onClose: () => void;
     modelUrl: string;
     avatarState: 'idle' | 'thinking' | 'speaking' | 'learning' | 'meditating' | 'awakened';
-    mode: 'vrm' | 'inx' | 'glb' | 'off' | 'lite';
+    mode: DisplayMode | 'glb';
 }
 
 const AvatarViewerModal: React.FC<AvatarViewerModalProps> = ({ isOpen, onClose, modelUrl, avatarState, mode }) => {
@@ -126,12 +126,6 @@ const AvatarViewerModal: React.FC<AvatarViewerModalProps> = ({ isOpen, onClose, 
                                     {mode === 'glb' && (
                                         <ErrorBoundary fallback={<div style={{color:'var(--accent-rose)', padding:'2rem', textAlign:'center'}}>GLB Model failed to load.</div>}>
                                             <GlbRenderer modelUrl={modelUrl} avatarState={avatarState} />
-                                        </ErrorBoundary>
-                                    )}
-
-                                    {mode === 'inx' && (
-                                        <ErrorBoundary fallback={<div style={{color:'var(--accent-rose)', padding:'2rem', textAlign:'center'}}>Inochi2D failed to load.</div>}>
-                                            <InxRenderer modelUrl={modelUrl} avatarState={avatarState} />
                                         </ErrorBoundary>
                                     )}
                                 </>

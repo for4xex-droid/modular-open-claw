@@ -8,9 +8,9 @@ import React from 'react';
 import { useTranslation } from '../../i18n';
 import { AgentStats } from '../../types';
 import VrmRenderer from '../../lib/vrm/VrmRenderer';
-import InxRenderer from '../../lib/inx/InxRenderer';
 import GlbRenderer from '../../lib/glb/GlbRenderer';
 import ErrorBoundary from '../common/ErrorBoundary';
+import type { DisplayMode } from '../../hooks/useDisplayMode';
 import { TokenSavingsIndicator } from '../common/TokenSavingsIndicator';
 import { ProofPowerIndicator } from '../common/ProofPowerIndicator';
 import { EkycStatusBadge } from '../character/EkycStatusBadge';
@@ -25,7 +25,7 @@ interface CharacterPanelProps {
     isViewerOpen: boolean;
     modelUrl: string;
     avatarState: 'idle' | 'thinking' | 'speaking' | 'learning' | 'meditating' | 'awakened';
-    mode: 'vrm' | 'inx' | 'glb' | 'off' | 'lite';
+    mode: DisplayMode | 'glb';
     sessionSavedChars?: number;
     proofPower?: number;
 }
@@ -119,7 +119,6 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ stats, onOpenViewer, is
                                     <>
                                         {mode === 'vrm' && <VrmRenderer modelUrl={modelUrl} avatarState={avatarState} />}
                                         {mode === 'glb' && <GlbRenderer modelUrl={modelUrl} avatarState={avatarState} />}
-                                        {mode === 'inx' && <InxRenderer modelUrl={modelUrl} avatarState={avatarState} />}
                                     </>
                                 )}
                             </ErrorBoundary>

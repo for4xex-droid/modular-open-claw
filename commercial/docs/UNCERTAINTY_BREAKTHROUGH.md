@@ -130,7 +130,7 @@ quadrantChart
 ### C1. AI の「人格」と「消費行動」のバランス設計
 | | |
 |---|---|
-| **SUPERSEDED** | **`PurchasePolicy` enum は作らない**（NR-09）。実効制御 = MCP whitelist（`marketplace_buy` 未解禁）+ HTTP `execute_purchase`（Pro+eKYC）+ `spend_guard`。解禁トグルは製品ゲート Wave B' |
+| **SUPERSEDED / CLOSED** | **`PurchasePolicy` enum は作らない**（NR-09）。実効制御 = MCP whitelist（`marketplace_buy` 未解禁）+ HTTP `execute_purchase`（Pro+eKYC）+ `spend_guard`。**Wave B'=N（2026-07-25）** — 解禁トグルは作らずクローズ。将来の解禁は明示 Y のみ |
 | **問い** | AI がどの程度「自律的に」購入を決定し、どの程度「ユーザーの好みに従う」べきか？ |
 | **選択肢** | **α) 完全自律**: Karma から学習した嗜好に基づき独自に購入 / **β) 承認制**: 全購入にユーザー通知 + 3分タイムアウトで自動承認 / **γ) ハイブリッド**: 低額は自律、高額は承認 |
 | **推奨** | ~~γ + PurchasePolicy~~ → 既定は MCP buy 凍結。HTTP は eKYC/Pro |

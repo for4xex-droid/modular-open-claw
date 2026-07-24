@@ -1,3 +1,20 @@
+## 🔍 Phase E E5 Inochi UI/文書凍結（2026-07-25）
+
+- **/reflexion**: `ARCHITECTURE.md` 再生成；`useDisplayMode.test.ts`（inx→lite）；`docs/api-server.md` deprecate。
+
+- **変更**: MC から `inx` 出荷経路除去（Home/Diorama/CharacterPanel/AvatarViewer/AvatarContext）。LP `free_f4`・ADR-022・PRIVACY・avatar-engine description。API `/avatar/inochi2d/*` は deprecate のみ（削除なし）。
+- **波及効果**: legacy `aiome_display_mode=inx` → `lite`。`InxRenderer` は unmounted。E1–E4 / Live2D は未着手。
+
+## 🔍 Phase E 親計画 E0=Y（2026-07-25）
+
+- **変更**: [`phase_e_vrm_wiring_plan.md`](../docs/roadmaps/phase_e_vrm_wiring_plan.md) v1.0 新設。出荷アバター=2D+3D（VRM/GLB）。Inochi2D/Inochi3D 凍結。Live2D=Phase F（`AvatarLipSyncAdapter`）。OPEN / REMAINING / ledger v1.3.3 同期。**コード未変更**。
+- **波及効果**: 実装時は `VrmRenderer`/`AvatarContext`/`useDisplayMode`/`src-tauri`(E4 承認後)。Inochi UI 到達経路は E5 で閉鎖予定。
+
+## 🔍 Nurture Wave B'=N クローズ（2026-07-25）
+
+- **変更**: NR-09 / Wave B' 製品判断 **N**（`marketplace_buy` 解禁トグル非実装）。OPEN / REMAINING / UNCERTAINTY / synergy / [`nurture_remaining_ledger_plan.md`](../docs/roadmaps/nurture_remaining_ledger_plan.md) v1.3.2。コード差分なし（0b 回帰ピン維持）。
+- **波及効果**: エージェント自律購買は将来の明示 Y まで凍結。HTTP Pro/eKYC 購入は従来どおり。
+
 ## 🔍 Nurture 残台帳 Wave 0a–0c / A（2026-07-25）
 
 - **変更**: OPEN/REMAINING Disposition 同期；UNCERTAINTY superseded；`/commerce/withdraw` alias **sunset 前倒し削除**；MCP `marketplace_buy`/`buy` 拒否ピン；`formal-verify` に commercial NurtureEconomy TLC（cwd=commercial）+ MODULE ヘッダ；計画 [`nurture_remaining_ledger_plan.md`](../docs/roadmaps/nurture_remaining_ledger_plan.md) v1.3.1

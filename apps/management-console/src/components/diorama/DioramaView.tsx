@@ -8,14 +8,14 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AiomeAvatar from '../AiomeAvatar';
 import VrmRenderer from '../../lib/vrm/VrmRenderer';
-import InxRenderer from '../../lib/inx/InxRenderer';
 import ErrorBoundary from '../common/ErrorBoundary';
 import { useAvatarCharacter } from '../../hooks/AvatarContext';
 import { isDioramaVisible } from '../../lib/dioramaVisibleTabs';
+import type { DisplayMode } from '../../hooks/useDisplayMode';
 
 interface DioramaViewProps {
     status: 'idle' | 'thinking' | 'speaking' | 'learning' | 'meditating' | 'awakened';
-    mode: 'vrm' | 'lite' | 'off' | 'inx';
+    mode: DisplayMode;
     activeTab: string;
 }
 
@@ -31,7 +31,7 @@ const containerStyleBase: React.CSSProperties = {
 const DioramaView: React.FC<DioramaViewProps> = ({ status, mode, activeTab }) => {
     const [hasError, setHasError] = useState(false);
     const { getAssetPath } = useAvatarCharacter();
-    const modelUrl = mode === 'vrm' ? getAssetPath('vrm') : (mode === 'inx' ? getAssetPath('inx') : '');
+    const modelUrl = mode === 'vrm' ? getAssetPath('vrm') : '';
 
     const isDashboard = activeTab === 'dashboard';
     const leftOffset = 'calc(var(--layout-sidebar-width) + var(--layout-main-padding))';
@@ -74,12 +74,6 @@ const DioramaView: React.FC<DioramaViewProps> = ({ status, mode, activeTab }) =>
                 >
                     {mode === 'vrm' && (
                         <VrmRenderer
-                            modelUrl={modelUrl}
-                            avatarState={status}
-                        />
-                    )}
-                    {mode === 'inx' && (
-                        <InxRenderer
                             modelUrl={modelUrl}
                             avatarState={status}
                         />

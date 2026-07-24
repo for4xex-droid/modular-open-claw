@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-25（Nurture 残台帳 v1.3 Wave 0a–0c / A）**
+**最終更新: 2026-07-25（Phase E E5 Inochi UI/文書凍結）**
 
 > **実装手順の正本**:
 > - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・P1–P4 ✅ / **Q5 ADR-055 ✅** / **Q6 untrack ✅**。Path B は都度 Human。bind-mount **物理撤去**は ADR-055 実行ゲート）
@@ -17,6 +17,7 @@
 > - **技術負債 Wave 3 以降**: [`docs/roadmaps/remaining_tasks_implementation_plan.md`](docs/roadmaps/remaining_tasks_implementation_plan.md)（v6。Wave 1/2 完了済み）
 > - **TECH_DEBT Top 5（OP-075/054/051/068/029+QW）**: [`docs/roadmaps/tech_debt_top5_plan.md`](docs/roadmaps/tech_debt_top5_plan.md)（**v1.3**・2026-07-10・実装完了。OP-054=可視性のみ）
 > - **リリース全体**: [`docs/roadmaps/release_master_plan.md`](docs/roadmaps/release_master_plan.md)
+> - **Phase E アバター配線（E0=Y）**: [`docs/roadmaps/phase_e_vrm_wiring_plan.md`](docs/roadmaps/phase_e_vrm_wiring_plan.md)（**v1.0.3**・**E5 ✅** UI/文書凍結。E1–E4 未実装。Live2D=Phase F）
 >
 > 本台帳は「何が未解決か」のみを管理する。手順の複製はしない。
 
@@ -109,15 +110,21 @@
 - [ ] **OP-033**（Issue D）: tauri ≥3.0 → GTK4/unic 系 audit ignore 削除（T-003）。明示許可後
 - [ ] **OP-034**: OP-033 後。`plist`→ quick-xml で audit **0194/0195** 削除
 
-## 🌱 Project-Nurture / commercial 残（正本: [`docs/roadmaps/nurture_remaining_ledger_plan.md`](docs/roadmaps/nurture_remaining_ledger_plan.md) v1.3）
+## 🌱 Project-Nurture / commercial 残（正本: [`docs/roadmaps/nurture_remaining_ledger_plan.md`](docs/roadmaps/nurture_remaining_ledger_plan.md) v1.3.3）
 
 - [x] **NR-08** 特商法 / **NR-10** ADR-052（convert-points・payout DROP） / **NR-12** Biome 目視 — 台帳クローズ
 - [x] **NR-14** `/commerce/withdraw` alias 削除（sunset 2026-08-01 **前倒し**）— Wave 0c ✅ 2026-07-25
 - [x] **NR-01** TLA CI 配線: `formal-verify.yml` に commercial `NurtureEconomyProtocol`（cwd=commercial、欠落 fail）— Wave A ✅ 2026-07-25（TLC 実行は CI）
-- [x] **NR-09** エージェント `marketplace_buy` — 既定凍結（MCP whitelist 未解禁）。回帰ピン Wave 0b ✅。解禁トグルは製品ゲート（Wave B'）
-- [ ] **NR-06** BoneChecker 実 VRM コーパス調整（Human）
-- [ ] **NR-02 / NR-03 / NR-11** → Phase E 親計画を別途作成後（E0 three-vrm ゲート）
+- [x] **NR-09** エージェント `marketplace_buy` — **Wave B'=N 製品判断クローズ**（2026-07-25）。MCP whitelist 未解禁＋HTTP Pro/eKYC を正とする。回帰ピン Wave 0b 維持。解禁は将来の明示 Y のみ（新 enum / 承認 UI 禁止）
+- [x] **Phase E / E0=Y** — 親計画成立: [`phase_e_vrm_wiring_plan.md`](docs/roadmaps/phase_e_vrm_wiring_plan.md) **v1.0.3**（2026-07-25）。出荷=**2D 画像 + 3D（VRM/GLB）**。Live2D は Phase F 後付け枠
+- [x] **Phase E E5** — Inochi UI/文書凍結 ✅ 2026-07-25（`inx` 出荷経路除去、LP 訴求同期、API deprecate、SYNERGY gantt 凍結反映。ルート削除は別承認）
+- [ ] **NR-11** 公式素体 `.vrm`（Phase E **E1** / Human）
+- [ ] **NR-02** three-vrm 実ロード + UI フレーム予算（Phase E **E2–E3**）
+- [ ] **NR-03** On-memory DRM 配信（Phase E **E4**・`src-tauri` 明示承認）
+- [ ] **NR-06** BoneChecker 実 VRM コーパス調整（Human・E1 並列）
 - [ ] **NR-07** `MAX_TOTAL_OUTSTANDING_COINS` → [`KC_LEGAL_POSITION.md`](docs/legal/KC_LEGAL_POSITION.md) 有償化ゲート
+- ⏸️ **Inochi 族**（Inochi2D/Inochi3D）— E5 で出荷閉鎖済。API 物理削除・WASM 完成は禁止（解除は明示製品判断）
+- ⏸️ **Live2D / Cubism** — Phase F（ライセンス後。`AvatarLipSyncAdapter` 差し込み）
 - ⏸️ **NR-04** Saga Compensable（例外のみ） / **NR-05** 経済 ZKP・CoinQuantum
 - （別レーン）**NR-13** 他 TLA の CI 配線 — 本計画外
 - スナップショット: [`REMAINING_TASKS.md`](REMAINING_TASKS.md) §3（Disposition 同期済み。正本ドキュメントは `commercial/docs/`）
@@ -125,6 +132,8 @@
 ## ⏸️ 凍結（解除条件つき）
 
 - [ ] **OP-040**: OGP 画像（og:image）・プロモーション動画の埋め込み — **OGP 画像は 2026-07-09 解除・配置完了**（`docs/assets/logo/` + `docs/landing/public/ogp.png` / `aiome-hero-white.png`）。**プロモーション動画は凍結継続**（音声素材提供待ち）。
+- [x] **Inochi2D / Inochi3D（E5 UI/文書）**: **2026-07-25 出荷閉鎖**（UI 非露出・LP 訴求除去・deprecate）。WASM 完成 / Inochi3D 着手 / API 物理削除は引き続き禁止。解除は明示製品判断のみ。正本: [`phase_e_vrm_wiring_plan.md`](docs/roadmaps/phase_e_vrm_wiring_plan.md) E5
+- [ ] **Live2D**: 後付け枠のみ。SDK/ライセンス承認 + Phase E E2 安定後に Phase F。正本: 同計画 E6
 
 ## ✅ 解決（直近のみ保持）
 

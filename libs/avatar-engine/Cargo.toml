@@ -4,7 +4,7 @@ version = "1.0.0"
 edition = "2021"
 license = "BUSL-1.1"
 authors = ["motivationstudio LLC <motivationstudio.llc@gmail.com>"]
-description = "Aiome physical manifestation and 2D asset routing engine (Inochi2D & VRM compatible)"
+description = "Aiome physical manifestation and 2D asset routing engine (2D + VRM; Inochi2D frozen Phase E E5)"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

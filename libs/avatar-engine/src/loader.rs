@@ -26,10 +26,11 @@ pub struct InxModel {
     pub version: String,
 }
 
+/// Deprecated: Phase E E5 — Inochi product-frozen. Kept for magic-byte validation / legacy upload.
 pub struct Inochi2dLoader;
 
 impl Inochi2dLoader {
-    /// .inx ファイルを読み込み、メタデータを抽出する
+    /// .inx ファイルを読み込み、メタデータを抽出する（frozen path; do not expand）
     pub fn load_metadata(data: &[u8]) -> Result<InxModel, LoaderError> {
         info!(
             "🎭 [Inochi2D] Loading model metadata ({} bytes)",

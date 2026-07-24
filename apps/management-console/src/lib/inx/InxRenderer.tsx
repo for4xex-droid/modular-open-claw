@@ -3,6 +3,11 @@
  * Copyright (C) 2026 motivationstudio, LLC
  *
  * Licensed under the Business Source License 1.1.
+ *
+ * @deprecated Phase E E5 (2026-07-25): Inochi2D/Inochi3D are product-frozen.
+ * Not mounted from Settings / HomePage / Diorama / AvatarViewerModal.
+ * Do not wire WASM or re-expose `inx` display mode without an explicit product decision.
+ * Live2D (if ever) is a separate Phase F stack — do not reuse this file.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { useVisemeSync } from '../../hooks/useVisemeSync';
@@ -16,8 +21,7 @@ interface InxRendererProps {
 }
 
 /**
- * Inochi2D Renderer (WASM Integration Placeholder)
- * Loads .inx files using WebGL and applies parameters sent via SSE.
+ * @deprecated Inochi2D Renderer (WASM Integration Placeholder) — frozen / unmounted.
  */
 const InxRenderer: React.FC<InxRendererProps> = ({ modelUrl, avatarState }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);

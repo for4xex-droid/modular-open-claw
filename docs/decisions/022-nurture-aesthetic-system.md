@@ -4,10 +4,12 @@
 > **Date**: 2026-03-26  
 > **Origin**: Aesthetic Pressure モデル設計討議  
 > **Impact**: Nurture Platform / Avatar Engine / Commerce Engine / Shadow Clone
+>
+> **Shipping note (2026-07-25 / Phase E E5)**: Inochi2D / Inochi3D は**製品凍結**。出荷アバターは **2D 画像 + 3D（VRM/GLB）**。Live2D は Phase F 後付け。本文の Inochi2D 記述は歴史的文脈として残し、新規実装の指針にはしない。正本: [`phase_e_vrm_wiring_plan.md`](../roadmaps/phase_e_vrm_wiring_plan.md)。
 
 ## Context
 
-Aiomeのエージェンティック AI が自律的に自身の 3D/2D アバター（VRM / Inochi2D）を装飾・着せ替えるための動機づけ、および公式IPキャラクター配信との棲み分けを含む統一的なアーキテクチャが必要である。
+Aiomeのエージェンティック AI が自律的に自身の 3D/2D アバター（VRM / ~~Inochi2D~~ → 出荷は 2D+VRM）を装飾・着せ替えるための動機づけ、および公式IPキャラクター配信との棲み分けを含む統一的なアーキテクチャが必要である。
 
 ### 解決すべき課題
 

@@ -3,6 +3,10 @@
  * Copyright (C) 2026 motivationstudio, LLC
  *
  * Licensed under the Business Source License 1.1.
+ *
+ * DEPRECATED (Phase E E5, 2026-07-25): Inochi2D upload is product-frozen.
+ * Route kept for compatibility / tests; do not expand. Removal needs explicit approval.
+ * Shipping avatars: 2D images + 3D (VRM/GLB). Live2D = Phase F (separate stack).
  */
 
 use crate::auth::AuthenticatedUser;
@@ -23,6 +27,8 @@ pub struct Inochi2dUploadResponse {
 }
 
 /// Inochi2D (INX) モデルをアップロード
+///
+/// **Deprecated (Phase E E5)**: product-frozen; not exposed in Mission Control UI.
 #[utoipa::path(
     post,
     path = "/api/v1/mascot/inochi2d",
@@ -41,6 +47,10 @@ pub async fn upload_inochi2d_handler(
     axum::extract::Extension(user): axum::extract::Extension<AuthenticatedUser>,
     mut multipart: axum::extract::Multipart,
 ) -> Result<Json<Inochi2dUploadResponse>, AppError> {
+    warn!(
+        "⚠️ [Inochi2D] DEPRECATED upload invoked (Phase E E5 freeze). user={}",
+        user.0.sub
+    );
     let safe_id = user.0.sub.trim();
     if !safe_id
         .chars()

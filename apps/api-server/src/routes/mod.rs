@@ -29,7 +29,7 @@ pub mod forecast;
 pub mod general;
 pub mod gift;
 pub mod gig;
-pub mod inochi2d;
+pub mod inochi2d; // DEPRECATED Phase E E5 — Inochi frozen; do not expand
 pub mod jobs;
 pub mod karma;
 pub mod lora;

@@ -14,7 +14,7 @@ export interface VisemeFrame {
 
 /**
  * アバターフォーマットごとの Viseme 適用アダプター。
- * VRM / Inochi2D / GLB 各レンダラーが実装する。
+ * Shipping: VRM / GLB。Inochi2D は凍結。Live2D は Phase F で同契約を実装する。
  */
 export interface AvatarLipSyncAdapter {
     applyViseme(viseme: string, weight: number): void;

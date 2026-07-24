@@ -29,7 +29,6 @@ jest.mock('../common/Toast', () => ({
 
 // Mock the nested components
 jest.mock('../../lib/vrm/VrmRenderer', () => () => <div data-testid="vrm-renderer" />);
-jest.mock('../../lib/inx/InxRenderer', () => () => <div data-testid="inx-renderer" />);
 jest.mock('../../lib/glb/GlbRenderer', () => () => <div data-testid="glb-renderer" />);
 jest.mock('../character/EkycStatusBadge', () => ({
     EkycStatusBadge: ({ status }: any) => <div data-testid="ekyc-badge">{String(status)}</div>

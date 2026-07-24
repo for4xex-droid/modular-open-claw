@@ -6,6 +6,7 @@
  */
 /// <reference types="vite/client" />
 
+/** @deprecated Phase E E5 — Inochi frozen; module must not be imported in shipping UI. */
 declare module '@nicebyte/inochi2d-es' {
     export class Inochi2D {
         static init(): Promise<void>;

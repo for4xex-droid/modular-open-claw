@@ -68,7 +68,7 @@ graph TD
 
     subgraph "🔌 Bridge & Plugins / ブリッジ & プラグイン"
         NAPI["🌉 napi-bridge<br/><i>Node.js ↔ Rust</i>"]
-        AVE["🎭 avatar-engine<br/><i>Inochi2D/VRM</i>"]
+        AVE["🎭 avatar-engine<br/><i>2D+VRM (Inochi frozen)</i>"]
         WASM["📦 wasm-skills<br/><i>fs_reader, fs_writer,<br/>terminal_exec</i>"]
     end
 

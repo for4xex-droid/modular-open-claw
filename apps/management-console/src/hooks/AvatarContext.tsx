@@ -8,11 +8,11 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export type AvatarCharacter = 'female' | 'male';
 export type AvatarProportion = 'taller' | 'chibi';
-export type AvatarMode = 'vrm' | 'lite' | 'off' | 'inx';
-
 /**
  * Avatar Asset Specification
  * This map serves as the single source of truth for the launch avatar assets.
+ * Shipping: `lite` (2D PNG) + `vrm` (3D path; currently billboard PNG until Phase E E2).
+ * Display mode SSOT: `DisplayMode` in `useDisplayMode.ts` (Inochi `inx` frozen — Phase E E5).
  */
 export const AVATAR_ASSETS = {
     female: {
@@ -24,10 +24,6 @@ export const AVATAR_ASSETS = {
             chibi: '/avatar/aiome-chibi-nobg.png',
             taller: '/avatar/aiome-main-female-taller.png',
         },
-        inx: {
-            chibi: '/avatar/aiome-chibi.inx',
-            taller: '/avatar/aiome-taller.inx',
-        }
     },
     male: {
         lite: {
@@ -38,11 +34,19 @@ export const AVATAR_ASSETS = {
             chibi: '/avatar/aiome-male-chibi-nobg.png',
             taller: '/avatar/aiome-main-male-taller.png',
         },
-        inx: {
-            chibi: '/avatar/aiome-chibi.inx',
-            taller: '/avatar/aiome-taller.inx',
-        }
     }
+} as const;
+
+/** @deprecated Phase E E5 — Inochi2D frozen; not exposed via getAssetPath. */
+export const FROZEN_INOCHI_ASSETS = {
+    female: {
+        chibi: '/avatar/aiome-chibi.inx',
+        taller: '/avatar/aiome-taller.inx',
+    },
+    male: {
+        chibi: '/avatar/aiome-chibi.inx',
+        taller: '/avatar/aiome-taller.inx',
+    },
 } as const;
 
 interface AvatarCharacterContextType {
@@ -50,7 +54,7 @@ interface AvatarCharacterContextType {
     setCharacter: (char: AvatarCharacter) => void;
     proportion: AvatarProportion;
     setProportion: (prop: AvatarProportion) => void;
-    getAssetPath: (mode: 'lite' | 'vrm' | 'inx') => string;
+    getAssetPath: (mode: 'lite' | 'vrm') => string;
 }
 
 const AvatarCharacterContext = createContext<AvatarCharacterContextType | undefined>(undefined);
@@ -80,8 +84,7 @@ export const AvatarCharacterProvider: React.FC<{ children: React.ReactNode }> = 
         localStorage.setItem('aiome_avatar_proportion', proportion);
     }, [proportion]);
 
-    // Central logic to retrieve asset paths
-    const getAssetPath = (mode: 'lite' | 'vrm' | 'inx') => {
+    const getAssetPath = (mode: 'lite' | 'vrm') => {
         return AVATAR_ASSETS[character][mode][proportion];
     };
 

@@ -1234,7 +1234,8 @@ gantt
     Phase 4 Nurture ハイブリッド統合 :active, a2b, 2026-06, 1w
     Phase 2D E2E                :a3, after a2, 2w
     Phase 1 TTS + LoRA          :a4, after a3, 4w
-    Phase 4 Inochi2D            :a5, 2026-07, 4w
+    Phase 4 Inochi2D FROZEN E5  :done, a5, 2026-07, 1d
+    Phase E Avatar 2D+VRM       :a5b, after a5, 4w
     Phase 6 MCP Ecosystem       :a6, 2026-09, 4w
     Phase 7 Advanced AI         :a7, 2026-11, 6w
 
@@ -1297,7 +1298,7 @@ gantt
 | `soul` | 20+ | `AgentSoul`, `SoulPipeline`, `SomaticMarker`, `SemanticRecaller`, `DreamState`, `FrozenTraitSnapshot` |
 | `biome-engine` | 15+ | `BiomeEngine`, `CellGenome`, `Element`, `Rarity`, `Grid`, `Particle` |
 | `core` | 20+ | `OllamaProvider`, `GeminiProvider`, `ClaudeProvider`, `OpenAiProvider` |
-| `avatar-engine` | 15+ | `Inochi2dLoader`, `SimpleLipSyncEngine`, `PhysicsSimulator` |
+| `avatar-engine` | 15+ | `Inochi2dLoader`（E5 凍結・拡張禁止）, `SimpleLipSyncEngine`, `PhysicsSimulator` |
 
 ### Project NURTURE — 全シンボル
 

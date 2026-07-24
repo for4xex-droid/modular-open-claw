@@ -22,7 +22,7 @@ Aiome は、完全なオープンソースとして提供されるエージェ�
 
 3.  **Physical Expression Layer (TTS / ComfyUI / Avatar)**:
     - **役割**: 内面的な感情変遷（Karma）を現実世界に出力するための物理インターフェース。
-    - **特徴**: `ExpressionEngine` が OpenAI の TTS 等と連動し、自律的に感情こもった音声を生成。さらに、生成された感情パラメータは Inochi2D/VRM などアバター表現用の `avatar_params` へ直ちへ同期されます。
+    - **特徴**: `ExpressionEngine` が OpenAI の TTS 等と連動し、自律的に感情こもった音声を生成。さらに、生成された感情パラメータは VRM 等アバター表現用の `avatar_params` へ直ちに同期されます（Inochi2D は Phase E E5 で製品凍結）。
 
 4.  **Collective Intelligence Layer (Shadow Clone / Multi-Agent)**:
     - **役割**: 複雑な並列タスク（コード生成、調査、分析）を一時的な分身（Worker）に委託し、エージェント自身の思考リソースを解放。

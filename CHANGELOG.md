@@ -1,5 +1,20 @@
 ## [Unreleased]
 
+### Changed (Phase E E5 Inochi 凍結 2026-07-25)
+- **UI**: Settings/Home/Diorama/CharacterPanel/AvatarViewer から `inx` 経路を除去。legacy `localStorage=inx` → `lite`。`InxRenderer` は unmounted + `@deprecated`。
+- **文書**: LP `free_f4` を「2D アバター」へ（Inochi 訴求削除）。ADR-022 / PRIVACY / SYSTEM_PANORAMA / avatar-engine description 同期。`ARCHITECTURE.md` 再生成。`docs/api-server.md` deprecate 注記。
+- **API**: `/avatar/inochi2d/*` は **削除せず** deprecate 注記 + upload 時 warn（破壊的削除は別承認）。
+- **回帰**: `useDisplayMode.test.ts`（inx→lite 永続 / 未知値→vrm）。
+- **/reflexion×2**: `AIOME_NURTURE_SYNERGY` gantt の Inochi2D を FROZEN に訂正。未使用 `AvatarMode` 型削除。計画アンカーの「文字列なし」誤記を修正。
+- **台帳**: OPEN E5 ✅。正本 [`phase_e_vrm_wiring_plan.md`](docs/roadmaps/phase_e_vrm_wiring_plan.md) v1.0.3。
+
+### Added (Phase E 親計画 2026-07-25)
+- **E0=Y**: [`phase_e_vrm_wiring_plan.md`](docs/roadmaps/phase_e_vrm_wiring_plan.md) v1.0。出荷アバター=**2D 画像 + 3D（VRM/GLB）**。**Inochi2D/Inochi3D 凍結**。Live2D は Phase F 後付け（`AvatarLipSyncAdapter`）。実装未着手。
+- **台帳**: `OPEN.md` / `REMAINING_TASKS.md` を NR-02/03/11 → E1–E4 に分解。Inochi / Live2D を凍結セクションへ。
+
+### Changed (Nurture Wave B'=N クローズ 2026-07-25)
+- **NR-09 / Wave B'**: 製品判断 **N**（エージェント `marketplace_buy` 解禁トグルは作らない）。実効制御＝MCP whitelist 未解禁＋HTTP Pro/eKYC。回帰ピン維持。将来の解禁は明示 Y のみ（新 enum / 承認 UI 禁止）。`OPEN.md` / `REMAINING_TASKS.md` / [`nurture_remaining_ledger_plan.md`](docs/roadmaps/nurture_remaining_ledger_plan.md) v1.3.2。
+
 ### Changed (Nurture 残台帳 Wave 0a–0c / A 2026-07-25)
 - **台帳**: `OPEN.md` / `REMAINING_TASKS.md` §3 を [`nurture_remaining_ledger_plan.md`](docs/roadmaps/nurture_remaining_ledger_plan.md) v1.3 Disposition に同期。`UNCERTAINTY_BREAKTHROUGH.md` に superseded 注記。
 - **NR-14**: `/api/v1/commerce/withdraw` alias を **sunset（2026-08-01）前倒しで削除**（`convert-points` のみ）。`deep_scan_matrix` 追随。Negative: 旧 path が 404 または 405（ServeDir fallback）。
