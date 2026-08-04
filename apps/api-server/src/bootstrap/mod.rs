@@ -87,6 +87,10 @@ pub struct ProviderResult {
     pub embed_provider: Arc<dyn aiome_core::llm_provider::EmbeddingProvider>,
     /// Fast tier 用プロバイダー（ローカル LLM 優先、FallbackRouter で wrap 済み）
     pub fast_provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
+    /// Local-only Background LLM for chat Fast tier (ADR-058).
+    pub local_provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
+    /// Local provider with cost enforce disabled (budget degrade path).
+    pub local_provider_degraded: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>,
 }
 
 pub struct CoreServicesResult {

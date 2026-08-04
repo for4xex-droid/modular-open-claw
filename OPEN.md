@@ -1,6 +1,6 @@
 # 📋 OPEN.md — 未解決タスク台帳（Single Source of Truth）
 
-**最終更新: 2026-07-25（/docs-sync・Gate α 再確認）**
+**最終更新: 2026-08-01（/docs-sync: OP-095〜098 → SECURITY_DESIGN / WHITEPAPER / modules）**
 
 > **実装手順の正本**:
 > - **MC 配布・ソース正本**: [`docs/roadmaps/mc_static_deploy_plan.md`](docs/roadmaps/mc_static_deploy_plan.md)（**v1.0 FINAL**・P1–P4 ✅ / **Q5 ADR-055 ✅** / **Q6 untrack ✅**。Path B は都度 Human。bind-mount **物理撤去**は ADR-055 実行ゲート）
@@ -18,6 +18,11 @@
 > - **TECH_DEBT Top 5（OP-075/054/051/068/029+QW）**: [`docs/roadmaps/tech_debt_top5_plan.md`](docs/roadmaps/tech_debt_top5_plan.md)（**v1.3**・2026-07-10・実装完了。OP-054=可視性のみ）
 > - **リリース全体**: [`docs/roadmaps/release_master_plan.md`](docs/roadmaps/release_master_plan.md)
 > - **Phase E アバター配線（E0=Y）**: [`docs/roadmaps/phase_e_vrm_wiring_plan.md`](docs/roadmaps/phase_e_vrm_wiring_plan.md)（**v1.0.3**・**E5 ✅** UI/文書凍結。E1–E4 未実装。Live2D=Phase F）
+> - **開発ホスト Egress 衛生**: [`docs/roadmaps/dev_host_egress_hygiene_plan.md`](docs/roadmaps/dev_host_egress_hygiene_plan.md)（**v1.2**・H0+D1+D2 ✅ / **H1 任意**。本線防衛は OP-096）
+> - **自律 Egress 防衛**: [`docs/roadmaps/autonomous_egress_defense_plan.md`](docs/roadmaps/autonomous_egress_defense_plan.md)（**v1.3**・ADR-057）
+> - **Manifest ホスト・ドリフト + Seatbelt Spike**: [`docs/roadmaps/manifest_host_drift_plan.md`](docs/roadmaps/manifest_host_drift_plan.md)（**v1.3+S0**・OP-097 ✅ / OP-098 Residual ✅）
+> - **Intelligent LLM Router**: [`docs/roadmaps/intelligent_llm_router_plan.md`](docs/roadmaps/intelligent_llm_router_plan.md)（**v1.3**・OP-099 ✅ Phase 0–4。既定 `legacy`）
+> - **OP-099 review fix**: [`docs/roadmaps/op099_review_fix_plan.md`](docs/roadmaps/op099_review_fix_plan.md)（2026-08-04 実装。スコープ付きセマンティックキャッシュ再有効化は将来 OP）
 >
 > 本台帳は「何が未解決か」のみを管理する。手順の複製はしない。
 
@@ -80,6 +85,7 @@
 - [x] **OP-062**: Tauri `NurtureMode::InProcess` — **2026-07-21 完了**（Disabled>Cloud>InProcess>Local、sidecar 非 spawn + `NURTURE_IN_PROCESS` 注入、Desktop `api-server --features nurture`、unit 6 PASS）。ADR-012 / foolproof G2
 - [x] **OP-088**: Desktop **既定 InProcess** — 正本 [`desktop_inprocess_default_plan.md`](docs/roadmaps/desktop_inprocess_default_plan.md) **v1.3**。**Ship 本線 P0-pre…P3 ✅** + **CI `desktop-sidecar` ✅** + **P4 ✅** + **P5-a/b/c ✅** + **P5-d→OP-089 ✅** — 詳細 [`op088_p5_polish_plan.md`](docs/roadmaps/op088_p5_polish_plan.md) **v1.5**
 - [x] **OP-089**: OSS / Economy 二系統 Desktop チャネル — **2026-07-21 完了**（`--channel economy|oss`、cargo-tree Fail-Closed、CI、[`DESKTOP_CHANNELS.md`](docs/guides/DESKTOP_CHANNELS.md)、正本 [`op089_oss_economy_dual_channel_plan.md`](docs/roadmaps/op089_oss_economy_dual_channel_plan.md) v1.0）
+- [ ] **OP-100**: チャット SemanticCache のスコープ付きセマンティック照合再有効化（会話/チャネル境界付き。現状 OP-099 review fix で完全一致のみ。2026-08-04）
 - [ ] **OP-068**: `deny.toml` `[advisories].ignore` **残 8 件**の解消（クローズ条件は **deny ignore=0**。OP-032 で 21→8。`.cargo/audit.toml` は超集合で Tauri/unmaintained 等を含む→OP-033 以降）。実体は OP-030/031/033/034 と同根（**OP-032 ✅**）。**Gate α≠Gate β**。運用正本: [`remaining_work_foolproof_plan.md`](docs/roadmaps/remaining_work_foolproof_plan.md) §8。2026-07-04 起票
 - [ ] **OP-064**: ベータユーザー 5〜10 人の獲得と実名テスティモニアル収集。launch（本格トラフィック獲得）の前提条件。バイラル32原則 #14/#29 対応（**Human**・OP-086 では後回し、2026-07-05）
 - [x] **OP-090**: Architecture Fitness **Harness** — `scripts/architecture_fitness.py`（F-1〜F-4、F-5 任意委譲）。unit + Negative（一時ツリー注入）。**CI**: `architecture-fitness`（unit + F-1..F-3。F-5 は pattern-check/deep-scan に委譲済みのため非呼び出し）。正本: [`evolutionary_architecture_plan.md`](docs/roadmaps/evolutionary_architecture_plan.md) **v2.2** §6。**2026-07-22 完了** / CI **2026-07-24**
@@ -137,6 +143,12 @@
 
 ## ✅ 解決（直近のみ保持）
 
+- [x] **OP-099 review fix**: code-review Critical/High 修正 → **2026-08-04 完了**（HF complete_with_cache / pin_local / Cache=EG外側・rules限定 / request cache key / host Fail-Closed。CHANGELOG [Unreleased]）
+- [x] **OP-099**: Intelligent LLM Router（Phase 0–4）→ **2026-08-01 完了**（ADR-058 + IR/bootstrap + eval route_* + budget degrade + SemanticCache DI。既定 `legacy`。CHANGELOG [Unreleased]）
+- [x] **OP-098**: seatbelt ドメイン Spike → **2026-07-31 Residual クローズ**（実装しない。Bastion 2 call site 棚卸し・DNS/hostname allowlist は偽安心。正本: 計画 §8。CHANGELOG [Unreleased]）
+- [x] **OP-097**: Manifest ホスト意味論ドリフト解消 → **2026-07-31 完了**（`constraint_checker` DomainBlocked → `host_permitted` 委譲 + 潜伏コメント + 配線 P/N。計画 v1.3。CHANGELOG [Unreleased]）
+- [x] **OP-096**: 自律 Egress 防衛 → **2026-07-31 完了**（`host_permitted` + Bastion Fail-Closed + code_mode 委譲 + ADR-057 + P/N。CHANGELOG [Unreleased]）
+- [x] **OP-095**: 開発ホスト Egress 衛生 → **2026-07-31 最小クローズ**（H0+D1+D2。H1 任意。本線は OP-096。CHANGELOG [Unreleased]）
 - [x] **OP-032**: extism 1.30 + wasmtime 41/wasi-44 経路除去 → **2026-07-22 完了**（deny 21→8。CHANGELOG [Unreleased]）
 - [x] **OP-011**: 自律購買（無償 KC マーケット）S2S → **2026-07-22 完了**（idempotency 転送 + wiremock P/N。有償 KC / Fiat 非対象。CHANGELOG [Unreleased]）
 - [x] **OP-087**: MC static Q5/Q6 → **2026-07-22 完了**（ADR-055 + index untrack / `static.stub`。CHANGELOG [Unreleased]）

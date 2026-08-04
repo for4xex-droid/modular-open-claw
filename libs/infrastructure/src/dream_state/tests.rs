@@ -637,6 +637,9 @@ mod tests {
                 token_count_out: None,
                 cost_usd: Some(2.5), // HIGH COST (> 1.0)
                 cache_hit: false,
+                route_tier: None,
+                route_reason: None,
+                route_mode: None,
             })
             .await
             .expect("test seed data insertion must succeed");

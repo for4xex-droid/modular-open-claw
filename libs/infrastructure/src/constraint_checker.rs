@@ -6,7 +6,7 @@
  */
 
 use aiome_core::contracts::ImmuneRule;
-use aiome_core::security::PermissionManifest;
+use aiome_core::security::{host_permitted, PermissionManifest};
 use aiome_core::trajectory::{ConstraintViolation, TrajectoryStep};
 use regex::Regex;
 
@@ -94,9 +94,12 @@ impl ConstraintChecker {
                     severity: 100,
                 });
             }
-            // Domain check if tool_name is host
+            // Domain check if tool_name is host (OP-097 / ADR-057).
+            // Latent: skill_handler currently emits action=`execute_wasm_skill` (tool_name=skill),
+            // not `network_request`. Live host permit is Bastion / WASM / code_mode (OP-096).
+            // Do not add a second host check on execute_wasm_skill here.
             if let Some(host) = &step.tool_name {
-                if !self.permission_manifest.allowed_domains.contains(host) {
+                if !host_permitted(host, &self.permission_manifest.allowed_domains) {
                     violations.push(ConstraintViolation {
                         constraint_name: "DomainBlocked".to_string(),
                         expected: format!(
@@ -303,6 +306,63 @@ mod tests {
         assert!(violations
             .iter()
             .any(|v| v.constraint_name == "NetworkAccessDenied"));
+        assert!(violations
+            .iter()
+            .any(|v| v.constraint_name == "DomainBlocked"));
+    }
+
+    fn network_step(host: &str) -> TrajectoryStep {
+        TrajectoryStep {
+            step_id: 1,
+            action: "network_request".into(),
+            tool_name: Some(host.into()),
+            input: json!({}),
+            output: json!({}),
+            timestamp: "now".into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn test_domain_blocked_suffix_permitted_via_host_permitted() {
+        let manifest = PermissionManifest {
+            allow_network: true,
+            allowed_domains: vec!["example.com".into()],
+            ..Default::default()
+        };
+        let checker = ConstraintChecker::new(vec![], manifest);
+        let violations = checker.evaluate_step(&network_step("api.example.com"));
+        assert!(
+            !violations
+                .iter()
+                .any(|v| v.constraint_name == "DomainBlocked"),
+            "suffix host must match host_permitted (OP-097 wiring)"
+        );
+    }
+
+    #[test]
+    fn test_domain_blocked_empty_domains_deny_via_host_permitted() {
+        let manifest = PermissionManifest {
+            allow_network: true,
+            allowed_domains: vec![],
+            ..Default::default()
+        };
+        let checker = ConstraintChecker::new(vec![], manifest);
+        let violations = checker.evaluate_step(&network_step("evil.com"));
+        assert!(violations
+            .iter()
+            .any(|v| v.constraint_name == "DomainBlocked"));
+    }
+
+    #[test]
+    fn test_domain_blocked_non_suffix_host_denied() {
+        let manifest = PermissionManifest {
+            allow_network: true,
+            allowed_domains: vec!["example.com".into()],
+            ..Default::default()
+        };
+        let checker = ConstraintChecker::new(vec![], manifest);
+        let violations = checker.evaluate_step(&network_step("evil.com"));
         assert!(violations
             .iter()
             .any(|v| v.constraint_name == "DomainBlocked"));

@@ -1,8 +1,8 @@
 # リリース・本番化マスタープラン（Release Master Plan v1）
 
-- **ステータス**: **Public Beta 公開完了（2026-07-14）** — `v1.2.0` Release。R0〜R5 ゲート完了。**Stripe 方針 B（Live）は OP-084 で 2026-07-18 クローズ**。残 Human フォロー: R4-3/NT-7（OP-064）・ポストリリース。**Wave 1/2 / Top5 消化済**。**OP-051 / ADR-054 Accepted ✅**（2026-07-20）。アバター: Phase E E0=Y / E5 Inochi 凍結（E1–E4 未）。最終同期: 2026-07-25。
+- **ステータス**: **Public Beta 公開完了（2026-07-14）** — `v1.2.0` Release。R0〜R5 ゲート完了。**Stripe 方針 B（Live）は OP-084 で 2026-07-18 クローズ**。残 Human フォロー: R4-3/NT-7（OP-064）・ポストリリース。**Wave 1/2 / Top5 消化済**。**OP-051 / ADR-054 Accepted ✅**（2026-07-20）。アバター: Phase E E0=Y / E5 Inochi 凍結（E1–E4 未）。**ポストリリース防衛: OP-095〜098 ✅**（Manifest `host_permitted` / seatbelt Residual）。最終同期: 2026-08-01。
 - **作成日**: 2026-07-05
-- **最終更新**: 2026-07-18（OP-084 / 方針 B 消し込み）
+- **最終更新**: 2026-08-01（/docs-sync: OP-095〜098・ADR-057）
 - **目的**: 残存タスク全量を単一の実行計画に統合し、Public Beta リリースと本番化を「計画通りに実装すれば確実に完了する」状態にする。
 - **正本関係**: タスク台帳の正本は `OPEN.md`。本計画は「リリースまでの実行順序・依存・完了基準」を定義する層であり、二重管理はしない（本計画の項目は必ず OP 番号で OPEN.md と対応させる）。
 - **根拠**: OPEN.md 全量精査 + ロードマップ14本の未完了項目調査（サブエージェント）+ CHANGELOG 突合。調査報告のうち以下4件は**陳腐化**を確認済み: W-1 OXP relay（✅ CHANGELOG L79）/ ProUpgradeModal マウント（✅ OP-058）/ LP main push（✅ 2026-07-05）/ Biome Phase 5 P5-1〜P5-5（✅ CHANGELOG「面白さの核」+ ADR-049）。
@@ -28,6 +28,7 @@
 - 進化的アーキテクチャ加算: OP-090–093 — [`evolutionary_architecture_plan.md`](evolutionary_architecture_plan.md) **v2.2**（大規模リファクタ禁止。Upstream/Human より後）
 - OP-040（OGP 動画）: 完全凍結のまま（解除条件はユーザー素材提供）
 - 有償スキル販売・F-3 マーケット α: 法務（特商法・資金決済法）完了までスコープ外。**リリースは Mock 経済 + Pro サブスクのみで成立させる**
+- ✅ ポストリリース消化（本計画スコープ外だが台帳クローズ済）: **OP-095**（ホスト egress 衛生・H1 任意）/ **OP-096**（`host_permitted` Fail-Closed）/ **OP-097**（constraint_checker 委譲）/ **OP-098**（seatbelt Residual）。正本: [`manifest_host_drift_plan.md`](manifest_host_drift_plan.md) / ADR-057
 
 ---
 

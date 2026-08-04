@@ -140,6 +140,10 @@ const PromptStatsView: React.FC = () => {
                   <span>{t('promptStats.cache')}:</span>
                   <strong>{stat.cache_hit_rate.toFixed(1)}%</strong>
                 </div>
+                <div className="stat-row">
+                  <span>{t('promptStats.fastTier')}:</span>
+                  <strong>{(stat.fast_tier_ratio ?? 0).toFixed(1)}%</strong>
+                </div>
               </motion.div>
             ))}
             </div>

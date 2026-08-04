@@ -8,9 +8,9 @@
 use super::humanizer_rules::{HumanizerAction, HumanizerRule};
 use super::writing_context::WritingContext;
 use aiome_core::error::AiomeError;
-use aiome_core::llm_provider::{LlmProvider, LlmResponse};
+use aiome_core::llm_provider::{LlmProvider, LlmRequest, LlmResponse};
+use aiome_core_contracts::llm::{ROUTE_TIER_KEY, ROUTE_TIER_LOCKED_KEY};
 use async_trait::async_trait;
-use regex::Regex;
 use std::fmt;
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -118,6 +118,33 @@ impl LlmProvider for HumanizerFilter {
         let mut response = self.inner.complete(prompt, system).await?;
 
         // フィルタ適用
+        let original_len = response.content.len();
+        response.content = self.apply_rules(&response.content);
+        let new_len = response.content.len();
+
+        if original_len != new_len {
+            info!(
+                "📝 [HumanizerFilter] Applied AI-writing filters. Length: {} -> {}",
+                original_len, new_len
+            );
+        }
+
+        Ok(response)
+    }
+
+    async fn complete_with_cache(
+        &self,
+        mut request: LlmRequest,
+    ) -> Result<LlmResponse, AiomeError> {
+        // Chat boundary: strip client-supplied tier overrides. EntropyGate sticky
+        // re-injection happens inside this decorator and is unaffected.
+        if let Some(meta) = request.metadata.as_mut() {
+            meta.remove(ROUTE_TIER_LOCKED_KEY);
+            meta.remove(ROUTE_TIER_KEY);
+        }
+
+        let mut response = self.inner.complete_with_cache(request).await?;
+
         let original_len = response.content.len();
         response.content = self.apply_rules(&response.content);
         let new_len = response.content.len();
@@ -297,5 +324,169 @@ mod tests {
         let res = filter.complete("prompt", None).await.unwrap();
         // LogWarning なので置換されない
         assert_eq!(res.content, original_text);
+    }
+
+    #[tokio::test]
+    async fn test_complete_with_cache_propagates_format_and_filters() {
+        use aiome_core::llm_provider::LlmMessage;
+        use async_trait::async_trait;
+        use std::sync::Mutex;
+
+        #[derive(Debug)]
+        struct FormatCaptureInner {
+            seen_format: Arc<Mutex<Option<String>>>,
+        }
+
+        #[async_trait]
+        impl LlmProvider for FormatCaptureInner {
+            async fn complete(
+                &self,
+                _prompt: &str,
+                _system: Option<&str>,
+            ) -> Result<LlmResponse, AiomeError> {
+                unimplemented!()
+            }
+
+            async fn complete_with_cache(
+                &self,
+                request: LlmRequest,
+            ) -> Result<LlmResponse, AiomeError> {
+                *self.seen_format.lock().unwrap() = request.format.clone();
+                Ok(LlmResponse {
+                    content: "これはテスト——です".into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    ..Default::default()
+                })
+            }
+
+            async fn stream_complete(
+                &self,
+                _prompt: &str,
+                _system: Option<&str>,
+            ) -> Result<
+                std::pin::Pin<
+                    Box<dyn tokio_stream::Stream<Item = Result<String, AiomeError>> + Send>,
+                >,
+                AiomeError,
+            > {
+                unimplemented!()
+            }
+
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+
+            fn name(&self) -> &str {
+                "FormatCaptureInner"
+            }
+        }
+
+        let seen = Arc::new(Mutex::new(None));
+        let inner = Arc::new(FormatCaptureInner {
+            seen_format: seen.clone(),
+        });
+        let filter = HumanizerFilter::new(inner, default_rules_ja(), WritingContext::Default);
+        let resp = filter
+            .complete_with_cache(LlmRequest {
+                messages: vec![LlmMessage {
+                    role: "user".into(),
+                    content: "hi".into(),
+                    cache: false,
+                }],
+                format: Some("json".into()),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(*seen.lock().unwrap(), Some("json".into()));
+        assert_eq!(resp.content, "これはテスト、です");
+    }
+
+    #[tokio::test]
+    async fn test_complete_with_cache_strips_external_tier_override() {
+        use aiome_core::llm_provider::LlmMessage;
+        use async_trait::async_trait;
+        use std::collections::HashMap;
+        use std::sync::Mutex;
+
+        #[derive(Debug)]
+        struct MetaCaptureInner {
+            seen_locked: Arc<Mutex<Option<String>>>,
+            seen_tier: Arc<Mutex<Option<String>>>,
+        }
+
+        #[async_trait]
+        impl LlmProvider for MetaCaptureInner {
+            async fn complete(
+                &self,
+                _prompt: &str,
+                _system: Option<&str>,
+            ) -> Result<LlmResponse, AiomeError> {
+                unimplemented!()
+            }
+
+            async fn complete_with_cache(
+                &self,
+                request: LlmRequest,
+            ) -> Result<LlmResponse, AiomeError> {
+                let meta = request.metadata.as_ref();
+                *self.seen_locked.lock().unwrap() =
+                    meta.and_then(|m| m.get(ROUTE_TIER_LOCKED_KEY)).cloned();
+                *self.seen_tier.lock().unwrap() = meta.and_then(|m| m.get(ROUTE_TIER_KEY)).cloned();
+                Ok(LlmResponse {
+                    content: "ok".into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    ..Default::default()
+                })
+            }
+
+            async fn stream_complete(
+                &self,
+                _prompt: &str,
+                _system: Option<&str>,
+            ) -> Result<
+                std::pin::Pin<
+                    Box<dyn tokio_stream::Stream<Item = Result<String, AiomeError>> + Send>,
+                >,
+                AiomeError,
+            > {
+                unimplemented!()
+            }
+
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+
+            fn name(&self) -> &str {
+                "MetaCaptureInner"
+            }
+        }
+
+        let seen_locked = Arc::new(Mutex::new(Some("sentinel".into())));
+        let seen_tier = Arc::new(Mutex::new(Some("sentinel".into())));
+        let inner = Arc::new(MetaCaptureInner {
+            seen_locked: seen_locked.clone(),
+            seen_tier: seen_tier.clone(),
+        });
+        let filter = HumanizerFilter::new(inner, default_rules_ja(), WritingContext::Default);
+        let mut meta = HashMap::new();
+        meta.insert(ROUTE_TIER_LOCKED_KEY.to_string(), "fast".into());
+        meta.insert(ROUTE_TIER_KEY.to_string(), "fast".into());
+        meta.insert("channel_id".to_string(), "ch-1".into());
+        let _ = filter
+            .complete_with_cache(LlmRequest {
+                messages: vec![LlmMessage {
+                    role: "user".into(),
+                    content: "hi".into(),
+                    cache: false,
+                }],
+                metadata: Some(meta),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        assert_eq!(*seen_locked.lock().unwrap(), None);
+        assert_eq!(*seen_tier.lock().unwrap(), None);
     }
 }

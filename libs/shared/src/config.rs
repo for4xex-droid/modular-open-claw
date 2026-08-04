@@ -49,6 +49,43 @@ impl fmt::Display for LocalFallbackPolicy {
     }
 }
 
+/// Intelligent LLM router mode (ADR-058).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum LlmRouteMode {
+    /// Always use the standard (Smart) chain — identical to pre-ADR-058 behavior.
+    #[default]
+    Legacy,
+    /// Rule-based tier selection between Fast (local-first) and Smart chains.
+    Rules,
+}
+
+impl FromStr for LlmRouteMode {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_lowercase().as_str() {
+            "rules" | "rule" | "intelligent" => Ok(Self::Rules),
+            "legacy" | "standard" | "" => Ok(Self::Legacy),
+            other => {
+                tracing::warn!(
+                    "Invalid llm_route_mode '{}'. Defaulting to 'legacy'. Valid: legacy, rules.",
+                    other
+                );
+                Ok(Self::Legacy)
+            }
+        }
+    }
+}
+
+impl fmt::Display for LlmRouteMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Legacy => write!(f, "legacy"),
+            Self::Rules => write!(f, "rules"),
+        }
+    }
+}
+
 /// MCP Configuration
 #[derive(Clone, Debug, Default)]
 pub struct McpConfig {
@@ -139,6 +176,12 @@ pub struct AiomeConfig {
     pub telegram_token: Option<SecretString>,
     /// Fast tier 用ローカルモデルへの同時実行セマフォ制限数
     pub local_llm_concurrency: usize,
+    /// Intelligent router mode (ADR-058): legacy = Smart chain only.
+    pub llm_route_mode: LlmRouteMode,
+    /// When cost breaker is tripped in rules mode, force Fast tier instead of rejecting.
+    pub llm_route_budget_degrade: bool,
+    /// Prompt length threshold (chars) for Fast tier in rules mode.
+    pub llm_route_short_prompt_chars: usize,
 }
 
 /// OllamaサーバーのデフォルトURL
@@ -204,6 +247,9 @@ impl Default for AiomeConfig {
             discord_token: None,
             telegram_token: None,
             local_llm_concurrency: 2,
+            llm_route_mode: LlmRouteMode::Legacy,
+            llm_route_budget_degrade: true,
+            llm_route_short_prompt_chars: 512,
         }
     }
 }
@@ -382,6 +428,28 @@ impl AiomeConfig {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(2),
+            llm_route_mode: env::var("LLM_ROUTE_MODE")
+                .unwrap_or_else(|_| "legacy".to_string())
+                .parse::<LlmRouteMode>()
+                .unwrap_or_default(),
+            llm_route_budget_degrade: match env::var("LLM_ROUTE_BUDGET_DEGRADE") {
+                Ok(v) => match v.trim().to_lowercase().as_str() {
+                    "true" | "1" | "yes" | "on" => true,
+                    "false" | "0" | "no" | "off" => false,
+                    other => {
+                        tracing::warn!(
+                            "Invalid LLM_ROUTE_BUDGET_DEGRADE '{}'. Defaulting to true. Valid: true/false, 1/0, yes/no, on/off.",
+                            other
+                        );
+                        true
+                    }
+                },
+                Err(_) => true,
+            },
+            llm_route_short_prompt_chars: env::var("LLM_ROUTE_SHORT_PROMPT_CHARS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(512),
         })
     }
 

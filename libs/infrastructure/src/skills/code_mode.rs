@@ -217,14 +217,8 @@ pub(super) async fn run_code_mode_js_impl(
 
                 let parsed_url = url::Url::parse(&url)?;
                 let host = parsed_url.host_str().ok_or("Invalid host in URL")?;
-                let mut domain_allowed = false;
-                for domain in &manifest.allowed_domains {
-                    if domain == "*" || domain == host || host.ends_with(&format!(".{}", domain)) {
-                        domain_allowed = true;
-                        break;
-                    }
-                }
-                if !domain_allowed {
+                // OP-096 / ADR-057: same semantics as Bastion (aiome-contracts::host_permitted)
+                if !aiome_core::security::host_permitted(host, &manifest.allowed_domains) {
                     return Err(format!(
                         "Security Violation: Access to domain {} is blocked",
                         host

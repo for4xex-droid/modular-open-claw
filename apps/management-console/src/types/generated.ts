@@ -2324,6 +2324,8 @@ export interface components {
             average_latency_ms: number;
             /** Format: double */
             cache_hit_rate: number;
+            /** Format: double */
+            fast_tier_ratio: number;
             model: string;
             provider: string;
             /** Format: int64 */

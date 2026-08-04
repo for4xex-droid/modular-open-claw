@@ -126,6 +126,9 @@ impl AgentHook for ToolCallReviewerHook {
                 token_count_out: None,
                 cost_usd: Some(0.0), // Evaluator cost (can be populated if usage info is present)
                 cache_hit: false,
+                route_tier: None,
+                route_reason: None,
+                route_mode: None,
             };
             if let Err(e) = logger.log(entry).await {
                 warn!("Failed to log reviewer evaluation: {}", e);

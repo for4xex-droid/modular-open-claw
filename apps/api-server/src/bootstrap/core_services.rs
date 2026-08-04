@@ -364,22 +364,81 @@ pub async fn init_core_services(
 
     let fallback_provider: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync> =
         bg_provider.clone();
-    let base_router_provider = Arc::new(infrastructure::llm::fallback_router::FallbackRouter::new(
+
+    // LocalOnly: fast_provider と同様、チャット Fast もクラウド Failover しない
+    let cheap_chain: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync> =
+        if config.local_fallback_policy == shared::config::LocalFallbackPolicy::LocalOnly {
+            llm.local_provider.clone()
+        } else {
+            Arc::new(infrastructure::llm::fallback_router::FallbackRouter::new(
+                llm.local_provider.clone(),
+                fallback_provider.clone(),
+                3,
+            )) as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>
+        };
+
+    let cheap_chain_degraded: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync> =
+        if config.local_fallback_policy == shared::config::LocalFallbackPolicy::LocalOnly {
+            llm.local_provider_degraded.clone()
+        } else {
+            Arc::new(infrastructure::llm::fallback_router::FallbackRouter::new(
+                llm.local_provider_degraded.clone(),
+                fallback_provider.clone(),
+                3,
+            )) as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>
+        };
+
+    let standard_chain = Arc::new(infrastructure::llm::fallback_router::FallbackRouter::new(
         primary_provider,
         fallback_provider,
-        3, // failure threshold
+        3,
+    )) as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>;
+
+    let intelligent_base = Arc::new(
+        infrastructure::llm::intelligent_router::IntelligentRouter::new(
+            config.llm_route_mode,
+            config.llm_route_budget_degrade,
+            config.llm_route_short_prompt_chars,
+            cheap_chain,
+            cheap_chain_degraded,
+            standard_chain,
+            job_queue.clone(),
+            10.0,
+        ),
+    ) as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>;
+
+    // OP-099 fix (C-3): Caching は EntropyGate の外側・rules モード限定。
+    // キャッシュには EG 検証済み応答のみが書かれる（ADR-058 追記参照）。
+    let entropy_gate_provider = Arc::new(infrastructure::llm::entropy_gate::EntropyGate::new(
+        intelligent_base,
+        2.0,
+        3,
     ))
         as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>;
 
-    let entropy_gate_provider = Arc::new(infrastructure::llm::entropy_gate::EntropyGate::new(
-        base_router_provider,
-        2.0, // entropy threshold
-        3,   // max re-ask
-    ))
-        as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>;
+    let chat_core: Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync> =
+        if config.llm_route_mode == shared::config::LlmRouteMode::Rules {
+            let semantic_cache = Arc::new(infrastructure::llm::semantic_cache::SemanticCache::new(
+                Arc::new(
+                    infrastructure::llm::semantic_cache::SqlSemanticCacheRepository::new(
+                        db_pool.clone(),
+                    ),
+                ),
+                None, // FIX-7: セマンティック照合無効・完全一致キーのみ
+            ));
+            Arc::new(
+                infrastructure::llm::caching_provider::CachingLlmProvider::new(
+                    entropy_gate_provider,
+                    semantic_cache,
+                    3600,
+                ),
+            ) as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>
+        } else {
+            entropy_gate_provider
+        };
 
     let router_provider = Arc::new(infrastructure::llm::humanizer_filter::HumanizerFilter::new(
-        entropy_gate_provider,
+        chat_core,
         infrastructure::llm::humanizer_rules::default_rules_ja(),
         infrastructure::llm::writing_context::WritingContext::Default,
     )) as Arc<dyn aiome_core::llm_provider::LlmProvider + Send + Sync>;

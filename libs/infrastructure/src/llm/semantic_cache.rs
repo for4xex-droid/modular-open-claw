@@ -5,12 +5,12 @@
  * Licensed under the Business Source License 1.1.
  */
 
+use super::utils::compute_prompt_hash;
 use crate::job_queue::UniversalJobQueue;
 use crate::polar_quant::PolarQuantEncoder;
 use crate::vector_ops::{StandardVectorOps, VectorOps};
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::llm::{LlmResponse, StopReason};
-use sha2::{Digest, Sha256};
 use sqlx::Row;
 use std::sync::Arc;
 use tracing::{debug, info};
@@ -173,23 +173,13 @@ impl SemanticCache {
         }
     }
 
-    /// プロンプトのハッシュ計算
-    fn compute_hash(prompt: &str, system: Option<&str>) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(prompt.as_bytes());
-        if let Some(sys) = system {
-            hasher.update(sys.as_bytes());
-        }
-        hex::encode(hasher.finalize())
-    }
-
     /// キャッシュから取得
     pub async fn get(
         &self,
         prompt: &str,
         system: Option<&str>,
     ) -> Result<Option<LlmResponse>, AiomeError> {
-        let hash = Self::compute_hash(prompt, system);
+        let hash = compute_prompt_hash(prompt, system);
 
         // 1. 完全一致 (Hash) を優先
         if let Some(content) = self.repo.get_by_hash(&hash).await? {
@@ -244,7 +234,7 @@ impl SemanticCache {
         model_name: &str,
         ttl_seconds: i64,
     ) -> Result<(), AiomeError> {
-        let hash = Self::compute_hash(prompt, system);
+        let hash = compute_prompt_hash(prompt, system);
         let mut embedding: Option<Vec<u8>> = None;
 
         if let Some(provider) = &self.embedding_provider {
@@ -267,6 +257,42 @@ impl SemanticCache {
             .await?;
 
         debug!("💾 [SemanticCache] Stored hash: {}", hash);
+        Ok(())
+    }
+
+    /// 事前計算済みキーでの完全一致取得（セマンティック照合なし）
+    pub async fn get_by_key(&self, key: &str) -> Result<Option<LlmResponse>, AiomeError> {
+        if let Some(content) = self.repo.get_by_hash(key).await? {
+            debug!("🎯 [SemanticCache] Exact Hit (by key)! Hash: {}", key);
+            return Ok(Some(LlmResponse {
+                content,
+                stop_reason: StopReason::EndTurn,
+                ..Default::default()
+            }));
+        }
+        Ok(None)
+    }
+
+    /// 事前計算済みキーでの保存（embedding なし）
+    pub async fn set_by_key(
+        &self,
+        key: &str,
+        response: &LlmResponse,
+        provider_name: &str,
+        model_name: &str,
+        ttl_seconds: i64,
+    ) -> Result<(), AiomeError> {
+        self.repo
+            .set(
+                key,
+                &response.content,
+                provider_name,
+                model_name,
+                ttl_seconds,
+                None,
+            )
+            .await?;
+        debug!("💾 [SemanticCache] Stored (by key) hash: {}", key);
         Ok(())
     }
 }

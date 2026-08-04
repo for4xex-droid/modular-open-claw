@@ -7,7 +7,7 @@
 
 use crate::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
 use aiome_core::error::AiomeError;
-use aiome_core::llm_provider::{LlmProvider, LlmResponse};
+use aiome_core::llm_provider::{LlmProvider, LlmRequest, LlmResponse};
 use async_trait::async_trait;
 use std::sync::Arc;
 use std::time::Duration;
@@ -151,6 +151,38 @@ impl LlmProvider for FallbackRouter {
         }
     }
 
+    async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
+        if self.circuit_breaker.check_state().await.is_ok() {
+            match self.primary.complete_with_cache(request.clone()).await {
+                Ok(resp) => {
+                    self.circuit_breaker.record_success().await;
+                    return Ok(resp);
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "⚠️ [FallbackRouter] Primary complete_with_cache failed: {}",
+                        e
+                    );
+                    self.circuit_breaker.record_failure().await;
+                }
+            }
+        } else {
+            tracing::info!("🔌 [FallbackRouter] Circuit is OPEN. Skipping primary (cache path).");
+        }
+        tracing::info!("🔄 [FallbackRouter] Attempting fallback LLM (cache path)...");
+        match self.fallback.complete_with_cache(request).await {
+            Ok(resp) => Ok(resp),
+            Err(e) => {
+                tracing::error!("🚨 [FallbackRouter] Fallback cache path also failed: {}", e);
+                Ok(LlmResponse {
+                    content: "{\"text\": \"ごめんなさい、ちょっと接続が不安定みたい。あとでまた話しかけてね！\", \"emotion\": \"neutral\", \"action\": \"none\"}".to_string(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    ..Default::default()
+                })
+            }
+        }
+    }
+
     async fn stream_complete(
         &self,
         prompt: &str,
@@ -218,6 +250,89 @@ mod tests {
 
         let result = router.complete("hello", None).await.unwrap();
         assert!(result.content.contains("ごめんなさい"));
+    }
+
+    #[tokio::test]
+    async fn test_complete_with_cache_propagates_format_to_primary() {
+        #[derive(Debug)]
+        struct FormatCapturePrimary {
+            seen_format: Arc<std::sync::Mutex<Option<String>>>,
+        }
+
+        #[async_trait]
+        impl LlmProvider for FormatCapturePrimary {
+            async fn complete(
+                &self,
+                _prompt: &str,
+                _system: Option<&str>,
+            ) -> Result<LlmResponse, AiomeError> {
+                unimplemented!()
+            }
+
+            async fn complete_with_cache(
+                &self,
+                request: LlmRequest,
+            ) -> Result<LlmResponse, AiomeError> {
+                *self.seen_format.lock().unwrap() = request.format.clone();
+                Ok(LlmResponse {
+                    content: "primary".into(),
+                    stop_reason: aiome_core::llm_provider::StopReason::EndTurn,
+                    ..Default::default()
+                })
+            }
+
+            async fn stream_complete(
+                &self,
+                _prompt: &str,
+                _system: Option<&str>,
+            ) -> Result<
+                std::pin::Pin<
+                    Box<dyn tokio_stream::Stream<Item = Result<String, AiomeError>> + Send>,
+                >,
+                AiomeError,
+            > {
+                unimplemented!()
+            }
+
+            async fn test_connection(&self) -> Result<(), AiomeError> {
+                Ok(())
+            }
+
+            fn name(&self) -> &str {
+                "FormatCapturePrimary"
+            }
+        }
+
+        let seen = Arc::new(std::sync::Mutex::new(None));
+        let primary: Arc<dyn LlmProvider + Send + Sync> = Arc::new(FormatCapturePrimary {
+            seen_format: seen.clone(),
+        });
+        let fallback = Arc::new(MockLlmProvider {
+            response: "fallback".into(),
+            should_fail: false,
+        });
+        let router = FallbackRouter::new(primary, fallback, 3);
+
+        let request = LlmRequest {
+            messages: vec![aiome_core_contracts::llm::LlmMessage {
+                role: "user".to_string(),
+                content: "give json".to_string(),
+                cache: false,
+            }],
+            temperature: None,
+            max_tokens: None,
+            stop_sequences: None,
+            format: Some("json".to_string()),
+            metadata: None,
+        };
+
+        let resp = router.complete_with_cache(request).await.unwrap();
+        assert_eq!(resp.content, "primary");
+        assert_eq!(
+            seen.lock().unwrap().as_deref(),
+            Some("json"),
+            "FallbackRouter must forward format to primary complete_with_cache"
+        );
     }
 
     #[tokio::test]

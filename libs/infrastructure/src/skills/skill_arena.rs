@@ -230,7 +230,11 @@ impl SkillArena {
             if total_runs > 10 {
                 let failure_rate = perf.failure_count as f64 / total_runs as f64;
                 if failure_rate > self.culling_threshold {
-                    warn!("🧹 [SkillArena] CULLING DETECTED: Skill '{}' has {}% failure rate. Marking for decommissioning.", skill_name, failure_rate * 100.0);
+                    warn!(
+                        "🧹 [SkillArena] CULLING DETECTED: Skill '{}' has {}% failure rate. Marking for decommissioning.",
+                        skill_name,
+                        failure_rate * 100.0
+                    );
                 }
             }
 
@@ -679,7 +683,8 @@ mod tests {
         assert!(
             solid_count > newbie_count,
             "Solid skill (0.7) should be selected more than newbie skill (0.5). Solid: {}, Newbie: {}",
-            solid_count, newbie_count
+            solid_count,
+            newbie_count
         );
     }
 }

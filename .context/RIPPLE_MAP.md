@@ -1,3 +1,44 @@
+## 🔍 OP-099 code-review fix（2026-08-04）
+
+- **変更**: `HumanizerFilter::complete_with_cache`。`pin_local`。DI `HF → [Caching(rules)] → EG → IR`。`compute_request_cache_key`（`channel_id` 必須）/ `get_by_key` / `set_by_key`。`prepare_hybrid_request` が channel 注入。`cheap_chain` が LocalOnly 尊重。route_* request 優先。外部 `route_tier` 無視。`network_target_host` Fail-Closed。`host_permitted` 正規化。
+- **波及効果**: チャット経路・local bg provider・Manifest ホスト判定。legacy は Caching なし（従来等価）。セマンティックキャッシュはチャットで暫定停止。チャネル横断キャッシュ HIT 防止。
+- **検証**: `llm_chat_stack_test` T1–T5 + humanizer/background/utils/caching/route_rules/security/aiome-contracts P/N。
+
+## 🔍 OP-099 Intelligent LLM Router（2026-08-01）
+
+- **変更**: ADR-058。`IntelligentRouter` / `route_rules` / `CachingLlmProvider` / `utils::compute_prompt_hash`。`core_services` 配線（当初 Humanizer → EG → Cache → IR → FR；2026-08-04 に Cache 位置を修正）。`LLM_ROUTE_*` env。eval `route_*` + `fast_tier_ratio`。
+- **波及効果**: **チャット `router_provider` のみ**。`fast_provider` 12+ 消費者・commerce/stream 課金名・Safety-Critical 非変更。既定 `legacy` = 現行 Smart 固定。
+- **検証**: `cargo test -p infrastructure --lib llm` 62 PASS。OpenAPI + `generate-types`。
+
+## 🔍 /docs-sync OP-095〜098（2026-08-01）
+
+- **変更**: SECURITY_DESIGN（脅威 7b + Layer2）/ SECURITY_WHITEPAPER §2 WASM / INFRASTRUCTURE_MODULES / release_master_plan / DEV_HOST_EGRESS 日付。**ランタイム非変更**。
+- **波及効果**: 対外・設計文書のみ。commerce redirect / Vault / Tauri 非変更。
+- **検証**: CHANGELOG [Unreleased] Docs (/docs-sync 2026-08-01)。
+
+## 🔍 OP-098 seatbelt Spike Residual（2026-07-31）
+
+- **変更**: 計画 §8 のみ。Bastion seatbelt 2 call site 棚卸し。**製品コード非変更**。OPEN OP-098 ✅ / S1 不起票。
+- **結論**: Manifest domains を seatbelt に写経しない（DNS/hostname 偽安心）。ホスト許可正本は OP-096/097。
+- **検証**: 文書・台帳整合。
+
+## 🔍 OP-097 Manifest ホスト・ドリフト実装（2026-07-31）
+
+- **変更**: `constraint_checker` DomainBlocked → `host_permitted`。潜伏コメント。配線テスト 2。計画 v1.3 / OPEN ✅。
+- **波及効果**: `network_request` 潜在契約のみ。ライブ egress 経路非変更。
+- **検証**: `constraint_checker::tests` 5 PASS；`rg allowed_domains\.contains` 本番 0。
+
+## 🔍 OP-096 自律 Egress 防衛（2026-07-31）
+
+- **変更**: `host_permitted`（aiome-contracts）+ Bastion Fail-Closed + code_mode 委譲。ADR-057。OP-095 H1 任意化・OPEN クローズ。
+- **波及効果**: Manifest 経路のホスト判定のみ。commerce redirect / router SSRF / seatbelt / Vault/auth/Tauri **非変更**。WASM 空 domains 登録は従来どおり host 未追加。
+- **検証**: `aiome-contracts` security_tests + Bastion check_network P/N。
+
+## 🔍 OP-095 開発ホスト Egress 衛生（2026-07-31）
+
+- **変更**: [`DEV_HOST_EGRESS.md`](../docs/guides/DEV_HOST_EGRESS.md) 新設。ランブック Step A 直前 + `stripe-production-setup` 任意推奨 1 行。計画 v1.2 / OPEN OP-095。
+- **波及効果**: ドキュメントのみ。製品ランタイム・auth/commerce/Vault/Tauri/CI/nt_gate **非変更**。H1 は任意（本線は OP-096）。
+
 ## 🔍 Phase E E5 Inochi UI/文書凍結（2026-07-25）
 
 - **/reflexion**: `ARCHITECTURE.md` 再生成；`useDisplayMode.test.ts`（inx→lite）；`docs/api-server.md` deprecate。

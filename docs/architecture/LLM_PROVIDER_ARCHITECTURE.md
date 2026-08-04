@@ -1,7 +1,7 @@
 # LLM Provider Architecture — 動的プロバイダー設計書
 
-**Version:** 1.6
-**Last Updated:** 2026-06-12
+**Version:** 1.7
+**Last Updated:** 2026-08-01
 **Author:** Antigravity Agent / motivationstudio
 
 ---
@@ -19,7 +19,13 @@ libs/infrastructure/src/llm/
 ├── interactions.rs  ← InteractionsGeminiProvider (Phase 5: ステートフル REST API)
 ├── dynamic.rs       ← DynamicLlmProvider (後方互換ハブ) (★ 本ドキュメント)
 ├── background.rs    ← BackgroundLlmProvider (自律タスクバックグラウンド用)
-└── cost.rs          ← コスト計算・ユニットエコノミクス追跡
+├── cost.rs            ← コスト計算・task_tier_for_model
+├── fallback_router.rs ← FallbackRouter (可用性フェイルオーバー)
+├── intelligent_router.rs ← IntelligentRouter (コスト最適化 tier 選択, ADR-058)
+├── caching_provider.rs ← CachingLlmProvider (SemanticCache 薄ラップ)
+├── route_rules.rs     ← ルールベース tier 判定
+├── semantic_cache.rs  ← DB ベース応答キャッシュ
+└── utils.rs           ← compute_prompt_hash 等
 ```
 
 ---
@@ -76,6 +82,7 @@ LLM の接続先は以下の優先順位で解決されます：
 `FallbackRouter` は、プライマリLLM（例: 外部サービスや高負荷モデル）の障害をサーキットブレーカーで検知し、セカンダリ（例: Gemini Cloud などの安定プロバイダー）へ透過的に切り替えます。
 - **Failover**: タイムアウトや 5xx エラーを検知して自動トリガー。
 - **Transparent**: 利用側は単一の `LlmProvider` として操作可能。
+- **`complete_with_cache`**: primary→fallback へ format を透過委譲（ADR-058 Phase 1）。
 
 ### 3.3a SemaphoreGuardedProvider (Phase Reflexion 改善実装)
 ローカル LLM（Ollama等）の推論スレッド枯渇やリソース競合を防ぐため、`fast_provider` は `SemaphoreGuardedProvider` によって自動的にラップされます。
@@ -94,6 +101,27 @@ LLM の接続先は以下の優先順位で解決されます：
  
 ### 3.6 Security Auditing (Phase 24 実装)
 `Cleanroom` は `LlmProvider` を使用して、生成またはインポートされたスキルソースコードのセキュリティ監査を行います。専用の監査プロンプトを用いて、Vampire Attack（機密情報窃取）や不適切なネットワーク通信の兆候を解析し、安全性が確認されたコードのみをコンパイルプロセスへ移行させます。
+
+### 3.15 IntelligentRouter + CachingLlmProvider (ADR-058, 2026-08-01)
+
+**チャット経路 (`router_provider`) のみ**に適用。`fast_provider` 消費者（Oracle, ContextEngine 等）は非変更。
+
+```
+HumanizerFilter → [CachingLlmProvider if rules] → EntropyGate → IntelligentRouter
+                                                         ├─ TaskTier::Fast  → FallbackRouter(local pin_local, bg)
+                                                         └─ TaskTier::Smart → FallbackRouter(primary, bg)
+```
+
+| 設定 | 環境変数 | 既定 | 意味 |
+|---|---|---|---|
+| ルートモード | `LLM_ROUTE_MODE` | `legacy` | `legacy`=常に Smart（現行互換・Caching なし）/ `rules`=短文→Fast 等 + Caching |
+| 予算降格 | `LLM_ROUTE_BUDGET_DEGRADE` | `true` | CostCircuitBreaker tripped 時 Fast 強制 |
+| 短文閾値 | `LLM_ROUTE_SHORT_PROMPT_CHARS` | `512` | rules モードの Fast 判定 |
+
+- **`stream_complete`**: 常に Smart chain（BackgroundLlm は stream 未実装）。
+- **観測**: IR が `metadata` に `route_*` / `resolved_*` を注入 → `EvaluationLogger` + MC `PromptStatsView.fast_tier_ratio`（request.metadata 優先）。
+- **SemanticCache**: `CachingLlmProvider` は EG **外側**・rules 限定。キーは `compute_request_cache_key`（`channel_id` 必須 + 完全一致）。欠落時 bypass。セマンティック照合は暫定停止。`stream_complete` は非キャッシュ。
+- **`pin_local`**: Fast / budget-degrade 用 `BackgroundLlmProvider` は settings/env による自己昇格を拒否し Ollama 固定。Failover は `local_fallback_policy`（チャット Fast の `cheap_chain` も `LocalOnly` 尊重）。
 
 ---
 

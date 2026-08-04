@@ -2,7 +2,7 @@
 
 Stripe の本番アカウント申請承認に伴い、Aiome 課金システムを本番（実決済）モードへ切り替えるための設定手順です。
 
-**最終更新: 2026-07-18** — OP-084 **方針 B（Live）クローズ**: Pro **$19.99 USD/月**・§5 監視・**§6 顧客メール**・**§7 Portal**・L3/L4 PASS。
+**最終更新: 2026-08-01** — OP-095 推奨チェック維持（/docs-sync）。OP-084 **方針 B（Live）クローズ**: Pro **$19.99 USD/月**・§5 監視・**§6 顧客メール**・**§7 Portal**・L3/L4 PASS。
 
 > **OP-057-R / OP-084 チェックリスト（本番反映）**
 > 0. [x] **環境**: 本番 distroless api-server（NT-1 Step 0 済。イメージ更新時は recreate）
@@ -11,6 +11,7 @@ Stripe の本番アカウント申請承認に伴い、Aiome 課金システム�
 > 3. [x] ホスト Price 設定済。`VITE_STRIPE_PRICE_ID` は任意（エイリアス経路で可）
 > 4. [x] Live Webhook 正本 `https://app.aiome.dev/api/v1/commerce/webhook` + 7 イベント（legacy workers.dev disabled）
 > 5. [x] Live 実カード 1 件 → Pro unlock + L4 Negative/Revert PASS（2026-07-17〜18）
+> - [ ] **（任意推奨）** Live/Vault 操作時: 開発ホスト outbound 監視 ON（LuLu / Little Snitch）→ [`DEV_HOST_EGRESS.md`](../guides/DEV_HOST_EGRESS.md)（OP-095）
 >
 > 決済→Pro 自動有効化（OP-057-R (2)）は 2026-07-05 コード完了。OP-084 L5-3 台帳クローズ済。
 

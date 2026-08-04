@@ -3,7 +3,8 @@
 **対象読者**: コードを書かない人・初めて触る人  
 **目的**: このファイルを上から読み、書いてあるコマンドとチェックをそのまま実行すれば Public Beta の Human 作業が終わる  
 **作成日**: 2026-07-11  
-**改訂**: **v1.6**（2026-07-11）— 第6回: NT-1 に **distroless 再ビルド・稼働確認**を詳細追加（抜け潰し）  
+**改訂**: **v1.8**（2026-08-04）— OP-099 `prompt_evaluation_log` route_* 列（sqlite migration `20260801000000_prompt_eval_route_fields`）は sqlx がトランザクション内で一括適用。手動 ALTER する場合は 3 列すべて完了するか一括ロールバック（部分適用禁止）。v1.7: NT-1 Step A 直前ホスト outbound 監視（OP-095）。本線防衛は OP-096。
+
 **タスク正本**: [`OPEN.md`](../../OPEN.md)  
 **技術詳細**: [`remaining_work_foolproof_plan.md`](../roadmaps/remaining_work_foolproof_plan.md) §2  
 **食い違い時**: 各 NT 冒頭の正本 → 本ランブック → foolproof §2
@@ -325,6 +326,8 @@ docker compose -f docker-compose.production.yml ps -q api-server | xargs docker 
 | `security.distroless` が空 | 別 Dockerfile でビルドされている → compose の dockerfile 行と build 対象サービス名を確認 |
 
 - [ ] **Step 0 DoD PASS**（これ以降 Step A へ）
+
+- [ ] **（推奨）ホスト outbound 監視 ON** — Vault/秘密操作前に LuLu または Little Snitch。手順: [`DEV_HOST_EGRESS.md`](DEV_HOST_EGRESS.md)（OP-095）
 
 ---
 

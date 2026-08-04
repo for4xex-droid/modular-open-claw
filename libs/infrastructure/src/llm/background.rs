@@ -37,6 +37,11 @@ pub struct BackgroundLlmProvider {
     pub live_manager: Option<Arc<dyn aiome_core_contracts::traits::LiveSessionManager>>,
     /// Phase 3-D+: Injected EvaluationLogger for observability DI
     pub eval_logger: Option<Arc<crate::llm::evaluation_logger::EvaluationLogger>>,
+    /// When false, skip CostCircuitBreaker enforce (budget-degrade local path only).
+    pub enforce_cost_limit: bool,
+    /// When true, ignore settings/env provider selection and always use local Ollama
+    /// (`fallback_host` + `fallback_model`). Blocks cloud promotion on this instance.
+    pub pin_local: bool,
 }
 
 impl std::fmt::Debug for BackgroundLlmProvider {
@@ -57,7 +62,9 @@ impl LlmProvider for BackgroundLlmProvider {
     ) -> Result<LlmResponse, AiomeError> {
         let cost_breaker =
             crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
-        cost_breaker.enforce().await?;
+        if self.enforce_cost_limit {
+            cost_breaker.enforce().await?;
+        }
 
         // --- Phase 36: Security Hooks ---
         let mut messages = Vec::new();
@@ -84,79 +91,94 @@ impl LlmProvider for BackgroundLlmProvider {
         };
         self.hook_manager.trigger_pre_execute(&request).await?;
 
-        let provider_type = self
-            .ops
-            .get_setting_value("bg_llm_provider")
-            .await
-            .ok()
-            .flatten()
-            .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
-            .unwrap_or_else(|| "ollama".to_string());
-
-        let model = self
-            .ops
-            .get_setting_value("bg_llm_model")
-            .await
-            .ok()
-            .flatten()
-            .or_else(|| std::env::var("BG_LLM_MODEL").ok())
-            .unwrap_or_else(|| self.fallback_model.clone());
-
-        let api_key = self.resolve_bg_api_key().await;
-
-        let log_provider = provider_type.clone();
-        let log_model = model.clone();
         let start_time = std::time::Instant::now();
 
-        let res = match provider_type.as_str() {
-            "gemini" => {
-                let provider = aiome_core::llm_provider::GeminiProvider::new(
-                    self.client.clone(),
-                    api_key,
-                    model,
-                );
-                provider.complete(prompt, system).await
-            }
-            "openai" => {
-                let provider = aiome_core::llm_provider::OpenAiProvider::new(
-                    self.client.clone(),
-                    api_key,
-                    model,
-                );
-                provider.complete(prompt, system).await
-            }
-            "claude" => {
-                let provider = aiome_core::llm_provider::ClaudeProvider::new(
-                    self.client.clone(),
-                    api_key,
-                    model,
-                );
-                provider.complete(prompt, system).await
-            }
-            "lmstudio" => {
-                let host = self
-                    .ops
-                    .get_setting_value("lm_studio_host")
-                    .await?
-                    .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
-                let provider = aiome_core::llm_provider::LmStudioProvider::new(
-                    self.client.clone(),
-                    host,
-                    model,
-                );
-                provider.complete(prompt, system).await
-            }
-            _ => {
-                let host = self
-                    .ops
-                    .get_setting_value("ollama_host")
-                    .await?
-                    .unwrap_or_else(|| self.fallback_host.clone());
-                let provider = aiome_core::llm_provider::OllamaProvider::new(host, model);
-                provider.complete(prompt, system).await
-            }
+        let (provider_type, model, res) = if self.pin_local {
+            let model = self.fallback_model.clone();
+            let provider = aiome_core::llm_provider::OllamaProvider::new(
+                self.fallback_host.clone(),
+                model.clone(),
+            );
+            (
+                "ollama".to_string(),
+                model,
+                provider.complete(prompt, system).await,
+            )
+        } else {
+            let provider_type = self
+                .ops
+                .get_setting_value("bg_llm_provider")
+                .await
+                .ok()
+                .flatten()
+                .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
+                .unwrap_or_else(|| "ollama".to_string());
+
+            let model = self
+                .ops
+                .get_setting_value("bg_llm_model")
+                .await
+                .ok()
+                .flatten()
+                .or_else(|| std::env::var("BG_LLM_MODEL").ok())
+                .unwrap_or_else(|| self.fallback_model.clone());
+
+            let api_key = self.resolve_bg_api_key().await;
+
+            let res = match provider_type.as_str() {
+                "gemini" => {
+                    let provider = aiome_core::llm_provider::GeminiProvider::new(
+                        self.client.clone(),
+                        api_key,
+                        model.clone(),
+                    );
+                    provider.complete(prompt, system).await
+                }
+                "openai" => {
+                    let provider = aiome_core::llm_provider::OpenAiProvider::new(
+                        self.client.clone(),
+                        api_key,
+                        model.clone(),
+                    );
+                    provider.complete(prompt, system).await
+                }
+                "claude" => {
+                    let provider = aiome_core::llm_provider::ClaudeProvider::new(
+                        self.client.clone(),
+                        api_key,
+                        model.clone(),
+                    );
+                    provider.complete(prompt, system).await
+                }
+                "lmstudio" => {
+                    let host = self
+                        .ops
+                        .get_setting_value("lm_studio_host")
+                        .await?
+                        .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
+                    let provider = aiome_core::llm_provider::LmStudioProvider::new(
+                        self.client.clone(),
+                        host,
+                        model.clone(),
+                    );
+                    provider.complete(prompt, system).await
+                }
+                _ => {
+                    let host = self
+                        .ops
+                        .get_setting_value("ollama_host")
+                        .await?
+                        .unwrap_or_else(|| self.fallback_host.clone());
+                    let provider =
+                        aiome_core::llm_provider::OllamaProvider::new(host, model.clone());
+                    provider.complete(prompt, system).await
+                }
+            };
+            (provider_type, model, res)
         };
 
+        let log_provider = provider_type;
+        let log_model = model;
         let latency_ms = start_time.elapsed().as_millis() as i64;
 
         // --- Phase 36: Post Hooks ---
@@ -179,6 +201,8 @@ impl LlmProvider for BackgroundLlmProvider {
                         .and_then(|v| v.parse::<i64>().ok()),
                 )
             });
+            let (route_tier, route_reason, route_mode) =
+                super::cost::route_fields_from_metadata(response.metadata.as_ref());
 
             tokio::spawn(async move {
                 if let Some(logger) = logger_opt {
@@ -192,6 +216,9 @@ impl LlmProvider for BackgroundLlmProvider {
                         cache_hit,
                         token_in,
                         token_out,
+                        route_tier,
+                        route_reason,
+                        route_mode,
                     )
                     .await;
                 }
@@ -226,84 +253,101 @@ impl LlmProvider for BackgroundLlmProvider {
     async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
         let cost_breaker =
             crate::llm::cost_breaker::CostCircuitBreaker::new(self.ops.clone(), 10.0);
-        cost_breaker.enforce().await?;
+        if self.enforce_cost_limit {
+            cost_breaker.enforce().await?;
+        }
 
         // --- Phase 36: Security Hooks ---
         self.hook_manager.trigger_pre_execute(&request).await?;
 
-        let provider_type = self
-            .ops
-            .get_setting_value("bg_llm_provider")
-            .await
-            .ok()
-            .flatten()
-            .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
-            .unwrap_or_else(|| "ollama".to_string());
-
-        let model = self
-            .ops
-            .get_setting_value("bg_llm_model")
-            .await
-            .ok()
-            .flatten()
-            .or_else(|| std::env::var("BG_LLM_MODEL").ok())
-            .unwrap_or_else(|| self.fallback_model.clone());
-
-        let api_key = self.resolve_bg_api_key().await;
-
-        let log_provider = provider_type.clone();
-        let log_model = model.clone();
         let start_time = std::time::Instant::now();
 
-        let res = match provider_type.as_str() {
-            "gemini" => {
-                let provider = aiome_core::llm_provider::GeminiProvider::new(
-                    self.client.clone(),
-                    api_key,
-                    model,
-                );
-                provider.complete_with_cache(request.clone()).await
-            }
-            "openai" => {
-                let provider = aiome_core::llm_provider::OpenAiProvider::new(
-                    self.client.clone(),
-                    api_key,
-                    model,
-                );
-                provider.complete_with_cache(request.clone()).await
-            }
-            "claude" => {
-                let provider = aiome_core::llm_provider::ClaudeProvider::new(
-                    self.client.clone(),
-                    api_key,
-                    model,
-                );
-                provider.complete_with_cache(request.clone()).await
-            }
-            "lmstudio" => {
-                let host = self
-                    .ops
-                    .get_setting_value("lm_studio_host")
-                    .await?
-                    .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
-                let provider = aiome_core::llm_provider::LmStudioProvider::new(
-                    self.client.clone(),
-                    host,
-                    model,
-                );
-                provider.complete_with_cache(request.clone()).await
-            }
-            _ => {
-                let host = self
-                    .ops
-                    .get_setting_value("ollama_host")
-                    .await?
-                    .unwrap_or_else(|| self.fallback_host.clone());
-                let provider = aiome_core::llm_provider::OllamaProvider::new(host, model);
-                provider.complete_with_cache(request.clone()).await
-            }
+        let (provider_type, model, res) = if self.pin_local {
+            let model = self.fallback_model.clone();
+            let provider = aiome_core::llm_provider::OllamaProvider::new(
+                self.fallback_host.clone(),
+                model.clone(),
+            );
+            (
+                "ollama".to_string(),
+                model,
+                provider.complete_with_cache(request.clone()).await,
+            )
+        } else {
+            let provider_type = self
+                .ops
+                .get_setting_value("bg_llm_provider")
+                .await
+                .ok()
+                .flatten()
+                .or_else(|| std::env::var("BG_LLM_PROVIDER").ok())
+                .unwrap_or_else(|| "ollama".to_string());
+
+            let model = self
+                .ops
+                .get_setting_value("bg_llm_model")
+                .await
+                .ok()
+                .flatten()
+                .or_else(|| std::env::var("BG_LLM_MODEL").ok())
+                .unwrap_or_else(|| self.fallback_model.clone());
+
+            let api_key = self.resolve_bg_api_key().await;
+
+            let res = match provider_type.as_str() {
+                "gemini" => {
+                    let provider = aiome_core::llm_provider::GeminiProvider::new(
+                        self.client.clone(),
+                        api_key,
+                        model.clone(),
+                    );
+                    provider.complete_with_cache(request.clone()).await
+                }
+                "openai" => {
+                    let provider = aiome_core::llm_provider::OpenAiProvider::new(
+                        self.client.clone(),
+                        api_key,
+                        model.clone(),
+                    );
+                    provider.complete_with_cache(request.clone()).await
+                }
+                "claude" => {
+                    let provider = aiome_core::llm_provider::ClaudeProvider::new(
+                        self.client.clone(),
+                        api_key,
+                        model.clone(),
+                    );
+                    provider.complete_with_cache(request.clone()).await
+                }
+                "lmstudio" => {
+                    let host = self
+                        .ops
+                        .get_setting_value("lm_studio_host")
+                        .await?
+                        .unwrap_or_else(|| shared::config::DEFAULT_LM_STUDIO_HOST.to_string());
+                    let provider = aiome_core::llm_provider::LmStudioProvider::new(
+                        self.client.clone(),
+                        host,
+                        model.clone(),
+                    );
+                    provider.complete_with_cache(request.clone()).await
+                }
+                _ => {
+                    let host = self
+                        .ops
+                        .get_setting_value("ollama_host")
+                        .await?
+                        .unwrap_or_else(|| self.fallback_host.clone());
+                    let provider =
+                        aiome_core::llm_provider::OllamaProvider::new(host, model.clone());
+                    provider.complete_with_cache(request.clone()).await
+                }
+            };
+            (provider_type, model, res)
         };
 
+        let log_provider = provider_type;
+        let log_model = model;
         let latency_ms = start_time.elapsed().as_millis() as i64;
 
         // --- Phase 36: Post Hooks ---
@@ -335,6 +379,16 @@ impl LlmProvider for BackgroundLlmProvider {
                         .and_then(|v| v.parse::<i64>().ok()),
                 )
             });
+            // OP-099 fix (H-1): IR は request 側に route_* を注入するため request 優先
+            let (req_tier, req_reason, req_mode) =
+                super::cost::route_fields_from_metadata(request.metadata.as_ref());
+            let (resp_tier, resp_reason, resp_mode) =
+                super::cost::route_fields_from_metadata(response.metadata.as_ref());
+            let (route_tier, route_reason, route_mode) = (
+                req_tier.or(resp_tier),
+                req_reason.or(resp_reason),
+                req_mode.or(resp_mode),
+            );
 
             tokio::spawn(async move {
                 if let Some(logger) = logger_opt {
@@ -348,6 +402,9 @@ impl LlmProvider for BackgroundLlmProvider {
                         cache_hit,
                         token_in,
                         token_out,
+                        route_tier,
+                        route_reason,
+                        route_mode,
                     )
                     .await;
                 }
@@ -388,17 +445,22 @@ impl EmbeddingProvider for BackgroundLlmProvider {
             }
             "gemini" => self.gemini_embed_fallback(text, is_query).await,
             _ => {
-                let host = self
-                    .ops
-                    .get_setting_value("ollama_host")
-                    .await?
-                    .unwrap_or_else(|| self.fallback_host.clone());
-                let model = self
-                    .ops
-                    .get_setting_value("bg_llm_model")
-                    .await?
-                    .or_else(|| std::env::var("BG_LLM_MODEL").ok())
-                    .unwrap_or_else(|| self.fallback_model.clone());
+                let (host, model) = if self.pin_local {
+                    (self.fallback_host.clone(), self.fallback_model.clone())
+                } else {
+                    let host = self
+                        .ops
+                        .get_setting_value("ollama_host")
+                        .await?
+                        .unwrap_or_else(|| self.fallback_host.clone());
+                    let model = self
+                        .ops
+                        .get_setting_value("bg_llm_model")
+                        .await?
+                        .or_else(|| std::env::var("BG_LLM_MODEL").ok())
+                        .unwrap_or_else(|| self.fallback_model.clone());
+                    (host, model)
+                };
                 aiome_core::llm_provider::OllamaProvider::new(host, model)
                     .embed(text, is_query)
                     .await
@@ -469,5 +531,132 @@ impl BackgroundLlmProvider {
         )
         .embed(text, is_query)
         .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::job_queue::CostOps;
+    use crate::security::hook_manager::HookManager;
+    use aiome_core_contracts::error::AiomeError;
+    use async_trait::async_trait;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[derive(Debug)]
+    struct TrackingCostOps {
+        bg_provider_reads: AtomicUsize,
+    }
+
+    #[async_trait]
+    impl CostOps for TrackingCostOps {
+        async fn aggregate_cost_hours(&self, _hours: i64) -> Result<f64, AiomeError> {
+            Ok(0.0)
+        }
+        async fn aggregate_cost_days(&self, _days: i64) -> Result<f64, AiomeError> {
+            Ok(0.0)
+        }
+        async fn aggregate_cost_by_job(&self, _job_id: &str) -> Result<f64, AiomeError> {
+            Ok(0.0)
+        }
+    }
+
+    #[async_trait]
+    impl aiome_core_contracts::traits::SettingsOps for TrackingCostOps {
+        async fn do_get_setting(&self, key: &str) -> Result<Option<String>, AiomeError> {
+            if key == "bg_llm_provider" {
+                self.bg_provider_reads.fetch_add(1, Ordering::SeqCst);
+                return Ok(Some("gemini".to_string()));
+            }
+            Ok(None)
+        }
+        async fn do_set_setting(
+            &self,
+            _k: &str,
+            _v: &str,
+            _c: &str,
+            _s: bool,
+        ) -> Result<(), AiomeError> {
+            Ok(())
+        }
+        async fn do_get_all_settings(
+            &self,
+        ) -> Result<Vec<aiome_core_contracts::contracts::SystemSetting>, AiomeError> {
+            Ok(vec![])
+        }
+        async fn get_auto_expression_enabled(&self) -> Result<bool, AiomeError> {
+            Ok(false)
+        }
+        async fn set_auto_expression_enabled(&self, _e: bool) -> Result<(), AiomeError> {
+            Ok(())
+        }
+    }
+
+    fn make_provider(ops: Arc<TrackingCostOps>, pin_local: bool) -> BackgroundLlmProvider {
+        BackgroundLlmProvider {
+            ops,
+            client: reqwest::Client::new(),
+            fallback_model: "test-model".into(),
+            // Unreachable host so the call fails fast without cloud promotion.
+            fallback_host: "http://127.0.0.1:1".into(),
+            gemini_api_key: None,
+            openai_api_key: None,
+            anthropic_api_key: None,
+            hook_manager: Arc::new(HookManager::new()),
+            live_manager: None,
+            eval_logger: None,
+            enforce_cost_limit: false,
+            pin_local,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_pin_local_skips_settings_provider_lookup() {
+        let ops = Arc::new(TrackingCostOps {
+            bg_provider_reads: AtomicUsize::new(0),
+        });
+        let provider = make_provider(ops.clone(), true);
+        let _ = provider.complete("ping", None).await;
+        assert_eq!(
+            ops.bg_provider_reads.load(Ordering::SeqCst),
+            0,
+            "pin_local must not read bg_llm_provider settings"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_pin_local_complete_with_cache_skips_settings() {
+        let ops = Arc::new(TrackingCostOps {
+            bg_provider_reads: AtomicUsize::new(0),
+        });
+        let provider = make_provider(ops.clone(), true);
+        let _ = provider
+            .complete_with_cache(LlmRequest {
+                messages: vec![aiome_core_contracts::llm::LlmMessage {
+                    role: "user".into(),
+                    content: "ping".into(),
+                    cache: false,
+                }],
+                ..Default::default()
+            })
+            .await;
+        assert_eq!(
+            ops.bg_provider_reads.load(Ordering::SeqCst),
+            0,
+            "pin_local complete_with_cache must not read bg_llm_provider settings"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_pin_local_false_reads_settings() {
+        let ops = Arc::new(TrackingCostOps {
+            bg_provider_reads: AtomicUsize::new(0),
+        });
+        let provider = make_provider(ops.clone(), false);
+        let _ = provider.complete("ping", None).await;
+        assert!(
+            ops.bg_provider_reads.load(Ordering::SeqCst) >= 1,
+            "pin_local=false must consult bg_llm_provider settings"
+        );
     }
 }

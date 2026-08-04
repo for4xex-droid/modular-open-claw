@@ -352,10 +352,12 @@ impl WasmSkillManager {
                 }
             }
 
-            // Apply Network Whitelist
+            // Apply Network Whitelist (OP-096 / ADR-057):
+            // Extism hosts are enumerated only. `*` (after trim) is skipped so a
+            // wildcard Manifest does not open WASM net; Code Mode / Bastion still honor `*`.
             if permissions.allow_network {
-                for domain in &permissions.allowed_domains {
-                    if domain != "*" && init_guard.check_network(domain).is_ok() {
+                for domain in wasm_hosts_for_extism(&permissions.allowed_domains) {
+                    if init_guard.check_network(domain).is_ok() {
                         manifest = manifest.with_allowed_host(domain);
                     }
                 }
@@ -591,6 +593,44 @@ impl WasmSkillManager {
         manifest: &crate::security::PermissionManifest,
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         code_mode::run_code_mode_js_impl(self, js_code, manifest).await
+    }
+}
+
+/// Trimmed Manifest hosts eligible for Extism `with_allowed_host`.
+/// Never yields `*` (including whitespace-padded `"*"`), so wildcard Manifests stay closed for WASM.
+fn wasm_hosts_for_extism(allowed_domains: &[String]) -> Vec<&str> {
+    allowed_domains
+        .iter()
+        .filter_map(|d| {
+            let d = d.trim();
+            if d.is_empty() || d == "*" {
+                None
+            } else {
+                Some(d)
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod wasm_host_enum_tests {
+    use super::wasm_hosts_for_extism;
+
+    #[test]
+    fn skips_star_and_whitespace_variants() {
+        let domains = vec![
+            "*".into(),
+            " * ".into(),
+            "* ".into(),
+            "".into(),
+            "  ".into(),
+            "api.example.com".into(),
+            "  ok.dev  ".into(),
+        ];
+        assert_eq!(
+            wasm_hosts_for_extism(&domains),
+            vec!["api.example.com", "ok.dev"]
+        );
     }
 }
 

@@ -173,6 +173,8 @@ impl LlmProvider for DynamicLlmProvider {
                         .and_then(|v| v.parse::<i64>().ok()),
                 )
             });
+            let (route_tier, route_reason, route_mode) =
+                super::cost::route_fields_from_metadata(response.metadata.as_ref());
 
             // Non-blocking log using tokio::spawn
             tokio::spawn(async move {
@@ -187,6 +189,9 @@ impl LlmProvider for DynamicLlmProvider {
                         cache_hit,
                         token_in,
                         token_out,
+                        route_tier,
+                        route_reason,
+                        route_mode,
                     )
                     .await;
                 }
@@ -303,7 +308,7 @@ impl LlmProvider for DynamicLlmProvider {
                          let latency_ms = start_time.elapsed().as_millis() as i64;
                          tokio::spawn(async move {
                              if let Some(logger) = logger_opt {
-                                 log_evaluation(logger, p, s, log_provider, log_model, latency_ms, false, None, None).await;
+                                 log_evaluation(logger, p, s, log_provider, log_model, latency_ms, false, None, None, None, None, None).await;
                              }
                          });
                     }
@@ -426,6 +431,16 @@ impl LlmProvider for DynamicLlmProvider {
                         .and_then(|v| v.parse::<i64>().ok()),
                 )
             });
+            // OP-099 fix (H-1): IR は request 側に route_* を注入するため request 優先
+            let (req_tier, req_reason, req_mode) =
+                super::cost::route_fields_from_metadata(request.metadata.as_ref());
+            let (resp_tier, resp_reason, resp_mode) =
+                super::cost::route_fields_from_metadata(response.metadata.as_ref());
+            let (route_tier, route_reason, route_mode) = (
+                req_tier.or(resp_tier),
+                req_reason.or(resp_reason),
+                req_mode.or(resp_mode),
+            );
 
             tokio::spawn(async move {
                 if let Some(logger) = logger_opt {
@@ -439,6 +454,9 @@ impl LlmProvider for DynamicLlmProvider {
                         cache_hit,
                         token_in,
                         token_out,
+                        route_tier,
+                        route_reason,
+                        route_mode,
                     )
                     .await;
                 }

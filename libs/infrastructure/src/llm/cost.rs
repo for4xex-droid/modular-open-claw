@@ -5,7 +5,35 @@
  * Licensed under the Business Source License 1.1.
  */
 
+use aiome_core_contracts::llm::{ROUTE_MODE_KEY, ROUTE_REASON_KEY, ROUTE_TIER_KEY};
+use aiome_core_contracts::task_tier::TaskTier;
+use std::collections::HashMap;
 use std::sync::Arc;
+
+pub fn route_fields_from_metadata(
+    metadata: Option<&HashMap<String, String>>,
+) -> (Option<String>, Option<String>, Option<String>) {
+    let Some(m) = metadata else {
+        return (None, None, None);
+    };
+    (
+        m.get(ROUTE_TIER_KEY).cloned(),
+        m.get(ROUTE_REASON_KEY).cloned(),
+        m.get(ROUTE_MODE_KEY).cloned(),
+    )
+}
+
+pub fn task_tier_for_model(model: &str) -> TaskTier {
+    if model_pricing(model).is_some() {
+        TaskTier::Smart
+    } else {
+        TaskTier::Fast
+    }
+}
+
+pub fn is_local_model(model: &str) -> bool {
+    model_pricing(model).is_none()
+}
 
 pub async fn log_evaluation(
     logger: Arc<crate::llm::evaluation_logger::EvaluationLogger>,
@@ -17,6 +45,9 @@ pub async fn log_evaluation(
     cache_hit: bool,
     token_in: Option<i64>,
     token_out: Option<i64>,
+    route_tier: Option<String>,
+    route_reason: Option<String>,
+    route_mode: Option<String>,
 ) {
     let cost = calculate_cost_usd(&model, token_in, token_out);
 
@@ -31,6 +62,9 @@ pub async fn log_evaluation(
             token_count_out: token_out,
             cost_usd: Some(cost),
             cache_hit,
+            route_tier,
+            route_reason,
+            route_mode,
         })
         .await
     {

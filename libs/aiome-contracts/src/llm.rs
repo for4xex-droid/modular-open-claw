@@ -6,11 +6,36 @@
  */
 
 use crate::error::AiomeError;
+use crate::task_tier::TaskTier;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::pin::Pin;
 use tokio_stream::Stream;
+
+/// Metadata key: explicit route tier override (`Fast` / `Smart`).
+pub const ROUTE_TIER_KEY: &str = "route_tier";
+/// Metadata key: machine-readable routing reason code.
+pub const ROUTE_REASON_KEY: &str = "route_reason";
+/// Metadata key: active routing mode (`legacy` / `rules`).
+pub const ROUTE_MODE_KEY: &str = "route_mode";
+/// Metadata key: provider that actually served the request.
+pub const RESOLVED_PROVIDER_KEY: &str = "resolved_provider";
+/// Metadata key: model that actually served the request.
+pub const RESOLVED_MODEL_KEY: &str = "resolved_model";
+/// Metadata key: sticky tier lock for EntropyGate re-asks.
+pub const ROUTE_TIER_LOCKED_KEY: &str = "route_tier_locked";
+
+/// Chat cache scope key (must be present for CachingLlmProvider to store/hit).
+pub const CACHE_SCOPE_CHANNEL_KEY: &str = "channel_id";
+
+/// Result of synchronous route-rule evaluation (ADR-058).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LlmRouteDecision {
+    pub tier: TaskTier,
+    pub reason_code: String,
+    pub reason_detail: String,
+}
 
 /// LLMの停止理由
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

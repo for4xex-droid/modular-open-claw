@@ -20,6 +20,51 @@ pub struct PermissionManifest {
     pub allowed_domains: Vec<String>,
 }
 
+/// Host allowlist check for [`PermissionManifest::allowed_domains`] (OP-096 / ADR-057).
+///
+/// Rules (Code Mode `aiome.fetch` base + harden):
+/// - empty list / empty host (after trim) → deny
+/// - host with control chars or internal whitespace → deny
+/// - host is lowercased; a single trailing `.` (FQDN) is stripped
+/// - allow entries are lowercased after trim; empty / leading-`.` / trailing-`.` junk ignored
+/// - `*` → allow any non-empty normalized host
+/// - exact host match (case-insensitive via normalization)
+/// - subdomain suffix (`host.ends_with("." + domain)`) only when `domain` contains `.`
+///   (prevents `allowed_domains=["com"]` from matching `evil.com`)
+pub fn host_permitted(host: &str, allowed_domains: &[String]) -> bool {
+    let host = host.trim();
+    if host.is_empty() || allowed_domains.is_empty() {
+        return false;
+    }
+    if host.chars().any(|c| c.is_control() || c.is_whitespace()) {
+        return false;
+    }
+    let mut host = host.to_lowercase();
+    if host.ends_with('.') {
+        host.pop();
+        if host.is_empty() {
+            return false;
+        }
+    }
+
+    for domain in allowed_domains {
+        let domain = domain.trim();
+        // Reject empty / dotted-junk entries (leading/trailing '.') — no accidental grants.
+        if domain.is_empty() || domain.starts_with('.') || domain.ends_with('.') {
+            continue;
+        }
+        let domain = domain.to_lowercase();
+        if domain == "*" || domain == host {
+            return true;
+        }
+        // Require a dot in the allow entry so a bare TLD cannot suffix-match the world.
+        if domain.contains('.') && host.ends_with(&format!(".{}", domain)) {
+            return true;
+        }
+    }
+    false
+}
+
 /// 🛡️ SandboxProfile
 ///
 /// 実行環境に応じたサンドボックスの制限レベル。

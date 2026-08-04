@@ -53,6 +53,9 @@ pub struct EvaluationLogEntry {
     pub token_count_out: Option<i64>,
     pub cost_usd: Option<f64>,
     pub cache_hit: bool,
+    pub route_tier: Option<String>,
+    pub route_reason: Option<String>,
+    pub route_mode: Option<String>,
 }
 
 impl EvaluationLogger {
@@ -61,14 +64,7 @@ impl EvaluationLogger {
     }
 
     pub async fn log(&self, entry: EvaluationLogEntry) -> Result<(), AiomeError> {
-        use sha2::{Digest, Sha256};
-
-        let mut hasher = Sha256::new();
-        hasher.update(entry.prompt.as_bytes());
-        if let Some(sys) = &entry.system {
-            hasher.update(sys.as_bytes());
-        }
-        let prompt_hash = hex::encode(hasher.finalize());
+        let prompt_hash = super::utils::compute_prompt_hash(&entry.prompt, entry.system.as_deref());
         self.repo.insert_eval_log(&prompt_hash, &entry).await
     }
 
@@ -104,8 +100,8 @@ impl EvalLogRepository for SqlEvalLogRepository {
 
         let pool = &self.pool;
         let query = format!(
-            "INSERT INTO prompt_evaluation_log (prompt_hash, provider, model, latency_ms, token_count_in, token_count_out, cost_usd, cache_hit) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7})",
-            pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3), pool.ph(4), pool.ph(5), pool.ph(6), pool.ph(7)
+            "INSERT INTO prompt_evaluation_log (prompt_hash, provider, model, latency_ms, token_count_in, token_count_out, cost_usd, cache_hit, route_tier, route_reason, route_mode) VALUES ({0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10})",
+            pool.ph(0), pool.ph(1), pool.ph(2), pool.ph(3), pool.ph(4), pool.ph(5), pool.ph(6), pool.ph(7), pool.ph(8), pool.ph(9), pool.ph(10)
         );
 
         match pool {
@@ -119,6 +115,9 @@ impl EvalLogRepository for SqlEvalLogRepository {
                     .bind(entry.token_count_out)
                     .bind(entry.cost_usd)
                     .bind(cache_hit_int)
+                    .bind(&entry.route_tier)
+                    .bind(&entry.route_reason)
+                    .bind(&entry.route_mode)
                     .execute(p)
                     .await
                     .map_err(|e| {
@@ -138,6 +137,9 @@ impl EvalLogRepository for SqlEvalLogRepository {
                     .bind(entry.token_count_out)
                     .bind(entry.cost_usd)
                     .bind(cache_hit_int)
+                    .bind(&entry.route_tier)
+                    .bind(&entry.route_reason)
+                    .bind(&entry.route_mode)
                     .execute(p)
                     .await
                     .map_err(|e| {
@@ -163,7 +165,8 @@ impl EvalLogRepository for SqlEvalLogRepository {
         let query = format!(
             "SELECT provider, model, AVG(latency_ms) as average_latency_ms, COUNT(*) as total_calls,
              COALESCE(SUM(token_count_in), 0) as total_tokens_in, COALESCE(SUM(token_count_out), 0) as total_tokens_out,
-             COALESCE(SUM(cost_usd), 0.0) as total_cost_usd, COALESCE(CAST(SUM(cache_hit) AS REAL) * 100.0 / COUNT(*), 0.0) as cache_hit_rate
+             COALESCE(SUM(cost_usd), 0.0) as total_cost_usd, COALESCE(CAST(SUM(cache_hit) AS REAL) * 100.0 / COUNT(*), 0.0) as cache_hit_rate,
+             COALESCE(CAST(SUM(CASE WHEN route_tier = 'fast' THEN 1 ELSE 0 END) AS REAL) * 100.0 / NULLIF(COUNT(*), 0), 0.0) as fast_tier_ratio
              FROM prompt_evaluation_log
              WHERE provider = {0} AND model = {1} AND created_at >= datetime('now', {2})
              GROUP BY provider, model",
@@ -182,7 +185,8 @@ impl EvalLogRepository for SqlEvalLogRepository {
             crate::db::DatabasePool::Postgres(p) => {
                 let pg_query = "SELECT provider, model, COALESCE(AVG(latency_ms),0) as average_latency_ms, COUNT(*) as total_calls,
                     COALESCE(SUM(token_count_in), 0) as total_tokens_in, COALESCE(SUM(token_count_out), 0) as total_tokens_out,
-                    COALESCE(SUM(cost_usd), 0.0) as total_cost_usd, COALESCE(CAST(SUM(cache_hit) AS REAL) * 100.0 / COUNT(*), 0.0) as cache_hit_rate
+                    COALESCE(SUM(cost_usd), 0.0) as total_cost_usd, COALESCE(CAST(SUM(cache_hit) AS REAL) * 100.0 / COUNT(*), 0.0) as cache_hit_rate,
+                    COALESCE(CAST(SUM(CASE WHEN route_tier = 'fast' THEN 1 ELSE 0 END) AS REAL) * 100.0 / NULLIF(COUNT(*), 0), 0.0) as fast_tier_ratio
                     FROM prompt_evaluation_log
                     WHERE provider = $1 AND model = $2 AND created_at >= NOW() - INTERVAL '1 day' * $3
                     GROUP BY provider, model";
@@ -206,6 +210,7 @@ impl EvalLogRepository for SqlEvalLogRepository {
                 total_tokens_out: 0,
                 total_cost_usd: 0.0,
                 cache_hit_rate: 0.0,
+                fast_tier_ratio: 0.0,
             }),
             Err(e) => {
                 tracing::error!("Failed to fetch evaluation stats: {}", e);
@@ -224,7 +229,8 @@ impl EvalLogRepository for SqlEvalLogRepository {
                 let sql_modifier = format!("-{} days", days);
                 let query = "SELECT provider, model, AVG(latency_ms) as average_latency_ms, COUNT(*) as total_calls,
                     COALESCE(SUM(token_count_in), 0) as total_tokens_in, COALESCE(SUM(token_count_out), 0) as total_tokens_out,
-                    COALESCE(SUM(cost_usd), 0.0) as total_cost_usd, COALESCE(CAST(SUM(cache_hit) AS REAL) * 100.0 / COUNT(*), 0.0) as cache_hit_rate
+                    COALESCE(SUM(cost_usd), 0.0) as total_cost_usd, COALESCE(CAST(SUM(cache_hit) AS REAL) * 100.0 / COUNT(*), 0.0) as cache_hit_rate,
+                    COALESCE(CAST(SUM(CASE WHEN route_tier = 'fast' THEN 1 ELSE 0 END) AS REAL) * 100.0 / NULLIF(COUNT(*), 0), 0.0) as fast_tier_ratio
                     FROM prompt_evaluation_log
                     WHERE created_at >= datetime('now', ?)
                     GROUP BY provider, model";
@@ -237,7 +243,8 @@ impl EvalLogRepository for SqlEvalLogRepository {
             crate::db::DatabasePool::Postgres(p) => {
                 let pg_query = "SELECT provider, model, COALESCE(AVG(latency_ms),0) as average_latency_ms, COUNT(*) as total_calls,
                     COALESCE(SUM(token_count_in), 0) as total_tokens_in, COALESCE(SUM(token_count_out), 0) as total_tokens_out,
-                    COALESCE(SUM(cost_usd), 0.0) as total_cost_usd, COALESCE(CAST(SUM(cache_hit) AS REAL) * 100.0 / COUNT(*), 0.0) as cache_hit_rate
+                    COALESCE(SUM(cost_usd), 0.0) as total_cost_usd, COALESCE(CAST(SUM(cache_hit) AS REAL) * 100.0 / COUNT(*), 0.0) as cache_hit_rate,
+                    COALESCE(CAST(SUM(CASE WHEN route_tier = 'fast' THEN 1 ELSE 0 END) AS REAL) * 100.0 / NULLIF(COUNT(*), 0), 0.0) as fast_tier_ratio
                     FROM prompt_evaluation_log
                     WHERE created_at >= NOW() - INTERVAL '1 day' * $1
                     GROUP BY provider, model";
@@ -299,6 +306,7 @@ pub struct ProviderEvalStat {
     pub total_tokens_out: i64,
     pub total_cost_usd: f64,
     pub cache_hit_rate: f64,
+    pub fast_tier_ratio: f64,
 }
 
 #[cfg(test)]
@@ -340,6 +348,9 @@ mod tests {
             token_count_out: None,
             cost_usd: None,
             cache_hit: false,
+            route_tier: None,
+            route_reason: None,
+            route_mode: None,
         };
 
         // Act
@@ -397,6 +408,9 @@ mod tests {
                 token_count_out: Some(20),
                 cost_usd: Some(0.001),
                 cache_hit: false,
+                route_tier: None,
+                route_reason: None,
+                route_mode: None,
             })
             .await
             .unwrap();
@@ -443,6 +457,9 @@ mod tests {
                 token_count_out: Some(100),
                 cost_usd: Some(0.005),
                 cache_hit: true,
+                route_tier: Some("fast".into()),
+                route_reason: Some("short_prompt".into()),
+                route_mode: Some("rules".into()),
             })
             .await
             .unwrap();
@@ -458,6 +475,9 @@ mod tests {
                 token_count_out: None,
                 cost_usd: None,
                 cache_hit: false,
+                route_tier: None,
+                route_reason: None,
+                route_mode: None,
             })
             .await
             .unwrap();
@@ -474,6 +494,10 @@ mod tests {
         assert!(
             gemini.cache_hit_rate > 0.0,
             "Cache hit rate should be > 0 for cache_hit=true"
+        );
+        assert!(
+            gemini.fast_tier_ratio > 0.0,
+            "Fast tier ratio should be > 0 for route_tier=fast"
         );
     }
 

@@ -2,6 +2,8 @@
 
 このドキュメントでは、`libs/infrastructure` クレートに含まれる各モジュールの役割と責務を概説します。
 
+**最終更新: 2026-08-01** — OP-096/097 Manifest ホスト許可（`host_permitted`）・OP-098 seatbelt Residual。
+
 ## モジュール一覧
 
 | モジュール | 役割 | 状態 |
@@ -26,7 +28,7 @@
 | `ban_store` | `BanStore` トレイト、`UniversalBanStore`、および `MockBanStore` を提供。不正なアクターやトークンの一元的な禁止リスト管理とリアルタイム検疫機能を提供。 | **Phase Compliance-1 完了** |
 | `cognitive_sentinel`| 感情が極端な鬱状態などに陥った場合に検知し、自律的に回復イベントを発火させる防御層。**Phase 55** でジョブ失敗率（60%以上）に基づく Panic State 防御を追加。 | **Phase 55 完了** |
 | ~~`concept_manager`~~ | AIが獲得した概念（Concepts）をベクターDBで管理。（`llm/utils.rs` への機能委譲によりSunset完了） | **Sunset済** |
-| `constraint_checker` | AgentRx における行動制約の検証エンジン。**Phase 55** で出力サイズ制限とエコー攻撃検知を追加。 | **Phase 55 完了** |
+| `constraint_checker` | AgentRx における行動制約の検証エンジン。**Phase 55** で出力サイズ制限とエコー攻撃検知を追加。**OP-097**: `network_request` の DomainBlocked は `host_permitted` に委譲（潜伏 action。ライブ skill 経路は Bastion/WASM）。 | **Phase 55 / OP-097** |
 | `context_engine` | 会話履歴や環境情報をLLMに提供。**Phase 2B** で感情履歴（Karma/somatic_valence）から動的 Mood を計算し、LLMプロンプトへ注入（Somatic Context & Emotional RAG）機能を追加。 | **Phase 2B 強化** |
 | `cortex_ingester`| LLMを用いたURL, テキスト, PDFからのドメイン特化型Markdownナレッジ抽出エンジン。HTML→Markdown は `htmd`（Apache-2.0、OP-067）。PDFテキスト抽出は `pdftotext` 隔離プロセス実行モデルによって安全に処理される。 | **Phase A 完了 / OP-067** |
 | `cortex_compiler`| 未加工のドキュメント群から概念（Concepts）を抽出し、一貫したWiki記事を自律的にコンパイルするエンジン。Graphify抽出戦略に基づきリンクの `confidence` タグ (1.0/0.7/0.4) を算出する機能を搭載。 | **Phase B & CT 完了** |
@@ -51,7 +53,7 @@
 | `publisher` | 成果物の自動公開（SNS, ブログ等）を管理。**Phase B/C** で WordPress REST API v2 アダプタを追加し、SEOコンテンツの自律パブリッシュを実装完了。**Phase 4** にて WordPress API トークンを排除し AbyssVault (Key Proxy) へ委譲するゼロトラストアーキテクチャへ進化。 | **Phase 4 完了** |
 | `rate_limiter` | エージェント単位のリクエスト頻度制御。DoS 攻撃や予期せぬAPI消費を防ぐ。 | **実装完了** |
 | `samsara_engine` | Soul Engine の L3 転生ロジック実体。Phase 3 で Anamnesis（物語的自己）の LLM 蒸留・継承を実装済。 | **Phase 3 完了** |
-| `security` | 暗号化、認証、Abyss Vault との連携。サブモジュール（`config`, `security/bastion_guard`, `security/voice_core_drm`, `security/tests`）に分割し、`security.rs` を後方互換ハブモジュールとして再構成。 | **分割・構造化完了** |
+| `security` | 暗号化、認証、Abyss Vault との連携。サブモジュール（`config`, `security/bastion_guard`, `security/voice_core_drm`, `security/tests`）に分割し、`security.rs` を後方互換ハブモジュールとして再構成。**OP-096 / ADR-057**: `BastionGuard::check_network` は `aiome_contracts::host_permitted` へ Fail-Closed（bare host/URL）。seatbelt は boolean のみ（OP-098 Residual）。 | **分割・構造化完了 / OP-096** |
 | `tts` | `TtsProvider` トレイトに基づく音声合成エンジン。SSEストリーミング出力とリップシンク（Viseme）対応の多重化イベント配信をサポート。 | **Phase 14 完了** |
 | `native_backend` | ネイティブRust実装によるSLM（SuperLocalMemory）機能群。意味検索（recall）、重要度計算、矛盾検知を提供。 | **実装完了** |
 | `native_embedding` | SLMバックエンド向けに、ネイティブRustによるローカル埋め込み（Embedding）モデルの推論とコサイン類似度計算を提供。 | **実装完了** |
@@ -60,7 +62,7 @@
 | `spec_provider` | `FsSpecProvider` を通じた動的ワークフロー仕様のファイルシステムへのエクスポート基盤。パストラバーサル防御、symlink拒否、正規表現によるシークレットサニタイズを実装。 | **Phase 4 完了** |
 | `prompt_registry` | Minijinjaベースのシステムプロンプト・テンプレートレンダリングエンジン。ゼロパニック対応の `NoopPromptRegistry` フォールバックを提供し、プロンプトのSSOTを確立。 | **Phase 4 完了** |
 | `score_tracker` | エージェントの成長やKarmaの停滞（Plateau）を日次で記録し、TimesFMによる時系列予測モジュールへデータを供給する。 | **Phase 3D 完了** |
-| `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase B** にて `ToolHook` と `HookChain` を導入し、実行前後のインターセプトと `ToolCallRouter` による一元的なセキュリティ評価基盤を構築。**OP-075 (2026-07-10)**: `evaluate_security` は Immune DB `Err` も Fail-Closed（api-server `tool_call_router` / `stream` / `agent_engine` 共有）。**OP-075-B (2026-07-11)**: `skill_handler` は Wasm 実行前に `fetch_active_immune_rules`（Err 拒否）。napi / goal_processor / nurture MCP も同方針。**2026-07** に God Module（mod.rs 1,135行）を `code_mode` / `host_fns` / `types` へ分解し、機密パス検査を `is_sensitive_path` に統一。 | **リファクタ完了** |
+| `skills` | WASM スキルのロード、実行、サンドボックス管理。**Phase B** にて `ToolHook` と `HookChain` を導入し、実行前後のインターセプトと `ToolCallRouter` による一元的なセキュリティ評価基盤を構築。**OP-075 (2026-07-10)**: `evaluate_security` は Immune DB `Err` も Fail-Closed（api-server `tool_call_router` / `stream` / `agent_engine` 共有）。**OP-075-B (2026-07-11)**: `skill_handler` は Wasm 実行前に `fetch_active_immune_rules`（Err 拒否）。napi / goal_processor / nurture MCP も同方針。**2026-07** に God Module（mod.rs 1,135行）を `code_mode` / `host_fns` / `types` へ分解し、機密パス検査を `is_sensitive_path` に統一。**OP-096**: `code_mode` fetch と WASM `wasm_hosts_for_extism`（trim 後 `*` スキップ）が `host_permitted` と整合。 | **リファクタ完了 / OP-096** |
 | `slo_engine` | サービスの可用性や応答時間の目標値を監視。 | 実装完了 |
 | `society_of_thought` | **ADR-032**: Dochkina (2026) の Endogeneity Paradox に基づく自己組織化熟議エンジン。Sequential マルチパス協調、自律ロール発明、Voluntary Self-Abstention、Capability-Aware Protocol Fallback を実装。Oracle `multi_review` と統合済。 | **ADR-032 完了** |
 | `soul_adapter` | 内部イベントから Experience へ変換、予測評価、および **Phase 37a** で L2.5 層 `WhisperMiddleware` を追加した Middleware Chain との連携。 | **Phase 37a 完了** |

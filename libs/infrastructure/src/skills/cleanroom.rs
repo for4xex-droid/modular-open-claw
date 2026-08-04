@@ -57,12 +57,22 @@ impl Cleanroom {
                                 info!("✅ [Cleanroom] AI Audit PASSED for {}.", manifest.l1.name)
                             }
                             Ok(false) => {
-                                warn!("🚨 [Cleanroom] AI Audit REJECTED for {}. Potential malicious code detected.", manifest.l1.name);
-                                return Err(anyhow::anyhow!("Security Objection: AI-driven source audit rejected this code due to potential vulnerabilities or malicious intent."));
+                                warn!(
+                                    "🚨 [Cleanroom] AI Audit REJECTED for {}. Potential malicious code detected.",
+                                    manifest.l1.name
+                                );
+                                return Err(anyhow::anyhow!(
+                                    "Security Objection: AI-driven source audit rejected this code due to potential vulnerabilities or malicious intent."
+                                ));
                             }
                             Err(e) => {
-                                warn!("⚠️ [Cleanroom] AI Audit failed to execute: {}. Falling back to strict mode (Block).", e);
-                                return Err(anyhow::anyhow!("Security Gate Error: Code audit failed. Forging aborted for safety."));
+                                warn!(
+                                    "⚠️ [Cleanroom] AI Audit failed to execute: {}. Falling back to strict mode (Block).",
+                                    e
+                                );
+                                return Err(anyhow::anyhow!(
+                                    "Security Gate Error: Code audit failed. Forging aborted for safety."
+                                ));
                             }
                         }
                     }

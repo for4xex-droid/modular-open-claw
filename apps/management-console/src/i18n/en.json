@@ -951,6 +951,7 @@
     "latency": "Latency",
     "cost": "Cost",
     "cache": "Cache Hit",
+    "fastTier": "Fast Tier",
     "costComparison": "Cost Comparison"
   },
   "seoPulse": {

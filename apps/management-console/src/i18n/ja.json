@@ -951,6 +951,7 @@
     "latency": "レイテンシ",
     "cost": "コスト",
     "cache": "キャッシュ率",
+    "fastTier": "Fast tier 比率",
     "costComparison": "コスト比較"
   },
   "seoPulse": {

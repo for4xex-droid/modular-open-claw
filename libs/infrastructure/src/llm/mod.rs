@@ -7,6 +7,7 @@
 
 /// `background` モジュール
 pub mod background;
+pub mod caching_provider;
 /// `cost` モジュール
 pub mod cost;
 /// `cost_breaker` モジュール
@@ -17,6 +18,8 @@ pub mod dynamic;
 pub mod entropy_gate;
 pub mod evaluation_logger;
 pub mod fallback_router;
+pub mod intelligent_router;
+pub mod route_rules;
 pub mod semaphore_guard;
 
 #[cfg(feature = "native-inference")]

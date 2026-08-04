@@ -5,6 +5,7 @@
  * Licensed under the Business Source License 1.1.
  */
 
+use crate::job_queue::settings::CostOps;
 use crate::job_queue::EvaluationOps;
 use aiome_core_contracts::contracts::{
     ArenaMatch, FederatedMetrics, ImmuneRule, KarmaEntry, OracleVerdict, SamsaraEvent,
@@ -26,6 +27,19 @@ pub(crate) struct MockJQ {
     pub(crate) rules: Vec<ImmuneRule>,
     pub(crate) stored_jobs: std::sync::Mutex<std::collections::HashMap<String, Job>>,
 }
+#[async_trait]
+impl CostOps for MockJQ {
+    async fn aggregate_cost_hours(&self, _hours: i64) -> Result<f64, AiomeError> {
+        Ok(0.0)
+    }
+    async fn aggregate_cost_days(&self, _days: i64) -> Result<f64, AiomeError> {
+        Ok(0.0)
+    }
+    async fn aggregate_cost_by_job(&self, _job_id: &str) -> Result<f64, AiomeError> {
+        Ok(0.0)
+    }
+}
+
 #[async_trait]
 impl aiome_core_contracts::traits::SystemStateOps for MockJQ {
     async fn store_system_state(&self, _: &str, _: &str) -> Result<(), AiomeError> {

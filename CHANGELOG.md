@@ -1,5 +1,62 @@
 ## [Unreleased]
 
+### Fixed (OP-099 code-review fix 2026-08-04)
+- **C-1**: `HumanizerFilter::complete_with_cache` 追加（format/metadata が内側チェーンへ到達）。
+- **C-2**: `BackgroundLlmProvider.pin_local` — DB/env による自己昇格を遮断（Failover は `local_fallback_policy` に従う）。チャット Fast の `cheap_chain` も `LocalOnly` を尊重。
+- **C-3**: チャット DI を `HF → [Caching(rules のみ)] → EG → IR` に変更（EG 検証済み応答のみキャッシュ。legacy は Caching なし）。
+- **H-1**: eval `route_*` を `request.metadata` 優先で記録。
+- **H-2**: キャッシュキーを長さプレフィクス framing + `compute_request_cache_key`（`channel_id` スコープ必須 / 全 messages / format / temperature / max_tokens）。欠落時 bypass。セマンティック照合はチャット経路で暫定停止。旧ハッシュとは不連続。
+- **H-3/H-4**: `network_target_host` Fail-Closed 硬化 + `host_permitted` 制御文字拒否 / lowercase / FQDN 末尾ドット正規化。
+- **M-1/M-3**: 外部 `route_tier` metadata 信頼廃止。`LLM_ROUTE_BUDGET_DEGRADE` パース堅牢化。
+- **検証**: `llm_chat_stack_test`（T1–T5 + json/legacy Negative）+ 各モジュール P/N。計画: `docs/roadmaps/op099_review_fix_plan.md`。
+- **/reflexion**: チャネル非スコープ漏洩を `channel_id` 必須キーで封鎖。チャット Fast の LocalOnly 尊重。境界で外部 `route_tier(_locked)` を strip。HIT 時 route_* 再付与。
+
+### Added (OP-099 Intelligent LLM Router 2026-08-01)
+- **ADR-058**: チャット経路専用 `IntelligentRouter`（`TaskTier::Fast`/`Smart` 再利用）。`LLM_ROUTE_MODE=legacy` 既定で行動変化ゼロ。
+- **Phase 1**: `route_rules.rs` / `intelligent_router.rs` / `FallbackRouter::complete_with_cache` / bootstrap 配線（KeyProxy 後 `cheap_chain` + `standard_chain`）。
+- **Phase 2**: `prompt_evaluation_log` に `route_tier` / `route_reason` / `route_mode`。`ProviderEvalStat.fast_tier_ratio` + OpenAPI + `PromptStatsView` 表示。
+- **Phase 3**: 予算降格（`CostCircuitBreaker` + `BackgroundLlmProvider.enforce_cost_limit` + degraded local chain）。
+- **Phase 4**: `CachingLlmProvider` + `utils::compute_prompt_hash()` 共通化 + SemanticCache DI（※配置は 2026-08-04 修正で EG 外側・rules 限定に更新）。
+- **/reflexion**: infrastructure `llm::` 62 PASS（legacy/rules/stream P/N + caching hit）。
+- **/reflexion（2）**: EntropyGate リトライ時の sticky tier 欠落を修正（`preserve_sticky_route_metadata` + 応答 `route_tier_locked`）。`budget_degrade` / `tier_locked` P/N テスト追加。`cargo fmt` 整合。
+- **/reflexion（3）**: sticky tier を `budget_degrade` より優先（EG リトライ中の Smart→Fast 反転防止）。`FallbackRouter::complete_with_cache` の format 伝播テスト追加。
+
+### Docs (/docs-sync 2026-08-01)
+- **SECURITY_DESIGN / SECURITY_WHITEPAPER**: Manifest `host_permitted` Fail-Closed（OP-096/097・ADR-057）と seatbelt Residual（OP-098）を追記。
+- **INFRASTRUCTURE_MODULES**: `security` / `skills` / `constraint_checker` 行を同期。
+- **release_master_plan**: ポストリリース OP-095〜098 ✅ を記録。最終同期 2026-08-01。
+- **DEV_HOST_EGRESS / OPEN**: 最終更新日を 2026-08-01 に更新。README / `.env.example` は環境変数差分なしのため非変更。
+
+### Docs (OP-098 seatbelt Spike Residual 2026-07-31)
+- **Spike**: [`manifest_host_drift_plan.md`](docs/roadmaps/manifest_host_drift_plan.md) §8。Bastion seatbelt 2 call site 棚卸し。hostname allowlist は DNS 非対応で偽安心 → **実装せず Residual**。S1 不起票。製品コード非変更。
+- **台帳**: OPEN OP-098 ✅。
+
+### Security (OP-097 Manifest ホスト・ドリフト 2026-07-31)
+- **`constraint_checker` DomainBlocked**: `allowed_domains.contains` を廃止し `host_permitted` に委譲（ADR-057 / 計画 v1.3）。潜伏コメント（`network_request` は skill_handler 未 emit）を併記。
+- **テスト**: suffix 許可 Positive + 空 domains Negative（配線のみ。アルゴリズムは contracts 側）。
+- **/reflexion**: rustfmt 整合。非 suffix host Deny の配線 Negative 追加。計画ヘッダ／CHANGELOG の「OP-098 残」陳腐化を Residual ✅ に訂正。
+- **/reflexion（2）**: 計画 §0/§1.1 の実装前表記（`contains` L99・checker 未使用）を実装後実態へ同期。コード差分なし。
+- **非変更**: Bastion / code_mode / WASM / commerce / router SSRF / seatbelt / Vault·auth·Tauri / ConstitutionalValidator。
+
+### Docs (OP-097/098 Manifest ホスト・ドリフト計画 2026-07-31)
+- **計画**: [`manifest_host_drift_plan.md`](docs/roadmaps/manifest_host_drift_plan.md) **v1.3**（照合収束）→ OP-097 実装完了ステータス。
+- **台帳 / ADR-057**: OPEN OP-097 ✅ / OP-098 Residual ✅。Follow-up 同期。
+
+### Security (OP-096 自律 Egress 防衛 2026-07-31)
+- **`host_permitted`**: `libs/aiome-contracts` に Manifest ホスト許可の純関数を追加（空 domains=Deny、`*` / 完全一致 / サブドメイン。code_mode 正本）。
+- **BastionGuard::check_network**: Fail-Closed + bare host/URL 両対応。`url.contains` 廃止（ADR-057）。
+- **code_mode `aiome.fetch`**: 同一関数へ委譲。WASM `with_allowed_host` は従来どおり `*` をスキップ。
+- **/reflexion**: サフィックス照合を「allow エントリに `.` を含む場合のみ」に硬化（`["com"]` → `evil.com` を拒否）。P/N テスト追加。
+- **/reflexion（2）**: `host_permitted` で host/entry を trim、先頭・末尾 `.` の junk エントリを無視。`network_target_host` 境界（空白・ftp・空 URL）の Bastion Negative を追加。
+- **/reflexion（3）**: WASM `with_allowed_host` 登録を `wasm_hosts_for_extism` に分離。trim 後の `*` / 空白のみをスキップし、`"* "` による wildcard すり抜けを防止。
+- **文書**: ADR-057、計画 v1.3、OP-095 H1 任意化、OPEN クローズ。
+
+### Docs (OP-095 開発ホスト Egress 衛生 2026-07-31)
+- **計画**: [`dev_host_egress_hygiene_plan.md`](docs/roadmaps/dev_host_egress_hygiene_plan.md) v1.2 承認・実行開始。
+- **ガイド**: [`DEV_HOST_EGRESS.md`](docs/guides/DEV_HOST_EGRESS.md)（macOS LuLu/Little Snitch・allowlist カテゴリ・P/N/R）。
+- **入口**: ランブック NT-1 Step A 直前チェック（v1.7）+ `stripe-production-setup` 任意推奨 1 行。
+- **台帳**: `OPEN.md` OP-095（H0+D1+D2 ✅ / **H1 Human 残**）。製品コード・Vault/MCP/CI 非変更。
+
 ### Changed (/docs-sync 2026-07-25)
 - **OPEN**: Gate α 最終確認を 2026-07-25 に更新（serenity 0.12.5 / tauri 2.11.5 とも ❌。新規解禁なし）。
 - **README / README_en**: Avatar 訴求を出荷実態（2D + Phase E VRM / Inochi 凍結）に同期。B2A を MCP buy 凍結＋HTTP Pro/eKYC に整合。

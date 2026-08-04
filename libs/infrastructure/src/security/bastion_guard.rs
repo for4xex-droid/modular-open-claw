@@ -66,7 +66,10 @@ impl RuntimeJail for BastionGuard {
         ];
         for part in dangerous_parts {
             if cmd_str.contains(part) {
-                error!("🛡️ [Security Violation] Dangerous meta-character or escape sequence detected: '{}'", part);
+                error!(
+                    "🛡️ [Security Violation] Dangerous meta-character or escape sequence detected: '{}'",
+                    part
+                );
                 return Err(AiomeError::Infrastructure {
                     reason: format!("Security Violation: '{}' prohibited.", part),
                 });
@@ -155,7 +158,10 @@ impl RuntimeJail for BastionGuard {
                                 if vault_sandbox.validate_path(p).is_ok() {
                                     // G-21 Hardening: Vault access is STRICTLY for internal processes only.
                                     // (is_system_internal is already checked above, but keep logic symmetric)
-                                    warn!("🛡️ [BastionGuard] Access to vault path '{}' blocked: unauthorized skill context.", p);
+                                    warn!(
+                                        "🛡️ [BastionGuard] Access to vault path '{}' blocked: unauthorized skill context.",
+                                        p
+                                    );
                                 }
                             }
                         }
@@ -172,7 +178,10 @@ impl RuntimeJail for BastionGuard {
                         .as_ref()
                         .is_some_and(|v| p.contains(&*v.to_string_lossy()))
                     {
-                        format!("Security Violation: Path '{}' is in the Vault and requires system internal context.", p)
+                        format!(
+                            "Security Violation: Path '{}' is in the Vault and requires system internal context.",
+                            p
+                        )
                     } else {
                         format!("Security Violation: Path '{}' is outside sandbox jail.", p)
                     };
@@ -256,31 +265,65 @@ impl RuntimeJail for BastionGuard {
     }
 
     /// ネットワーク接続をチェック
-    fn check_network(&self, url: &str) -> Result<(), AiomeError> {
+    ///
+    /// `target` は URL（scheme 付き）または bare host（WASM `allowed_domains` 登録時）。
+    /// 空 `allowed_domains` は Deny（OP-096 / ADR-057）。`url.contains` は使わない。
+    fn check_network(&self, target: &str) -> Result<(), AiomeError> {
         if !self.is_system_internal && !self.manifest.allow_network {
             return Err(AiomeError::Infrastructure {
                 reason: "Security Violation: Network access disabled.".into(),
             });
         }
 
-        // ドメイン・フィルタ
-        if !self.manifest.allowed_domains.is_empty() {
-            let mut allowed = false;
-            for domain in &self.manifest.allowed_domains {
-                if url.contains(domain) {
-                    allowed = true;
-                    break;
-                }
-            }
-            if !allowed {
-                return Err(AiomeError::Infrastructure {
-                    reason: format!("Security Violation: Domain '{}' not in allowed list.", url),
-                });
-            }
+        if self.is_system_internal {
+            return Ok(());
+        }
+
+        let host = network_target_host(target).ok_or_else(|| AiomeError::Infrastructure {
+            reason: format!(
+                "Security Violation: Invalid network target '{}' (empty host).",
+                target
+            ),
+        })?;
+
+        if !aiome_core::security::host_permitted(&host, &self.manifest.allowed_domains) {
+            return Err(AiomeError::Infrastructure {
+                reason: format!(
+                    "Security Violation: Domain '{}' not in allowed list.",
+                    target
+                ),
+            });
         }
 
         Ok(())
     }
+}
+
+/// Resolve a `check_network` target to a host string (bare domain or URL host).
+/// Fail-Closed: 非 http(s)/ws(s) scheme、および host として不正な文字を含む
+/// bare 文字列は None（deny）を返す。
+fn network_target_host(target: &str) -> Option<String> {
+    let trimmed = target.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if let Ok(parsed) = url::Url::parse(trimmed) {
+        return match parsed.scheme() {
+            "http" | "https" | "ws" | "wss" => parsed
+                .host_str()
+                .filter(|h| !h.is_empty())
+                .map(|h| h.to_string()),
+            _ => None, // ftp / file / data 等は Fail-Closed
+        };
+    }
+    // bare host: URL 構成文字・制御文字を含む場合は deny
+    if trimmed
+        .chars()
+        .any(|c| c.is_control() || c.is_whitespace() || matches!(c, '/' | '@' | ':' | '#' | '?'))
+    {
+        return None;
+    }
+    Some(trimmed.to_lowercase())
 }
 
 impl BastionGuard {

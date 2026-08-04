@@ -1,6 +1,8 @@
 # Aiome Security Design Doctrine
 
 > This document defines the security architecture for Aiome. It records the rationale for design decisions and the responsibilities of each defense layer.
+>
+> **Last sync: 2026-08-01** — Manifest host permit Fail-Closed（OP-096/097、ADR-057）。seatbelt domain allowlist is Residual（OP-098）。
 
 ## 1. Core Principle: Zero-Trust for LLM
 
@@ -28,6 +30,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 | 5 | Resource Exhaustion | Infinite Loop / Spams | 🟡 Mid | Rate Limiting + WASM Timeout & Circuit Breaker |
 | 6 | **Karma Poisoning** | **Malicious Federation Sync** | 🔴 High | **Bearer Auth + Node Reputation System** |
 | 7 | Reverse Shell Exploit | WASM Skill → host_exec | 🔴 High | **Aegis Sentinel (Immune System) + BastionGuard** |
+| 7b | **Manifest Empty Domains Fail-Open** | **`allow_network` + empty `allowed_domains` treated as unrestricted host filter** | 🔴 High | **`host_permitted` Fail-Closed (OP-096 / ADR-057)**; Bastion `check_network` + code_mode `aiome.fetch` + constraint_checker DomainBlocked share the same pure function (OP-097). WASM skips `*` at Extism registration. Seatbelt stays boolean-only (OP-098 Residual). Host FW optional (OP-095). |
 | 8 | Env Var Exfiltration | Skill reads API_KEY env | 🔴 High | **Aegis Sentinel baseline detection + WASM isolation** |
 | 9 | SQL Injection via Skill | Skill crafts DROP TABLE | 🟡 Mid | **Aegis Sentinel regex + parameterized queries** |
 | 10 | Startup Panic / DoS | Invalid config → crash | 🟡 Mid | **Panic-free startup with graceful exit** |
@@ -166,6 +169,7 @@ Aiome:        [LLM] → Rust Validation Layer → Whitelisted Tool Execution →
 - **Immune peripheral Fail-Closed (OP-075-B, 2026-07-10/11)**: Same policy outside `evaluate_security`: `napi-bridge` (`gate_immune_result` / `immune_check_tool` / `immune_scan_input`), `goal_processor` (`verify_tool_call` Err → job `Failed`), nurture-api MCP `tools/call`, and `skill_handler` (fetch rules **before** Wasm `call_skill`). Transient DB outages deny those paths as well.
 - **Whitelisting**: Only registered tools in the `ToolRegistry` can be executed.
 - **Sandboxing**: Filesystem access is restricted via `PathSandbox`. WASM execution and external processes (like Python Forge) are explicitly isolated using **`SandboxProfile`** definitions running atop gVisor (`runsc`) or macOS native sandbox, preventing unrestrained host access.
+- **Manifest Host Permit Fail-Closed (OP-096/097, ADR-057, 2026-07-31; hardened 2026-08-04)**: Canonical algorithm is `aiome_contracts::security::host_permitted` (empty list → deny; `*` / exact / subdomain suffix with bare-TLD harden; trim/junk rejection; lowercase + FQDN trailing-dot normalize; control chars / internal whitespace → deny). `BastionGuard::check_network` resolves targets Fail-Closed (`http`/`https`/`ws`/`wss` only; hostile bare hosts with `@`/`:`/`/` etc. denied) and Code Mode `aiome.fetch` both call `host_permitted` (no `url.contains`). WASM `with_allowed_host` enumerates trimmed hosts and skips `*`. `constraint_checker` DomainBlocked delegates to the same function (latent `network_request` action; live skill path remains `execute_wasm_skill` + Bastion/WASM). **Not unified** with commerce redirect validation, tool_call_router SSRF, or workflow `assert_resolved_url_safe`. macOS seatbelt remains boolean/`LoRA` port gates only — hostname allowlist mapping rejected as false comfort (OP-098 Spike Residual). Optional host egress hygiene: [`DEV_HOST_EGRESS.md`](../guides/DEV_HOST_EGRESS.md).
 - **Unified Sensitive-Path Enforcement (2026-07-03)**: The WASM `host_write` host function and the Code Mode JS bridge (`aiome.writeFile`/`readFile`) now share a single sensitive-path detector (`skills::is_sensitive_path`), blocking writes to `.env*`, `.git`, `.ssh`, `id_rsa`/`id_ed25519`, `security.json`, `Cargo.toml`, `*.pem`, and `*.key`. This closed a gap where `host_write` previously checked only 3 of these patterns inline. Host function builders are centralized in `skills/host_fns.rs` (B-1 Memory Safety Contract).
 - **Belief Consistency Check (Phase 49)**: ALL memory distillations pass through the `BeliefConsistencyGate`. Uses a fast SLM screening for contradictions with a 10% random LLM re-verification (RT-3) plus a mandatory LLM check for potential revisions. Evidence accumulation is capped at 100 entries (RT-2) to prevent memory exhaustion (OOM).
 - **Abyss Vault**: ALL LLM and remote API calls are routed through an isolated Key Proxy process utilizing `mlockall` and exact endpoint routing to prevent SSRF and memory leakage.

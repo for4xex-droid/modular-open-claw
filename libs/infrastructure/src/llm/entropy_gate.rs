@@ -7,7 +7,11 @@
 
 use aiome_core_contracts::error::AiomeError;
 use aiome_core_contracts::llm::{LlmProvider, LlmRequest, LlmResponse, TokenLogprob};
+use aiome_core_contracts::llm::{
+    ROUTE_MODE_KEY, ROUTE_REASON_KEY, ROUTE_TIER_KEY, ROUTE_TIER_LOCKED_KEY,
+};
 use async_trait::async_trait;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 /// Shannon Entropyを計算するユーティリティ関数
@@ -116,6 +120,24 @@ impl EntropyGate {
     }
 }
 
+/// IntelligentRouter の sticky tier を EntropyGate リトライ間で保持する。
+fn preserve_sticky_route_metadata(request: &mut LlmRequest, response: &LlmResponse) {
+    let Some(resp_meta) = response.metadata.as_ref() else {
+        return;
+    };
+    let req_meta = request.metadata.get_or_insert_with(HashMap::new);
+    for key in [
+        ROUTE_TIER_LOCKED_KEY,
+        ROUTE_TIER_KEY,
+        ROUTE_REASON_KEY,
+        ROUTE_MODE_KEY,
+    ] {
+        if let Some(value) = resp_meta.get(key) {
+            req_meta.insert(key.to_string(), value.clone());
+        }
+    }
+}
+
 #[async_trait]
 impl LlmProvider for EntropyGate {
     async fn complete(
@@ -147,10 +169,10 @@ impl LlmProvider for EntropyGate {
 
     async fn complete_with_cache(&self, request: LlmRequest) -> Result<LlmResponse, AiomeError> {
         let mut current_request = request;
+        let mut retries = 0;
 
-        self.check_and_retry(|retry_count| {
-            // リトライ時はリクエストを修正してから送信
-            if retry_count > 0 {
+        loop {
+            if retries > 0 {
                 if let Some(last_msg) = current_request.messages.last_mut() {
                     last_msg.content = format!(
                         "{}\n\n[System Error: High Uncertainty Detected. Please rethink step-by-step and provide a more certain response.]",
@@ -159,13 +181,36 @@ impl LlmProvider for EntropyGate {
                 }
             }
 
-            let req = current_request.clone();
-            let inner = self.inner.clone();
+            let resp = self
+                .inner
+                .complete_with_cache(current_request.clone())
+                .await?;
+            preserve_sticky_route_metadata(&mut current_request, &resp);
 
-            async move {
-                inner.complete_with_cache(req).await
+            if let Some(ref logprobs) = resp.logprobs {
+                let entropy = calculate_sequence_entropy(logprobs);
+                if entropy > self.threshold {
+                    if retries < self.max_re_ask {
+                        tracing::warn!(
+                            "High uncertainty detected (entropy: {:.4}). Re-asking... (try {}/{})",
+                            entropy,
+                            retries + 1,
+                            self.max_re_ask
+                        );
+                        retries += 1;
+                        continue;
+                    }
+                    return Err(AiomeError::LlmResponse {
+                        source: anyhow::anyhow!(
+                            "High Uncertainty Limit Exceeded (entropy: {:.4})",
+                            entropy
+                        ),
+                    });
+                }
             }
-        }).await
+
+            return Ok(resp);
+        }
     }
 
     async fn test_connection(&self) -> Result<(), AiomeError> {
@@ -350,6 +395,92 @@ mod tests {
         assert!(
             prompts[1].contains("[System Error: High Uncertainty Detected"),
             "Retry prompt must contain the rethink injection"
+        );
+    }
+
+    #[derive(Debug)]
+    struct RouteStickyCaptureMock {
+        locked_seen: Arc<std::sync::Mutex<Vec<Option<String>>>>,
+    }
+
+    #[async_trait]
+    impl LlmProvider for RouteStickyCaptureMock {
+        async fn complete(
+            &self,
+            _prompt: &str,
+            _system: Option<&str>,
+        ) -> Result<LlmResponse, AiomeError> {
+            Err(AiomeError::Infrastructure {
+                reason: "use complete_with_cache".into(),
+            })
+        }
+
+        async fn complete_with_cache(
+            &self,
+            request: LlmRequest,
+        ) -> Result<LlmResponse, AiomeError> {
+            let locked = request
+                .metadata
+                .as_ref()
+                .and_then(|m| m.get(ROUTE_TIER_LOCKED_KEY))
+                .cloned();
+            self.locked_seen.lock().unwrap().push(locked);
+
+            let mut meta = HashMap::new();
+            meta.insert(ROUTE_TIER_LOCKED_KEY.to_string(), "fast".to_string());
+            meta.insert(ROUTE_TIER_KEY.to_string(), "fast".to_string());
+
+            Ok(LlmResponse {
+                content: "uncertain".into(),
+                logprobs: Some(vec![TokenLogprob {
+                    token: "x".into(),
+                    logprob: -std::f64::consts::LN_2,
+                    top_logprobs: None,
+                }]),
+                metadata: Some(meta),
+                ..Default::default()
+            })
+        }
+
+        async fn test_connection(&self) -> Result<(), AiomeError> {
+            Ok(())
+        }
+
+        fn name(&self) -> &str {
+            "route_sticky_capture"
+        }
+    }
+
+    #[tokio::test]
+    async fn test_complete_with_cache_preserves_route_tier_on_retry() {
+        let locked_seen = Arc::new(std::sync::Mutex::new(Vec::<Option<String>>::new()));
+        let mock = Arc::new(RouteStickyCaptureMock {
+            locked_seen: locked_seen.clone(),
+        });
+        let gate = EntropyGate::new(mock, 0.1, 1);
+
+        let request = LlmRequest {
+            messages: vec![aiome_core_contracts::llm::LlmMessage {
+                role: "user".to_string(),
+                content: "short".to_string(),
+                cache: false,
+            }],
+            temperature: None,
+            max_tokens: None,
+            stop_sequences: None,
+            format: None,
+            metadata: None,
+        };
+
+        let result = gate.complete_with_cache(request).await;
+        assert!(result.is_err(), "High entropy should exhaust retries");
+
+        let seen = locked_seen.lock().unwrap();
+        assert_eq!(seen.len(), 2, "Initial call + one retry");
+        assert!(
+            seen[1].as_deref() == Some("fast"),
+            "Retry must preserve sticky route_tier_locked from prior response, got {:?}",
+            seen[1]
         );
     }
 }

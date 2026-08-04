@@ -8,7 +8,7 @@
 use super::bastion_guard::build_runsc_args;
 use super::*;
 use aiome_core::error::AiomeError;
-use aiome_core::security::PermissionManifest;
+use aiome_core::security::{PermissionManifest, RuntimeJail};
 
 #[tokio::test]
 async fn test_bastion_guard_internal_bypass() {
@@ -448,4 +448,88 @@ async fn test_bastion_guard_boundary_verifier_integration() {
             reason
         );
     }
+}
+
+#[test]
+fn test_bastion_check_network_empty_domains_deny() {
+    let manifest = PermissionManifest {
+        allow_network: true,
+        allowed_domains: vec![],
+        ..Default::default()
+    };
+    let guard = BastionGuard::new(manifest);
+    assert!(guard.check_network("example.com").is_err());
+    assert!(guard.check_network("https://example.com/path").is_err());
+}
+
+#[test]
+fn test_bastion_check_network_bare_host_and_url_ok() {
+    let manifest = PermissionManifest {
+        allow_network: true,
+        allowed_domains: vec!["example.com".into()],
+        ..Default::default()
+    };
+    let guard = BastionGuard::new(manifest);
+    assert!(guard.check_network("example.com").is_ok());
+    assert!(guard.check_network("https://api.example.com/v1").is_ok());
+    assert!(guard.check_network("https://evil.com").is_err());
+}
+
+#[test]
+fn test_bastion_check_network_substring_no_longer_bypasses() {
+    // Old `url.contains(domain)` would allow "notexample.com" when domain is "example.com".
+    let manifest = PermissionManifest {
+        allow_network: true,
+        allowed_domains: vec!["example.com".into()],
+        ..Default::default()
+    };
+    let guard = BastionGuard::new(manifest);
+    assert!(guard.check_network("notexample.com").is_err());
+}
+
+#[test]
+fn test_bastion_check_network_wildcard_and_wasm_star_skip_contract() {
+    let manifest = PermissionManifest {
+        allow_network: true,
+        allowed_domains: vec!["*".into()],
+        ..Default::default()
+    };
+    let guard = BastionGuard::new(manifest);
+    // Bastion honors `*` (Code Mode parity). WASM registration still skips `*` (skills/mod.rs).
+    assert!(guard.check_network("anywhere.test").is_ok());
+}
+
+#[test]
+fn test_bastion_check_network_target_resolution_edges() {
+    let manifest = PermissionManifest {
+        allow_network: true,
+        allowed_domains: vec!["example.com".into()],
+        ..Default::default()
+    };
+    let guard = BastionGuard::new(manifest);
+    assert!(guard.check_network("  example.com  ").is_ok());
+    assert!(guard.check_network("http://example.com/path").is_ok());
+    assert!(guard.check_network("https://api.example.com").is_ok());
+    // Non-http(s) schemes are Fail-Closed → deny
+    assert!(guard.check_network("ftp://example.com").is_err());
+    assert!(guard.check_network("http://").is_err());
+    assert!(guard.check_network("").is_err());
+}
+
+#[test]
+fn test_bastion_check_network_fail_closed_hostile_targets() {
+    let manifest = PermissionManifest {
+        allow_network: true,
+        allowed_domains: vec!["example.com".into()],
+        ..Default::default()
+    };
+    let guard = BastionGuard::new(manifest);
+
+    assert!(guard.check_network("ftp://evil.com/.example.com").is_err());
+    assert!(guard.check_network("allowed.com@evil.com").is_err());
+    assert!(guard.check_network("example.com@evil.com").is_err());
+    assert!(guard.check_network("example.com:443").is_err());
+    assert!(guard.check_network("example.com/path").is_err());
+    assert!(guard.check_network("example.com?x=1").is_err());
+    assert!(guard.check_network("example.com#frag").is_err());
 }

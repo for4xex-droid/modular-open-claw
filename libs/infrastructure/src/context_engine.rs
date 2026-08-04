@@ -155,8 +155,12 @@ impl ContextEngine {
             cache: false,
         });
 
-        // 3. メタデータに interaction_id をセット
+        // 3. メタデータに channel_id（キャッシュスコープ必須）と interaction_id をセット
         let mut metadata = std::collections::HashMap::new();
+        metadata.insert(
+            aiome_core_contracts::llm::CACHE_SCOPE_CHANNEL_KEY.to_string(),
+            channel_id.to_string(),
+        );
         if let Some(id) = interaction_id {
             metadata.insert("interaction_id".to_string(), id);
         }
