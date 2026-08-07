@@ -616,23 +616,17 @@ const SettingsPage: React.FC = () => {
                             onUpdate={(v) => updateSetting('feature_flag.js_fallback', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.js_fallback'} 
                         />
-                        <FeatureToggle 
-                            label={t('settings.ffP2pFederation', { defaultValue: 'P2P Federation' }) as string} 
-                            current={getSetting('feature_flag.p2p_federation')} 
-                            onUpdate={(v) => updateSetting('feature_flag.p2p_federation', v, 'feature_flags')} 
-                            saving={saving === 'feature_flag.p2p_federation'} 
+                        <FeatureToggle
+                            label={t('settings.ffKarmaFederationSync', { defaultValue: 'Karma Federation Sync' }) as string}
+                            current={getSetting('feature_flag.federation_v1_5')}
+                            onUpdate={(v) => updateSetting('feature_flag.federation_v1_5', v, 'feature_flags')}
+                            saving={saving === 'feature_flag.federation_v1_5'}
                         />
                         <FeatureToggle 
                             label={t('settings.ffLoraTraining', { defaultValue: 'LoRA Training' }) as string} 
                             current={getSetting('feature_flag.lora_training')} 
                             onUpdate={(v) => updateSetting('feature_flag.lora_training', v, 'feature_flags')} 
                             saving={saving === 'feature_flag.lora_training'} 
-                        />
-                        <FeatureToggle 
-                            label={t('settings.ffGigMarketplace', { defaultValue: 'Gig Marketplace' }) as string} 
-                            current={getSetting('feature_flag.gig_marketplace')} 
-                            onUpdate={(v) => updateSetting('feature_flag.gig_marketplace', v, 'feature_flags')} 
-                            saving={saving === 'feature_flag.gig_marketplace'} 
                         />
                         <FeatureToggle 
                             label={t('settings.ffIntentFirstSuggestion', { defaultValue: 'Intent-First Suggestion' }) as string} 

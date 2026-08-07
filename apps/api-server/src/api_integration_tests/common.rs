@@ -452,7 +452,6 @@ pub async fn create_test_server_with_limit(
             config.xtts_endpoint = None;
             config.xtts_speaker = None;
             config.vault_path = tmp_dir.path().join("vault");
-            config.mcp = shared::config::McpConfig::default();
             Arc::new(config)
         }),
         gift_engine: Component::new(Arc::new(MockGiftEngine)),

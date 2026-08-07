@@ -86,13 +86,6 @@ impl fmt::Display for LlmRouteMode {
     }
 }
 
-/// MCP Configuration
-#[derive(Clone, Debug, Default)]
-pub struct McpConfig {
-    /// MCP スキルのメタデータ (Markdown) をプロンプトに注入するかどうか
-    pub skill_md_injection: bool,
-}
-
 /// Aiome Core Configuration
 #[derive(Clone, Debug)]
 pub struct AiomeConfig {
@@ -136,8 +129,6 @@ pub struct AiomeConfig {
     pub xtts_endpoint: Option<String>,
     /// XTTSで使用するデフォルト話者ID (Phase 10.1a)
     pub xtts_speaker: Option<String>,
-    /// MCP 設定
-    pub mcp: McpConfig,
     /// パス解決器
     pub resolver: crate::app_data::AppDataResolver,
     /// フロントエンドの静的ファイルパス
@@ -227,7 +218,6 @@ impl Default for AiomeConfig {
             master_email: None,
             xtts_endpoint: Some("http://xtts:18020".to_string()),
             xtts_speaker: Some("p225".to_string()),
-            mcp: McpConfig::default(),
             resolver,
             frontend_static_path: "apps/api-server/static".to_string(),
             max_project_rules_chars: 3000,
@@ -380,11 +370,6 @@ impl AiomeConfig {
             master_email: env::var("MASTER_EMAIL").ok(),
             xtts_endpoint: env::var("XTTS_ENDPOINT").ok(),
             xtts_speaker: env::var("XTTS_SPEAKER").ok(),
-            mcp: McpConfig {
-                skill_md_injection: env::var("MCP_SKILL_MD_INJECTION")
-                    .map(|s| s.to_lowercase() == "true")
-                    .unwrap_or(false),
-            },
             resolver,
             frontend_static_path: env::var("FRONTEND_STATIC_PATH")
                 .unwrap_or_else(|_| "apps/api-server/static".to_string()),

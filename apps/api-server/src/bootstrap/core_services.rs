@@ -741,56 +741,60 @@ pub async fn init_core_services(
     ));
 
     // [Step 1.7.5] Bootstrap PublishPipeline for SEO / CMS integration
-    let publish_pipeline = Arc::new(infrastructure::publisher::PublishPipeline::new({
-        let mut publishers: Vec<Box<dyn aiome_core_contracts::traits::Publisher>> = Vec::new();
+    // Fail-closed: with_settings で feature_flag.seo_publish ゲートを接続（未設定/OFF なら外部送信しない）
+    let publish_pipeline = Arc::new(
+        infrastructure::publisher::PublishPipeline::new({
+            let mut publishers: Vec<Box<dyn aiome_core_contracts::traits::Publisher>> = Vec::new();
 
-        let wp_enabled = config.wp_sdk_enabled || config.wp_api_url.is_some();
+            let wp_enabled = config.wp_sdk_enabled || config.wp_api_url.is_some();
 
-        if wp_enabled {
-            if !config.key_proxy_url.is_empty() {
-                use secrecy::ExposeSecret;
-                let vault_secret = config
-                    .vault_secret
-                    .as_ref()
-                    .map(|s| s.expose_secret().to_string())
-                    .unwrap_or_default();
-                publishers.push(Box::new(
-                    infrastructure::publisher::wordpress::WordPressAdapter::new_vault(
-                        config.key_proxy_url.clone(),
-                        "api-server".to_string(),
-                        vault_secret,
-                    ),
-                ));
-                tracing::info!(
-                    "✅ [PublishPipeline] WordPress publisher registered via Abyss Vault Proxy."
-                );
+            if wp_enabled {
+                if !config.key_proxy_url.is_empty() {
+                    use secrecy::ExposeSecret;
+                    let vault_secret = config
+                        .vault_secret
+                        .as_ref()
+                        .map(|s| s.expose_secret().to_string())
+                        .unwrap_or_default();
+                    publishers.push(Box::new(
+                        infrastructure::publisher::wordpress::WordPressAdapter::new_vault(
+                            config.key_proxy_url.clone(),
+                            "api-server".to_string(),
+                            vault_secret,
+                        ),
+                    ));
+                    tracing::info!(
+                        "✅ [PublishPipeline] WordPress publisher registered via Abyss Vault Proxy."
+                    );
+                } else {
+                    tracing::warn!("⚠️ [PublishPipeline] WordPress enabled but key_proxy_url is empty. Publishing may fail.");
+                }
             } else {
-                tracing::warn!("⚠️ [PublishPipeline] WordPress enabled but key_proxy_url is empty. Publishing may fail.");
+                tracing::warn!("⚠️ [PublishPipeline] WordPress publisher not configured.");
             }
-        } else {
-            tracing::warn!("⚠️ [PublishPipeline] WordPress publisher not configured.");
-        }
 
-        // Only inject Mock in pure unit tests or when explicitly forced for integration testing
-        #[cfg(test)]
-        {
-            if publishers.is_empty() {
+            // Only inject Mock in pure unit tests or when explicitly forced for integration testing
+            #[cfg(test)]
+            {
+                if publishers.is_empty() {
+                    publishers.push(Box::new(infrastructure::publisher::mock_x::MockXPublisher));
+                }
+            }
+
+            #[cfg(debug_assertions)]
+            if std::env::var("AIOME_FORCE_MOCK_PUBLISHER").is_ok() && publishers.is_empty() {
+                tracing::info!("🧪 [PublishPipeline] Forcing MockXPublisher due to AIOME_FORCE_MOCK_PUBLISHER env var.");
                 publishers.push(Box::new(infrastructure::publisher::mock_x::MockXPublisher));
             }
-        }
 
-        #[cfg(debug_assertions)]
-        if std::env::var("AIOME_FORCE_MOCK_PUBLISHER").is_ok() && publishers.is_empty() {
-            tracing::info!("🧪 [PublishPipeline] Forcing MockXPublisher due to AIOME_FORCE_MOCK_PUBLISHER env var.");
-            publishers.push(Box::new(infrastructure::publisher::mock_x::MockXPublisher));
-        }
+            if publishers.is_empty() {
+                tracing::warn!("⚠️ [PublishPipeline] No publishers registered. SEO content will be generated but NOT published.");
+            }
 
-        if publishers.is_empty() {
-            tracing::warn!("⚠️ [PublishPipeline] No publishers registered. SEO content will be generated but NOT published.");
-        }
-
-        publishers
-    }));
+            publishers
+        })
+        .with_settings(job_queue.clone()),
+    );
 
     let quality_gate_store =
         Arc::new(infrastructure::quality_gate_store::SqliteQualityGateStore::new(db_pool.clone()))

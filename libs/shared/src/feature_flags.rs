@@ -13,3 +13,7 @@ pub const A2UI_GENERATIVE_UI_FLAG: &str = "a2ui_generative_ui";
 
 /// ヘッドレスブラウザ (obscura) によるJSフォールバックを有効化するフラグ名
 pub const JS_FALLBACK_FLAG: &str = "js_fallback";
+
+/// SEO コンテンツの自動投稿（WordPress 等への外部送信）を許可するフラグ名。
+/// 未設定は無効（fail-closed）。Settings UI の「SEO Publishing」トグルが書き込む。
+pub const SEO_PUBLISH_FLAG: &str = "seo_publish";

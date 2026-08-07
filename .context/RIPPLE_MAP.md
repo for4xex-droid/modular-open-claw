@@ -1,3 +1,9 @@
+## 🔍 研究由来メカニズム仕分け Phase 0.5（2026-08-08）
+
+- **変更**: ルート未追跡残骸30件 trash / git 追跡ワンショット8件削除 / `shared::config` から `McpConfig`（`skill_md_injection`、読み手ゼロ）削除 + `AiomeConfig.mcp` フィールド撤去 / `.env.example` から `MCP_SKILL_MD_INJECTION`・`PROMETHEUS_*`・`KANI_STUB_MODE` 削除 / `aiome-contracts/trellis2.rs`（未 export 孤立 DTO）削除 / Settings UI `gig_marketplace` トグル + i18n `ffGigMarketplace` 削除。
+- **波及効果**: `AiomeConfig` 構造体形状（`mcp` フィールド消滅。参照は integration test 1箇所のみで同時修正済み）。Gig 機能本体・GigEngine・`routes/gig.rs` **非変更**。Safety-Critical Zone **非接触**。CI `formal-verify.yml` は jar を都度 DL のため影響なし。
+- **検証**: `cargo check --workspace --tests` + `tsc --noEmit` PASS。証跡: [`research_mechanism_triage.md`](../docs/roadmaps/research_mechanism_triage.md)。
+
 ## 🔍 OP-099 code-review fix（2026-08-04）
 
 - **変更**: `HumanizerFilter::complete_with_cache`。`pin_local`。DI `HF → [Caching(rules)] → EG → IR`。`compute_request_cache_key`（`channel_id` 必須）/ `get_by_key` / `set_by_key`。`prepare_hybrid_request` が channel 注入。`cheap_chain` が LocalOnly 尊重。route_* request 優先。外部 `route_tier` 無視。`network_target_host` Fail-Closed。`host_permitted` 正規化。

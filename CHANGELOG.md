@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+### Added (Feature Flag 結線 2026-08-08)
+- **`seo_publish` ゲート**: `PublishPipeline::run_job` 冒頭で `feature_flag.seo_publish` を検査（既定 OFF / fail-closed）。本番組み立ては `core_services` で `with_settings(job_queue)` を接続。ユニットテスト4本（OFF / 未設定 / ON / settings 未接続）。
+- **定数**: `shared::feature_flags::SEO_PUBLISH_FLAG` を追加。
+
+### Changed (Feature Flag 結線 2026-08-08)
+- **Settings UI**: 誤キー `feature_flag.p2p_federation` を実在ゲート `feature_flag.federation_v1_5` に統一。ラベルを「Karma フェデレーション同期」へ変更（i18n en/ja）。
+- **CHANGELOG TDD ガード**: `td_f2_changelog_unreleased_count` を本文言及ではなく Markdown 見出し形式のみを数えるよう修正。
+
+### Removed (研究由来メカニズム仕分け Phase 0.5 2026-08-08)
+- **ルート残骸の一掃**: 未追跡の開発残骸30件を trash へ（`tla2tools.jar` 現物 / テストバイナリ `test_db`・`test_logic` / swarm テスト残骸 `workspace_a/b`・`hub_test.db`・`*.log` / 過去スキャン出力 `audit*.json`・`full_*_scan.txt` 等）。CI の `formal-verify.yml` は `tla2tools.jar` を都度ダウンロードするため影響なし。
+- **git 追跡ワンショット8件を削除**: `test_db.rs` / `test_logic.rs` / `test_extract_types.rs` / `split_bootstrap.py` / `update_mocks.py` / `update_tests.py` / `generate_jwt.js` / `test_json.sh`（全てワークスペース非所属・参照ゼロを確認済み）。
+- **死んだ設定の削除**: `McpConfig`（`skill_md_injection` — 読み手が存在しない）を `shared::config` から削除。`.env.example` から `MCP_SKILL_MD_INJECTION` / `PROMETHEUS_METRICS_ENABLED`・`PROMETHEUS_PORT`（コード未配線）/ `KANI_STUB_MODE`（ADR-041 で廃止済み）を削除。
+- **孤立 DTO 削除**: `libs/aiome-contracts/src/trellis2.rs`（`lib.rs` 未 export のコンパイル単位外ファイル）。
+- **無機能 UI トグル削除**: Settings の `gig_marketplace` フィーチャートグル（Rust 側ゲート未接続のハリボテ。Gig 機能本体・`routes/gig.rs`・GigEngine は非変更）。i18n `ffGigMarketplace`（en/ja）も削除。
+- **検証**: `cargo check --workspace --tests` + `tsc --noEmit` パス。仕分けの全証跡は [`research_mechanism_triage.md`](docs/roadmaps/research_mechanism_triage.md)。
+
 ### Fixed (OP-099 code-review fix 2026-08-04)
 - **C-1**: `HumanizerFilter::complete_with_cache` 追加（format/metadata が内側チェーンへ到達）。
 - **C-2**: `BackgroundLlmProvider.pin_local` — DB/env による自己昇格を遮断（Failover は `local_fallback_policy` に従う）。チャット Fast の `cheap_chain` も `LocalOnly` を尊重。

@@ -776,7 +776,7 @@ mod tests {
     #[test]
     fn test_feature_flag_valid_keys() {
         assert!(is_valid_feature_flag_name("feature_flag.seo_publish"));
-        assert!(is_valid_feature_flag_name("feature_flag.p2p_federation"));
+        assert!(is_valid_feature_flag_name("feature_flag.federation_v1_5"));
         assert!(is_valid_feature_flag_name(
             "feature_flag.intent_first_suggestion"
         ));

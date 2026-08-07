@@ -138,11 +138,12 @@ fn alpha_td_5_i18n_parity() {
 fn td_f2_changelog_unreleased_count() {
     let path = workspace_root().join("CHANGELOG.md");
     let content = fs::read_to_string(path).unwrap_or_default();
-    let unreleased_count = content.matches("[Unreleased]").count();
+    // 見出し形式のみを数える（本文中の言及は除外）
+    let unreleased_count = content.matches("## [Unreleased]").count();
 
     assert_eq!(
         unreleased_count, 1,
-        "TDD RED: CHANGELOG.md has {} [Unreleased] sections, expected 1",
+        "TDD RED: CHANGELOG.md has {} '## [Unreleased]' sections, expected 1",
         unreleased_count
     );
 }
