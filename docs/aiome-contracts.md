@@ -15,6 +15,5 @@ Detailed documentation for the `aiome-contracts` crate.
 - `src/gig_metadata.rs`
 - `src/lib.rs`
 - `src/x402.rs`
-- `src/trellis2.rs`
 - `src/commerce.rs`
 - `src/plugin.rs`

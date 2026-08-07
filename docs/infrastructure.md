@@ -133,14 +133,17 @@ Detailed documentation for the `infrastructure` crate.
 - `src/job_queue/watchtower.rs`
 - `src/job_queue/karma.rs`
 - `src/llm/fallback_router.rs`
+- `src/llm/intelligent_router.rs`
 - `src/llm/mod.rs`
 - `src/llm/writing_context.rs`
+- `src/llm/caching_provider.rs`
 - `src/llm/semantic_cache.rs`
 - `src/llm/cost_breaker.rs`
 - `src/llm/native_embedding.rs`
 - `src/llm/proxy.rs`
 - `src/llm/humanizer_rules.rs`
 - `src/llm/background.rs`
+- `src/llm/route_rules.rs`
 - `src/llm/evaluation_logger.rs`
 - `src/llm/whisper_middleware.rs`
 - `src/llm/humanizer_filter.rs`
