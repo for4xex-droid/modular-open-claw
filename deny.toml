@@ -71,7 +71,8 @@ feature-depth = 1
 # output a note when they are encountered.
 ignore = [
     # 間接依存の旧メジャー起因（semver 互換 update では修正不能）。OPEN.md OP-068 で追跡。
-    # OP-032（2026-07-22）: wasmtime 41 / wasmtime-wasi 44 経路消滅 → 0085–0089・0091–0096・0114・0188 を削除済。残 8。
+    # OP-032（2026-07-22）: wasmtime 41 / wasmtime-wasi 44 経路消滅 → 0085–0089・0091–0096・0114・0188 を削除済。
+    # 2026-08-08: RUSTSEC-2026-0222 追加（extism 1.30 → wasmtime 43。パッチは 46+/47+ のみ）。残 9。
     { id = "RUSTSEC-2024-0421", reason = "idna 0.4 (trust-dns 経由の間接依存)。修正は idna >=1.0" },
     { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.39 (間接依存)。修正は次期メジャー" },
     { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.39 (間接依存)。修正は次期メジャー" },
@@ -80,6 +81,7 @@ ignore = [
     { id = "RUSTSEC-2026-0098", reason = "rustls-webpki 旧版 (間接依存)。修正はメジャー更新" },
     { id = "RUSTSEC-2026-0099", reason = "rustls-webpki 旧版 (間接依存)。修正はメジャー更新" },
     { id = "RUSTSEC-2026-0104", reason = "rustls-webpki 旧版 (間接依存)。修正はメジャー更新" },
+    { id = "RUSTSEC-2026-0222", reason = "wasmtime 43.x (extism 1.30 固定)。修正は extism が wasmtime 46.0.2+/47.0.3+ を採用するまで不可" },
 ]
 # unmaintained 勧告は間接依存（Tauri の GTK3 バインディング等、上流更新待ち）が大半のため、
 # ワークスペース直接依存のみを検査対象とする (CI修繕 2026-07-04)

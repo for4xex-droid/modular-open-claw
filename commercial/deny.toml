@@ -9,6 +9,8 @@ feature-depth = 1
 [advisories]
 ignore = [
     # OP-032（2026-07-22）: extism 1.30 → wasmtime 43。41.x / wasi-44 系 ignore は削除済。
+    # 2026-08-08: RUSTSEC-2026-0222（wasmtime 43 type-index mixup）。extism が 46+/47+ を採用するまで。
+    "RUSTSEC-2026-0222",
 
     # rustls-webpki - 推移的依存 (aws-sdk, serenity 経由)
     "RUSTSEC-2026-0049", # CRL matching logic

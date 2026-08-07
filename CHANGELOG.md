@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Security (依存監査 2026-08-08)
+- **RUSTSEC-2026-0220**: `ruint` 1.18.0 → 1.20.0（`cargo update -p ruint --precise 1.20.0`）。alloy-primitives / nybbles 経由のシフト演算フラグ不具合を解消。
+- **RUSTSEC-2026-0222**: `wasmtime` 43.x（extism 1.30 固定）。勧告のパッチ線は 46.0.2+/47.0.3+ のみで 43.x に修正版なし。crates.io / upstream main とも `wasmtime = "43"` のため `[BLOCKED_BY_UPSTREAM]` として `.cargo/audit.toml`・`deny.toml`・`commercial/deny.toml` に登録（CVSS 3.8 LOW）。
+
 ### Added (Feature Flag 結線 2026-08-08)
 - **`seo_publish` ゲート**: `PublishPipeline::run_job` 冒頭で `feature_flag.seo_publish` を検査（既定 OFF / fail-closed）。本番組み立ては `core_services` で `with_settings(job_queue)` を接続。ユニットテスト4本（OFF / 未設定 / ON / settings 未接続）。
 - **定数**: `shared::feature_flags::SEO_PUBLISH_FLAG` を追加。

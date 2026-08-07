@@ -6,7 +6,21 @@
 # extism 1.30 → wasmtime/wasi-common 43.x。未使用の workspace wasmtime /
 # wasmtime-wasi 直依存を削除し 41.x と wasi-44（0188）経路を消滅。
 # 削除済 ID: 0085–0089, 0091–0096, 0114, 0188（deny と同期）。
+#
+# RUSTSEC-2026-0220 (ruint): 2026-08-08 に Cargo.lock で ruint 1.18→1.20 へ更新し解消。
 ignore = [
+    # -----------------------------------------------------------------
+    # Extism → wasmtime 43.x (RUSTSEC-2026-0222):
+    # [BLOCKED_BY_UPSTREAM]
+    # TARGET: extism (>= release that pins wasmtime 46.0.2+ or 47.0.3+)
+    # ACTION: Remove RUSTSEC-2026-0222 when `cargo tree -i wasmtime` shows
+    #         a patched line (46.0.2+/47.0.3+). crates.io extism 1.30 and
+    #         upstream main still declare wasmtime = "43"; advisory has no
+    #         43.x patch (only 24/36 LTS and 46+/47+).
+    # Severity: CVSS 3.8 LOW (local, high complexity, high privileges).
+    # -----------------------------------------------------------------
+    "RUSTSEC-2026-0222", # wasmtime 43.x Stores type-index mixup (pinned by extism 1.30)
+
     # -----------------------------------------------------------------
     # Serenity (tokio-tungstenite v0.21.0 -> rustls v0.22) & Legacy CVEs:
     # [BLOCKED_BY_UPSTREAM]
